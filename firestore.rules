@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if the authenticated user has admin role
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.email == 'tripambiswas007@gmail.com' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    // 🌐 MUSICLY PUBLIC LIBRARY
+    // Readable by everyone in the world (even logged out guests)
+    // Only verified admin accounts can publish, update, or delete
+    match /public_tracks/{trackId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 🎨 ROOM THEMES & SCENES
+    // Readable by all visitors; published and managed exclusively by admin
+    match /public_scenes/{sceneId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 👤 USER PROFILES
+    // Each user can manage their own profile; admins can manage roles
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 🔒 PRIVATE USER CUSTOM TRACKS
+    // Strictly private to the individual account that uploaded them
+    // Normal visitors and other users can NEVER access another user's uploads
+    match /users/{userId}/custom_tracks/{trackId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 📻 SONG REQUESTS
+    // Anyone can submit song requests; admins can review, update status, and manage them
+    match /song_requests/{requestId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
+    // 💬 LISTENER FEEDBACK & RATINGS
+    // Anyone can submit feedback & ratings; admins can read, review, and delete
+    match /feedback/{feedbackId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+  }
+}

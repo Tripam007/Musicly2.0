@@ -1,0 +1,7 @@
+{
+  "origin_landmark": 0,
+  "scale_landmark": 9,
+  "feature_dim": 63,
+  "handedness_normalization": "mirror_left",
+  "normalization_method": "wrist_origin_mcp_scale"
+}

@@ -1,0 +1,26 @@
+{
+  "classes": [
+    "NO_GESTURE",
+    "OPEN_PALM",
+    "THUMB_GESTURE",
+    "FIST",
+    "ONE_FINGER_UP",
+    "ONE_FINGER_DOWN"
+  ],
+  "class_to_idx": {
+    "NO_GESTURE": 0,
+    "OPEN_PALM": 1,
+    "THUMB_GESTURE": 2,
+    "FIST": 3,
+    "ONE_FINGER_UP": 4,
+    "ONE_FINGER_DOWN": 5
+  },
+  "idx_to_class": {
+    "0": "NO_GESTURE",
+    "1": "OPEN_PALM",
+    "2": "THUMB_GESTURE",
+    "3": "FIST",
+    "4": "ONE_FINGER_UP",
+    "5": "ONE_FINGER_DOWN"
+  }
+}

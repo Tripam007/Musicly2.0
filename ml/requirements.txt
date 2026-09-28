@@ -1,0 +1,7 @@
+# Musicly Air AI - Machine Learning Environment Requirements
+# Compatible with Python 3.10+ and 3.11+
+
+numpy>=1.24.1
+scipy>=1.10.0
+scikit-learn>=1.3.0
+joblib>=1.3.0

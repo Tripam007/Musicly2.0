@@ -1,0 +1,1615 @@
+/* ==========================================================================
+   ABOUT US — CINEMATIC SCROLL-DRIVEN EDITORIAL EXPERIENCE
+   Musicly / An art-directed digital magazine & continuous visual music film
+   ========================================================================== */
+
+.about-us-experience {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #07090d;
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  z-index: 10000;
+}
+
+.about-us-experience::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* ==========================================================================
+   1. SCROLL TRACK & FIXED 3D VIEWPORT STAGE
+   ========================================================================== */
+
+/* Tall invisible track inside the scroll container that creates the continuous scroll journey */
+.about-scroll-track {
+  position: relative;
+  width: 100%;
+  height: 520vh;
+  pointer-events: none;
+}
+
+/* Fixed cinematic stage pinned to the viewport */
+.about-stage {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+  perspective: 1100px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+  z-index: 10001;
+  transition: background 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Interactive elements inside the stage re-enable pointer events explicitly */
+.about-interactive-vinyl,
+.about-vertical-progress,
+.about-player-interactive-btn,
+.about-final-back-link {
+  pointer-events: auto !important;
+}
+
+/* Film grain & cinematic vignette overlay */
+.about-stage-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    transparent 40%,
+    rgba(4, 6, 10, 0.45) 80%,
+    rgba(3, 4, 7, 0.88) 100%
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Subtle music-reactive ambient light wash in background */
+.about-stage-ambient-glow {
+  position: absolute;
+  inset: -15%;
+  width: 130%;
+  height: 130%;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.28;
+  pointer-events: none;
+  z-index: 1;
+  transition: opacity 1.2s ease, transform 1.2s ease, background 1.2s ease;
+}
+
+.about-stage-ambient-glow.is-playing {
+  animation: aboutAmbientBreathe 7s ease-in-out infinite alternate;
+}
+
+@keyframes aboutAmbientBreathe {
+  0% {
+    transform: scale(0.92) translate3d(0, 0, 0);
+    opacity: 0.24;
+  }
+  50% {
+    transform: scale(1.08) translate3d(2%, -3%, 0);
+    opacity: 0.38;
+  }
+  100% {
+    transform: scale(0.95) translate3d(-2%, 2%, 0);
+    opacity: 0.28;
+  }
+}
+
+/* ==========================================================================
+   2. MINIMAL EDITORIAL HUD (TOP BAR & PROGRESS)
+   ========================================================================== */
+
+.about-hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 44px;
+  z-index: 10020;
+  pointer-events: none;
+}
+
+.about-hud-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.about-hud-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.about-hud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(251, 133, 0, 0.9);
+}
+
+.about-hud-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fb8500;
+  box-shadow: 0 0 8px #fb8500;
+  animation: hudPulse 2.4s ease-in-out infinite;
+}
+
+@keyframes hudPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+.about-hud-chapter-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.about-hud-chapter {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.about-hud-hairline-track {
+  width: 54px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.16);
+  position: relative;
+  overflow: hidden;
+}
+
+.about-hud-hairline-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #fb8500;
+  transition: width 0.15s ease-out;
+}
+
+/* Vertical Scroll Indicator on Far Right Edge (Hidden) */
+.about-vertical-progress {
+  display: none !important;
+}
+
+/* Quick Floating Exit Button at Top Right corner for convenience */
+.about-top-back-btn {
+  position: fixed;
+  top: 24px;
+  right: 140px;
+  background: rgba(18, 22, 32, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.75);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  cursor: pointer;
+  z-index: 10025;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.about-top-back-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  transform: translateX(-2px);
+}
+
+/* ==========================================================================
+   3. TYPOGRAPHY FOUNDATIONS
+   ========================================================================== */
+
+.about-editorial-serif {
+  font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.035em;
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+.about-editorial-serif-italic {
+  font-family: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.02em;
+}
+
+.about-meta-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(251, 133, 0, 0.9);
+  margin-bottom: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-meta-label::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 1px;
+  background: #fb8500;
+}
+
+/* ==========================================================================
+   4. CHAPTER 01 — "MUSIC SHOULD FEEL LIKE A PLACE."
+   ========================================================================== */
+
+.about-ch1-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  z-index: 20;
+  will-change: transform, opacity, filter;
+}
+
+/* ==========================================================================
+   🎬 DYNAMIC CINEMATIC BACKDROPS (PIANO, NATURE WIDGETS, AIRPLANE HUD)
+   ========================================================================== */
+.about-dynamic-backdrops {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.about-bg-slide {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  will-change: transform, opacity;
+  transition: opacity 0.4s ease-out;
+  opacity: 0;
+}
+
+.about-bg-slide.bg-piano {
+  opacity: 1;
+  filter: brightness(0.72) contrast(108%);
+}
+
+.about-bg-slide.bg-nature {
+  filter: brightness(0.68) saturate(115%) contrast(105%);
+}
+
+.about-bg-slide.bg-airplane {
+  filter: brightness(0.7) contrast(110%);
+}
+
+.about-bg-slide.bg-cassette {
+  background-position: center 52%;
+  filter: brightness(0.84) saturate(125%) contrast(112%);
+  animation: cassetteGoldenDrift 16s ease-in-out infinite alternate;
+}
+
+@keyframes cassetteGoldenDrift {
+  0% {
+    filter: brightness(0.82) saturate(120%) contrast(110%);
+  }
+  50% {
+    filter: brightness(0.92) saturate(132%) contrast(114%);
+  }
+  100% {
+    filter: brightness(0.85) saturate(122%) contrast(110%);
+  }
+}
+
+/* Atmospheric darkening veil ensuring razor-sharp typography legibility */
+.about-bg-overlay-veil {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    rgba(7, 9, 13, 0.6) 0%,
+    rgba(5, 7, 11, 0.82) 65%,
+    rgba(3, 4, 7, 0.95) 100%
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ==========================================================================
+   ✨ BORDERLESS FLOATING EDITORIAL TYPOGRAPHY (CH1 & CH5)
+   Boxless, free-floating in 3D space with high-end magazine aesthetics
+   ========================================================================== */
+.about-ch1-content-wrap,
+.about-ch5-content-wrap {
+  position: relative;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px;
+  transform-style: preserve-3d;
+}
+
+/* Floating Micro-Badge */
+.about-editorial-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  animation: floatBadgePill 4s ease-in-out infinite alternate;
+}
+
+.about-editorial-pill-badge .pill-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fb8500;
+  box-shadow: 0 0 10px #fb8500;
+}
+
+@keyframes floatBadgePill {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-3px); }
+}
+
+/* Subtitle under Statement */
+.about-editorial-sub {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(14px, 1.5vw, 17px);
+  color: rgba(255, 255, 255, 0.72);
+  margin-top: 24px;
+  max-width: 540px;
+  line-height: 1.6;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
+}
+
+.about-ch1-statement {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: clamp(2.1rem, 4.8vw, 4.4rem);
+  color: #f8fafc;
+  line-height: 1.1;
+  transform-style: preserve-3d;
+  letter-spacing: -0.025em;
+}
+
+.about-ch1-statement .word-line {
+  display: block;
+  white-space: nowrap;
+  transition: transform 0.1s ease-out;
+  text-shadow: 0 6px 32px rgba(0, 0, 0, 0.8);
+}
+
+.about-ch1-statement .word-line.word-place {
+  color: #ffb703;
+  font-style: italic;
+  text-shadow: 0 0 32px rgba(251, 133, 0, 0.5), 0 4px 20px rgba(0, 0, 0, 0.9);
+}
+
+/* ==========================================================================
+   🐾 COZY LISTENING COMPANIONS (CLEAN INTERACTIVE IMAGE — FILLS CARD OUT)
+   ========================================================================== */
+.about-cats-clean-stage {
+  position: relative;
+  display: inline-block;
+  width: clamp(310px, 34vw, 425px);
+  margin-top: 14px;
+  background: transparent !important;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
+  padding: 0 !important;
+  user-select: none;
+  pointer-events: auto !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.about-cats-clean-stage:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.25) !important;
+}
+
+.about-cats-clean-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: 20px;
+  pointer-events: none;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transform: translateZ(0);
+}
+
+/* 🐾 TRANSPARENT CLICKABLE HITBOXES FOR EACH CAT (NO YELLOW HOVER EFFECT) */
+.cats-clean-hit-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.cat-clean-hit-zone {
+  position: absolute;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  border-radius: 14px;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Strictly ensure NO yellow hover circles or effects */
+.cat-clean-hit-zone:hover,
+.cat-clean-hit-zone:focus,
+.cat-clean-hit-zone:active {
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/* Playful click bounce animation */
+.cat-clean-hit-zone.is-cat-wobble {
+  animation: catCuteBounce 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes catCuteBounce {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.15, 0.86) translateY(-6px); }
+  55% { transform: scale(0.94, 1.08) translateY(-2px); }
+  75% { transform: scale(1.04, 0.98) translateY(-1px); }
+  100% { transform: scale(1); }
+}
+
+/* ==========================================================================
+   🌐 SOCIAL PROFILES (ONLY ICONS: GITHUB, LINKEDIN, INSTAGRAM)
+   ========================================================================== */
+.about-social-icons-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 14px;
+  width: 100%;
+  pointer-events: auto !important;
+  transform: translateZ(0);
+}
+
+.about-social-circle-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  text-decoration: none;
+  cursor: pointer;
+  pointer-events: auto !important;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  transform: translateZ(0);
+}
+
+.about-social-circle-btn:hover {
+  transform: translateY(-3px) scale(1.08);
+  color: #ffffff;
+}
+
+.about-social-circle-btn.btn-social-github:hover {
+  border-color: rgba(168, 85, 247, 0.7);
+  background: rgba(168, 85, 247, 0.22);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 22px rgba(168, 85, 247, 0.6);
+}
+
+.about-social-circle-btn.btn-social-linkedin:hover {
+  border-color: rgba(10, 102, 194, 0.7);
+  background: rgba(10, 102, 194, 0.22);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 22px rgba(10, 102, 194, 0.6);
+}
+
+.about-social-circle-btn.btn-social-instagram:hover {
+  border-color: rgba(225, 48, 108, 0.7);
+  background: rgba(225, 48, 108, 0.22);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 22px rgba(225, 48, 108, 0.6);
+}
+
+.about-social-circle-btn .social-svg-icon {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  color: inherit;
+}
+
+.about-social-circle-btn:hover .social-svg-icon {
+  transform: scale(1.15);
+}
+
+@media (max-width: 640px) {
+  .about-cats-clean-stage {
+    width: 86vw;
+    max-width: 320px;
+  }
+  .about-social-icons-cluster {
+    gap: 12px;
+  }
+  .about-social-circle-btn {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Floating Physical Elements around Statement */
+.about-floating-object {
+  position: absolute;
+  pointer-events: none;
+  transform-style: preserve-3d;
+  will-change: transform, opacity, filter;
+  transition: transform 0.12s ease-out;
+}
+
+/* Album Art Tile */
+.about-tile-art {
+  width: clamp(90px, 14vw, 190px);
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.about-tile-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ==========================================================================
+   💿 INTERACTIVE VINYL CD (SONG NAMES, LIVE SPINNING, CLICK-TO-PLAY)
+   ========================================================================== */
+.about-tile-vinyl.about-interactive-vinyl {
+  position: absolute;
+  width: clamp(140px, 19vw, 240px);
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: 
+    radial-gradient(circle at 50% 50%, 
+      #14171f 0%, 
+      #090b10 18%, 
+      #1c212d 20%, 
+      #0c0f16 28%, 
+      #1a1f2b 34%, 
+      #080a0f 42%, 
+      #181e28 52%, 
+      #07090e 64%, 
+      #141923 76%, 
+      #05060a 90%, 
+      #000000 100%
+    );
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.85),
+    0 0 35px rgba(251, 133, 0, 0.18),
+    inset 0 0 25px rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto !important;
+  cursor: pointer;
+  user-select: none;
+  isolation: isolate;
+  transition: 
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s ease;
+}
+
+.about-tile-vinyl.about-interactive-vinyl:hover {
+  transform: translateY(-8px) scale(1.06) rotate(6deg) !important;
+  border-color: rgba(251, 133, 0, 0.6);
+  box-shadow: 
+    0 30px 75px rgba(0, 0, 0, 0.95),
+    0 0 50px rgba(251, 133, 0, 0.35),
+    inset 0 0 25px rgba(0, 0, 0, 0.9);
+}
+
+.about-tile-vinyl.about-interactive-vinyl:active {
+  transform: translateY(-2px) scale(0.98) !important;
+  transition: transform 0.1s ease;
+}
+
+/* Vinyl Grooves Texture Rings */
+.vinyl-groove-rings {
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: repeating-radial-gradient(
+    circle at 50% 50%,
+    transparent 0,
+    transparent 2px,
+    rgba(255, 255, 255, 0.03) 3px,
+    rgba(0, 0, 0, 0.3) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Authentic Vinyl Specular Glare (Dual Conic Highlights) */
+.vinyl-specular-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 35deg,
+    rgba(255, 255, 255, 0.12) 0deg,
+    transparent 45deg,
+    rgba(255, 255, 255, 0.08) 90deg,
+    transparent 135deg,
+    rgba(255, 255, 255, 0.14) 180deg,
+    transparent 225deg,
+    rgba(255, 255, 255, 0.09) 270deg,
+    transparent 315deg,
+    rgba(255, 255, 255, 0.12) 360deg
+  );
+  pointer-events: none;
+  z-index: 2;
+  mix-blend-mode: screen;
+}
+
+/* Circular Track Text Engraved Along Record Grooves */
+.vinyl-circular-groove-text {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.vinyl-circular-groove-text text {
+  font-family: 'JetBrains Mono', 'Plus Jakarta Sans', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  fill: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+}
+
+/* Spin Animation When Playing */
+.about-tile-vinyl.about-interactive-vinyl.is-spinning {
+  animation: spinVinylDisc 8s linear infinite;
+}
+
+.about-tile-vinyl.about-interactive-vinyl.is-paused {
+  animation: spinVinylDisc 8s linear infinite;
+  animation-play-state: paused;
+}
+
+@keyframes spinVinylDisc {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Center Record Label with Song Title & Artist */
+.about-vinyl-center {
+  position: relative;
+  width: 38%;
+  height: 38%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 35%, #ffb703 0%, #fb8500 55%, #d97706 100%);
+  border: 4px solid #0d111a;
+  box-shadow: 
+    0 4px 18px rgba(0, 0, 0, 0.6),
+    inset 0 0 10px rgba(0, 0, 0, 0.4),
+    0 0 14px rgba(251, 133, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 4;
+  overflow: hidden;
+  text-align: center;
+}
+
+.vinyl-label-inner {
+  width: 100%;
+  height: 100%;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.vinyl-label-micro {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6.5px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: rgba(15, 23, 42, 0.7);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.vinyl-label-title {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #0b0f19;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  max-width: 90%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.vinyl-label-artist {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 7.5px;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.85);
+  max-width: 88%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1;
+}
+
+/* Center Spindle Hole */
+.vinyl-spindle-hole {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #000000;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2px;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.9);
+}
+
+.vinyl-play-indicator {
+  color: #fb8500;
+  transform: translateX(0.5px);
+}
+
+/* Floating Hover Tag beside/above Vinyl */
+.about-vinyl-hover-tag {
+  position: absolute;
+  top: -38px;
+  left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  background: rgba(12, 16, 26, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 20px rgba(251, 133, 0, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+}
+
+.about-tile-vinyl.about-interactive-vinyl:hover .about-vinyl-hover-tag {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.vinyl-tag-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #94a3b8;
+}
+
+.vinyl-tag-indicator.is-live {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseDot 1.8s infinite;
+}
+
+.vinyl-tag-song {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.vinyl-tag-action {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #fb8500;
+  letter-spacing: 0.05em;
+}
+
+@keyframes pulseDot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+/* Next Song Skip Button on Hover Tag */
+.vinyl-tag-next-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9999px;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  pointer-events: auto !important;
+  transition: all 0.2s ease;
+  margin-left: 2px;
+}
+
+.vinyl-tag-next-btn:hover {
+  background: rgba(251, 133, 0, 0.3);
+  border-color: #fb8500;
+  color: #fb8500;
+  transform: scale(1.12);
+}
+
+.vinyl-tag-next-btn:active {
+  transform: scale(0.92);
+}
+
+/* Vinyl Flip & Crossfade Transition on Song Change */
+.vinyl-label-inner {
+  transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.vinyl-label-inner.label-flipping {
+  opacity: 0;
+  transform: scale(0.85) rotate(-15deg);
+}
+
+.about-tile-vinyl.about-interactive-vinyl.is-switching .vinyl-circular-groove-text {
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+
+/* Analogue Metadata Badge Tag */
+.about-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(14, 18, 26, 0.75);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+}
+
+.about-badge-tag .badge-accent {
+  color: #fb8500;
+}
+
+/* Waveform Fragment */
+.about-waveform-sliver {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(15, 20, 30, 0.65);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.about-waveform-bar {
+  width: 2.5px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.75);
+  animation: aboutWaveDance 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes aboutWaveDance {
+  0% { transform: scaleY(0.25); opacity: 0.4; }
+  100% { transform: scaleY(1); opacity: 0.95; }
+}
+
+/* Subtle Light Leak */
+.about-light-leak {
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(251, 133, 0, 0.22) 0%, rgba(255, 183, 3, 0.08) 50%, transparent 75%);
+  filter: blur(50px);
+}
+
+/* ==========================================================================
+   5. CHAPTER 02 — "WE WANTED MUSIC TO FEEL PERSONAL AGAIN."
+   ========================================================================== */
+
+.about-ch2-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 22;
+  padding: 0 32px;
+  will-change: transform, opacity;
+}
+
+.about-ch2-heading-group {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.about-ch2-title {
+  font-size: clamp(1.75rem, 3.8vw, 3.4rem);
+  color: #f8fafc;
+  line-height: 1.08;
+}
+
+.about-ch2-title .italic-personal {
+  color: #ffb703;
+  font-style: italic;
+}
+
+/* Suspended 3D Minimal Player Physical Object */
+.about-ch2-player-card {
+  width: clamp(310px, 42vw, 540px);
+  background: rgba(16, 21, 32, 0.75);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 
+    0 35px 80px rgba(0, 0, 0, 0.7),
+    0 0 50px rgba(251, 133, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.about-player-card-inner {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.about-player-card-cover {
+  width: 78px;
+  height: 78px;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
+  flex-shrink: 0;
+}
+
+.about-player-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.about-player-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.about-player-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #fb8500;
+}
+
+.about-player-song-title {
+  font-size: 19px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.about-player-song-artist {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.about-player-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.about-player-interactive-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fb8500;
+  color: #07090d;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 20px rgba(251, 133, 0, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  flex-shrink: 0;
+}
+
+.about-player-interactive-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 26px rgba(251, 133, 0, 0.65);
+}
+
+.about-player-waveform-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.about-player-wave-bar {
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  transition: height 0.2s ease;
+}
+
+.about-player-wave-bar.bar-accent {
+  background: #fb8500;
+}
+
+/* ==========================================================================
+   6. CHAPTER 03 — "NOT JUST A PLAYER. A PLACE TO LISTEN."
+   ========================================================================== */
+
+.about-ch3-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 24;
+  will-change: transform, opacity;
+}
+
+.about-ch3-text-hero {
+  text-align: center;
+  margin-bottom: 24px;
+  z-index: 40;
+}
+
+.about-ch3-title {
+  font-size: clamp(1.75rem, 3.8vw, 3.4rem);
+  line-height: 1.08;
+  color: #f8fafc;
+}
+
+.about-ch3-title .italic-place {
+  color: #fb8500;
+  font-style: italic;
+}
+
+/* Cinematic Scene Depth Canvas Choreography */
+.about-scenes-deep-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.about-scene-layer {
+  position: absolute;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.14);
+  will-change: transform, opacity, filter;
+  transition: transform 0.12s ease-out;
+}
+
+.about-scene-layer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.about-scene-tag-glass {
+  position: absolute;
+  bottom: 16px;
+  left: 18px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(10, 14, 22, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.about-scene-tag-glass .tag-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fb8500;
+}
+
+/* Spatial placement of the 4 scenes */
+.layer-afterglow {
+  width: clamp(240px, 32vw, 420px);
+  height: clamp(160px, 22vw, 290px);
+  top: 14%;
+  left: 8%;
+}
+
+.layer-indie {
+  width: clamp(260px, 35vw, 460px);
+  height: clamp(170px, 24vw, 310px);
+  bottom: 12%;
+  right: 7%;
+}
+
+.layer-drive {
+  width: clamp(280px, 38vw, 500px);
+  height: clamp(180px, 25vw, 330px);
+  top: 18%;
+  right: 12%;
+}
+
+.layer-studio {
+  width: clamp(320px, 46vw, 620px);
+  height: clamp(200px, 29vw, 400px);
+  bottom: 14%;
+  left: 12%;
+}
+
+/* ==========================================================================
+   7. CHAPTER 04 — "YOUR MUSIC. YOUR MOMENTS."
+   ========================================================================== */
+
+.about-ch4-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 26;
+  will-change: transform, opacity;
+}
+
+.about-ch4-heading-wrap {
+  text-align: center;
+  margin-bottom: 24px;
+  z-index: 40;
+}
+
+.about-ch4-title {
+  font-size: clamp(1.75rem, 3.8vw, 3.4rem);
+  line-height: 1.08;
+  color: #f8fafc;
+}
+
+.about-ch4-title .italic-moments {
+  color: #ffb703;
+  font-style: italic;
+}
+
+/* Floating Editorial Feature Artifacts */
+.about-floating-artifact {
+  position: absolute;
+  border-radius: 20px;
+  background: rgba(14, 18, 28, 0.78);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  white-space: nowrap;
+  will-change: transform, opacity, filter;
+  transition: transform 0.12s ease-out;
+}
+
+.about-artifact-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-playlist { background: rgba(251, 133, 0, 0.16); color: #fb8500; }
+.icon-favorite { background: rgba(239, 68, 68, 0.16); color: #ef4444; }
+.icon-upload { background: rgba(168, 85, 247, 0.16); color: #a855f7; }
+.icon-request { background: rgba(59, 130, 246, 0.16); color: #3b82f6; }
+
+.about-artifact-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.about-artifact-meta .meta-top {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.about-artifact-meta .meta-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Positions of the 4 Feature Artifacts */
+.artifact-pos-1 { top: 22%; left: 10%; }
+.artifact-pos-2 { bottom: 24%; left: 14%; }
+.artifact-pos-3 { top: 26%; right: 12%; }
+.artifact-pos-4 { bottom: 22%; right: 10%; }
+
+/* ==========================================================================
+   8. CHAPTER 05 — "JUST LISTEN. AND STAY A LITTLE LONGER." & FINAL EXIT
+   ========================================================================== */
+
+.about-ch5-container {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  z-index: 30;
+  padding: 0 24px;
+  will-change: transform, opacity;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  transform: translateZ(0);
+}
+
+.about-ch5-hero-words {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.about-ch5-listen-text {
+  font-size: clamp(2.2rem, 5.2vw, 4.8rem);
+  line-height: 1.05;
+  color: #f8fafc;
+  letter-spacing: -0.025em;
+  text-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
+}
+
+.about-ch5-stay-text {
+  font-size: clamp(1.25rem, 2.5vw, 2.2rem);
+  line-height: 1.15;
+  color: #fff1d6;
+  font-style: italic;
+  margin-top: 10px;
+  text-shadow: 0 0 20px rgba(255, 183, 3, 0.35);
+}
+
+.about-ch5-tagline-wrap {
+  margin-bottom: 24px;
+}
+
+.about-ch5-brand-mark {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
+  margin-bottom: 4px;
+}
+
+.about-ch5-manifesto {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-style: italic;
+  font-size: clamp(12.5px, 1.6vw, 16px);
+  color: rgba(255, 255, 255, 0.62);
+  max-width: 480px;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+/* Final Understated Editorial Exit */
+.about-final-exit-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  width: 100%;
+}
+
+.about-final-thanks {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.about-final-back-link {
+  background: transparent;
+  border: none;
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 22px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.about-final-back-link:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #ffffff;
+  transform: translateX(-3px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.about-final-back-link .arrow-icon {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.about-final-back-link:hover .arrow-icon {
+  transform: translateX(-4px);
+}
+
+
+/* ==========================================================================
+   10. RESPONSIVE OPTIMIZATIONS
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .about-hud {
+    padding: 0 24px;
+  }
+  .about-top-back-btn {
+    display: none;
+  }
+  .layer-afterglow, .layer-drive {
+    display: none;
+  }
+  .layer-studio {
+    width: 82vw;
+    height: 48vw;
+    left: 9%;
+    bottom: 8%;
+  }
+  .artifact-pos-1, .artifact-pos-3 {
+    display: none;
+  }
+  .artifact-pos-2 {
+    left: 8%;
+    bottom: 12%;
+  }
+  .artifact-pos-4 {
+    right: 8%;
+    bottom: 22%;
+  }
+}
+
+@media (max-width: 640px) {
+  .about-hud {
+    padding: 0 18px;
+    height: 64px;
+  }
+  .about-hud-title {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+  }
+  .about-hud-pill {
+    display: none;
+  }
+  .about-vertical-progress {
+    display: none;
+  }
+  .about-ch1-content-wrap,
+  .about-ch5-content-wrap {
+    padding: 0 16px;
+    width: 100%;
+  }
+  .about-ch1-statement {
+    font-size: clamp(1.4rem, 6.8vw, 2.4rem);
+    line-height: 1.15;
+  }
+  .about-ch2-title {
+    font-size: clamp(1.4rem, 6.2vw, 2.2rem);
+  }
+  .about-ch3-title {
+    font-size: clamp(1.4rem, 6.2vw, 2.2rem);
+  }
+  .about-ch4-title {
+    font-size: clamp(1.4rem, 6.2vw, 2.2rem);
+  }
+  .about-ch5-listen-text {
+    font-size: clamp(1.7rem, 7.8vw, 2.8rem);
+    line-height: 1.1;
+  }
+  .about-ch5-stay-text {
+    font-size: clamp(1.05rem, 4.4vw, 1.55rem);
+  }
+  .about-ch2-player-card {
+    width: 88vw;
+    padding: 16px;
+  }
+  .about-floating-artifact {
+    padding: 10px 14px;
+  }
+  .about-tile-art {
+    width: 84px;
+  }
+}
+
+/* ==========================================================================
+   11. ACCESSIBILITY / PREFERS-REDUCED-MOTION
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .about-stage {
+    perspective: none !important;
+  }
+  .about-floating-object,
+  .about-scene-layer,
+  .about-floating-artifact,
+  .about-ch2-player-card {
+    transition: opacity 0.3s ease !important;
+    transform: none !important;
+  }
+  .about-stage-ambient-glow {
+    animation: none !important;
+  }
+}

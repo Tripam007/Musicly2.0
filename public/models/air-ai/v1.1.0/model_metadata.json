@@ -1,0 +1,13 @@
+{
+  "model_name": "Musicly Gesture AI",
+  "version": "v1.1.0",
+  "created_at": "2026-09-28T00:55:00Z",
+  "dataset_version": "1.1.0",
+  "framework": "scikit-learn MLP + Pure JS inference",
+  "epochs": 120,
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "training_duration_seconds": 13.82,
+  "model_size_bytes": 213891,
+  "model_size_kb": 208.88
+}
