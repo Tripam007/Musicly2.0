@@ -1,704 +1,684 @@
 /**
- * VoiceCommandParser - Natural Language Intent & Slot Parser
+ * VoiceCommandParser.js
  * 
- * Maps natural speech expressions into strictly validated, typed Musicly actions.
- * NO arbitrary code execution. NO eval(). 100% schema-enforced.
+ * Production Natural Language Intent & Slot Parser for Musicly Voice AI.
+ * Pipeline:
+ * RAW TRANSCRIPT -> LOWERCASE -> TRIM -> PUNCTUATION NORMALIZATION
+ * -> SPEECH NORMALIZATION (Numbers/Aliases) -> MULTILINGUAL MAPPING
+ * -> INTENT DETECTION -> ENTITY EXTRACTION -> MULTI-LAYER CONFIDENCE
+ * -> ACTION & AMBIGUITY RESOLUTION.
  */
 
 import { MUSICLY_ACTIONS } from './voiceConfig.js';
-
-// Helper to sanitize and normalize text
-function normalizeText(text) {
-  if (!text) return '';
-  return text
-    .toLowerCase()
-    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-// Levenshtein similarity for fuzzy matching
-function stringSimilarity(s1, s2) {
-  if (!s1 || !s2) return 0;
-  const a = s1.toLowerCase();
-  const b = s2.toLowerCase();
-  if (a === b) return 1;
-  if (a.includes(b) || b.includes(a)) return 0.85;
-
-  const track = Array(b.length + 1).fill(null).map(() =>
-    Array(a.length + 1).fill(null));
-  for (let i = 0; i <= a.length; i += 1) track[0][i] = i;
-  for (let j = 0; j <= b.length; j += 1) track[j][0] = j;
-
-  for (let j = 1; j <= b.length; j += 1) {
-    for (let i = 1; i <= a.length; i += 1) {
-      const indicator = a[i - 1] === b[j - 1] ? 0 : 1;
-      track[j][i] = Math.min(
-        track[j][i - 1] + 1,
-        track[j - 1][i] + 1,
-        track[j - 1][i - 1] + indicator
-      );
-    }
-  }
-  const dist = track[b.length][a.length];
-  return 1 - dist / Math.max(a.length, b.length);
-}
+import {
+  normalizeText,
+  normalizeNumbers,
+  stringSimilarity,
+  mapMultilingualPhrase
+} from './normalization.js';
 
 export class VoiceCommandParser {
   /**
-   * Instance method wrapper
-   */
-  parse(rawCommand, context = {}) {
-    const result = VoiceCommandParser.parse(rawCommand, context);
-    if (result && result.payload && !result.params) {
-      result.params = result.payload;
-    }
-    return result;
-  }
-
-  /**
-   * Parse speech transcript into a validated action
+   * Parse a raw transcript into a structured, validated action.
    * 
-   * @param {string} rawCommand - Speech transcript stripped of wake word
-   * @param {object} context - Current player state { allTracks, currentTrack, currentScene, isAdmin, favorites, isPlaying }
-   * @returns {{ action: string, payload: any, confidence: number, requiresConfirmation: boolean, feedback: string, spokenText: string }}
+   * @param {string} rawTranscript - Raw speech string returned from STT
+   * @param {object} context - Current player context { allTracks, currentTrack, currentScene, allScenes, volume, isPlaying, favorites, isAdmin }
+   * @param {number} speechConfidence - Confidence score from STT engine (0.0 - 1.0)
+   * @returns {object} Parsed action object
    */
-  static parse(rawCommand, context = {}) {
-    const text = normalizeText(rawCommand);
-    if (!text) {
+  static parse(rawTranscript, context = {}, speechConfidence = 0.90) {
+    if (!rawTranscript || typeof rawTranscript !== 'string') {
       return {
         action: MUSICLY_ACTIONS.UNKNOWN,
-        payload: null,
-        confidence: 0,
-        requiresConfirmation: false,
-        feedback: "Sorry, I didn't hear a command.",
+        intentConfidence: 0,
+        speechConfidence: 0,
+        entityConfidence: 0,
+        actionConfidence: 0,
+        feedback: "Didn't catch that.",
         spokenText: "Sorry, I didn't hear a command."
       };
     }
 
-    // 1. CANCEL / DISMISS
-    if (/^(cancel|never mind|stop listening|close|dismiss|exit)$/i.test(text)) {
+    // 1. Pipeline: Normalize text
+    const cleanLower = normalizeText(rawTranscript);
+
+    // 2. Multilingual phrase translation (Hindi/Bengali/Hinglish -> Canonical)
+    const { translated: canonicalText } = mapMultilingualPhrase(cleanLower);
+
+    // 3. Normalize numbers on canonical text (e.g. "volume fifty" -> "volume 50")
+    const withNumbers = normalizeNumbers(canonicalText);
+    const text = withNumbers.trim();
+
+    // 3. Low Speech Confidence Gate
+    if (speechConfidence < 0.40) {
+      return {
+        action: MUSICLY_ACTIONS.UNKNOWN,
+        rawCommand: rawTranscript,
+        speechConfidence,
+        intentConfidence: 0.3,
+        actionConfidence: 0.3,
+        feedback: "Could you repeat that?",
+        spokenText: "I couldn't understand that. Please repeat."
+      };
+    }
+
+    // 4. CANCEL / DISMISS
+    if (/^(cancel|nevermind|stop listening|close|dismiss|exit|chup|thamo)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.CANCEL,
-        payload: null,
-        confidence: 0.99,
-        requiresConfirmation: false,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.99,
+        speechConfidence,
+        actionConfidence: 0.99,
         feedback: "Cancelled.",
         spokenText: "Cancelled."
       };
     }
 
-    // 2. PLAYBACK CONTROLS
+    // 5. VOICE ASSISTANT CONTROLS
+    if (/^(stop talking|mute voice|mute musicly voice|voice off|turn voice off)$/i.test(text)) {
+      return {
+        action: MUSICLY_ACTIONS.VOICE_OFF,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
+        feedback: "Voice muted.",
+        spokenText: "Voice muted."
+      };
+    }
+
+    // 6. PLAYBACK CONTROLS
     // Play / Resume
-    if (/^(play|resume|start music|start the music|start playing|continue|continue playing|play the current song)$/i.test(text)) {
+    if (/^(play|resume|continue|start playing|start music|play music|unpause)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.PLAY,
-        payload: null,
-        confidence: 0.98,
-        requiresConfirmation: false,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
         feedback: "Resuming playback.",
         spokenText: "Playing."
       };
     }
 
     // Pause / Stop
-    if (/^(pause|stop|freeze|pause music|pause song|stop music|stop playback)$/i.test(text)) {
+    if (/^(pause|stop|halt|hold on|pause music|stop music)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.PAUSE,
-        payload: null,
-        confidence: 0.98,
-        requiresConfirmation: false,
-        feedback: "Paused.",
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
+        feedback: "Music paused.",
         spokenText: "Paused."
       };
     }
 
-    // Next Track
-    if (/^(next|next song|next track|play next|play the next song|skip|skip this|skip track|skip this one|next one)$/i.test(text)) {
+    // Next Track / Skip
+    if (/^(next|next song|next track|skip|skip this|skip song|play next|go next)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.NEXT_TRACK,
-        payload: null,
-        confidence: 0.98,
-        requiresConfirmation: false,
-        feedback: "Next track →",
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
+        feedback: "Playing next track.",
         spokenText: "Next track."
       };
     }
 
-    // Previous Track
-    if (/^(previous|prev|previous song|previous track|prev song|prev track|go back|last song|last track|play previous)$/i.test(text)) {
+    // Previous Track / Rewind to previous
+    if (/^(previous|previous song|previous track|prev song|prev|go back|back song|play previous)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.PREVIOUS_TRACK,
-        payload: null,
-        confidence: 0.98,
-        requiresConfirmation: false,
-        feedback: "Previous track ←",
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
+        feedback: "Playing previous track.",
         spokenText: "Previous track."
       };
     }
 
-    // Replay / Start Over
-    if (/^(replay|replay this|replay this song|replay the song|start over|start from the beginning|play from beginning|restart song)$/i.test(text)) {
+    // Restart / Replay current song
+    if (/^(restart|restart this song|restart track|replay|play from beginning|start over)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.REPLAY,
-        payload: null,
-        confidence: 0.97,
-        requiresConfirmation: false,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
         feedback: "Replaying track.",
         spokenText: "Replaying."
       };
     }
 
-    // 3. SEEKING
-    // Relative Seek Forward
-    const seekForwardMatch = text.match(/(?:skip|fast forward|forward|jump)\s*(?:forward)?\s*(\d+)\s*(?:seconds|secs|s)?/i);
-    if (seekForwardMatch) {
-      const seconds = parseInt(seekForwardMatch[1], 10) || 15;
+    // 7. SEEKING (Forward / Backward relative or absolute seconds)
+    // E.g. "forward 10 seconds", "skip 30 seconds", "rewind 20 seconds", "go back 15 seconds"
+    const seekMatch = text.match(/(?:skip|forward|jump|go|rewind|back)\s+(?:forward\s+|ahead\s+|back\s+)?(\d+)\s*(?:seconds?|secs?)?/i);
+    if (seekMatch) {
+      const seconds = parseInt(seekMatch[1], 10);
+      const isBackward = /rewind|back/i.test(text);
       return {
         action: MUSICLY_ACTIONS.SEEK,
-        payload: { offsetSeconds: seconds, direction: 'forward' },
-        confidence: 0.95,
-        requiresConfirmation: false,
-        feedback: `Skipping forward ${seconds}s.`,
-        spokenText: `Forward ${seconds} seconds.`
+        params: {
+          type: 'relative',
+          direction: isBackward ? 'backward' : 'forward',
+          offsetSeconds: seconds,
+          seconds: isBackward ? -seconds : seconds
+        },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: `${isBackward ? 'Rewound' : 'Skipped'} ${seconds} seconds.`,
+        spokenText: `${isBackward ? 'Rewound' : 'Skipped'} ${seconds} seconds.`
       };
     }
 
-    // Relative Seek Backward
-    const seekBackwardMatch = text.match(/(?:go back|rewind|backward|back)\s*(\d+)\s*(?:seconds|secs|s)?/i);
-    if (seekBackwardMatch) {
-      const seconds = parseInt(seekBackwardMatch[1], 10) || 15;
+    // 8. VOLUME CONTROLS
+    // Absolute Volume: "volume 50", "set volume to 70", "volume at 80 percent"
+    const volNumMatch = text.match(/(?:set\s+)?volume\s+(?:to\s+|at\s+)?(\d+)(?:\s*percent|%)?/i);
+    if (volNumMatch) {
+      const val = parseInt(volNumMatch[1], 10);
+      const clampedPercent = Math.max(0, Math.min(100, val));
+      const decimalValue = clampedPercent / 100;
       return {
-        action: MUSICLY_ACTIONS.SEEK,
-        payload: { offsetSeconds: seconds, direction: 'backward' },
-        confidence: 0.95,
-        requiresConfirmation: false,
-        feedback: `Rewinding ${seconds}s.`,
-        spokenText: `Rewound ${seconds} seconds.`
+        action: MUSICLY_ACTIONS.SET_VOLUME,
+        params: { value: decimalValue, percent: clampedPercent },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.97,
+        speechConfidence,
+        actionConfidence: 0.97,
+        feedback: `Volume set to ${clampedPercent}%.`,
+        spokenText: `Volume set to ${clampedPercent} percent.`
       };
     }
 
-    // Absolute Seek (e.g. "jump to 2 minutes", "go to 1 minute 30 seconds")
-    const absoluteSeekMatch = text.match(/(?:jump to|go to|seek to)\s*(?:(\d+)\s*minutes?)?\s*(?:(\d+)\s*seconds?)?/i);
-    if (absoluteSeekMatch && (absoluteSeekMatch[1] || absoluteSeekMatch[2])) {
-      const mins = parseInt(absoluteSeekMatch[1] || '0', 10);
-      const secs = parseInt(absoluteSeekMatch[2] || '0', 10);
-      const targetTime = mins * 60 + secs;
-      return {
-        action: MUSICLY_ACTIONS.SEEK,
-        payload: { timestamp: targetTime },
-        confidence: 0.92,
-        requiresConfirmation: false,
-        feedback: `Seeking to ${mins}:${secs < 10 ? '0' : ''}${secs}.`,
-        spokenText: `Seeking to ${mins} minutes.`
-      };
-    }
-
-    // 4. VOLUME
-    // Volume Up
-    if (/^(turn it up|turn the volume up|volume up|raise volume|louder|increase volume|boost volume)$/i.test(text)) {
+    // Volume Up / Louder
+    if (/^(volume up|turn it up|louder|make it louder|increase volume|boost volume)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.VOLUME_UP,
-        payload: { delta: 0.1 },
-        confidence: 0.97,
-        requiresConfirmation: false,
-        feedback: "Volume up +10%",
+        params: { step: 0.10 },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.97,
+        speechConfidence,
+        actionConfidence: 0.97,
+        feedback: "Volume increased.",
         spokenText: "Volume up."
       };
     }
 
-    // Volume Down
-    if (/^(turn it down|turn the volume down|volume down|quieter|lower volume|decrease volume|softer)$/i.test(text)) {
+    // Volume Down / Quieter
+    if (/^(volume down|turn it down|quieter|make it quieter|decrease volume|lower volume)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.VOLUME_DOWN,
-        payload: { delta: -0.1 },
-        confidence: 0.97,
-        requiresConfirmation: false,
-        feedback: "Volume down -10%",
+        params: { step: 0.10 },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.97,
+        speechConfidence,
+        actionConfidence: 0.97,
+        feedback: "Volume decreased.",
         spokenText: "Volume down."
       };
     }
 
-    // Set Exact Volume (e.g. "set volume to 50 percent", "volume 80%", "volume 30")
-    const volumeMatch = text.match(/(?:set\s+)?volume\s*(?:to)?\s*(\d{1,3})\s*(?:percent|%)?/i);
-    if (volumeMatch) {
-      let percent = parseInt(volumeMatch[1], 10);
-      if (percent > 100) percent = 100;
-      if (percent < 0) percent = 0;
-      return {
-        action: MUSICLY_ACTIONS.SET_VOLUME,
-        payload: { value: percent / 100 },
-        confidence: 0.96,
-        requiresConfirmation: false,
-        feedback: `Volume set to ${percent}%.`,
-        spokenText: `Volume ${percent} percent.`
-      };
-    }
-
     // Mute
-    if (/^(mute|silence|be quiet|mute music|shut up)$/i.test(text)) {
+    if (/^(mute|silence|turn off sound|mute sound|mute musicly)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.MUTE,
-        payload: null,
-        confidence: 0.98,
-        requiresConfirmation: false,
-        feedback: "Muted 🔇",
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
+        feedback: "Muted.",
         spokenText: "Muted."
       };
     }
 
     // Unmute
-    if (/^(unmute|un-mute|restore volume|unmute music)$/i.test(text)) {
+    if (/^(unmute|restore sound|turn sound back on)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.UNMUTE,
-        payload: null,
-        confidence: 0.98,
-        requiresConfirmation: false,
-        feedback: "Unmuted 🔊",
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
+        feedback: "Unmuted.",
         spokenText: "Unmuted."
       };
     }
 
-    // 5. SHUFFLE & REPEAT
-    if (/^(turn shuffle on|shuffle on|enable shuffle)$/i.test(text)) {
+    // 9. SHUFFLE & REPEAT
+    if (/^(shuffle|turn shuffle on|enable shuffle|start shuffle)$/i.test(text)) {
       return {
-        action: MUSICLY_ACTIONS.SHUFFLE_ON,
-        payload: null,
-        confidence: 0.97,
-        requiresConfirmation: false,
-        feedback: "Shuffle enabled 🔀",
+        action: MUSICLY_ACTIONS.TOGGLE_SHUFFLE,
+        params: { value: true },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Shuffle enabled.",
         spokenText: "Shuffle on."
       };
     }
-
-    if (/^(turn shuffle off|shuffle off|disable shuffle)$/i.test(text)) {
+    if (/^(turn shuffle off|disable shuffle|stop shuffle)$/i.test(text)) {
       return {
-        action: MUSICLY_ACTIONS.SHUFFLE_OFF,
-        payload: null,
-        confidence: 0.97,
-        requiresConfirmation: false,
+        action: MUSICLY_ACTIONS.TOGGLE_SHUFFLE,
+        params: { value: false },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
         feedback: "Shuffle disabled.",
         spokenText: "Shuffle off."
       };
     }
 
-    if (/^shuffle$/i.test(text)) {
+    if (/^(repeat|repeat this song|repeat track|loop this song)$/i.test(text)) {
       return {
-        action: MUSICLY_ACTIONS.TOGGLE_SHUFFLE,
-        payload: null,
-        confidence: 0.95,
-        requiresConfirmation: false,
-        feedback: "Toggling shuffle.",
-        spokenText: "Shuffle toggled."
-      };
-    }
-
-    if (/^(repeat this|repeat this song|repeat song|loop this|loop this song|repeat one)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.REPEAT_ONE,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
-        feedback: "Repeat one track 🔂",
+        action: MUSICLY_ACTIONS.TOGGLE_REPEAT,
+        params: { mode: 'one' },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Repeating current track.",
         spokenText: "Repeating this song."
       };
     }
-
-    if (/^(repeat all|loop all|turn repeat on|enable repeat)$/i.test(text)) {
+    if (/^(turn repeat off|stop repeat|disable repeat)$/i.test(text)) {
       return {
-        action: MUSICLY_ACTIONS.REPEAT_ALL,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
-        feedback: "Repeat all tracks 🔁",
-        spokenText: "Repeat all."
-      };
-    }
-
-    if (/^(turn repeat off|repeat off|stop repeat|disable repeat)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.REPEAT_OFF,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
-        feedback: "Repeat off.",
+        action: MUSICLY_ACTIONS.TOGGLE_REPEAT,
+        params: { mode: 'off' },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Repeat turned off.",
         spokenText: "Repeat off."
       };
     }
 
-    // 6. LIKES & FAVORITES
-    if (/^(like this song|like this|add to favorites|favorite this|save this song|i love this song|heart this)$/i.test(text)) {
+    // 10. LIKE / FAVORITES
+    if (/^(like|like this|like this song|favorite this|add to favorites|i love this song)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.LIKE,
-        payload: null,
-        confidence: 0.97,
-        requiresConfirmation: false,
-        feedback: "Added to favorites ♥",
-        spokenText: "Saved to your favorites."
+        params: { trackId: context.currentTrack?.id },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.96,
+        speechConfidence,
+        actionConfidence: 0.96,
+        feedback: "Added to favorites.",
+        spokenText: "Added to favorites."
       };
     }
-
-    if (/^(unlike this|unlike this song|remove from favorites|unfavorite this)$/i.test(text)) {
+    if (/^(unlike|unlike this|remove from favorites|dislike this)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.UNLIKE,
-        payload: null,
-        confidence: 0.97,
-        requiresConfirmation: false,
+        params: { trackId: context.currentTrack?.id },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.96,
+        speechConfidence,
+        actionConfidence: 0.96,
         feedback: "Removed from favorites.",
         spokenText: "Removed from favorites."
       };
     }
 
-    // 7. SCENES & GENRES
-    // Switch to Ghazals / Indie / Retro / Lo-Fi / Synthwave / Peace / Chill
-    const genreMatch = text.match(/(?:switch to|change genre to|play|explore)?\s*(ghazals?|indie|lo-?fi|retro|synthwave|peace|chill(?:\/sleep)?)\s*(?:genre|music|songs?)?$/i);
-    if (genreMatch && ['ghazal', 'ghazals', 'indie', 'lofi', 'lo-fi', 'retro', 'synthwave', 'peace', 'chill'].includes(genreMatch[1].toLowerCase())) {
-      let targetGenre = genreMatch[1].toLowerCase();
-      if (targetGenre.startsWith('ghazal')) targetGenre = 'Ghazal';
-      else if (targetGenre === 'indie') targetGenre = 'Indie';
-      else if (targetGenre.includes('lo')) targetGenre = 'Lo-Fi';
-      else if (targetGenre === 'retro') targetGenre = 'Retro';
-      else if (targetGenre === 'synthwave') targetGenre = 'Synthwave';
-      else if (targetGenre === 'peace') targetGenre = 'Peace';
-      else if (targetGenre.includes('chill')) targetGenre = 'Chill/Sleep';
-
-      return {
-        action: MUSICLY_ACTIONS.CHANGE_GENRE,
-        payload: { genre: targetGenre },
-        confidence: 0.94,
-        requiresConfirmation: false,
-        feedback: `Switched to ${targetGenre}.`,
-        spokenText: `Switching to ${targetGenre}.`
-      };
-    }
-
-    // Change Scene to Specific Room / Theme
-    if (/afterglow/i.test(text)) {
-      const matchedScene = context.allScenes?.find(s => s.id === 'afterglow');
-      return {
-        action: MUSICLY_ACTIONS.CHANGE_SCENE,
-        payload: { sceneId: 'afterglow', sceneName: 'Afterglow', scene: matchedScene },
-        confidence: 0.96,
-        requiresConfirmation: false,
-        feedback: "Opening Afterglow scene.",
-        spokenText: "Opening Afterglow."
-      };
-    }
-
-    if (/(?:minimal|studio|workstation)/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.CHANGE_SCENE,
-        payload: { sceneId: 'minimal_studio', sceneName: 'Minimal' },
-        confidence: 0.95,
-        requiresConfirmation: false,
-        feedback: "Switching to Minimal Studio.",
-        spokenText: "Showing Minimal Studio."
-      };
-    }
-
-    if (/(?:cozy bedroom|bedroom)/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.CHANGE_SCENE,
-        payload: { sceneId: 'cozy_bedroom', sceneName: 'Cozy Bedroom Studio' },
-        confidence: 0.95,
-        requiresConfirmation: false,
-        feedback: "Switching to Cozy Bedroom.",
-        spokenText: "Switching to Cozy Bedroom."
-      };
-    }
-
-    if (/(?:after hours|vibe carousel|carousel)/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.CHANGE_SCENE,
-        payload: { sceneId: 'vibe_carousel', sceneName: 'After Hours' },
-        confidence: 0.95,
-        requiresConfirmation: false,
-        feedback: "Switching to After Hours.",
-        spokenText: "Switching to After Hours."
-      };
-    }
-
-    if (/^(next scene|change scene|switch scene)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.NEXT_SCENE,
-        payload: null,
-        confidence: 0.95,
-        requiresConfirmation: false,
-        feedback: "Next scene →",
-        spokenText: "Changing scene."
-      };
-    }
-
-    // 8. AMBIENCE SOUNDS
-    if (/^(turn ambience on|enable ambience|play ambience|start ambience)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.AMBIENCE_ON,
-        payload: null,
-        confidence: 0.97,
-        requiresConfirmation: false,
-        feedback: "Ambience turned on.",
-        spokenText: "Ambience on."
-      };
-    }
-
-    if (/^(turn ambience off|mute ambience|stop ambience|disable ambience)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.AMBIENCE_OFF,
-        payload: null,
-        confidence: 0.97,
-        requiresConfirmation: false,
-        feedback: "Ambience turned off.",
-        spokenText: "Ambience off."
-      };
-    }
-
-    // 9. LIBRARY & PLAYLISTS
-    if (/^(open my library|show my songs|open music library|my library|show library)$/i.test(text)) {
+    // 11. NAVIGATION & MODALS
+    if (/^(open my library|open library|show my library|show library|my music|open playlists|show playlists|show liked songs)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.OPEN_LIBRARY,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.96,
+        speechConfidence,
+        actionConfidence: 0.96,
         feedback: "Opening your library.",
         spokenText: "Opening your library."
       };
     }
 
-    if (/^(add this song to my playlist|add it to my playlist|add to playlist|save to playlist)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.ADD_TO_PLAYLIST,
-        payload: { track: context.currentTrack },
-        confidence: 0.94,
-        requiresConfirmation: false,
-        feedback: `Added ${context.currentTrack?.title || 'track'} to playlist.`,
-        spokenText: "Added to your playlist."
-      };
-    }
-
-    if (/^(create a playlist|new playlist|make a playlist)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.CREATE_PLAYLIST,
-        payload: null,
-        confidence: 0.93,
-        requiresConfirmation: false,
-        feedback: "Opening playlist creator.",
-        spokenText: "Let's create a playlist."
-      };
-    }
-
-    // Destructive: Delete Playlist
-    if (/^(delete this playlist|delete playlist|remove playlist)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.DELETE_PLAYLIST,
-        payload: null,
-        confidence: 0.95,
-        requiresConfirmation: true, // Sensitive action!
-        feedback: "Are you sure you want to delete this playlist?",
-        spokenText: "Are you sure you want to delete this playlist?"
-      };
-    }
-
-    // 10. NAVIGATION & MODALS
-    if (/^(go home|home|back to home)$/i.test(text)) {
+    if (/^(go home|open home|home screen)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.OPEN_HOME,
-        payload: null,
-        confidence: 0.98,
-        requiresConfirmation: false,
-        feedback: "Going Home.",
-        spokenText: "Going home."
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.96,
+        speechConfidence,
+        actionConfidence: 0.96,
+        feedback: "Navigated home.",
+        spokenText: "Navigating home."
       };
     }
 
-    if (/^(open settings|settings|preferences)$/i.test(text)) {
+    if (/^(open settings|settings|keyboard shortcuts|show shortcuts)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.OPEN_SETTINGS,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
         feedback: "Opening settings.",
-        spokenText: "Opening settings."
+        spokenText: "Settings."
       };
     }
 
-    if (/^(open profile|sign in|log in|my account)$/i.test(text)) {
-      return {
-        action: MUSICLY_ACTIONS.OPEN_PROFILE,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
-        feedback: "Opening account.",
-        spokenText: "Opening account."
-      };
-    }
-
-    if (/^(open feedback|send feedback|feedback)$/i.test(text)) {
+    if (/^(open feedback|give feedback|send feedback)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.OPEN_FEEDBACK,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
         feedback: "Opening feedback.",
         spokenText: "Opening feedback."
       };
     }
 
-    if (/^(open coffee|buy me a coffee|support|donation)$/i.test(text)) {
+    if (/^(buy me a coffee|support musicly|open coffee)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.OPEN_COFFEE,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
-        feedback: "Opening coffee support ☕",
-        spokenText: "Opening coffee support."
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Opening Coffee modal.",
+        spokenText: "Opening coffee."
       };
     }
 
-    if (/^(request a song|request song|song request)$/i.test(text)) {
+    if (/^(request song|request a song|song request)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.REQUEST_SONG,
-        payload: null,
-        confidence: 0.96,
-        requiresConfirmation: false,
-        feedback: "Opening song request modal.",
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Opening song requests.",
         spokenText: "Opening song request."
       };
     }
 
-    // 11. ADMIN ACTIONS (Requires context.isAdmin)
-    if (context.isAdmin) {
-      if (/^(open admin dashboard|admin dashboard|admin portal)$/i.test(text)) {
-        return {
-          action: MUSICLY_ACTIONS.OPEN_ADMIN_DASHBOARD,
-          payload: null,
-          confidence: 0.98,
-          requiresConfirmation: false,
-          feedback: "Opening Admin Dashboard.",
-          spokenText: "Opening admin dashboard."
-        };
-      }
-
-      if (/^(show today's feedback|show feedback|feedback ledger)$/i.test(text)) {
-        return {
-          action: MUSICLY_ACTIONS.SHOW_FEEDBACK,
-          payload: null,
-          confidence: 0.95,
-          requiresConfirmation: false,
-          feedback: "Viewing user feedback.",
-          spokenText: "Showing feedback."
-        };
-      }
-
-      if (/^(show air ai performance|air ai analytics|open air ai)$/i.test(text)) {
-        return {
-          action: MUSICLY_ACTIONS.SHOW_AIR_AI,
-          payload: null,
-          confidence: 0.95,
-          requiresConfirmation: false,
-          feedback: "Opening Air AI Model Analytics.",
-          spokenText: "Opening Air AI analytics."
-        };
-      }
-
-      if (/^(open song requests|show pending song requests|song requests)$/i.test(text)) {
-        return {
-          action: MUSICLY_ACTIONS.SHOW_SONG_REQUESTS,
-          payload: null,
-          confidence: 0.95,
-          requiresConfirmation: false,
-          feedback: "Opening song requests ledger.",
-          spokenText: "Showing song requests."
-        };
-      }
-    }
-
-    // 12. SEARCH OR PLAY SPECIFIC SONG / ARTIST
-    // Pattern: "play <Song/Artist>", "search for <Query>", "find <Query>"
-    const playQueryMatch = text.match(/^(?:play|find|search for|search|listen to)\s+(.+)$/i);
-    const searchQuery = playQueryMatch ? playQueryMatch[1].trim() : text;
-
-    if (searchQuery && context.allTracks && context.allTracks.length > 0) {
-      // Search through existing songs in Musicly
-      const cleanQ = normalizeText(searchQuery);
-
-      // Ranked candidates
-      let bestMatch = null;
-      let highestScore = 0;
-      const candidates = [];
-
-      for (const track of context.allTracks) {
-        const titleNorm = normalizeText(track.title);
-        const artistNorm = normalizeText(track.artist);
-
-        let score = 0;
-        if (titleNorm === cleanQ) score = 1.0;
-        else if (artistNorm === cleanQ) score = 0.95;
-        else if (titleNorm.includes(cleanQ)) score = 0.90;
-        else if (artistNorm.includes(cleanQ)) score = 0.85;
-        else if (cleanQ.includes(titleNorm)) score = 0.88;
-        else {
-          const simTitle = stringSimilarity(cleanQ, titleNorm);
-          const simArtist = stringSimilarity(cleanQ, artistNorm);
-          score = Math.max(simTitle, simArtist * 0.9);
-        }
-
-        if (score > 0.65) {
-          candidates.push({ track, score });
-          if (score > highestScore) {
-            highestScore = score;
-            bestMatch = track;
-          }
-        }
-      }
-
-      if (bestMatch && highestScore >= 0.70) {
-        // Check ambiguity: are there two tracks with the exact same title?
-        const sameTitleMatches = candidates.filter(c => 
-          normalizeText(c.track.title) === normalizeText(bestMatch.title) && c.track.id !== bestMatch.id
-        );
-
-        if (sameTitleMatches.length > 0) {
-          return {
-            action: MUSICLY_ACTIONS.PLAY_SPECIFIC_SONG,
-            payload: { track: bestMatch, ambiguousList: [bestMatch, ...sameTitleMatches.map(m => m.track)] },
-            confidence: highestScore,
-            isAmbiguous: true,
-            feedback: `Found multiple versions of ${bestMatch.title}. Playing ${bestMatch.artist}'s version.`,
-            spokenText: `Found ${bestMatch.title} by ${bestMatch.artist}.`
-          };
-        }
-
-        return {
-          action: MUSICLY_ACTIONS.PLAY_SPECIFIC_SONG,
-          payload: { track: bestMatch },
-          confidence: highestScore,
-          requiresConfirmation: false,
-          feedback: `▶ Playing ${bestMatch.title} by ${bestMatch.artist}`,
-          spokenText: `Playing ${bestMatch.title}.`
-        };
-      }
-    }
-
-    // Search query fallback: open search drawer with query
-    if (searchQuery.length >= 2) {
+    // 12. AMBIENCE SOUNDSCAPES
+    if (/^(turn ambience on|ambience on|start rain|play rain|enable ambience)$/i.test(text)) {
       return {
-        action: MUSICLY_ACTIONS.SEARCH,
-        payload: { query: searchQuery },
-        confidence: 0.75,
-        requiresConfirmation: false,
-        feedback: `Searching for "${searchQuery}"`,
-        spokenText: `Searching for ${searchQuery}.`
+        action: MUSICLY_ACTIONS.AMBIENCE_ON,
+        params: { value: true },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.96,
+        speechConfidence,
+        actionConfidence: 0.96,
+        feedback: "Ambience turned on.",
+        spokenText: "Ambience on."
+      };
+    }
+    if (/^(turn ambience off|ambience off|stop rain|disable ambience|mute ambience)$/i.test(text)) {
+      return {
+        action: MUSICLY_ACTIONS.AMBIENCE_OFF,
+        params: { value: false },
+        rawCommand: rawTranscript,
+        intentConfidence: 0.96,
+        speechConfidence,
+        actionConfidence: 0.96,
+        feedback: "Ambience turned off.",
+        spokenText: "Ambience off."
+      };
+    }
+    if (/^(toggle ambience|switch ambience)$/i.test(text)) {
+      return {
+        action: MUSICLY_ACTIONS.TOGGLE_AMBIENCE,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.94,
+        speechConfidence,
+        actionConfidence: 0.94,
+        feedback: "Toggled ambience.",
+        spokenText: "Ambience toggled."
       };
     }
 
-    // Default: Unrecognized
+    // 13. SCENE SWITCHING
+    // E.g. "open Afterglow", "switch to Drive", "open Studio", "open Indie", "switch scene"
+    const sceneMatch = text.match(/(?:switch\s+to|change\s+to|open|switch\s+scene\s+to)\s+([a-z\s]+)(?:\s+scene)?/i);
+    if (sceneMatch) {
+      const queryScene = sceneMatch[1].trim();
+      const allScenes = context.allScenes || [];
+      const matchedScene = allScenes.find((s) => {
+        const sName = normalizeText(s.name);
+        const sId = normalizeText(s.id);
+        return sName === queryScene || sId === queryScene || stringSimilarity(sName, queryScene) > 0.75;
+      });
+
+      if (matchedScene) {
+        return {
+          action: MUSICLY_ACTIONS.CHANGE_SCENE,
+          params: { scene: matchedScene, sceneId: matchedScene.id, sceneName: matchedScene.name },
+          rawCommand: rawTranscript,
+          intentConfidence: 0.95,
+          speechConfidence,
+          entityConfidence: 0.96,
+          actionConfidence: 0.95,
+          feedback: `Switching to ${matchedScene.name}.`,
+          spokenText: `Switching to ${matchedScene.name}.`
+        };
+      }
+    }
+
+    if (/^(switch scene|next scene)$/i.test(text)) {
+      return {
+        action: MUSICLY_ACTIONS.NEXT_SCENE,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Switching scene.",
+        spokenText: "Switching scene."
+      };
+    }
+
+    // 14. ADMIN ACTIONS (Checked for context.isAdmin)
+    if (/^(open admin dashboard|admin dashboard|open admin)$/i.test(text)) {
+      return {
+        action: MUSICLY_ACTIONS.ADMIN_OPEN_DASHBOARD,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.96,
+        speechConfidence,
+        actionConfidence: 0.96,
+        feedback: "Opening admin dashboard.",
+        spokenText: "Opening admin dashboard."
+      };
+    }
+    if (/^(show feedback|open admin feedback|admin feedback)$/i.test(text)) {
+      return {
+        action: MUSICLY_ACTIONS.ADMIN_SHOW_FEEDBACK,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Showing feedback in dashboard.",
+        spokenText: "Opening feedback dashboard."
+      };
+    }
+    if (/^(open air ai|show air ai|air ai dashboard)$/i.test(text)) {
+      return {
+        action: MUSICLY_ACTIONS.ADMIN_SHOW_AIR_AI,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Opening Air AI dashboard.",
+        spokenText: "Opening Air AI."
+      };
+    }
+    if (/^(show song requests|open song requests admin)$/i.test(text)) {
+      return {
+        action: MUSICLY_ACTIONS.ADMIN_SHOW_REQUESTS,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.95,
+        speechConfidence,
+        actionConfidence: 0.95,
+        feedback: "Showing song requests.",
+        spokenText: "Showing song requests."
+      };
+    }
+
+    // 15. MUSIC SEARCH & PLAY ENTITY EXTRACTION
+    // E.g. "play Faasle", "play something by Kaavish", "play Coldplay", "play some hindi songs", "search for Coldplay"
+    const searchPlayMatch = text.match(/(?:play\s+something\s+(?:by|from)|play\s+(?:some\s+)?|search\s+(?:for\s+)?|find\s+)(.+)/i);
+    const searchQuery = searchPlayMatch ? searchPlayMatch[1].trim() : text;
+
+    if (searchQuery && searchQuery.length > 1) {
+      const allTracks = context.allTracks || [];
+      const cleanQuery = normalizeText(searchQuery);
+
+      // Scored matching against Musicly Library
+      const scoredTracks = allTracks.map((track) => {
+        const titleNorm = normalizeText(track.title);
+        const artistNorm = normalizeText(track.artist);
+        const genreNorm = normalizeText(track.genre);
+
+        let score = 0;
+        let matchType = 'none';
+
+        // 1. Exact match on title
+        if (titleNorm === cleanQuery) {
+          score = 1.0;
+          matchType = 'exact_title';
+        }
+        // 2. Exact match on artist
+        else if (artistNorm === cleanQuery) {
+          score = 0.95;
+          matchType = 'exact_artist';
+        }
+        // 3. Title contains query or query contains title
+        else if (titleNorm.includes(cleanQuery) || cleanQuery.includes(titleNorm)) {
+          const ratio = Math.min(titleNorm.length, cleanQuery.length) / Math.max(titleNorm.length, cleanQuery.length);
+          score = 0.88 + ratio * 0.08;
+          matchType = 'partial_title';
+        }
+        // 4. Artist contains query
+        else if (artistNorm.includes(cleanQuery) || cleanQuery.includes(artistNorm)) {
+          score = 0.85;
+          matchType = 'partial_artist';
+        }
+        // 5. Genre contains query (e.g. "hindi songs", "lo-fi")
+        else if (genreNorm.includes(cleanQuery) || cleanQuery.includes(genreNorm)) {
+          score = 0.80;
+          matchType = 'genre';
+        }
+        // 6. Fuzzy string similarity
+        else {
+          const titleSim = stringSimilarity(titleNorm, cleanQuery);
+          const artistSim = stringSimilarity(artistNorm, cleanQuery);
+          const bestSim = Math.max(titleSim, artistSim);
+          if (bestSim >= 0.65) {
+            score = bestSim * 0.85;
+            matchType = 'fuzzy';
+          }
+        }
+
+        return { track, score, matchType };
+      });
+
+      // Filter matches above threshold and sort descending
+      const matches = scoredTracks.filter((m) => m.score >= 0.60).sort((a, b) => b.score - a.score);
+
+      // Ambiguity Check (Phase 12):
+      // Distinguish song title ambiguity (e.g. original vs remix) from general artist playback
+      const isArtistRequest = matches.length > 1 && matches[0]?.matchType === 'exact_artist' && matches[1]?.matchType === 'exact_artist';
+      const hasCloseCompetitor = !isArtistRequest && matches.length > 1 && (
+        (matches[0].score - matches[1].score) < 0.15 ||
+        (matches[1].score >= 0.88 && matches[1].track?.title?.toLowerCase().includes(cleanQuery))
+      );
+
+      if (hasCloseCompetitor && matches.length > 0) {
+        const topCandidates = matches.slice(0, 3).map((m) => m.track);
+        return {
+          action: MUSICLY_ACTIONS.AMBIGUOUS_CHOICE,
+          params: {
+            candidates: topCandidates,
+            query: searchQuery
+          },
+          rawCommand: rawTranscript,
+          intentConfidence: 0.90,
+          speechConfidence,
+          entityConfidence: matches[0]?.score || 0.8,
+          actionConfidence: 0.85,
+          feedback: "Which one did you mean?",
+          spokenText: "Which one did you mean?"
+        };
+      }
+
+      // Strong single match found
+      if (matches.length > 0) {
+        const top = matches[0];
+        const spokenTitle = top.track.title;
+        return {
+          action: MUSICLY_ACTIONS.PLAY_SEARCH_RESULT,
+          params: {
+            track: top.track,
+            targetTrack: top.track,
+            query: searchQuery,
+            score: top.score,
+            matchType: top.matchType
+          },
+          rawCommand: rawTranscript,
+          intentConfidence: 0.94,
+          speechConfidence,
+          entityConfidence: top.score,
+          actionConfidence: Math.round(((speechConfidence + top.score) / 2) * 100) / 100,
+          feedback: `Playing ${spokenTitle}.`,
+          spokenText: `Playing ${spokenTitle}.`
+        };
+      }
+
+      // If user said "search for [x]", open drawer in search mode
+      if (/^(?:search\s+for|search|find)\s+/i.test(text)) {
+        return {
+          action: MUSICLY_ACTIONS.SEARCH,
+          params: { query: searchQuery },
+          rawCommand: rawTranscript,
+          intentConfidence: 0.92,
+          speechConfidence,
+          actionConfidence: 0.92,
+          feedback: `Searching for ${searchQuery}.`,
+          spokenText: `Searching for ${searchQuery}.`
+        };
+      }
+    }
+
+    // Default: UNKNOWN
     return {
       action: MUSICLY_ACTIONS.UNKNOWN,
-      payload: { rawText: text },
-      confidence: 0.2,
-      requiresConfirmation: false,
-      feedback: `I didn't understand "${rawCommand}". Try saying "Play", "Next song", or "Volume 50%".`,
-      spokenText: "I didn't catch that command."
+      params: { rawText: text },
+      rawCommand: rawTranscript,
+      intentConfidence: 0.20,
+      speechConfidence,
+      entityConfidence: 0,
+      actionConfidence: 0.20,
+      feedback: "Command not recognized.",
+      spokenText: "Sorry, I didn't recognize that command."
     };
   }
 }

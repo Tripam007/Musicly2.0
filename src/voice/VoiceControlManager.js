@@ -1,21 +1,20 @@
 /**
  * VoiceControlManager.js
- *
- * Master coordinator for the "HEY MUSICLY" voice control pipeline:
- * 1. WakeWordManager (Local detection of "Hey Musicly")
- * 2. SpeechRecognitionManager (Speech-to-text capture)
- * 3. VoiceCommandParser (Context-aware natural language understanding)
- * 4. MusiclyActionRegistry (Safe action execution)
- * 5. VoiceResponseManager (Speech synthesis + volume ducking)
- *
- * Manages explicit state machine:
- * IDLE -> LISTENING_FOR_WAKE_WORD -> WAKE_WORD_DETECTED -> LISTENING_FOR_COMMAND
- * -> PROCESSING_COMMAND -> EXECUTING_ACTION -> RESPONDING -> COOLDOWN -> LISTENING_FOR_WAKE_WORD
+ * 
+ * Master coordinator for the Musicly Voice AI System.
+ * Connects:
+ * 1. WakeWordManager (Local offline "Hey Musicly" detector)
+ * 2. VoiceRecorder (Opus MediaRecorder with real-time speech/silence detection)
+ * 3. VoiceCommandClient (Firebase Cloud Functions -> Google Cloud STT & ElevenLabs TTS)
+ * 4. VoiceCommandParser (Normalization, multilingual intents & fuzzy library matching)
+ * 5. MusiclyActionRegistry (Centralized authoritative player action execution)
+ * 6. VoiceResponseManager (ElevenLabs isolated playback with smooth music audio ducking)
  */
 
 import { VOICE_STATES, MUSICLY_ACTIONS, DEFAULT_VOICE_CONFIG } from './voiceConfig.js';
-import { SpeechRecognitionManager } from './SpeechRecognitionManager.js';
 import { WakeWordManager } from './WakeWordManager.js';
+import { VoiceRecorder } from './VoiceRecorder.js';
+import { VoiceCommandClient } from './VoiceCommandClient.js';
 import { VoiceCommandParser } from './VoiceCommandParser.js';
 import { MusiclyActionRegistry } from './MusiclyActionRegistry.js';
 import { VoiceResponseManager } from './VoiceResponseManager.js';
@@ -25,39 +24,49 @@ export class VoiceControlManager {
     this.config = { ...DEFAULT_VOICE_CONFIG, ...options.config };
     this.state = VOICE_STATES.IDLE;
     this.listeners = new Set();
+    this.permissionGranted = false;
+    this.lastDebugInfo = null;
     this.commandTimeoutId = null;
-    this.pendingConfirmation = null; // { actionObj, timeoutId }
 
-    // Audio chime context for subtle auditory feedback
-    this.audioCtx = null;
+    // Sub-components
+    this.actionRegistry = MusiclyActionRegistry.getInstance();
+    this.commandClient = new VoiceCommandClient({ functions: options.functions });
+    this.recorder = new VoiceRecorder({
+      maxDurationMs: this.config.maxCommandDurationMs,
+      initialSilenceTimeoutMs: this.config.initialSilenceTimeoutMs,
+      endOfSpeechSilenceMs: this.config.endOfSpeechSilenceMs,
+      silenceThresholdRms: this.config.silenceThresholdRms,
+    });
 
-    // Sub-modules
-    this.actionRegistry = new MusiclyActionRegistry();
-    this.speechManager = new SpeechRecognitionManager();
     this.wakeWordManager = new WakeWordManager({
+      wakePhrase: this.config.wakePhrase,
+      wakePhraseVariants: this.config.wakePhraseVariants,
+      cooldownMs: this.config.wakeCooldownMs,
+      lang: this.config.language,
       onWakeWord: (payload) => this._onWakeWordTriggered(payload),
     });
-    this.commandParser = new VoiceCommandParser();
+
     this.responseManager = new VoiceResponseManager({
       getCurrentVolume: options.getCurrentVolume,
       setTemporaryVolume: options.setTemporaryVolume,
+      commandClient: this.commandClient,
+      duckFactor: this.config.duckingVolumeRatio,
+      enabled: this.config.enableVoiceResponses,
+      duckingEnabled: this.config.enableDucking,
     });
 
-    this.responseManager.setEnabled(this.config.enableVoiceResponses);
-    this.responseManager.setDucking(this.config.enableDucking);
+    // Sub-chime audio context
+    this.audioCtx = null;
 
-    // Telemetry storage in localStorage
+    // Telemetry
     this.telemetryKey = 'musicly_voice_analytics';
     this.telemetry = this._loadTelemetry();
 
-    // Hook speech recognizer callbacks
-    this._setupSpeechRecognition();
   }
 
-  // --- State & Observer Pattern ---
+  // --- Observer / State Machine ---
   subscribe(listener) {
     this.listeners.add(listener);
-    // Immediately emit current state
     listener(this.getStatePayload());
     return () => this.listeners.delete(listener);
   }
@@ -65,18 +74,23 @@ export class VoiceControlManager {
   _notify(extra = {}) {
     const payload = { ...this.getStatePayload(), ...extra };
     this.listeners.forEach((fn) => {
-      try { fn(payload); } catch (e) { console.error('[VoiceControlManager] Listener err:', e); }
+      try {
+        fn(payload);
+      } catch (err) {
+        console.warn('[VoiceControlManager] Listener exception:', err);
+      }
     });
   }
 
   getStatePayload() {
     return {
       state: this.state,
-      isSupported: this.speechManager.isSupported(),
-      hasPermission: this.speechManager.hasPermission,
+      hasPermission: this.permissionGranted,
       lastRecognized: this.lastRecognized || '',
       lastResponse: this.lastResponse || '',
       confidence: this.lastConfidence || 0,
+      ambiguousCandidates: this.ambiguousCandidates || [],
+      debugInfo: this.lastDebugInfo || null,
       config: { ...this.config },
     };
   }
@@ -86,69 +100,13 @@ export class VoiceControlManager {
     this._notify(extra);
   }
 
-  // --- Telemetry Tracking ---
-  _loadTelemetry() {
-    try {
-      const data = localStorage.getItem(this.telemetryKey);
-      if (data) return JSON.parse(data);
-    } catch (e) { /* ignore */ }
-    return {
-      totalCommands: 0,
-      successfulCommands: 0,
-      failedCommands: 0,
-      unknownCommands: 0,
-      commandCounts: {},
-      latencies: [],
-    };
-  }
-
-  _recordTelemetry(action, success, latencyMs) {
-    if (!this.config.enableAnalytics) return;
-    this.telemetry.totalCommands++;
-    if (success) {
-      this.telemetry.successfulCommands++;
-    } else {
-      this.telemetry.failedCommands++;
-    }
-    if (action === MUSICLY_ACTIONS.UNKNOWN) {
-      this.telemetry.unknownCommands++;
-    }
-    this.telemetry.commandCounts[action] = (this.telemetry.commandCounts[action] || 0) + 1;
-    if (latencyMs) {
-      this.telemetry.latencies.push(latencyMs);
-      if (this.telemetry.latencies.length > 50) this.telemetry.latencies.shift();
-    }
-    try {
-      localStorage.setItem(this.telemetryKey, JSON.stringify(this.telemetry));
-    } catch (e) { /* ignore */ }
-  }
-
-  getAnalytics() {
-    const avgLatency = this.telemetry.latencies.length
-      ? Math.round(this.telemetry.latencies.reduce((a, b) => a + b, 0) / this.telemetry.latencies.length)
-      : 0;
-
-    return {
-      totalCommands: this.telemetry.totalCommands,
-      successfulCommands: this.telemetry.successfulCommands,
-      failedCommands: this.telemetry.failedCommands,
-      unknownCommands: this.telemetry.unknownCommands,
-      averageLatencyMs: avgLatency,
-      commandBreakdown: { ...this.telemetry.commandCounts },
-    };
-  }
-
-  // --- Subtle Chime Audio Feedback ---
+  // --- Chime Feedback ---
   _playChime(type = 'wake') {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       if (!AudioCtx) return;
-      if (!this.audioCtx) {
-        this.audioCtx = new AudioCtx();
-      }
-      if (this.audioCtx.state === 'suspended') {
-        this.audioCtx.resume();
-      }
+      if (!this.audioCtx) this.audioCtx = new AudioCtx();
+      if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
 
       const now = this.audioCtx.currentTime;
       const osc = this.audioCtx.createOscillator();
@@ -157,80 +115,63 @@ export class VoiceControlManager {
       gain.connect(this.audioCtx.destination);
 
       if (type === 'wake') {
-        // Subtle Apple-like dual tone (523Hz C5 -> 659Hz E5)
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(523.25, now);
-        osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.12);
-
+        osc.frequency.setValueAtTime(523.25, now); // C5
+        osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.12); // E5
         gain.gain.setValueAtTime(0, now);
         gain.gain.linearRampToValueAtTime(0.08, now + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
-
         osc.start(now);
         osc.stop(now + 0.3);
       } else if (type === 'confirm') {
-        // Soft positive blip
         osc.type = 'sine';
         osc.frequency.setValueAtTime(659.25, now);
         osc.frequency.setValueAtTime(783.99, now + 0.08);
-
         gain.gain.setValueAtTime(0, now);
         gain.gain.linearRampToValueAtTime(0.06, now + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-
         osc.start(now);
         osc.stop(now + 0.22);
       }
-    } catch (e) {
-      // Audio chime failure should never crash app
+    } catch {
+      // Audio chime failure should never crash
     }
-  }
-
-  // --- Speech Recognition Binding ---
-  _setupSpeechRecognition() {
-    this.speechManager.on('result', (result) => {
-      this._handleSpeechResult(result);
-    });
-
-    this.speechManager.on('error', (err) => {
-      console.warn('[VoiceControlManager] Recognition error:', err);
-    });
-
-    this.speechManager.on('end', () => {
-      if (this.state !== VOICE_STATES.IDLE && this.state !== VOICE_STATES.RESPONDING) {
-        // Keep listening unless explicitly stopped
-        if (this.speechManager.isListening) {
-          this.speechManager.start();
-        }
-      }
-    });
   }
 
   // --- Start / Stop Lifecycle ---
   async start() {
-    if (!this.speechManager.isSupported()) {
-      console.warn('[VoiceControlManager] Speech recognition not supported in browser.');
+    try {
+      this.wakeWordManager.start();
+      this.permissionGranted = true;
+      try {
+        localStorage.setItem('musicly_voice_enabled', 'true');
+      } catch {}
+      this._setState(VOICE_STATES.LISTENING_FOR_WAKE_WORD);
+      return true;
+    } catch (err) {
+      console.warn('[VoiceControlManager] Mic start error:', err);
+      this.permissionGranted = false;
+      this._setState(VOICE_STATES.ERROR, {
+        lastResponse: 'Microphone access is required for Hey Musicly.',
+      });
       return false;
     }
-
-    const started = await this.speechManager.start();
-    if (started) {
-      this._setState(VOICE_STATES.LISTENING_FOR_WAKE_WORD);
-    }
-    return started;
   }
 
   stop() {
     this._clearCommandTimeout();
-    this.pendingConfirmation = null;
-    this.speechManager.stop();
+    this.wakeWordManager.stop();
+    this.recorder.stop();
     this.responseManager.cancel();
-    this.wakeWordManager.reset();
+    this.ambiguousCandidates = [];
+    try {
+      localStorage.setItem('musicly_voice_enabled', 'false');
+    } catch {}
     this._setState(VOICE_STATES.IDLE);
   }
 
   toggle() {
-    if (this.state === VOICE_STATES.IDLE) {
+    if (this.state === VOICE_STATES.IDLE || this.state === VOICE_STATES.ERROR) {
       return this.start();
     } else {
       this.stop();
@@ -238,38 +179,80 @@ export class VoiceControlManager {
     }
   }
 
-  // --- Wake Word Handling ---
-  _onWakeWordTriggered({ confidence, tailCommand }) {
+  // --- Wake Word Trigger & Pipeline ---
+  async _onWakeWordTriggered({ tailCommand }) {
     if (this.state !== VOICE_STATES.LISTENING_FOR_WAKE_WORD) return;
 
-    this.lastConfidence = confidence;
+    const wakeTime = performance.now();
     this._playChime('wake');
     this._setState(VOICE_STATES.WAKE_WORD_DETECTED);
 
-    // If tail command was spoken in the same breath ("Hey Musicly play Faasle")
+    // If tail command was spoken in the exact same breath ("Hey Musicly play Faasle")
     if (tailCommand && tailCommand.trim().length > 1) {
       setTimeout(() => {
-        this._processCommandString(tailCommand.trim());
-      }, 350);
+        this._processCommandString(tailCommand.trim(), 0.95, wakeTime);
+      }, 250);
       return;
     }
 
-    // Otherwise, transition to listening for command with timeout
+    // Otherwise, transition to listening mode & patiently wait for the command given by the user
     setTimeout(() => {
-      if (this.state === VOICE_STATES.WAKE_WORD_DETECTED) {
-        this._setState(VOICE_STATES.LISTENING_FOR_COMMAND);
-        this._armCommandTimeout();
-      }
-    }, 450);
+      this._startWaitingForCommand(wakeTime);
+    }, 350);
   }
 
-  _armCommandTimeout() {
+  _startWaitingForCommand(wakeTime) {
+    this.lastRecognized = '';
+    this._setState(VOICE_STATES.LISTENING_FOR_COMMAND, { lastRecognized: '' });
     this._clearCommandTimeout();
-    this.commandTimeoutId = setTimeout(() => {
-      if (this.state === VOICE_STATES.LISTENING_FOR_COMMAND) {
-        this._handleCommandTimeout();
-      }
-    }, this.config.commandTimeoutMs);
+
+    // Primary: If browser speech recognition is active, keep mic open and listen live
+    if (this.wakeWordManager && this.wakeWordManager.recognition) {
+      let silenceDebounceTimer = null;
+      let accumulatedText = '';
+      const commandTimeoutDuration = this.config.commandTimeoutMs || 8000;
+
+      // Patiently wait up to 8 seconds for the user to begin speaking their command
+      this.commandTimeoutId = setTimeout(() => {
+        if (this.state === VOICE_STATES.LISTENING_FOR_COMMAND) {
+          if (silenceDebounceTimer) clearTimeout(silenceDebounceTimer);
+          this._handleCommandTimeout();
+        }
+      }, commandTimeoutDuration);
+
+      this.wakeWordManager.startCommandMode(({ text, isFinal }) => {
+        if (this.state !== VOICE_STATES.LISTENING_FOR_COMMAND) return;
+
+        const clean = (text || '').trim();
+        if (!clean) return;
+
+        accumulatedText = clean;
+        this.lastRecognized = clean;
+        this._notify({ lastRecognized: clean });
+
+        // Refresh command timeout so user is never cut off while speaking
+        this._clearCommandTimeout();
+
+        if (isFinal) {
+          if (silenceDebounceTimer) clearTimeout(silenceDebounceTimer);
+          this.wakeWordManager.lock();
+          this._processCommandString(clean, 0.95, wakeTime);
+        } else {
+          // Debounce: if user pauses speaking for 1.3s after saying command, execute it
+          if (silenceDebounceTimer) clearTimeout(silenceDebounceTimer);
+          silenceDebounceTimer = setTimeout(() => {
+            if (this.state === VOICE_STATES.LISTENING_FOR_COMMAND && accumulatedText) {
+              this.wakeWordManager.lock();
+              this._processCommandString(accumulatedText, 0.9, wakeTime);
+            }
+          }, 1300);
+        }
+      });
+      return;
+    }
+
+    // Fallback: If Web Speech engine is unavailable, use MediaRecorder pipeline
+    this._recordAndExecuteCommand(wakeTime);
   }
 
   _clearCommandTimeout() {
@@ -280,125 +263,216 @@ export class VoiceControlManager {
   }
 
   async _handleCommandTimeout() {
-    this._setState(VOICE_STATES.RESPONDING, { lastResponse: "Didn't hear a command." });
+    this._clearCommandTimeout();
+    this.wakeWordManager.lock();
+    this._setState(VOICE_STATES.ERROR, { lastResponse: "Didn't hear a command." });
     await this.responseManager.speak("Sorry, I didn't hear a command.");
     this._returnToWakeWordListening();
   }
 
-  // --- Speech Results Pipeline ---
-  _handleSpeechResult({ text, isFinal, confidence }) {
-    if (!text) return;
-    this.lastRecognized = text;
-
-    // 1. If we are LISTENING_FOR_WAKE_WORD, pass to WakeWordManager
-    if (this.state === VOICE_STATES.LISTENING_FOR_WAKE_WORD) {
-      this.wakeWordManager.processTranscript(text);
+  async _recordAndExecuteCommand(wakeTime) {
+    const started = await this.recorder.start();
+    if (!started) {
+      this._returnToWakeWordListening();
       return;
     }
 
-    // 2. If we are LISTENING_FOR_COMMAND, accept speech as command
-    if (this.state === VOICE_STATES.LISTENING_FOR_COMMAND) {
-      this._clearCommandTimeout();
-      if (isFinal || text.split(' ').length >= 2) {
-        this._processCommandString(text);
-      }
+    // Wait until recording finishes (silence detector or max duration)
+    const { audioBase64, mimeType, durationMs } = await this.recorder.stop();
+    const commandRecordedTime = performance.now();
+
+    if (!audioBase64 || durationMs < this.config.minSpeechDurationMs) {
+      this._setState(VOICE_STATES.ERROR, { lastResponse: "Didn't hear a command." });
+      await this.responseManager.speak("Sorry, I didn't hear a command.");
+      this._returnToWakeWordListening();
+      return;
     }
+
+    // Transition to processing state
+    this._setState(VOICE_STATES.PROCESSING_COMMAND);
+
+    // Call Firebase Function for Google Cloud Speech-to-Text
+    const sttResult = await this.commandClient.transcribeAudio(
+      audioBase64,
+      mimeType,
+      this.config.language
+    );
+    const sttCompleteTime = performance.now();
+
+    if (!sttResult.success || !sttResult.transcript) {
+      this._setState(VOICE_STATES.ERROR, { lastResponse: "Couldn't understand." });
+      await this.responseManager.speak("I couldn't understand that.");
+      this._returnToWakeWordListening();
+      return;
+    }
+
+    // Process the transcribed command
+    await this._processCommandString(
+      sttResult.transcript,
+      sttResult.confidence,
+      wakeTime,
+      {
+        sttDurationMs: Math.round(sttCompleteTime - commandRecordedTime),
+        detectedLanguage: sttResult.detectedLanguage,
+        alternatives: sttResult.alternatives,
+      }
+    );
   }
 
   // --- Command Processing & Intent Parsing ---
-  async _processCommandString(commandText) {
-    this._clearCommandTimeout();
-    this._setState(VOICE_STATES.PROCESSING_COMMAND, { lastRecognized: commandText });
+  async _processCommandString(commandText, speechConfidence = 0.9, wakeTime = 0, extraTelemetry = {}) {
+    try {
+      this.lastRecognized = commandText;
+      this._setState(VOICE_STATES.PROCESSING_COMMAND, { lastRecognized: commandText });
 
-    const startTime = performance.now();
+      const parseStartTime = performance.now();
+      const context = this.actionRegistry.contextProvider() || {};
+      const parsed = VoiceCommandParser.parse(commandText, context, speechConfidence);
+      const parseEndTime = performance.now();
 
-    // Check cancellation
-    if (/^(cancel|nevermind|stop listening|dismiss)$/i.test(commandText.trim())) {
-      this._returnToWakeWordListening();
-      return;
-    }
+      // Debug Panel Data Record
+      this.lastDebugInfo = {
+        wakeWord: 'DETECTED',
+        microphone: 'READY',
+        recording: 'NO',
+        transcript: commandText,
+        sttConfidence: speechConfidence,
+        detectedLanguage: extraTelemetry.detectedLanguage || this.config.language,
+        intent: parsed.action,
+        intentConfidence: parsed.intentConfidence || 0,
+        entity: parsed.params?.query || parsed.params?.track?.title || parsed.params?.scene?.name || 'None',
+        entityConfidence: parsed.entityConfidence || 0,
+        action: parsed.action,
+        latencies: {
+          wakeToCommandMs: wakeTime ? Math.round(parseStartTime - wakeTime) : 0,
+          sttMs: extraTelemetry.sttDurationMs || 0,
+          parseMs: Math.round(parseEndTime - parseStartTime),
+        },
+      };
 
-    // Check confirmation if waiting for yes/no
-    if (this.pendingConfirmation) {
-      const isYes = /^(yes|confirm|sure|proceed|do it|okay)$/i.test(commandText.trim());
-      const isNo = /^(no|cancel|don't|stop|abort)$/i.test(commandText.trim());
-
-      const { actionObj } = this.pendingConfirmation;
-      this.pendingConfirmation = null;
-
-      if (isYes) {
-        await this._executeAction(actionObj, startTime);
-        return;
-      } else {
-        await this.responseManager.speak('Action cancelled.');
+      // 1. Cancel
+      if (parsed.action === MUSICLY_ACTIONS.CANCEL) {
+        this._setState(VOICE_STATES.SUCCESS, { lastResponse: 'Cancelled.' });
         this._returnToWakeWordListening();
         return;
       }
-    }
 
-    // Parse Intent
-    const context = this.actionRegistry.contextProvider() || {};
-    const parsedAction = this.commandParser.parse(commandText, context);
+      // 2. Ambiguity Handling (Phase 12)
+      if (parsed.action === MUSICLY_ACTIONS.AMBIGUOUS_CHOICE) {
+        this.ambiguousCandidates = parsed.params.candidates || [];
+        this._setState(VOICE_STATES.AMBIGUOUS, {
+          ambiguousCandidates: this.ambiguousCandidates,
+          lastResponse: 'Which one did you mean?',
+        });
+        await this.responseManager.speak('Which one did you mean?');
+        // Keep ambiguous state open so user can tap candidate or say next command
+        return;
+      }
 
-    if (parsedAction.action === MUSICLY_ACTIONS.CANCEL) {
+      // 3. Unknown Command
+      if (parsed.action === MUSICLY_ACTIONS.UNKNOWN) {
+        this._recordTelemetry(MUSICLY_ACTIONS.UNKNOWN, false);
+        this._setState(VOICE_STATES.ERROR, { lastResponse: parsed.feedback });
+        await this.responseManager.speak(parsed.spokenText);
+        this._returnToWakeWordListening();
+        return;
+      }
+
+      // 4. Voice assistant mute
+      if (parsed.action === MUSICLY_ACTIONS.VOICE_OFF) {
+        this.responseManager.setEnabled(false);
+        this._setState(VOICE_STATES.SUCCESS, { lastResponse: 'Voice responses muted.' });
+        this._returnToWakeWordListening();
+        return;
+      }
+
+      // 5. Execute Action via Central Action Registry
+      await this._executeAction(parsed);
+    } catch (err) {
+      console.error('[VoiceControlManager] Command execution caught error:', err);
+      this._setState(VOICE_STATES.ERROR, { lastResponse: "Sorry, I couldn't process that." });
       this._returnToWakeWordListening();
-      return;
     }
-
-    if (parsedAction.action === MUSICLY_ACTIONS.UNKNOWN) {
-      this._recordTelemetry(MUSICLY_ACTIONS.UNKNOWN, false, performance.now() - startTime);
-      this._setState(VOICE_STATES.RESPONDING, { lastResponse: "Command not recognized." });
-      await this.responseManager.speak("Sorry, I didn't recognize that command.");
-      this._returnToWakeWordListening();
-      return;
-    }
-
-    // Check if requires confirmation
-    if (parsedAction.requiresConfirmation && this.config.confirmationMode !== 'never') {
-      this.pendingConfirmation = { actionObj: parsedAction };
-      this._setState(VOICE_STATES.RESPONDING, { lastResponse: parsedAction.confirmPrompt });
-      await this.responseManager.speak(parsedAction.confirmPrompt);
-      // Wait for yes/no
-      this._setState(VOICE_STATES.LISTENING_FOR_COMMAND);
-      this._armCommandTimeout();
-      return;
-    }
-
-    await this._executeAction(parsedAction, startTime);
   }
 
-  async _executeAction(actionObj, startTime) {
+  async _executeAction(parsedAction) {
     this._setState(VOICE_STATES.EXECUTING_ACTION);
     this._playChime('confirm');
 
-    const result = await this.actionRegistry.execute(actionObj);
-    const latency = Math.round(performance.now() - startTime);
-    this._recordTelemetry(actionObj.action, result.success, latency);
+    const result = await this.actionRegistry.execute(parsedAction);
+    this._recordTelemetry(parsedAction.action, result.success);
 
-    if (result.responseText) {
-      this._setState(VOICE_STATES.RESPONDING, { lastResponse: result.responseText });
-      await this.responseManager.speak(result.responseText);
+    const responseText = result.responseText || parsedAction.spokenText || null;
+    this._setState(VOICE_STATES.SUCCESS, { lastResponse: responseText });
+
+    if (responseText && this.config.enableVoiceResponses) {
+      await this.responseManager.speak(responseText);
     }
 
     this._returnToWakeWordListening();
   }
 
-  _returnToWakeWordListening() {
-    this.pendingConfirmation = null;
-    this._clearCommandTimeout();
-    this.wakeWordManager.reset();
+  /**
+   * User selects candidate from ambiguity card
+   */
+  async selectAmbiguousCandidate(track) {
+    if (!track) return;
+    this.ambiguousCandidates = [];
+    await this._executeAction({
+      action: MUSICLY_ACTIONS.PLAY_SEARCH_RESULT,
+      params: { track, targetTrack: track },
+      spokenText: `Playing ${track.title}.`,
+    });
+  }
 
+  _returnToWakeWordListening() {
+    this._clearCommandTimeout();
+    this.ambiguousCandidates = [];
     this._setState(VOICE_STATES.COOLDOWN);
     setTimeout(() => {
-      if (this.speechManager.isListening) {
-        this._setState(VOICE_STATES.LISTENING_FOR_WAKE_WORD, { lastResponse: '' });
-      } else {
-        this._setState(VOICE_STATES.IDLE);
-      }
+      this.wakeWordManager.startWakeWordMode();
+      this._setState(VOICE_STATES.LISTENING_FOR_WAKE_WORD, { lastResponse: '' });
     }, this.config.wakeCooldownMs);
   }
 
-  // --- Configuration updates ---
+  // --- Telemetry & Analytics ---
+  _loadTelemetry() {
+    try {
+      const data = localStorage.getItem(this.telemetryKey);
+      if (data) return JSON.parse(data);
+    } catch {}
+    return {
+      totalCommands: 0,
+      successfulCommands: 0,
+      failedCommands: 0,
+      latencies: [],
+    };
+  }
+
+  _recordTelemetry(action, success) {
+    if (!this.config.enableAnalytics) return;
+    this.telemetry.totalCommands++;
+    if (success) {
+      this.telemetry.successfulCommands++;
+    } else {
+      this.telemetry.failedCommands++;
+    }
+    try {
+      localStorage.setItem(this.telemetryKey, JSON.stringify(this.telemetry));
+    } catch {}
+  }
+
+  getAnalytics() {
+    return {
+      totalCommands: this.telemetry.totalCommands,
+      successfulCommands: this.telemetry.successfulCommands,
+      failedCommands: this.telemetry.failedCommands,
+      successRate: this.telemetry.totalCommands
+        ? Math.round((this.telemetry.successfulCommands / this.telemetry.totalCommands) * 100)
+        : 100,
+    };
+  }
+
   updateConfig(updates) {
     this.config = { ...this.config, ...updates };
     if ('enableVoiceResponses' in updates) {

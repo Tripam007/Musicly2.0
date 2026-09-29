@@ -1,7 +1,19 @@
-import React from 'react';
-import { X, Mic, Volume2, Shield, BarChart2, CheckCircle } from 'lucide-react';
+/**
+ * VoiceSettingsModal.jsx
+ * 
+ * Cinematic settings panel for Musicly Voice AI:
+ * - Hey Musicly toggle
+ * - Language selection (English, Indian English, Hindi, Bengali)
+ * - Voice responses (TTS) toggle
+ * - Audio ducking toggle
+ * - Local telemetry metrics
+ * - Dev Diagnostics shortcut
+ */
 
-export const VoiceSettingsModal = ({ isOpen, onClose, voiceManager }) => {
+import React from 'react';
+import { X, Mic, Volume2, Shield, BarChart2, Activity, Globe } from 'lucide-react';
+
+export const VoiceSettingsModal = ({ isOpen, onClose, voiceManager, onOpenDebug }) => {
   if (!isOpen || !voiceManager) return null;
 
   const config = voiceManager.config;
@@ -9,12 +21,15 @@ export const VoiceSettingsModal = ({ isOpen, onClose, voiceManager }) => {
 
   const handleToggleVoice = (e) => {
     const enabled = e.target.checked;
-    voiceManager.updateConfig({ enabled });
     if (!enabled) {
       voiceManager.stop();
     } else {
       voiceManager.start();
     }
+  };
+
+  const handleLanguageChange = (e) => {
+    voiceManager.updateConfig({ language: e.target.value });
   };
 
   const handleToggleResponses = (e) => {
@@ -42,10 +57,11 @@ export const VoiceSettingsModal = ({ isOpen, onClose, voiceManager }) => {
           </button>
         </div>
 
+        {/* Master Toggle */}
         <div className="voice-settings-row">
           <div className="voice-settings-info">
             <span className="voice-settings-label">Hey Musicly Voice Control</span>
-            <span className="voice-settings-desc">Activate assistant strictly with "Hey Musicly"</span>
+            <span className="voice-settings-desc">Activate hands-free with "Hey Musicly"</span>
           </div>
           <label className="voice-switch">
             <input
@@ -57,9 +73,28 @@ export const VoiceSettingsModal = ({ isOpen, onClose, voiceManager }) => {
           </label>
         </div>
 
+        {/* Language Selection */}
         <div className="voice-settings-row">
           <div className="voice-settings-info">
-            <span className="voice-settings-label">Voice Responses (TTS)</span>
+            <span className="voice-settings-label">Recognition Language</span>
+            <span className="voice-settings-desc">Select preferred voice command dialect</span>
+          </div>
+          <select
+            className="voice-select-dropdown"
+            value={config.language || 'en-IN'}
+            onChange={handleLanguageChange}
+          >
+            <option value="en-IN">English (India / Hinglish)</option>
+            <option value="en-US">English (US / Global)</option>
+            <option value="hi-IN">Hindi (हिन्दी)</option>
+            <option value="bn-IN">Bengali (বাংলা)</option>
+          </select>
+        </div>
+
+        {/* Voice Responses (TTS) */}
+        <div className="voice-settings-row">
+          <div className="voice-settings-info">
+            <span className="voice-settings-label">Voice Responses (ElevenLabs)</span>
             <span className="voice-settings-desc">Speak brief confirmations when actions complete</span>
           </div>
           <label className="voice-switch">
@@ -72,10 +107,11 @@ export const VoiceSettingsModal = ({ isOpen, onClose, voiceManager }) => {
           </label>
         </div>
 
+        {/* Audio Ducking */}
         <div className="voice-settings-row">
           <div className="voice-settings-info">
-            <span className="voice-settings-label">Audio Ducking</span>
-            <span className="voice-settings-desc">Temporarily lower music volume while speaking</span>
+            <span className="voice-settings-label">Smooth Audio Ducking</span>
+            <span className="voice-settings-desc">Temporarily lower music volume during speech</span>
           </div>
           <label className="voice-switch">
             <input
@@ -87,10 +123,11 @@ export const VoiceSettingsModal = ({ isOpen, onClose, voiceManager }) => {
           </label>
         </div>
 
+        {/* Local Telemetry */}
         <div className="voice-settings-row">
           <div className="voice-settings-info">
-            <span className="voice-settings-label">Local Voice Telemetry</span>
-            <span className="voice-settings-desc">Log anonymous command counts locally for performance</span>
+            <span className="voice-settings-label">Local Voice Metrics</span>
+            <span className="voice-settings-desc">Track local command reliability metrics</span>
           </div>
           <label className="voice-switch">
             <input
@@ -113,15 +150,24 @@ export const VoiceSettingsModal = ({ isOpen, onClose, voiceManager }) => {
               <div className="voice-stat-lbl">Successful</div>
             </div>
             <div>
-              <div className="voice-stat-num">{analytics.averageLatencyMs}ms</div>
-              <div className="voice-stat-lbl">Avg Latency</div>
+              <div className="voice-stat-num">{analytics.successRate}%</div>
+              <div className="voice-stat-lbl">Success Rate</div>
             </div>
           </div>
         )}
 
+        {/* Dev Diagnostics Button */}
+        {onOpenDebug && (
+          <button className="voice-debug-btn-link" onClick={onOpenDebug}>
+            <Activity size={14} />
+            <span>Open Voice Diagnostics Panel (Ctrl+Shift+D)</span>
+          </button>
+        )}
+
+        {/* Privacy Notice */}
         <div className="voice-privacy-notice">
           <Shield size={14} style={{ verticalAlign: 'middle', marginRight: '6px', color: '#10b981' }} />
-          <strong>Privacy Commitment:</strong> Voice control processes your microphone locally only for wake-word and command recognition. No continuous audio streaming or raw audio recordings are stored.
+          <strong>Privacy Commitment:</strong> Wake-word detection is processed 100% locally. Microphone audio is never continuously uploaded to the cloud. Raw audio recordings are never stored.
         </div>
       </div>
     </div>

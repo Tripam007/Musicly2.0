@@ -1,5 +1,8 @@
 /**
- * Musicly Voice Control - Action Enums, State Machine States & Default Configuration
+ * voiceConfig.js
+ * 
+ * Central configuration, action enums, and state machine constants
+ * for the Musicly Voice AI System.
  */
 
 export const VOICE_STATES = {
@@ -9,9 +12,10 @@ export const VOICE_STATES = {
   LISTENING_FOR_COMMAND: 'LISTENING_FOR_COMMAND',
   PROCESSING_COMMAND: 'PROCESSING_COMMAND',
   EXECUTING_ACTION: 'EXECUTING_ACTION',
-  RESPONDING: 'RESPONDING',
-  COOLDOWN: 'COOLDOWN',
+  SUCCESS: 'SUCCESS',
   ERROR: 'ERROR',
+  AMBIGUOUS: 'AMBIGUOUS',
+  COOLDOWN: 'COOLDOWN',
   UNSUPPORTED: 'UNSUPPORTED'
 };
 
@@ -20,10 +24,11 @@ export const MUSICLY_ACTIONS = {
   PLAY: 'PLAY',
   PAUSE: 'PAUSE',
   TOGGLE_PLAY: 'TOGGLE_PLAY',
+  STOP: 'STOP',
   NEXT_TRACK: 'NEXT_TRACK',
   PREVIOUS_TRACK: 'PREVIOUS_TRACK',
-  SEEK: 'SEEK',
   REPLAY: 'REPLAY',
+  SEEK: 'SEEK',
 
   // Volume
   SET_VOLUME: 'SET_VOLUME',
@@ -41,48 +46,49 @@ export const MUSICLY_ACTIONS = {
   REPEAT_ALL: 'REPEAT_ALL',
   REPEAT_OFF: 'REPEAT_OFF',
 
-  // Favorites
+  // Favorites & Library
   LIKE: 'LIKE',
   UNLIKE: 'UNLIKE',
+  OPEN_LIBRARY: 'OPEN_LIBRARY',
+  ADD_TO_PLAYLIST: 'ADD_TO_PLAYLIST',
 
   // Search & Music Selection
   SEARCH: 'SEARCH',
+  PLAY_SEARCH: 'PLAY_SEARCH',
   PLAY_SEARCH_RESULT: 'PLAY_SEARCH_RESULT',
   PLAY_SPECIFIC_SONG: 'PLAY_SPECIFIC_SONG',
+  AMBIGUOUS_CHOICE: 'AMBIGUOUS_CHOICE',
 
   // Scenes & Genres
   CHANGE_SCENE: 'CHANGE_SCENE',
   NEXT_SCENE: 'NEXT_SCENE',
-  CHANGE_GENRE: 'CHANGE_GENRE',
   OPEN_SCENE_SELECTOR: 'OPEN_SCENE_SELECTOR',
 
   // Ambience
   TOGGLE_AMBIENCE: 'TOGGLE_AMBIENCE',
   AMBIENCE_ON: 'AMBIENCE_ON',
   AMBIENCE_OFF: 'AMBIENCE_OFF',
-  SET_AMBIENT_SOUND: 'SET_AMBIENT_SOUND',
 
   // Navigation & Modals
   OPEN_HOME: 'OPEN_HOME',
-  OPEN_LIBRARY: 'OPEN_LIBRARY',
   OPEN_SETTINGS: 'OPEN_SETTINGS',
-  OPEN_PROFILE: 'OPEN_PROFILE',
   OPEN_FEEDBACK: 'OPEN_FEEDBACK',
   OPEN_COFFEE: 'OPEN_COFFEE',
   REQUEST_SONG: 'REQUEST_SONG',
-  OPEN_SHORTCUTS: 'OPEN_SHORTCUTS',
 
-  // Playlists
-  ADD_TO_PLAYLIST: 'ADD_TO_PLAYLIST',
-  CREATE_PLAYLIST: 'CREATE_PLAYLIST',
-  DELETE_PLAYLIST: 'DELETE_PLAYLIST',
+  // Auth
+  AUTH_SIGN_IN: 'AUTH_SIGN_IN',
+  AUTH_SIGN_OUT: 'AUTH_SIGN_OUT',
 
-  // Admin
-  OPEN_ADMIN_DASHBOARD: 'OPEN_ADMIN_DASHBOARD',
-  SHOW_FEEDBACK: 'SHOW_FEEDBACK',
-  SHOW_AIR_AI: 'SHOW_AIR_AI',
-  SHOW_ACCURACY: 'SHOW_ACCURACY',
-  SHOW_SONG_REQUESTS: 'SHOW_SONG_REQUESTS',
+  // Voice Assistant Controls
+  VOICE_OFF: 'VOICE_OFF',
+  MUTE_VOICE: 'MUTE_VOICE',
+
+  // Admin Actions (strictly verified server-side/claims)
+  ADMIN_OPEN_DASHBOARD: 'ADMIN_OPEN_DASHBOARD',
+  ADMIN_SHOW_FEEDBACK: 'ADMIN_SHOW_FEEDBACK',
+  ADMIN_SHOW_AIR_AI: 'ADMIN_SHOW_AIR_AI',
+  ADMIN_SHOW_REQUESTS: 'ADMIN_SHOW_REQUESTS',
 
   // Control
   CANCEL: 'CANCEL',
@@ -90,26 +96,45 @@ export const MUSICLY_ACTIONS = {
 };
 
 export const DEFAULT_VOICE_CONFIG = {
+  // Wake-word
   wakePhrase: 'Hey Musicly',
   wakePhraseVariants: [
     'hey musicly',
     'hey musically',
     'hey music ly',
     'hey music lee',
-    'hey music',
-    'a musicly',
-    'hay musicly',
-    'ok musicly'
+    'okay musicly',
+    'ok musicly',
+    'hay musicly'
   ],
-  commandTimeoutMs: 6500, // Duration to listen for command after wake word
-  cooldownMs: 800,        // Cooldown between command completion and wake listening
   wakeCooldownMs: 800,
-  voiceResponsesEnabled: true,
+
+  // Microphone Command Recording
+  maxCommandDurationMs: 8000,       // Max 8 seconds command recording
+  commandTimeoutMs: 8000,           // Wait up to 8s for user to speak their command after wake word
+  initialSilenceTimeoutMs: 7000,    // Stop if user hasn't spoken within 7s
+  endOfSpeechSilenceMs: 1600,       // Stop recording 1.6s after user finishes speaking
+  silenceThresholdRms: 0.025,       // Audio energy threshold for silence
+  minSpeechDurationMs: 300,         // Avoid micro-clicks
+
+  // Language & Locales
+  language: 'en-IN',
+  supportedLanguages: ['en-IN', 'en-US', 'hi-IN', 'bn-IN'],
+
+  // Audio Ducking & TTS
   enableVoiceResponses: true,
-  audioDuckingEnabled: true,
   enableDucking: true,
-  duckingVolumeRatio: 0.28, // Temporarily lower music to 28% of current volume during TTS
-  confirmSensitiveActions: true,
-  analyticsEnabled: true,
-  enableAnalytics: true
+  duckingVolumeRatio: 0.28,         // Temporarily duck music to 28% of current level
+  voicePersonality: 'cinematic',
+
+  // Confidence Thresholds
+  confidenceThresholds: {
+    speech: 0.55,
+    intent: 0.65,
+    entity: 0.60
+  },
+
+  // Telemetry & Debug
+  enableAnalytics: true,
+  debugMode: false
 };

@@ -48,7 +48,7 @@ import { loadPublicScenes, publishPublicScene, deletePublicScene } from './utils
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
 import { resolveOriginalTrack, resolveTrackAudioStreamAsync, isDirectPlayableAudio } from './utils/originalTrackResolver';
 import { deduplicateTracks, findDuplicateTrack } from './utils/trackDeduplicator';
-import { auth, onAuthStateChanged, signOut } from './firebase';
+import { auth, functions, onAuthStateChanged, signOut } from './firebase';
 import { 
   purgeLegacyAudioSettings, 
   logAudioOutputDiagnostics, 
@@ -615,10 +615,34 @@ export default function App() {
   const prevVolumeRef = useRef(volume > 0 ? volume : 0.85);
   if (volume > 0) prevVolumeRef.current = volume;
 
+  const allTracksRef = useRef(allTracks);
+  allTracksRef.current = allTracks;
+
+  const allScenesRef = useRef(allScenes);
+  allScenesRef.current = allScenes;
+
+  const currentSceneRef = useRef(currentScene);
+  currentSceneRef.current = currentScene;
+
+  const selectedGenreRef = useRef(selectedGenre);
+  selectedGenreRef.current = selectedGenre;
+
+  const userRef = useRef(user);
+  userRef.current = user;
+
+  const isAdminRef = useRef(isAdmin);
+  isAdminRef.current = isAdmin;
+
+  const durationRef = useRef(duration);
+  durationRef.current = duration;
+
+  const actionsRef = useRef({});
+
   // Voice Control System ("Hey Musicly")
   const [voiceManager] = useState(() => {
     try {
       return new VoiceControlManager({
+        functions,
         getCurrentVolume: () => volumeRef.current,
         setTemporaryVolume: (vol) => {
           try {
@@ -633,6 +657,26 @@ export default function App() {
       return null;
     }
   });
+
+  // Hands-free Voice AI Activation ("Hey Musicly")
+  // Automatically activates listening when allowed by browser, or upon first click/interaction
+  useEffect(() => {
+    if (!voiceManager) return;
+    const activateVoice = () => {
+      if (voiceManager.state === 'IDLE') {
+        voiceManager.start().catch(() => {});
+      }
+    };
+    // Try immediate start
+    activateVoice();
+    // Also register on user gesture in case browser requires it for mic permission
+    window.addEventListener('click', activateVoice, { once: true });
+    window.addEventListener('keydown', activateVoice, { once: true });
+    return () => {
+      window.removeEventListener('click', activateVoice);
+      window.removeEventListener('keydown', activateVoice);
+    };
+  }, [voiceManager]);
 
   // Listen to Firebase Auth state & sync admin privileges
   useEffect(() => {
@@ -1350,11 +1394,44 @@ export default function App() {
     return unsub;
   }, [isAirControlsEnabled, togglePlay, handleNextTrack, handlePrevTrack, handleResetAmbient, handleToggleFavorite]);
 
+  // Keep actionsRef synced with latest handlers on every render
+  actionsRef.current = {
+    togglePlay,
+    handleNextTrack,
+    handlePrevTrack,
+    handleSeek,
+    handleVolumeUp,
+    handleVolumeDown,
+    setVolume,
+    setIsShuffle,
+    setRepeatMode,
+    handleToggleRepeat,
+    handleToggleFavorite,
+    setIsDrawerSearchMode,
+    setIsDrawerOpen,
+    handleSelectTrack,
+    handleSelectScene,
+    handleNextScene,
+    setIsSceneOpen,
+    handleResetAmbient,
+    setAmbientVolumes,
+    handleOpenLibrary,
+    handleGoHome,
+    setIsShortcutsOpen,
+    setIsFeedbackOpen,
+    setIsCoffeeOpen,
+    setIsAuthOpen,
+    setIsSongRequestOpen,
+    handleLogout,
+    setIsAdminDashboardOpen,
+    setCurrentRoute
+  };
+
   // Wire Voice Control Action Registry ("HEY MUSICLY")
   useEffect(() => {
     if (!voiceManager) return;
 
-    // Provide dynamic context to VoiceCommandParser and ActionRegistry
+    // Provide dynamic context to VoiceCommandParser and ActionRegistry using refs to avoid re-renders
     voiceManager.actionRegistry.setContextProvider(() => ({
       currentTrack: currentTrackRef.current,
       isPlaying: isPlayingRef.current,
@@ -1362,13 +1439,13 @@ export default function App() {
       isShuffle: isShuffleRef.current,
       repeatMode: repeatModeRef.current,
       favorites: favoritesRef.current,
-      allTracks,
-      allScenes,
-      currentScene,
-      selectedGenre,
+      allTracks: allTracksRef.current,
+      allScenes: allScenesRef.current,
+      currentScene: currentSceneRef.current,
+      selectedGenre: selectedGenreRef.current,
       activePlaylist: activePlaylistRef.current,
-      user,
-      isAdmin,
+      user: userRef.current,
+      isAdmin: isAdminRef.current,
       ambientVolumes: ambientVolumesRef.current,
     }));
 
@@ -1378,50 +1455,50 @@ export default function App() {
     // Playback
     reg.register(MUSICLY_ACTIONS.PLAY, async () => {
       if (!isPlayingRef.current) {
-        togglePlay();
+        actionsRef.current.togglePlay?.();
       }
       return 'Playing.';
     });
 
     reg.register(MUSICLY_ACTIONS.PAUSE, async () => {
       if (isPlayingRef.current) {
-        togglePlay();
+        actionsRef.current.togglePlay?.();
       }
       return 'Paused.';
     });
 
     reg.register(MUSICLY_ACTIONS.TOGGLE_PLAY, async () => {
-      togglePlay();
+      actionsRef.current.togglePlay?.();
       return isPlayingRef.current ? 'Paused.' : 'Playing.';
     });
 
     reg.register(MUSICLY_ACTIONS.STOP, async () => {
       if (isPlayingRef.current) {
-        togglePlay();
+        actionsRef.current.togglePlay?.();
       }
       return 'Stopped.';
     });
 
     reg.register(MUSICLY_ACTIONS.NEXT_TRACK, async () => {
-      handleNextTrack();
+      actionsRef.current.handleNextTrack?.();
       return 'Next track.';
     });
 
     reg.register(MUSICLY_ACTIONS.PREVIOUS_TRACK, async () => {
-      handlePrevTrack();
+      actionsRef.current.handlePrevTrack?.();
       return 'Previous track.';
     });
 
     reg.register(MUSICLY_ACTIONS.REPLAY, async () => {
-      handleSeek(0);
-      if (!isPlayingRef.current) togglePlay();
+      actionsRef.current.handleSeek?.(0);
+      if (!isPlayingRef.current) actionsRef.current.togglePlay?.();
       return 'Replaying track.';
     });
 
     // Seeking
     reg.register(MUSICLY_ACTIONS.SEEK, async (params) => {
       const cur = currentTimeRef.current || 0;
-      const dur = duration || 180;
+      const dur = durationRef.current || 180;
       let target = cur;
 
       if (params.timestamp !== undefined) {
@@ -1435,60 +1512,57 @@ export default function App() {
         target = Math.max(0, Math.min(dur, params.seconds || 0));
       }
 
-      handleSeek(target);
+      actionsRef.current.handleSeek?.(target);
       return `Jumped to ${Math.round(target)} seconds.`;
     });
 
     // Volume
     reg.register(MUSICLY_ACTIONS.SET_VOLUME, async (params) => {
       const vol = Math.max(0, Math.min(1, params.value));
-      setVolume(vol);
+      actionsRef.current.setVolume?.(vol);
       return `Volume set to ${Math.round(vol * 100)} percent.`;
     });
 
     reg.register(MUSICLY_ACTIONS.VOLUME_UP, async () => {
-      handleVolumeUp();
+      actionsRef.current.handleVolumeUp?.();
       return 'Volume up.';
     });
 
     reg.register(MUSICLY_ACTIONS.VOLUME_DOWN, async () => {
-      handleVolumeDown();
+      actionsRef.current.handleVolumeDown?.();
       return 'Volume down.';
     });
 
     reg.register(MUSICLY_ACTIONS.MUTE, async () => {
       if (volumeRef.current > 0) {
         prevVolumeRef.current = volumeRef.current;
-        setVolume(0);
+        actionsRef.current.setVolume?.(0);
       }
       return 'Muted.';
     });
 
     reg.register(MUSICLY_ACTIONS.UNMUTE, async () => {
       const restored = prevVolumeRef.current > 0 ? prevVolumeRef.current : 0.85;
-      setVolume(restored);
+      actionsRef.current.setVolume?.(restored);
       return `Unmuted to ${Math.round(restored * 100)} percent.`;
     });
 
     // Shuffle & Repeat
     reg.register(MUSICLY_ACTIONS.TOGGLE_SHUFFLE, async (params) => {
       if (params.value !== undefined) {
-        setIsShuffle(params.value);
+        actionsRef.current.setIsShuffle?.(params.value);
         return params.value ? 'Shuffle on.' : 'Shuffle off.';
       }
-      setIsShuffle(prev => {
-        const next = !prev;
-        return next;
-      });
+      actionsRef.current.setIsShuffle?.(prev => !prev);
       return isShuffleRef.current ? 'Shuffle off.' : 'Shuffle on.';
     });
 
     reg.register(MUSICLY_ACTIONS.TOGGLE_REPEAT, async (params) => {
       if (params.mode) {
-        setRepeatMode(params.mode);
+        actionsRef.current.setRepeatMode?.(params.mode);
         return `Repeat set to ${params.mode}.`;
       }
-      handleToggleRepeat();
+      actionsRef.current.handleToggleRepeat?.();
       return 'Toggled repeat.';
     });
 
@@ -1496,7 +1570,7 @@ export default function App() {
     reg.register(MUSICLY_ACTIONS.LIKE, async () => {
       const trackId = currentTrackRef.current?.id;
       if (trackId && !favoritesRef.current.includes(trackId)) {
-        handleToggleFavorite(trackId);
+        actionsRef.current.handleToggleFavorite?.(trackId);
       }
       return 'Added to favorites.';
     });
@@ -1504,64 +1578,66 @@ export default function App() {
     reg.register(MUSICLY_ACTIONS.UNLIKE, async () => {
       const trackId = currentTrackRef.current?.id;
       if (trackId && favoritesRef.current.includes(trackId)) {
-        handleToggleFavorite(trackId);
+        actionsRef.current.handleToggleFavorite?.(trackId);
       }
       return 'Removed from favorites.';
     });
 
     // Search & Play
     reg.register(MUSICLY_ACTIONS.SEARCH, async (params) => {
-      setIsDrawerSearchMode(true);
-      setIsDrawerOpen(true);
+      actionsRef.current.setIsDrawerSearchMode?.(true);
+      actionsRef.current.setIsDrawerOpen?.(true);
       return params.query ? `Searching for ${params.query}.` : 'Search opened.';
     });
 
     const playTrackHandler = async (params) => {
       const track = params.track || params.targetTrack;
       if (track) {
-        handleSelectTrack(track, true);
+        actionsRef.current.handleSelectTrack?.(track, true);
         return `Playing ${track.title}.`;
       }
       return "Couldn't find that track in Musicly.";
     };
 
+    reg.register(MUSICLY_ACTIONS.PLAY_SEARCH, playTrackHandler);
     reg.register(MUSICLY_ACTIONS.PLAY_SEARCH_RESULT, playTrackHandler);
     reg.register(MUSICLY_ACTIONS.PLAY_SPECIFIC_SONG, playTrackHandler);
 
     // Scenes & Ambience
     reg.register(MUSICLY_ACTIONS.CHANGE_SCENE, async (params) => {
+      const scenes = allScenesRef.current || [];
       let targetScene = params.scene;
       if (!targetScene && params.sceneId) {
-        targetScene = allScenes.find(s => s.id === params.sceneId || s.name?.toLowerCase().includes(params.sceneId.toLowerCase()));
+        targetScene = scenes.find(s => s.id === params.sceneId || s.name?.toLowerCase().includes(params.sceneId.toLowerCase()));
       }
       if (!targetScene && params.sceneName) {
-        targetScene = allScenes.find(s => s.name?.toLowerCase().includes(params.sceneName.toLowerCase()));
+        targetScene = scenes.find(s => s.name?.toLowerCase().includes(params.sceneName.toLowerCase()));
       }
 
       if (targetScene) {
-        handleSelectScene(targetScene);
+        actionsRef.current.handleSelectScene?.(targetScene);
         return `Switched to ${targetScene.name || 'scene'}.`;
       }
       return 'Scene not found.';
     });
 
     reg.register(MUSICLY_ACTIONS.NEXT_SCENE, async () => {
-      handleNextScene();
+      actionsRef.current.handleNextScene?.();
       return 'Next scene.';
     });
 
     reg.register(MUSICLY_ACTIONS.OPEN_SCENE_SELECTOR, async () => {
-      setIsSceneOpen(true);
+      actionsRef.current.setIsSceneOpen?.(true);
       return 'Scenes opened.';
     });
 
     const toggleAmbienceHandler = async (params = {}) => {
       if (params.value === false) {
-        handleResetAmbient();
+        actionsRef.current.handleResetAmbient?.();
         return 'Ambience turned off.';
       } else if (params.value === true) {
         const defaultSounds = { rain: 0.25, fire: 0.15 };
-        setAmbientVolumes(prev => ({ ...prev, ...defaultSounds }));
+        actionsRef.current.setAmbientVolumes?.(prev => ({ ...prev, ...defaultSounds }));
         ambientEngine.setVolume('rain', 0.25);
         ambientEngine.setVolume('fire', 0.15);
         return 'Ambience turned on.';
@@ -1569,11 +1645,11 @@ export default function App() {
       // Toggle
       const currentCount = Object.values(ambientVolumesRef.current || {}).filter(v => v > 0).length;
       if (currentCount > 0) {
-        handleResetAmbient();
+        actionsRef.current.handleResetAmbient?.();
         return 'Ambience off.';
       } else {
         const defaultSounds = { rain: 0.25, fire: 0.15 };
-        setAmbientVolumes(prev => ({ ...prev, ...defaultSounds }));
+        actionsRef.current.setAmbientVolumes?.(prev => ({ ...prev, ...defaultSounds }));
         ambientEngine.setVolume('rain', 0.25);
         ambientEngine.setVolume('fire', 0.15);
         return 'Ambience on.';
@@ -1586,35 +1662,36 @@ export default function App() {
 
     // Navigation & Modals
     reg.register(MUSICLY_ACTIONS.OPEN_LIBRARY, async () => {
-      handleOpenLibrary();
+      actionsRef.current.handleOpenLibrary?.();
       return 'Opening your library.';
     });
 
     reg.register(MUSICLY_ACTIONS.OPEN_HOME, async () => {
-      handleGoHome();
+      actionsRef.current.handleGoHome?.();
       return 'Navigated home.';
     });
 
     reg.register(MUSICLY_ACTIONS.OPEN_SETTINGS, async () => {
-      setIsShortcutsOpen(true);
+      actionsRef.current.setIsShortcutsOpen?.(true);
       return 'Settings opened.';
     });
 
     reg.register(MUSICLY_ACTIONS.OPEN_FEEDBACK, async () => {
-      setIsFeedbackOpen(true);
+      actionsRef.current.setIsFeedbackOpen?.(true);
       return 'Opening feedback.';
     });
 
     reg.register(MUSICLY_ACTIONS.OPEN_COFFEE, async () => {
-      setIsCoffeeOpen(true);
+      actionsRef.current.setIsCoffeeOpen?.(true);
       return 'Opening Buy Me a Coffee.';
     });
 
     reg.register(MUSICLY_ACTIONS.REQUEST_SONG, async () => {
-      if (!user || user.isAnonymous) {
-        setIsAuthOpen(true);
+      const u = userRef.current;
+      if (!u || u.isAnonymous) {
+        actionsRef.current.setIsAuthOpen?.(true);
       } else {
-        setIsSongRequestOpen(true);
+        actionsRef.current.setIsSongRequestOpen?.(true);
       }
       return 'Opening song requests.';
     });
@@ -1622,7 +1699,7 @@ export default function App() {
     reg.register(MUSICLY_ACTIONS.ADD_TO_PLAYLIST, async () => {
       const track = currentTrackRef.current;
       if (track) {
-        handleToggleFavorite(track.id);
+        actionsRef.current.handleToggleFavorite?.(track.id);
         return `Added ${track.title} to your library.`;
       }
       return 'No song currently playing.';
@@ -1630,64 +1707,40 @@ export default function App() {
 
     // Auth
     reg.register(MUSICLY_ACTIONS.AUTH_SIGN_IN, async () => {
-      setIsAuthOpen(true);
+      actionsRef.current.setIsAuthOpen?.(true);
       return 'Opening sign in.';
     });
 
     reg.register(MUSICLY_ACTIONS.AUTH_SIGN_OUT, async () => {
-      handleLogout();
+      actionsRef.current.handleLogout?.();
       return 'Signed out.';
     });
 
     // Admin Commands
     reg.register(MUSICLY_ACTIONS.ADMIN_OPEN_DASHBOARD, async () => {
-      setIsAdminDashboardOpen(true);
+      actionsRef.current.setIsAdminDashboardOpen?.(true);
       return 'Admin dashboard opened.';
     });
 
     reg.register(MUSICLY_ACTIONS.ADMIN_SHOW_FEEDBACK, async () => {
-      setIsAdminDashboardOpen(true);
+      actionsRef.current.setIsAdminDashboardOpen?.(true);
       return 'Showing feedback in dashboard.';
     });
 
     reg.register(MUSICLY_ACTIONS.ADMIN_SHOW_AIR_AI, async () => {
       if (typeof window !== 'undefined') {
         window.history.pushState({}, '', '/admin/air-ai');
-        setCurrentRoute('/admin/air-ai');
+        actionsRef.current.setCurrentRoute?.('/admin/air-ai');
       }
       return 'Opening Air AI dashboard.';
     });
 
     reg.register(MUSICLY_ACTIONS.ADMIN_SHOW_REQUESTS, async () => {
-      setIsAdminDashboardOpen(true);
+      actionsRef.current.setIsAdminDashboardOpen?.(true);
       return 'Showing song requests.';
     });
 
-  }, [
-    voiceManager,
-    allTracks,
-    allScenes,
-    currentScene,
-    selectedGenre,
-    user,
-    isAdmin,
-    duration,
-    togglePlay,
-    handleNextTrack,
-    handlePrevTrack,
-    handleSeek,
-    handleVolumeUp,
-    handleVolumeDown,
-    handleToggleRepeat,
-    handleToggleFavorite,
-    handleSelectTrack,
-    handleSelectScene,
-    handleNextScene,
-    handleResetAmbient,
-    handleOpenLibrary,
-    handleGoHome,
-    handleLogout
-  ]);
+  }, [voiceManager]);
 
   // Add custom track & persist permanently in IndexedDB
   const handleAddCustomTrack = async (newTrack, fileBlob) => {
