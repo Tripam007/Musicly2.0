@@ -5146,53 +5146,17 @@ body, html, #root {
   transform: scale(1.15) rotate(-4deg);
 }
 
-/* ==========================================================================
-   ☕ ACTIVE DONATION MODAL PAGE BLUR & DARKENING (UNIVERSAL BROWSER SUPPORT)
-   ========================================================================== */
-.app-viewport.coffee-modal-active .scene-backdrop-layer {
-  filter: brightness(0.38) blur(12px) !important;
-  transform: scale(1.05);
-  transition: filter 0.32s cubic-bezier(0.16, 1, 0.3, 1), transform 0.32s ease;
-}
-
-.app-viewport.coffee-modal-active .app-content-shell {
-  filter: blur(10px) brightness(0.65) !important;
-  transition: filter 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-  pointer-events: none !important;
-}
-
-.app-viewport.coffee-modal-active .ambient-glow-layer,
-.app-viewport.coffee-modal-active .scene-dim-overlay {
-  filter: blur(10px);
-}
-
-/* ==========================================================================
-   ☕ COFFEE SUPPORT / DONATION MODAL BACKDROP & FLOATING PANEL
-   Full-viewport darkened & strongly blurred cinematic backdrop with crisp card
-   ========================================================================== */
-
+/* Coffee Modal Overlay & Popover Glass Panel */
 .coffee-modal-overlay {
   position: fixed;
   inset: 0;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.52) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  z-index: 5000 !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  z-index: 120;
   pointer-events: auto;
   opacity: 1;
-  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.28s ease, -webkit-backdrop-filter 0.28s ease;
-  overscroll-behavior: contain;
-}
-
-/* Subtle dark fallback when backdrop-filter is unsupported */
-@supports not ((-webkit-backdrop-filter: blur(10px)) or (backdrop-filter: blur(10px))) {
-  .coffee-modal-overlay {
-    background: rgba(0, 0, 0, 0.80) !important;
-  }
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.28s ease;
 }
 
 .coffee-modal-overlay.is-closing {
@@ -5207,15 +5171,15 @@ body, html, #root {
   width: 356px;
   max-width: calc(100vw - 36px);
   max-height: calc(100vh - 164px);
-  background: rgba(12, 16, 26, 0.35);
+  background: rgba(12, 16, 26, 0.28);
   backdrop-filter: blur(32px) saturate(190%) contrast(104%);
   -webkit-backdrop-filter: blur(32px) saturate(190%) contrast(104%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 28px;
   padding: 28px 26px 24px 26px;
   box-shadow: 
-    0 24px 60px rgba(0, 0, 0, 0.55), 
-    0 0 45px rgba(251, 133, 0, 0.14), 
+    0 24px 60px rgba(0, 0, 0, 0.45), 
+    0 0 45px rgba(251, 133, 0, 0.12), 
     inset 0 1px 1px rgba(255, 255, 255, 0.25),
     inset 0 0 20px rgba(255, 255, 255, 0.03);
   /* Precision origin anchored directly at the center of the steaming coffee cup */
@@ -5223,8 +5187,7 @@ body, html, #root {
   text-align: center;
   overflow-y: auto;
   scrollbar-width: none;
-  z-index: 5001 !important;
-  pointer-events: auto;
+  z-index: 121;
   will-change: transform, opacity, filter;
 }
 
@@ -6426,7 +6389,7 @@ body, html, #root {
   justify-content: center;
   align-items: center;
   gap: 7px;
-  z-index: 5001 !important;
+  z-index: 122;
   pointer-events: auto;
 }
 
@@ -6443,7 +6406,7 @@ body, html, #root {
   position: fixed;
   bottom: 44px;
   left: 36px;
-  z-index: 5500 !important;
+  z-index: 4500 !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
