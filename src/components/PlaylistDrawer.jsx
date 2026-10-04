@@ -394,18 +394,6 @@ export default function PlaylistDrawer({
               </button>
             );
           })}
-          {activeLangs.length > 0 && (
-            <button
-              type="button"
-              className="drawer-lang-clear-btn"
-              onClick={() => {
-                if (typeof onSelectLanguage === 'function') onSelectLanguage('All');
-              }}
-              title="Clear language filter (play all songs)"
-            >
-              <X size={10} /> Clear
-            </button>
-          )}
         </div>
       </div>
 

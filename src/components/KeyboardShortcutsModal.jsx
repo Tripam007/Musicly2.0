@@ -22,7 +22,7 @@ export default function KeyboardShortcutsModal({
   const groups = useMemo(() => {
     // Determine dynamic scenes for numbers
     const sceneShortcuts = [
-      { key: '1', label: 'Afterglow Scene' },
+      { key: '1', label: 'After Hours Scene' },
       { key: '2', label: 'Indie Scene' },
       { key: '3', label: 'Drive Scene' },
       { key: '4', label: 'Minimal Studio Scene' },
@@ -87,6 +87,7 @@ export default function KeyboardShortcutsModal({
         icon: CommandIcon,
         shortcuts: [
           { key: `${modKeyName} + K`, label: 'Open Command Palette' },
+          { key: 'Shift + O', label: 'Replay Cinematic Opening Screen' },
           { key: '?', label: 'Open Keyboard Shortcuts Help' }
         ]
       }

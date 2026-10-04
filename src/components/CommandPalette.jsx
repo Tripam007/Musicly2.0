@@ -65,7 +65,8 @@ export default function CommandPalette({
   onOpenAirControls,
   isAirControlsActive = false,
   onOpenAirAiDashboard,
-  onOpenDatasetCollector
+  onOpenDatasetCollector,
+  onOpenCinematicIntro
 }) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -334,6 +335,18 @@ export default function CommandPalette({
       action: () => onOpenShortcutsModal?.()
     });
 
+    if (onOpenCinematicIntro) {
+      list.push({
+        id: 'cinematic_opening_screen',
+        category: 'General',
+        title: 'Cinematic Opening Screen ("Thanks for listening.")',
+        subtitle: 'Atmospheric opening with smooth scroll and sayings',
+        icon: Sparkles,
+        shortcut: '⇧O',
+        action: () => onOpenCinematicIntro?.()
+      });
+    }
+
     return list;
   }, [
     isPlaying,
@@ -348,6 +361,7 @@ export default function CommandPalette({
     onOpenAirControls,
     onOpenAirAiDashboard,
     onOpenDatasetCollector,
+    onOpenCinematicIntro,
     onTogglePlay,
     onNextTrack,
     onPrevTrack,

@@ -300,7 +300,7 @@ export class WakeWordManager {
   }
 
   /**
-   * Stop listening for wake word
+   * Stop listening for wake word and unconditionally release microphone
    */
   stop() {
     this.isListeningActive = false;
@@ -310,11 +310,19 @@ export class WakeWordManager {
     this._clearRestart();
 
     if (this.recognition) {
+      const rec = this.recognition;
+      // Strip handlers so no error or onend restarts occur
+      rec.onstart = null;
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.onend = null;
       try {
-        this.recognition.stop();
-      } catch {
-        // ignore
-      }
+        rec.abort();
+      } catch {}
+      try {
+        rec.stop();
+      } catch {}
+      this.recognition = null;
     }
   }
 

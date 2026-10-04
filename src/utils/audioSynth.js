@@ -28,11 +28,16 @@ function getAudioContext() {
   return audioCtx;
 }
 
+export function getSharedAudioContext() {
+  return getAudioContext();
+}
+
 export function resumeAudioSynthContext() {
   if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
     audioCtx.resume().catch(() => {});
   }
 }
+
 
 // Futuristic Technical UI "Bip-Ting!" Confirmation (Sci-Fi / Modern Tech Chime)
 export function playTingSound() {
@@ -121,67 +126,153 @@ export function playClickSound(pitch = 'normal') {
   } catch (e) {}
 }
 
-// 📳 Tactile Apple/Taptic Style Micro Haptic Click & Vibration for Keyboard Shortcuts
-export function triggerHapticFeedback(intensity = 'light') {
-  // 1. Subtle, organic tactile audio click (low mechanical thump + crisp transient)
+import { getTactileSettings } from './tactileSettings';
+
+// 🔘 Aesthetic Minimalist UI Tactile Feedback (Apple/Trackpad style subtle matte tap)
+let lastTactileSoundTime = 0;
+export function playTactileClickSound(intensity = 'normal', overrideOptions = null) {
+  const settings = overrideOptions || getTactileSettings();
+  if (!settings.enabled) return;
+
+  const nowMs = Date.now();
+  // Prevent multi-event flutter within 30ms
+  if (nowMs - lastTactileSoundTime < 30) return;
+  lastTactileSoundTime = nowMs;
+
+  const playNodes = (ctx) => {
+    try {
+      const now = ctx.currentTime;
+      const isAccent = intensity === 'accent';
+      const userVol = Math.max(0.05, Math.min(1.0, settings.volume ?? 0.35));
+      const style = settings.style || 'matte';
+
+      // Master bus scaled to user's volume preference
+      const master = ctx.createGain();
+      const baseVol = isAccent ? 0.38 : 0.28;
+      master.gain.setValueAtTime(baseVol * (userVol / 0.35), now);
+      master.connect(ctx.destination);
+
+      if (style === 'thock') {
+        // Deeper mechanical switch thock (warm low-frequency bump)
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(isAccent ? 360 : 310, now);
+        osc.frequency.exponentialRampToValueAtTime(75, now + 0.022);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.65, now + 0.002);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.024);
+
+        const sub = ctx.createOscillator();
+        const subGain = ctx.createGain();
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(140, now);
+        sub.frequency.exponentialRampToValueAtTime(45, now + 0.020);
+
+        subGain.gain.setValueAtTime(0.001, now);
+        subGain.gain.linearRampToValueAtTime(0.50, now + 0.002);
+        subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.022);
+
+        osc.connect(gain);
+        gain.connect(master);
+        sub.connect(subGain);
+        subGain.connect(master);
+
+        osc.start(now);
+        osc.stop(now + 0.026);
+        sub.start(now);
+        sub.stop(now + 0.024);
+      } else if (style === 'tick') {
+        // High-clarity micro tick
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(isAccent ? 1600 : 1350, now);
+        osc.frequency.exponentialRampToValueAtTime(520, now + 0.009);
+
+        filter.type = 'bandpass';
+        filter.frequency.value = 1200;
+        filter.Q.value = 2.2;
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.50, now + 0.001);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.011);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(master);
+
+        osc.start(now);
+        osc.stop(now + 0.013);
+      } else {
+        // Default: 'matte' Apple / trackpad aesthetic tap
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = 'triangle';
+        const startFreq = isAccent ? 740 : 660;
+        osc.frequency.setValueAtTime(startFreq, now);
+        osc.frequency.exponentialRampToValueAtTime(240, now + 0.014);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1600, now);
+
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.55, now + 0.0015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.015);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(master);
+        osc.start(now);
+        osc.stop(now + 0.017);
+
+        const subOsc = ctx.createOscillator();
+        const subGain = ctx.createGain();
+        subOsc.type = 'sine';
+        subOsc.frequency.setValueAtTime(110, now);
+        subOsc.frequency.exponentialRampToValueAtTime(45, now + 0.012);
+
+        subGain.gain.setValueAtTime(0.001, now);
+        subGain.gain.linearRampToValueAtTime(0.35, now + 0.001);
+        subGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.013);
+
+        subOsc.connect(subGain);
+        subGain.connect(master);
+        subOsc.start(now);
+        subOsc.stop(now + 0.015);
+      }
+
+      // Subtle physical haptic pulse on mobile / touchscreens
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(6);
+      }
+    } catch (e) {}
+  };
+
   try {
     const ctx = getAudioContext();
     if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
-    const now = ctx.currentTime;
-
-    // Master bus (gentle volume so it doesn't interrupt music)
-    const master = ctx.createGain();
-    const vol = intensity === 'soft' ? 0.08 : 0.13;
-    master.gain.setValueAtTime(vol, now);
-    master.connect(ctx.destination);
-
-    // Mechanical micro-thump (low tactile body)
-    const thumpOsc = ctx.createOscillator();
-    const thumpGain = ctx.createGain();
-    thumpOsc.type = 'sine';
-    thumpOsc.frequency.setValueAtTime(140, now);
-    thumpOsc.frequency.exponentialRampToValueAtTime(45, now + 0.016);
-
-    thumpGain.gain.setValueAtTime(0.24, now);
-    thumpGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.018);
-
-    thumpOsc.connect(thumpGain);
-    thumpGain.connect(master);
-    thumpOsc.start(now);
-    thumpOsc.stop(now + 0.022);
-
-    // Crisp tactile transient (like an Apple trackpad or mechanical keycap)
-    const clickOsc = ctx.createOscillator();
-    const clickGain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
-
-    clickOsc.type = 'triangle';
-    clickOsc.frequency.setValueAtTime(2200, now);
-    clickOsc.frequency.exponentialRampToValueAtTime(420, now + 0.009);
-
-    filter.type = 'bandpass';
-    filter.frequency.value = 1750;
-    filter.Q.value = 2.4;
-
-    clickGain.gain.setValueAtTime(0.18, now);
-    clickGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.012);
-
-    clickOsc.connect(filter);
-    filter.connect(clickGain);
-    clickGain.connect(master);
-    clickOsc.start(now);
-    clickOsc.stop(now + 0.014);
-  } catch (e) {}
-
-  // 2. Slight physical vibration on supported mobile/touch devices
-  try {
-    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-      navigator.vibrate(10);
+      ctx.resume().then(() => {
+        playNodes(ctx);
+      }).catch(() => {
+        playNodes(ctx);
+      });
+    } else {
+      playNodes(ctx);
     }
   } catch (e) {}
 }
+
+// 📳 Tactile Apple/Taptic Style Micro Haptic Click & Vibration for Keyboard Shortcuts
+export function triggerHapticFeedback(intensity = 'light') {
+  playTactileClickSound(intensity === 'light' ? 'normal' : intensity);
+}
+
 
 // 🌸 Serene & Peaceful Zen "Like" Acoustic Chime (528Hz Solfeggio + Harmonic Bell Resonance)
 export function playPeacefulLikeSound() {

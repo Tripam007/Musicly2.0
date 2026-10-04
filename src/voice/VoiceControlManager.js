@@ -62,6 +62,24 @@ export class VoiceControlManager {
     this.telemetryKey = 'musicly_voice_analytics';
     this.telemetry = this._loadTelemetry();
 
+    // Playback coordinator callbacks
+    this.pausePlayback = options.pausePlayback || (() => {
+      const ctx = this.actionRegistry.contextProvider() || {};
+      if (ctx.isPlaying) {
+        this.actionRegistry.execute({ action: MUSICLY_ACTIONS.PAUSE });
+      }
+    });
+
+    this.resumePlayback = options.resumePlayback || (() => {
+      this.actionRegistry.execute({ action: MUSICLY_ACTIONS.PLAY });
+    });
+
+    this.getIsPlaying = options.getIsPlaying || (() => {
+      const ctx = this.actionRegistry.contextProvider() || {};
+      return !!ctx.isPlaying;
+    });
+
+    this.wasPlayingBeforeCommand = false;
   }
 
   // --- Observer / State Machine ---
@@ -138,7 +156,7 @@ export class VoiceControlManager {
     }
   }
 
-  // --- Start / Stop Lifecycle ---
+  // --- Start / Stop / Command Listening Lifecycle ---
   async start() {
     try {
       this.wakeWordManager.start();
@@ -158,12 +176,56 @@ export class VoiceControlManager {
     }
   }
 
+  startCommandListening() {
+    this._clearCommandTimeout();
+
+    // 1. Stop / pause playback immediately so the room is quiet for listening
+    const currentlyPlaying = this.getIsPlaying();
+    if (currentlyPlaying) {
+      this.wasPlayingBeforeCommand = true;
+      try {
+        this.pausePlayback();
+      } catch (err) {
+        console.warn('[VoiceControlManager] Pause on command start notice:', err);
+      }
+    } else {
+      this.wasPlayingBeforeCommand = false;
+    }
+
+    const wakeTime = performance.now();
+    this._playChime('wake');
+    this.permissionGranted = true;
+    this._startWaitingForCommand(wakeTime);
+    return true;
+  }
+
+  cancel() {
+    this._clearCommandTimeout();
+    this.wakeWordManager.stop();
+    this.recorder.stop();
+    this.responseManager.cancel();
+    this.ambiguousCandidates = [];
+    if (this.wasPlayingBeforeCommand) {
+      try {
+        this.resumePlayback();
+      } catch {}
+      this.wasPlayingBeforeCommand = false;
+    }
+    this._setState(VOICE_STATES.IDLE);
+  }
+
   stop() {
     this._clearCommandTimeout();
     this.wakeWordManager.stop();
     this.recorder.stop();
     this.responseManager.cancel();
     this.ambiguousCandidates = [];
+    if (this.wasPlayingBeforeCommand) {
+      try {
+        this.resumePlayback();
+      } catch {}
+      this.wasPlayingBeforeCommand = false;
+    }
     try {
       localStorage.setItem('musicly_voice_enabled', 'false');
     } catch {}
@@ -172,7 +234,7 @@ export class VoiceControlManager {
 
   toggle() {
     if (this.state === VOICE_STATES.IDLE || this.state === VOICE_STATES.ERROR) {
-      return this.start();
+      return this.startCommandListening();
     } else {
       this.stop();
       return false;
@@ -182,6 +244,17 @@ export class VoiceControlManager {
   // --- Wake Word Trigger & Pipeline ---
   async _onWakeWordTriggered({ tailCommand }) {
     if (this.state !== VOICE_STATES.LISTENING_FOR_WAKE_WORD) return;
+
+    // Pause music if currently playing so the command is heard clearly
+    const currentlyPlaying = this.getIsPlaying();
+    if (currentlyPlaying) {
+      this.wasPlayingBeforeCommand = true;
+      try {
+        this.pausePlayback();
+      } catch {}
+    } else {
+      this.wasPlayingBeforeCommand = false;
+    }
 
     const wakeTime = performance.now();
     this._playChime('wake');
@@ -206,8 +279,10 @@ export class VoiceControlManager {
     this._setState(VOICE_STATES.LISTENING_FOR_COMMAND, { lastRecognized: '' });
     this._clearCommandTimeout();
 
-    // Primary: If browser speech recognition is active, keep mic open and listen live
-    if (this.wakeWordManager && this.wakeWordManager.recognition) {
+    const hasSpeechRecognition = typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+
+    // Primary: If browser speech recognition is supported, keep mic open and listen live
+    if (this.wakeWordManager && hasSpeechRecognition) {
       let silenceDebounceTimer = null;
       let accumulatedText = '';
       const commandTimeoutDuration = this.config.commandTimeoutMs || 8000;
@@ -266,8 +341,16 @@ export class VoiceControlManager {
     this._clearCommandTimeout();
     this.wakeWordManager.lock();
     this._setState(VOICE_STATES.ERROR, { lastResponse: "Didn't hear a command." });
-    await this.responseManager.speak("Sorry, I didn't hear a command.");
-    this._returnToWakeWordListening();
+    if (this.wasPlayingBeforeCommand) {
+      try {
+        this.resumePlayback();
+      } catch {}
+      this.wasPlayingBeforeCommand = false;
+    }
+    if (this.config.enableVoiceResponses) {
+      await this.responseManager.speak("Sorry, I didn't hear a command.");
+    }
+    this._finishCommandCycle(1800);
   }
 
   async _recordAndExecuteCommand(wakeTime) {
@@ -353,7 +436,13 @@ export class VoiceControlManager {
       // 1. Cancel
       if (parsed.action === MUSICLY_ACTIONS.CANCEL) {
         this._setState(VOICE_STATES.SUCCESS, { lastResponse: 'Cancelled.' });
-        this._returnToWakeWordListening();
+        if (this.wasPlayingBeforeCommand) {
+          try {
+            this.resumePlayback();
+          } catch {}
+          this.wasPlayingBeforeCommand = false;
+        }
+        this._finishCommandCycle(1200);
         return;
       }
 
@@ -372,9 +461,17 @@ export class VoiceControlManager {
       // 3. Unknown Command
       if (parsed.action === MUSICLY_ACTIONS.UNKNOWN) {
         this._recordTelemetry(MUSICLY_ACTIONS.UNKNOWN, false);
-        this._setState(VOICE_STATES.ERROR, { lastResponse: parsed.feedback });
-        await this.responseManager.speak(parsed.spokenText);
-        this._returnToWakeWordListening();
+        this._setState(VOICE_STATES.ERROR, { lastResponse: parsed.feedback || "Didn't catch that." });
+        if (this.wasPlayingBeforeCommand) {
+          try {
+            this.resumePlayback();
+          } catch {}
+          this.wasPlayingBeforeCommand = false;
+        }
+        if (this.config.enableVoiceResponses && parsed.spokenText) {
+          await this.responseManager.speak(parsed.spokenText);
+        }
+        this._finishCommandCycle(2000);
         return;
       }
 
@@ -382,7 +479,13 @@ export class VoiceControlManager {
       if (parsed.action === MUSICLY_ACTIONS.VOICE_OFF) {
         this.responseManager.setEnabled(false);
         this._setState(VOICE_STATES.SUCCESS, { lastResponse: 'Voice responses muted.' });
-        this._returnToWakeWordListening();
+        if (this.wasPlayingBeforeCommand) {
+          try {
+            this.resumePlayback();
+          } catch {}
+          this.wasPlayingBeforeCommand = false;
+        }
+        this._finishCommandCycle(1500);
         return;
       }
 
@@ -391,7 +494,13 @@ export class VoiceControlManager {
     } catch (err) {
       console.error('[VoiceControlManager] Command execution caught error:', err);
       this._setState(VOICE_STATES.ERROR, { lastResponse: "Sorry, I couldn't process that." });
-      this._returnToWakeWordListening();
+      if (this.wasPlayingBeforeCommand) {
+        try {
+          this.resumePlayback();
+        } catch {}
+        this.wasPlayingBeforeCommand = false;
+      }
+      this._finishCommandCycle(2000);
     }
   }
 
@@ -409,7 +518,40 @@ export class VoiceControlManager {
       await this.responseManager.speak(responseText);
     }
 
-    this._returnToWakeWordListening();
+    // Handle playback resumption if the action was a non-playback control (like volume, favorite, etc.)
+    const playbackModifyingActions = [
+      MUSICLY_ACTIONS.PLAY,
+      MUSICLY_ACTIONS.PLAY_TRACK,
+      MUSICLY_ACTIONS.PLAY_SEARCH_RESULT,
+      MUSICLY_ACTIONS.PAUSE,
+      MUSICLY_ACTIONS.STOP,
+      MUSICLY_ACTIONS.TOGGLE_PLAY,
+      MUSICLY_ACTIONS.NEXT_TRACK,
+      MUSICLY_ACTIONS.PREVIOUS_TRACK,
+      MUSICLY_ACTIONS.SWITCH_SCENE,
+      MUSICLY_ACTIONS.SWITCH_GENRE,
+      MUSICLY_ACTIONS.REPLAY,
+    ];
+
+    if (!playbackModifyingActions.includes(parsedAction.action) && this.wasPlayingBeforeCommand) {
+      try {
+        this.resumePlayback();
+      } catch (e) {
+        console.warn('[VoiceControlManager] Resume playback error:', e);
+      }
+    }
+    this.wasPlayingBeforeCommand = false;
+
+    // Conclude command and release microphone cleanly
+    this._finishCommandCycle(2000);
+  }
+
+  _finishCommandCycle(delayMs = 2000) {
+    this._clearCommandTimeout();
+    this.ambiguousCandidates = [];
+    setTimeout(() => {
+      this.stop();
+    }, delayMs);
   }
 
   /**

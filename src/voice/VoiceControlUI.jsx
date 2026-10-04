@@ -67,7 +67,11 @@ export const VoiceControlUI = ({ voiceManager }) => {
 
   const handleCancel = (e) => {
     e.stopPropagation();
-    voiceManager._returnToWakeWordListening();
+    if (voiceManager.cancel) {
+      voiceManager.cancel();
+    } else {
+      voiceManager.stop();
+    }
   };
 
   const handleSelectCandidate = (track) => {
@@ -109,13 +113,13 @@ export const VoiceControlUI = ({ voiceManager }) => {
         }}
         title={
           isActive
-            ? 'Voice Controls Active ("Hey Musicly") — Click to toggle, right-click for settings'
-            : 'Voice Controls — Click to enable "Hey Musicly" hands-free voice control'
+            ? 'Voice Controls Active ("Hey Musicly") — Click to disable microphone, right-click for settings'
+            : 'Voice Controls Off — Click to enable microphone ("Hey Musicly")'
         }
-        aria-label="Voice Controls"
+        aria-label={isActive ? 'Voice Controls Active' : 'Voice Controls Off'}
       >
-        <Mic size={17} />
-        <span className={`voice-mic-dot ${isActive ? 'active' : ''} ${getDotClass()}`} />
+        {isActive ? <Mic size={17} /> : <MicOff size={17} style={{ opacity: 0.7 }} />}
+        {isActive && <span className={`voice-mic-dot active ${getDotClass()}`} />}
       </button>
 
       {/* Cinematic Floating Status Capsule */}

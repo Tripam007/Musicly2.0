@@ -597,11 +597,23 @@ body, html, #root {
   transform: translateY(-3px) scale(1.1);
 }
 
+@media (max-width: 1180px) {
+  .corner-coffee-cup-btn,
+  .borderless-coffee-cup-btn {
+    position: absolute !important;
+    bottom: calc(100% + 12px) !important;
+    right: 12px !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 25 !important;
+  }
+}
+
 @media (max-width: 640px) {
   .corner-coffee-cup-btn,
   .borderless-coffee-cup-btn {
-    right: 16px;
-    bottom: 54px;
+    bottom: calc(100% + 8px) !important;
+    right: 8px !important;
   }
 }
 
@@ -4368,25 +4380,234 @@ body, html, #root {
   flex: 1;
 }
 
-/* Responsive Media Queries */
-@media (max-width: 900px) {
-  .player-glass-card {
-    grid-template-columns: 1fr;
-    gap: 14px;
-    padding: 16px;
+/* ============================================================
+   RESPONSIVE MEDIA QUERIES (ADAPTIVE TO ANY SCREEN OR MINIMIZED VIEWPORT)
+   ============================================================ */
+
+/* 1. Medium / Half-Screen Windows (<= 1200px): Collapse button text & prevent pills overlap */
+@media (max-width: 1200px) {
+  .top-right-section {
+    margin-right: 0 !important;
+    gap: 6px;
   }
-  .player-right-section {
-    justify-content: space-between;
-    width: 100%;
+  .top-right-section .btn-label {
+    display: none !important;
   }
-  .top-bar-container {
-    flex-wrap: wrap;
+  .top-right-section .user-name-text {
+    display: none !important;
+  }
+  .top-right-section .glass-action-btn {
+    padding: 0 10px;
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+  }
+  .user-profile-btn {
+    padding: 4px 6px;
   }
   .genre-pills-nav {
-    order: 3;
-    width: 100%;
+    max-width: calc(100% - 460px);
     overflow-x: auto;
-    justify-content: flex-start;
+    scrollbar-width: none;
+  }
+  .genre-pills-nav::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 2. Split-Screen, Tablet & Compact Windows (<= 1024px) */
+@media (max-width: 1024px) {
+  .app-content-shell {
+    padding: 16px 20px 12px 20px;
+  }
+
+  /* Top Bar Tiered Architecture: Row 1 = Controls, Row 2 = Genre Pills */
+  .top-bar-container {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: auto;
+  }
+
+  .top-left-section {
+    order: 1;
+    flex-shrink: 0;
+  }
+
+  .top-right-section {
+    order: 2;
+    margin-left: auto;
+    margin-right: 0 !important;
+    flex-shrink: 0;
+  }
+
+  .tuned-in-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: static;
+  }
+
+  .side-quick-controls {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 25;
+  }
+
+  /* Genre Pills Tier 2: horizontally scrollable with zero overlap */
+  .genre-pills-nav,
+  .genre-pills-nav.admin-layout {
+    order: 3 !important;
+    position: relative !important;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    transform: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-top: 6px;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    justify-content: flex-start !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding: 5px 8px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  }
+
+  .genre-pills-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .genre-pill {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 5px 12px;
+    font-size: 12.5px;
+  }
+
+  /* Player Card: balanced 2-row layout (no single-element orphan rows) */
+  .player-glass-card {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    grid-template-areas: 
+      "info right"
+      "controls controls" !important;
+    gap: 10px 14px !important;
+    padding: 12px 18px !important;
+    border-radius: 16px;
+  }
+
+  .player-track-info {
+    grid-area: info;
+    min-width: 0;
+  }
+
+  .player-right-section {
+    grid-area: right;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+
+  .player-center-controls {
+    grid-area: controls;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .playback-buttons-row {
+    gap: 14px;
+  }
+
+  .volume-slider {
+    width: 70px;
+  }
+}
+
+/* 3. Mobile & Narrow Viewports (<= 640px) */
+@media (max-width: 640px) {
+  .app-content-shell {
+    padding: 12px 14px 10px 14px !important;
+  }
+
+  .clock-badge {
+    display: none !important;
+  }
+
+  .tuned-in-badge {
+    font-size: 11px;
+    padding: 4px 9px;
+    height: 32px;
+  }
+
+  .air-btn-below-tuned {
+    width: 32px;
+    height: 32px;
+  }
+
+  .top-right-section {
+    gap: 4px;
+  }
+
+  .glass-action-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0 !important;
+  }
+
+  .glass-action-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .player-glass-card {
+    padding: 10px 14px !important;
+    gap: 8px 10px !important;
+  }
+
+  .album-art-wrapper {
+    width: 44px;
+    height: 44px;
+  }
+
+  .now-playing-label {
+    display: none !important;
+  }
+
+  .track-title {
+    font-size: 13px;
+  }
+
+  .track-artist {
+    font-size: 11px;
+  }
+
+  .volume-slider {
+    width: 52px;
+  }
+
+  .playback-buttons-row {
+    gap: 10px;
+  }
+
+  .primary-play-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .ctrl-icon-btn {
+    padding: 4px;
+  }
+
+  .time-display {
+    font-size: 10px;
+    min-width: 28px;
   }
 }
 

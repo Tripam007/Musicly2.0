@@ -1380,10 +1380,122 @@
 }
 
 /* Positions of the 4 Feature Artifacts */
-.artifact-pos-1 { top: 22%; left: 10%; }
-.artifact-pos-2 { bottom: 24%; left: 14%; }
-.artifact-pos-3 { top: 26%; right: 12%; }
-.artifact-pos-4 { bottom: 22%; right: 10%; }
+.artifact-pos-1 { top: 16%; left: 7%; }
+.artifact-pos-2 { bottom: 14%; left: 8%; }
+.artifact-pos-3 { top: 18%; right: 7%; }
+.artifact-pos-4 { bottom: 14%; right: 8%; }
+
+@media (max-width: 1100px) {
+  .about-floating-artifact {
+    padding: 10px 14px;
+    gap: 10px;
+    transform: scale(0.85);
+  }
+}
+
+@media (max-width: 768px) {
+  .about-floating-artifact {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   ✨ MINIMAL FEATURE NAMES STRIP (AIR GESTURES, VOICE COMMANDS, KEYBOARD SHORTCUTS)
+   ========================================================================== */
+.about-features-name-strip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  pointer-events: auto;
+}
+
+.about-feature-name-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.85);
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: default;
+}
+
+.about-feature-name-tag:hover {
+  color: #fb8500;
+  transform: translateY(-1px);
+}
+
+.about-feature-name-tag .feature-name-icon {
+  color: #fb8500;
+  flex-shrink: 0;
+}
+
+.about-feature-name-bullet {
+  color: rgba(251, 133, 0, 0.45);
+  font-size: 14px;
+  user-select: none;
+}
+
+
+/* ==========================================================================
+   🎬 SLOW AUTO-SCROLL CINEMATIC DRIFT HUD PILL
+   ========================================================================== */
+.about-autoscroll-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(18, 24, 38, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  color: #fbbf24;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  pointer-events: auto;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 16px rgba(251, 191, 36, 0.15);
+  animation: fadeInPill 0.5s ease-out, pillPulseGlow 3s ease-in-out infinite;
+  transition: all 0.25s ease;
+}
+
+.about-autoscroll-pill:hover {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: #fbbf24;
+  transform: translateY(-1px);
+}
+
+.about-autoscroll-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 8px #fbbf24;
+  animation: autoscrollDotPulse 1.6s infinite ease-in-out;
+}
+
+@keyframes autoscrollDotPulse {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.4); opacity: 1; }
+}
+
+@keyframes pillPulseGlow {
+  0%, 100% { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 14px rgba(251, 191, 36, 0.1); }
+  50% { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 22px rgba(251, 191, 36, 0.3); }
+}
+
+@keyframes fadeInPill {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 /* ==========================================================================
    8. CHAPTER 05 — "JUST LISTEN. AND STAY A LITTLE LONGER." & FINAL EXIT

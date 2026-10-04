@@ -1,0 +1,297 @@
+/* ==========================================================================
+   MUSICLY — CINEMATIC INTRO POLISH
+   Premium Editorial Modern Aesthetic:
+   - Dark modern studio (#07090D - #0D1118)
+   - Hero MUSICLY wordmark in crisp editorial typography (400 weight, 0.22em tracking)
+   - Realistic soft floor reflection (15-25% opacity, vertical gradient fade, NO water/ripples)
+   - Dynamic directional cast shadow moving opposite to virtual mouse light
+   - 60 FPS autonomous physical camera approach
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:wght@300;400;500;600&display=swap');
+
+.musicly-intro-root {
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #07090d;
+  color: #f1f0eb;
+  font-family: 'Cormorant Garamond', 'Cinzel', -apple-system, BlinkMacSystemFont, serif;
+  user-select: none;
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.musicly-intro-root.is-complete {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   STUDIO CANVAS & VIEWPORT
+   ========================================================================== */
+
+.intro-sculpture-viewport {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.intro-studio-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  display: block;
+}
+
+/* ==========================================================================
+   HERO CENTER STAGE: EDITORIAL "MUSICLY" TYPOGRAPHY
+   Centered at ~51% (vertical eye-level hero position)
+   ========================================================================== */
+
+.intro-center-stage {
+  position: absolute;
+  top: 51%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  pointer-events: none;
+  width: 100%;
+  max-width: 1100px;
+}
+
+.intro-logo-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  will-change: transform, opacity;
+}
+
+/* Pristine Editorial Serif "MUSICLY" */
+.intro-musicly-serif-text {
+  font-family: 'Cormorant Garamond', 'Cinzel', Didot, 'Bodoni MT', Georgia, serif;
+  font-size: clamp(2.8rem, 6.2vw, 4.6rem);
+  font-weight: 400;
+  line-height: 1.0;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #f1f0eb;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Soft, quiet ambient depth separation — NO garish neon glow */
+  text-shadow: 0 1px 18px rgba(255, 255, 255, 0.08), 0 8px 30px rgba(0, 0, 0, 0.95);
+}
+
+/* Subdued Editorial Microcopy Underneath */
+.intro-microcopy {
+  margin-top: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Plus Jakarta Sans', 'Outfit', sans-serif;
+  font-size: clamp(0.60rem, 1.0vw, 0.70rem);
+  font-weight: 400;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(240, 238, 233, 0.38);
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   REALISTIC FLOOR REFLECTION & DYNAMIC DIRECTIONAL SHADOW
+   - NO water, NO ripples, NO puddles.
+   - Dark matte/glossy floor surface.
+   ========================================================================== */
+
+.intro-reflection-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  margin-top: -2px;
+  transform-origin: top center;
+  will-change: transform, opacity;
+  pointer-events: none;
+  z-index: 4;
+  width: 100%;
+}
+
+/* Dynamic Directional Cast Shadow (Physically shifts opposite to mouse light) */
+.intro-directional-shadow {
+  position: absolute;
+  top: 2px;
+  width: 96%;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 30%, rgba(0, 0, 0, 0.82) 0%, rgba(5, 7, 12, 0.38) 45%, transparent 75%);
+  filter: blur(8px);
+  transform-origin: top center;
+  will-change: transform, opacity;
+  pointer-events: none;
+}
+
+/* Soft Baseline Contact Shadow */
+.intro-contact-shadow {
+  position: absolute;
+  top: -2px;
+  width: 86%;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.45) 45%, transparent 75%);
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+/* Soft Floor Specular Sheen */
+.intro-floor-specular-light {
+  position: absolute;
+  top: 4px;
+  width: 110%;
+  height: 42px;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.03) 0%, rgba(245, 158, 11, 0.015) 35%, transparent 70%);
+  filter: blur(14px);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+/* Mirrored Typography with soft vertical fade falloff */
+.intro-reflection-body {
+  position: relative;
+  transform: scaleY(-1);
+  transform-origin: top center;
+  /* Exponential opacity falloff into dark floor */
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.26) 0%, rgba(0, 0, 0, 0.12) 22%, rgba(0, 0, 0, 0.02) 50%, transparent 80%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.26) 0%, rgba(0, 0, 0, 0.12) 22%, rgba(0, 0, 0, 0.02) 50%, transparent 80%);
+  will-change: transform, opacity;
+}
+
+.intro-reflection-text {
+  font-family: 'Cormorant Garamond', 'Cinzel', Didot, 'Bodoni MT', Georgia, serif;
+  font-size: clamp(2.8rem, 6.2vw, 4.6rem);
+  font-weight: 400;
+  line-height: 1.0;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #ece9e2;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  filter: blur(2.5px);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   CINEMATIC PASS-THROUGH TRANSITION LAYER
+   ========================================================================== */
+
+.intro-transition-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.intro-room-preview {
+  position: absolute;
+  inset: -20px;
+  background-size: cover;
+  background-position: center;
+  will-change: opacity, filter, transform;
+}
+
+.intro-portal-light {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  height: 85vh;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, rgba(245, 158, 11, 0.04) 40%, transparent 80%);
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.intro-transition-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 35%, rgba(7, 9, 13, 0.75) 85%, #07090d 100%);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   MINIMAL SKIP BUTTON (Top Right)
+   ========================================================================== */
+
+.intro-skip-wrapper {
+  position: absolute;
+  top: 32px;
+  right: 36px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.intro-skip-button {
+  background: rgba(12, 16, 24, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 9999px;
+  color: rgba(255, 255, 255, 0.40);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.intro-skip-button:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVENESS
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .intro-center-stage {
+    top: 50%;
+    width: 95%;
+  }
+
+  .intro-musicly-serif-text,
+  .intro-reflection-text {
+    font-size: clamp(2.0rem, 8.0vw, 3.4rem);
+    letter-spacing: 0.18em;
+  }
+
+  .intro-skip-wrapper {
+    top: 20px;
+    right: 20px;
+  }
+}

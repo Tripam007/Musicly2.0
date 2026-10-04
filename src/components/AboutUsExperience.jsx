@@ -10,7 +10,10 @@ import {
   Sparkles, 
   Disc3, 
   Radio,
-  SkipForward
+  SkipForward,
+  Mic,
+  Keyboard,
+  Hand
 } from 'lucide-react';
 import { TRACKS } from '../data/tracks';
 import { playCatSound } from '../utils/audioSynth';
@@ -185,6 +188,7 @@ const FLOATING_TRACK_FRAGMENTS = [
 
 export default function AboutUsExperience({
   onBack,
+  onReplayIntro = null,
   currentTrack = null,
   isPlaying = false,
   onTogglePlay = null,
@@ -255,6 +259,19 @@ export default function AboutUsExperience({
   const stageRef = useRef(null);
   const rafIdRef = useRef(null);
 
+  // Cinematic slow auto-scroll until user manually controls it
+  const isAutoScrollingRef = useRef(true);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+
+  // Stop auto-scrolling immediately upon any user manual input
+  const stopAutoScroll = useCallback(() => {
+    if (isAutoScrollingRef.current) {
+      isAutoScrollingRef.current = false;
+      setIsAutoScrolling(false);
+    }
+  }, []);
+
+
   // Target and current interpolated values
   const currentScrollRef = useRef(0);
   const targetScrollRef = useRef(0);
@@ -289,6 +306,7 @@ export default function AboutUsExperience({
 
   // Handle keyboard navigation and escape key
   const handleKeyDown = useCallback((e) => {
+    stopAutoScroll();
     if (e.key === 'Escape') {
       onBack?.();
       return;
@@ -309,12 +327,30 @@ export default function AboutUsExperience({
     } else if (e.key === 'End') {
       container.scrollTop = container.scrollHeight;
     }
-  }, [onBack]);
+  }, [onBack, stopAutoScroll]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Listen for any manual user interaction to immediately halt auto-scroll
+  useEffect(() => {
+    const handleUserManualInput = () => {
+      stopAutoScroll();
+    };
+
+    const interactionEvents = ['wheel', 'touchstart', 'touchmove', 'pointerdown', 'mousedown'];
+    interactionEvents.forEach((evt) => {
+      window.addEventListener(evt, handleUserManualInput, { passive: true, capture: true });
+    });
+
+    return () => {
+      interactionEvents.forEach((evt) => {
+        window.removeEventListener(evt, handleUserManualInput, { capture: true });
+      });
+    };
+  }, [stopAutoScroll]);
 
   // Mouse parallax tracking
   const handleMouseMove = useCallback((e) => {
@@ -336,6 +372,7 @@ export default function AboutUsExperience({
 
   // Click on vertical progress bar jumps to that fraction of scroll
   const handleProgressClick = useCallback((e) => {
+    stopAutoScroll();
     const container = containerRef.current;
     const bar = e.currentTarget;
     if (!container || !bar) return;
@@ -344,7 +381,7 @@ export default function AboutUsExperience({
     const ratio = Math.max(0, Math.min(1, clickY / rect.height));
     const maxScroll = container.scrollHeight - container.clientHeight;
     container.scrollTo({ top: ratio * maxScroll, behavior: 'smooth' });
-  }, []);
+  }, [stopAutoScroll]);
 
   // Continuous RAF interpolation loop
   useEffect(() => {
@@ -356,8 +393,30 @@ export default function AboutUsExperience({
 
     let lastReportedChapter = 1;
     let lastReportedPct = 0;
+    let lastTimestamp = performance.now();
 
-    const renderFrame = () => {
+    const renderFrame = (now) => {
+      const dt = Math.min((now - lastTimestamp) / 1000, 0.1);
+      lastTimestamp = now;
+
+      // Slow cinematic auto-scroll until the user manually takes control
+      if (isAutoScrollingRef.current && container) {
+        const maxScroll = container.scrollHeight - container.clientHeight;
+        if (maxScroll > 0) {
+          // Gentle pace (~60px/sec): tours all chapters in ~50-60 seconds if untouched
+          const autoSpeed = Math.max(48, maxScroll / 55);
+          const nextScroll = container.scrollTop + autoSpeed * dt;
+          if (nextScroll >= maxScroll) {
+            container.scrollTop = maxScroll;
+            isAutoScrollingRef.current = false;
+            setIsAutoScrolling(false);
+          } else {
+            container.scrollTop = nextScroll;
+          }
+          targetScrollRef.current = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
+        }
+      }
+
       // Smooth lerp interpolation for buttery continuous movement
       const scrollSpeed = 0.075;
       currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * scrollSpeed;
@@ -747,6 +806,20 @@ export default function AboutUsExperience({
           <div className="about-hud-brand">
             <h1 className="about-hud-title">ABOUT US</h1>
           </div>
+
+          {/* 🎬 Slow Auto-Scroll Cinematic Drift Status Pill */}
+          {isAutoScrolling && (
+            <div 
+              className="about-autoscroll-pill" 
+              onClick={stopAutoScroll}
+              role="button"
+              tabIndex={0}
+              title="Click or scroll anywhere to take manual control"
+            >
+              <span className="about-autoscroll-dot" />
+              <span>Cinematic Drift • Scroll or press any key to control</span>
+            </div>
+          )}
         </header>
 
 
@@ -992,6 +1065,24 @@ export default function AboutUsExperience({
               YOUR MUSIC.<br />
               <span className="italic-moments">YOUR MOMENTS.</span>
             </h2>
+
+            {/* Just name the features only — zero enclosing box */}
+            <div className="about-features-name-strip" aria-label="Latest Features">
+              <span className="about-feature-name-tag">
+                <Hand size={14} className="feature-name-icon" />
+                <span>Air Gestures</span>
+              </span>
+              <span className="about-feature-name-bullet" aria-hidden="true">•</span>
+              <span className="about-feature-name-tag">
+                <Mic size={14} className="feature-name-icon" />
+                <span>Voice Commands</span>
+              </span>
+              <span className="about-feature-name-bullet" aria-hidden="true">•</span>
+              <span className="about-feature-name-tag">
+                <Keyboard size={14} className="feature-name-icon" />
+                <span>Keyboard Shortcuts</span>
+              </span>
+            </div>
           </div>
 
           {/* Floating Editorial Feature Artifacts */}
@@ -1075,15 +1166,17 @@ export default function AboutUsExperience({
 
             <div className="about-final-exit-block">
               <span className="about-final-thanks">Thanks for listening.</span>
-              <button 
-                type="button" 
-                className="about-final-back-link" 
-                onClick={handleExitToHome}
-                aria-label="Back to Musicly"
-              >
-                <ArrowLeft size={16} className="arrow-icon" />
-                <span>Back to Musicly</span>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <button 
+                  type="button" 
+                  className="about-final-back-link" 
+                  onClick={handleExitToHome}
+                  aria-label="Back to Musicly"
+                >
+                  <ArrowLeft size={16} className="arrow-icon" />
+                  <span>Back to Musicly</span>
+                </button>
+              </div>
 
               {/* 🐾 Interactive Cat Image directly below "Back to Musicly" (No enclosing black box) */}
               <div 

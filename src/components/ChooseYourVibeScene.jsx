@@ -137,6 +137,35 @@ export const VIBE_ITEMS = [
   }
 ];
 
+// Helper to find corresponding vibe category index (0-5) for a given track
+export const getVibeIndexForTrack = (track) => {
+  if (!track) return -1;
+  const trackGenres = [];
+  if (track.genre) trackGenres.push(track.genre.toLowerCase());
+  if (Array.isArray(track.genres)) {
+    track.genres.forEach(g => {
+      if (g) trackGenres.push(g.toLowerCase());
+    });
+  }
+  if (track.fallbackType) trackGenres.push(track.fallbackType.toLowerCase());
+
+  return VIBE_ITEMS.findIndex(item => {
+    const itemGenre = item.genre.toLowerCase();
+    const itemParts = itemGenre.split('/').map(p => p.trim());
+    return trackGenres.some(tg => 
+      tg === itemGenre ||
+      itemParts.some(p => p && (tg === p || tg.includes(p) || p.includes(tg))) ||
+      tg.includes(itemGenre) ||
+      itemGenre.includes(tg)
+    );
+  });
+};
+
+export const getSongIndexForTrack = (track, songsList) => {
+  if (!track || !Array.isArray(songsList) || songsList.length === 0) return -1;
+  return songsList.findIndex(s => s.id === track.id);
+};
+
 // 18 minimal floating light dust motes drifting in the ambient twilight
 const DUST_MOTES = Array.from({ length: 18 }, (_, i) => ({
   id: i,
@@ -178,12 +207,32 @@ function ChooseYourVibeScene({
   onSeek,
   audioElement = null
 }) {
+  // When a current song is playing, show the current song in the middle (in 'songs' view)
+  const initialVibeIdx = useMemo(() => getVibeIndexForTrack(currentTrack), [currentTrack]);
+  const initialVibe = initialVibeIdx !== -1 ? VIBE_ITEMS[initialVibeIdx] : VIBE_ITEMS[2];
+
   // Mode: 'vibes' (categories) or 'songs' (tracks belonging to clicked section)
-  const [viewMode, setViewMode] = useState('vibes');
+  const [viewMode, setViewMode] = useState(() => (currentTrack ? 'songs' : 'vibes'));
   const [musicSource, setMusicSource] = useState('musicly'); // 'musicly' | 'library'
-  const [selectedVibe, setSelectedVibe] = useState(null);
-  const [activeIndex, setActiveIndex] = useState(2);
+  const [selectedVibe, setSelectedVibe] = useState(() => (currentTrack ? initialVibe : null));
+  const [activeIndex, setActiveIndex] = useState(() => (initialVibeIdx !== -1 ? initialVibeIdx : 2));
   const [activeSongIndex, setActiveSongIndex] = useState(0);
+
+  // Fresh state references for callbacks & auto-return timers
+  const viewModeRef = useRef(viewMode);
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
+
+  const selectedVibeRef = useRef(selectedVibe);
+  useEffect(() => {
+    selectedVibeRef.current = selectedVibe;
+  }, [selectedVibe]);
+
+  const currentTrackRef = useRef(currentTrack);
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
 
   // Active languages array: supports multi-selection, single-selection, or empty (all)
   const activeLangs = useMemo(() => {
@@ -254,7 +303,18 @@ function ChooseYourVibeScene({
         filtered = langMatches;
       }
     }
-    const base = filtered.length > 0 ? filtered : sourcePool.slice(0, 6);
+    const base = filtered.length > 0 ? [...filtered] : [...sourcePool.slice(0, 6)];
+
+    // Ensure currently playing track is present in base if belonging to this vibe
+    if (currentTrack && !base.some(t => t.id === currentTrack.id)) {
+      const matchesGenre = Array.isArray(currentTrack.genres)
+        ? currentTrack.genres.some(g => g.toLowerCase() === genre)
+        : (currentTrack.genre || '').toLowerCase().includes(genre);
+      if (matchesGenre) {
+        base.unshift(currentTrack);
+      }
+    }
+
     if (!searchQuery.trim()) return base;
     const q = searchQuery.toLowerCase().trim();
     const matched = base.filter(t => 
@@ -262,7 +322,12 @@ function ChooseYourVibeScene({
       (t.artist || '').toLowerCase().includes(q)
     );
     return matched.length > 0 ? matched : base;
-  }, [selectedVibe, tracks, searchQuery, activeLangs, musicSource, favorites, customTracks]);
+  }, [selectedVibe, tracks, searchQuery, activeLangs, musicSource, favorites, currentTrack]);
+
+  const vibeSongsRef = useRef(vibeSongs);
+  useEffect(() => {
+    vibeSongsRef.current = vibeSongs;
+  }, [vibeSongs]);
 
   const isLoggedIn = Boolean(user && !user.isAnonymous);
   const displayName = user?.displayName || 'Tripam';
@@ -351,45 +416,90 @@ function ChooseYourVibeScene({
     return result;
   }, [vibeSongs]);
 
-  const handlePrev = useCallback(() => {
-    if (transitionState !== 'idle') return;
-    if (viewMode === 'vibes') {
+  const idleTimerRef = useRef(null);
+  const isManualInteractingRef = useRef(false);
+  const centerCurrentSongRef = useRef(null);
+
+  // Clean up idle timer on unmount
+  useEffect(() => {
+    return () => {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+    };
+  }, []);
+
+  // Schedules automatic return to the currently playing song after 5 seconds of manual browsing inactivity
+  const scheduleReturnToCurrentSong = useCallback(() => {
+    if (!currentTrackRef.current) return;
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    isManualInteractingRef.current = true;
+    idleTimerRef.current = setTimeout(() => {
+      isManualInteractingRef.current = false;
+      if (centerCurrentSongRef.current) {
+        centerCurrentSongRef.current();
+      }
+    }, 5000);
+  }, []);
+
+  const handlePrev = useCallback((isManual = true) => {
+    if (transitionStateRef.current !== 'idle') return;
+    if (viewModeRef.current === 'vibes') {
       setActiveIndex((prev) => (prev - 1 + displayVibes.length) % displayVibes.length);
     } else if (displaySongs.length > 0) {
       setActiveSongIndex((prev) => (prev - 1 + displaySongs.length) % displaySongs.length);
     }
-  }, [viewMode, displayVibes.length, displaySongs.length, transitionState]);
+    if (isManual) {
+      scheduleReturnToCurrentSong();
+    }
+  }, [displayVibes.length, displaySongs.length, scheduleReturnToCurrentSong]);
 
-  const handleNext = useCallback(() => {
-    if (transitionState !== 'idle') return;
-    if (viewMode === 'vibes') {
+  const handleNext = useCallback((isManual = true) => {
+    if (transitionStateRef.current !== 'idle') return;
+    if (viewModeRef.current === 'vibes') {
       setActiveIndex((prev) => (prev + 1) % displayVibes.length);
     } else if (displaySongs.length > 0) {
       setActiveSongIndex((prev) => (prev + 1) % displaySongs.length);
     }
-  }, [viewMode, displayVibes.length, displaySongs.length, transitionState]);
+    if (isManual) {
+      scheduleReturnToCurrentSong();
+    }
+  }, [displayVibes.length, displaySongs.length, scheduleReturnToCurrentSong]);
 
-  const jumpToVibeIndex = useCallback((targetIdx) => {
-    if (transitionState !== 'idle') return;
-    const currentBase = activeIndex % VIBE_ITEMS.length;
-    let delta = targetIdx - currentBase;
-    if (delta > VIBE_ITEMS.length / 2) delta -= VIBE_ITEMS.length;
-    if (delta < -VIBE_ITEMS.length / 2) delta += VIBE_ITEMS.length;
-    setActiveIndex((prev) => (prev + delta + displayVibes.length) % displayVibes.length);
-  }, [activeIndex, transitionState, displayVibes.length]);
+  const jumpToVibeIndex = useCallback((targetIdx, isManual = false) => {
+    if (transitionStateRef.current !== 'idle') return;
+    setActiveIndex((prev) => {
+      const currentBase = ((prev % VIBE_ITEMS.length) + VIBE_ITEMS.length) % VIBE_ITEMS.length;
+      let delta = targetIdx - currentBase;
+      if (delta > VIBE_ITEMS.length / 2) delta -= VIBE_ITEMS.length;
+      if (delta < -VIBE_ITEMS.length / 2) delta += VIBE_ITEMS.length;
+      return (prev + delta + displayVibes.length) % displayVibes.length;
+    });
+    if (isManual) {
+      scheduleReturnToCurrentSong();
+    }
+  }, [displayVibes.length, scheduleReturnToCurrentSong]);
 
-  const jumpToSongIndex = useCallback((targetIdx) => {
-    if (transitionState !== 'idle' || vibeSongs.length === 0) return;
-    const currentBase = activeSongIndex % vibeSongs.length;
-    let delta = targetIdx - currentBase;
-    if (delta > vibeSongs.length / 2) delta -= vibeSongs.length;
-    if (delta < -vibeSongs.length / 2) delta += vibeSongs.length;
-    setActiveSongIndex((prev) => (prev + delta + displaySongs.length) % displaySongs.length);
-  }, [activeSongIndex, transitionState, vibeSongs.length, displaySongs.length]);
+  const jumpToSongIndex = useCallback((targetIdx, isManual = false) => {
+    if (transitionStateRef.current !== 'idle' || vibeSongsRef.current.length === 0) return;
+    const songCount = vibeSongsRef.current.length;
+    setActiveSongIndex((prev) => {
+      const currentBase = ((prev % songCount) + songCount) % songCount;
+      let delta = targetIdx - currentBase;
+      if (delta > songCount / 2) delta -= songCount;
+      if (delta < -songCount / 2) delta += songCount;
+      return (prev + delta + displaySongs.length) % displaySongs.length;
+    });
+    if (isManual) {
+      scheduleReturnToCurrentSong();
+    }
+  }, [displaySongs.length, scheduleReturnToCurrentSong]);
 
   // Smooth back to vibes handler (songs glide downwards, vibes descend gracefully from above)
   const handleBackToVibes = useCallback(() => {
-    if (transitionState !== 'idle') return;
+    if (transitionStateRef.current !== 'idle') return;
     setTransitionState('songs-to-vibes');
     if (transitionTimerRef.current) {
       clearTimeout(transitionTimerRef.current);
@@ -398,7 +508,88 @@ function ChooseYourVibeScene({
       setViewMode('vibes');
       setTransitionState('idle');
     }, 550);
-  }, [transitionState]);
+    // User returned to vibes view; if they don't choose another one in 5s, take back to current song
+    scheduleReturnToCurrentSong();
+  }, [scheduleReturnToCurrentSong]);
+
+  // Centers the currently playing track in the middle of the carousel
+  const centerCurrentSong = useCallback(() => {
+    const track = currentTrackRef.current;
+    if (!track) return;
+    if (transitionStateRef.current !== 'idle') {
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = setTimeout(centerCurrentSong, 300);
+      return;
+    }
+
+    const playingVibeIdx = getVibeIndexForTrack(track);
+    const targetVibe = playingVibeIdx !== -1 ? VIBE_ITEMS[playingVibeIdx] : VIBE_ITEMS[2];
+
+    // If currently in vibes view, fly up into songs view
+    if (viewModeRef.current === 'vibes') {
+      setClickedVibeId(targetVibe.id);
+      setSelectedVibe(targetVibe);
+      setActiveIndex(playingVibeIdx !== -1 ? playingVibeIdx : 2);
+      setTransitionState('vibes-to-songs');
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = setTimeout(() => {
+        setViewMode('songs');
+        setTransitionState('idle');
+        setClickedVibeId(null);
+        const freshSongs = vibeSongsRef.current;
+        const freshIdx = getSongIndexForTrack(track, freshSongs);
+        if (freshIdx !== -1) {
+          jumpToSongIndex(freshIdx, false);
+        }
+      }, 550);
+      return;
+    }
+
+    // If viewing another vibe, switch back to the playing track's vibe
+    if (selectedVibeRef.current?.id !== targetVibe.id) {
+      setSelectedVibe(targetVibe);
+      setActiveIndex(playingVibeIdx !== -1 ? playingVibeIdx : 2);
+      return;
+    }
+
+    // In songs view, position currently playing song in the middle
+    const songs = vibeSongsRef.current;
+    const targetSongIdx = getSongIndexForTrack(track, songs);
+    if (targetSongIdx !== -1) {
+      jumpToSongIndex(targetSongIdx, false);
+    }
+  }, [jumpToSongIndex]);
+
+  useEffect(() => {
+    centerCurrentSongRef.current = centerCurrentSong;
+  }, [centerCurrentSong]);
+
+  // Center current song on mount or when currentTrack changes
+  useEffect(() => {
+    if (!currentTrack) return;
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    isManualInteractingRef.current = false;
+    centerCurrentSong();
+  }, [currentTrack, centerCurrentSong]);
+
+  useEffect(() => {
+    if (currentScene?.id !== 'vibe_carousel' || !currentTrack) return;
+    if (!isManualInteractingRef.current) {
+      centerCurrentSong();
+    }
+  }, [currentScene, currentTrack, centerCurrentSong]);
+
+  // When in songs view and vibeSongs updates, if user is not manually interacting, ensure playing track is centered
+  useEffect(() => {
+    if (!isManualInteractingRef.current && currentTrack && viewMode === 'songs' && transitionState === 'idle') {
+      const idx = getSongIndexForTrack(currentTrack, vibeSongs);
+      if (idx !== -1) {
+        jumpToSongIndex(idx, false);
+      }
+    }
+  }, [vibeSongs, currentTrack, viewMode, transitionState, jumpToSongIndex]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -562,10 +753,27 @@ function ChooseYourVibeScene({
 
   // When a vibe category box is clicked anywhere, initiate the upward flight animation
   const handleChooseVibeSection = useCallback((vibeItem, idx) => {
-    if (hasSwipedRef.current || transitionState !== 'idle') return;
+    if (hasSwipedRef.current || transitionStateRef.current !== 'idle') return;
     setClickedVibeId(vibeItem.id);
     setSelectedVibe(vibeItem);
-    setActiveSongIndex(0);
+    
+    // If the currently playing track belongs to this newly selected vibe, pre-center on it
+    let initialSongIdx = 0;
+    if (currentTrackRef.current) {
+      const genre = (vibeItem.genre || '').toLowerCase();
+      const songsForVibe = (tracks || []).filter(t => {
+        if (Array.isArray(t.genres)) {
+          return t.genres.some(g => g.toLowerCase() === genre);
+        }
+        return (t.genre || '').toLowerCase().includes(genre);
+      });
+      const sIdx = songsForVibe.findIndex(t => t.id === currentTrackRef.current.id);
+      if (sIdx !== -1) {
+        initialSongIdx = sIdx;
+      }
+    }
+    setActiveSongIndex(initialSongIdx);
+
     setTransitionState('vibes-to-songs');
     if (onSelectGenre) {
       onSelectGenre(vibeItem.genre);
@@ -579,11 +787,31 @@ function ChooseYourVibeScene({
       setTransitionState('idle');
       setClickedVibeId(null);
     }, 550);
-  }, [transitionState, onSelectGenre]);
+
+    // Exploring another vibe's songs; if nothing played within 5s, return to current song
+    scheduleReturnToCurrentSong();
+  }, [onSelectGenre, tracks, scheduleReturnToCurrentSong]);
+
+  // Clicking a vibe card: if side card, bring to center and start 5s timer; if center card, open songs
+  const handleVibeCardClick = useCallback((vibeItem, idx, isCenter) => {
+    if (hasSwipedRef.current || transitionStateRef.current !== 'idle') return;
+    if (!isCenter) {
+      jumpToVibeIndex(idx % VIBE_ITEMS.length, true);
+      return;
+    }
+    handleChooseVibeSection(vibeItem, idx);
+  }, [handleChooseVibeSection, jumpToVibeIndex]);
 
   // When a song card box is clicked anywhere, toggle play/pause if already active or play the selected song
   const handleSongClick = useCallback((song, idx, isCenter) => {
-    if (hasSwipedRef.current || transitionState !== 'idle') return;
+    if (hasSwipedRef.current || transitionStateRef.current !== 'idle') return;
+    
+    // Clear idle timer since a song was clicked
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    isManualInteractingRef.current = false;
+
     if (!isCenter) {
       setActiveSongIndex(idx);
     }
@@ -598,13 +826,13 @@ function ChooseYourVibeScene({
       return;
     }
 
-    // If clicking a different song card, play it
+    // User chooses to select another song: play it
     if (onSelectTrack) {
       onSelectTrack(song);
     } else if (onPlayTrackForGenre && selectedVibe) {
       onPlayTrackForGenre(selectedVibe.genre);
     }
-  }, [transitionState, onSelectTrack, onPlayTrackForGenre, onTogglePlay, selectedVibe, currentTrack?.id]);
+  }, [onSelectTrack, onPlayTrackForGenre, onTogglePlay, selectedVibe, currentTrack?.id]);
 
   if (!currentScene || currentScene.id !== 'vibe_carousel') {
     return null;
@@ -1007,7 +1235,10 @@ function ChooseYourVibeScene({
                     className="vibe-apple-search-input"
                     placeholder={`Search in ${selectedVibe?.title || 'songs'}...`}
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      scheduleReturnToCurrentSong();
+                    }}
                     onKeyDown={(e) => e.stopPropagation()}
                   />
 
@@ -1015,7 +1246,10 @@ function ChooseYourVibeScene({
                   {searchQuery && (
                     <button
                       className="vibe-apple-search-clear-btn"
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => {
+                        setSearchQuery('');
+                        scheduleReturnToCurrentSong();
+                      }}
                       title="Clear search"
                     >
                       <X size={12} />
@@ -1073,7 +1307,7 @@ function ChooseYourVibeScene({
                     pointerEvents: Math.abs(diff) <= 2 && transitionState === 'idle' ? 'auto' : 'none',
                     zIndex: 20 - Math.abs(diff)
                   }}
-                  onClick={() => handleChooseVibeSection(item, index)}
+                  onClick={() => handleVibeCardClick(item, index, isCenter)}
                 >
                   {/* Soft ambient diffused halo behind active center card */}
                   {(isCenter || isClicked) && <div className="vibe-active-ambient-glow" />}
@@ -1083,7 +1317,7 @@ function ChooseYourVibeScene({
                     className={`vibe-card-inner ${isCenter || isClicked ? 'active-glow-border' : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleChooseVibeSection(item, index);
+                      handleVibeCardClick(item, index, isCenter);
                     }}
                     role="button"
                     tabIndex={0}
@@ -1320,7 +1554,7 @@ function ChooseYourVibeScene({
         <div className="vibe-nav-row">
           <button 
             className="vibe-nav-arrow-btn" 
-            onClick={handlePrev}
+            onClick={() => handlePrev(true)}
             disabled={transitionState !== 'idle'}
             title={effectiveMode === 'vibes' ? "Previous Vibe" : "Previous Song"}
           >
@@ -1339,9 +1573,9 @@ function ChooseYourVibeScene({
                 }`}
                 onClick={() => {
                   if (effectiveMode === 'vibes') {
-                    jumpToVibeIndex(idx);
+                    jumpToVibeIndex(idx, true);
                   } else {
-                    jumpToSongIndex(idx);
+                    jumpToSongIndex(idx, true);
                   }
                 }}
               />
@@ -1350,7 +1584,7 @@ function ChooseYourVibeScene({
 
           <button 
             className="vibe-nav-arrow-btn" 
-            onClick={handleNext}
+            onClick={() => handleNext(true)}
             disabled={transitionState !== 'idle'}
             title={effectiveMode === 'vibes' ? "Next Vibe" : "Next Song"}
           >

@@ -6,6 +6,7 @@
 
 import { ytEngine, extractYouTubeId } from './youtubePlayer';
 import { resolveOriginalTrack, resolveTrackAudioStreamAsync, isDirectPlayableAudio } from './originalTrackResolver';
+import { audioEqualizer } from './audioEqualizer';
 
 class AudioEngine {
   constructor() {
@@ -39,6 +40,11 @@ class AudioEngine {
     this.audio.defaultPlaybackRate = 1.0;
     this.audio.volume = 1.0;
     this.audio.muted = false;
+
+    // Attach real-time 5-band equalizer safely
+    try {
+      audioEqualizer.attachMediaElement(this.audio);
+    } catch (e) {}
 
     // Register native lifecycle listeners ONCE
     this.audio.addEventListener('play', () => {
@@ -339,6 +345,10 @@ class AudioEngine {
     try {
       this.isPlaying = true;
       this.notifyState();
+      try {
+        audioEqualizer.attachMediaElement(audio);
+        audioEqualizer.resume();
+      } catch (e) {}
       await audio.play();
     } catch (err) {
       this.logDiag('Play call exception:', err);
@@ -377,6 +387,10 @@ class AudioEngine {
         this.audio.muted = false;
         this.isPlaying = true;
         this.notifyState();
+        try {
+          audioEqualizer.attachMediaElement(this.audio);
+          audioEqualizer.resume();
+        } catch (e) {}
         await this.audio.play();
       } catch (err) {
         this.logDiag('Resume error:', err);

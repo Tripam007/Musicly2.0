@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Clock, 
   Users, 
-  Sparkles, 
   Sliders, 
   Moon, 
   Upload, 
@@ -28,6 +27,7 @@ export default function TopBar({
   onOpenUploadModal,
   onOpenCoffeeModal,
   onOpenShortcutsModal,
+  onOpenAudioSettings,
   isAirControlsActive = false,
   onOpenAirControls,
   user,
@@ -35,7 +35,8 @@ export default function TopBar({
   onOpenAdminDashboard,
   onLogout,
   selectedLanguage,
-  voiceManager
+  voiceManager,
+  onOpenCinematicIntro
 }) {
   const [time, setTime] = useState(new Date());
   const [is24Hour, setIs24Hour] = useState(false);
@@ -181,6 +182,7 @@ export default function TopBar({
           <span className="btn-label">Add Music</span>
         </button>
 
+
         {/* User Auth Profile / Login (Completely parallel in same plane) */}
         <div className="auth-profile-wrapper">
           {user ? (
@@ -297,6 +299,32 @@ export default function TopBar({
                     <kbd className="dropdown-kbd-hint">?</kbd>
                   </button>
                   <hr className="dropdown-divider" />
+
+                  {/* 🎚 Sound & Equalizer Settings Option */}
+                  <button 
+                    id="btn-sound-settings-dropdown"
+                    className="dropdown-item sound-settings-dropdown-item" 
+                    onClick={() => { 
+                      setShowProfileMenu(false); 
+                      if (onOpenAudioSettings) onOpenAudioSettings(); 
+                    }}
+                    title="Audio Equalizer & Tactile Sound Settings"
+                  >
+                    <Sliders size={15} style={{ color: '#c084fc' }} />
+                    <span style={{ flex: 1, textAlign: 'left' }}>Sound & Equalizer</span>
+                    <span style={{ 
+                      fontSize: '10px', 
+                      padding: '1px 6px', 
+                      borderRadius: '9999px',
+                      background: 'rgba(168, 85, 247, 0.16)',
+                      color: '#d8b4fe',
+                      fontWeight: 600
+                    }}>
+                      EQ
+                    </span>
+                  </button>
+                  <hr className="dropdown-divider" />
+
 
                   <button className="dropdown-item text-danger" onClick={() => { setShowProfileMenu(false); onLogout(); }}>
                     <LogOut size={15} /> Sign Out

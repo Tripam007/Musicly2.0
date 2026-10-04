@@ -73,11 +73,22 @@ export default function Player({
   const progressPercent = activePercent;
 
   const isDraggingRef = useRef(false);
+  const lastClientXRef = useRef(0);
 
   const calculateSeekFromEvent = useCallback((e) => {
     if (!progressTrackRef.current || !duration) return 0;
     const rect = progressTrackRef.current.getBoundingClientRect();
-    const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    let clientX = e?.clientX;
+    if (clientX === undefined || clientX === null) {
+      if (e?.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+      } else if (e?.changedTouches && e.changedTouches.length > 0) {
+        clientX = e.changedTouches[0].clientX;
+      } else {
+        clientX = lastClientXRef.current || 0;
+      }
+    }
+    lastClientXRef.current = clientX;
     const clickX = Math.max(0, Math.min(rect.width, clientX - rect.left));
     const ratio = rect.width > 0 ? clickX / rect.width : 0;
     return ratio * duration;
@@ -95,21 +106,26 @@ export default function Player({
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch (err) {}
 
-    if (progressTrackRef.current && duration > 0) {
-      const rect = progressTrackRef.current.getBoundingClientRect();
-      const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetTime = calculateSeekFromEvent(e);
+    if (duration > 0) {
+      const pos = Math.max(0, Math.min(1, targetTime / duration));
       setDragPercent(pos * 100);
       setHoverPosition(pos * 100);
-      setHoverTime(pos * duration);
+      setHoverTime(targetTime);
+    }
+
+    // Immediately seek & play from clicked or held position
+    if (onSeek) {
+      onSeek(targetTime);
     }
   };
 
   const handlePointerMove = (e) => {
     if (!progressTrackRef.current || !duration) return;
-    const rect = progressTrackRef.current.getBoundingClientRect();
-    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const targetTime = calculateSeekFromEvent(e);
+    const pos = Math.max(0, Math.min(1, targetTime / duration));
     setHoverPosition(pos * 100);
-    setHoverTime(pos * duration);
+    setHoverTime(targetTime);
 
     if (isDraggingRef.current) {
       setDragPercent(pos * 100);
@@ -129,16 +145,20 @@ export default function Player({
 
       const finalTime = calculateSeekFromEvent(e);
       setDragPercent(null);
-      onSeek(finalTime);
+      if (onSeek) {
+        onSeek(finalTime);
+      }
 
       // If mouse released outside the hit area, hide tooltip immediately
       if (progressTrackRef.current) {
         const rect = progressTrackRef.current.getBoundingClientRect();
+        const clientX = e?.clientX !== undefined ? e.clientX : (lastClientXRef.current || 0);
+        const clientY = e?.clientY !== undefined ? e.clientY : 0;
         const isInside = 
-          e.clientX >= rect.left && 
-          e.clientX <= rect.right && 
-          e.clientY >= rect.top && 
-          e.clientY <= rect.bottom;
+          clientX >= rect.left && 
+          clientX <= rect.right && 
+          clientY >= rect.top && 
+          clientY <= rect.bottom;
         if (!isInside) {
           setIsHoveringProgress(false);
         }
@@ -146,31 +166,41 @@ export default function Player({
     }
   };
 
-  // Global safety release: catches pointerup, mouseup, touchend, and blur anywhere on window
+  // Global safety release: catches pointerup, mouseup, touchend anywhere on window
   useEffect(() => {
-    const handleGlobalRelease = () => {
+    const handleGlobalRelease = (e) => {
+      if (isDraggingRef.current) {
+        isDraggingRef.current = false;
+        setIsDragging(false);
+        setIsHoveringProgress(false);
+        const finalTime = calculateSeekFromEvent(e);
+        setDragPercent(null);
+        if (onSeek) {
+          onSeek(finalTime);
+        }
+      }
+    };
+
+    window.addEventListener('pointerup', handleGlobalRelease);
+    window.addEventListener('mouseup', handleGlobalRelease);
+    window.addEventListener('touchend', handleGlobalRelease);
+    window.addEventListener('pointercancel', handleGlobalRelease);
+    window.addEventListener('blur', () => {
       if (isDraggingRef.current) {
         isDraggingRef.current = false;
         setIsDragging(false);
         setIsHoveringProgress(false);
         setDragPercent(null);
       }
-    };
-
-    window.addEventListener('pointerup', handleGlobalRelease, true);
-    window.addEventListener('mouseup', handleGlobalRelease, true);
-    window.addEventListener('touchend', handleGlobalRelease, true);
-    window.addEventListener('pointercancel', handleGlobalRelease, true);
-    window.addEventListener('blur', handleGlobalRelease);
+    });
 
     return () => {
-      window.removeEventListener('pointerup', handleGlobalRelease, true);
-      window.removeEventListener('mouseup', handleGlobalRelease, true);
-      window.removeEventListener('touchend', handleGlobalRelease, true);
-      window.removeEventListener('pointercancel', handleGlobalRelease, true);
-      window.removeEventListener('blur', handleGlobalRelease);
+      window.removeEventListener('pointerup', handleGlobalRelease);
+      window.removeEventListener('mouseup', handleGlobalRelease);
+      window.removeEventListener('touchend', handleGlobalRelease);
+      window.removeEventListener('pointercancel', handleGlobalRelease);
     };
-  }, []);
+  }, [calculateSeekFromEvent, onSeek]);
 
   const toggleMute = () => {
     if (isMuted) {
@@ -344,6 +374,10 @@ export default function Player({
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
+              onClick={(e) => {
+                const finalTime = calculateSeekFromEvent(e);
+                if (onSeek) onSeek(finalTime);
+              }}
               onMouseEnter={() => setIsHoveringProgress(true)}
               onMouseLeave={() => {
                 if (!isDraggingRef.current) {

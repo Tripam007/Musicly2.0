@@ -206,16 +206,25 @@ export class VoiceRecorder {
    * @returns {Promise<{ audioBlob: Blob|null, audioBase64: string, mimeType: string, durationMs: number }>}
    */
   async stop() {
+    // Clear all timers immediately
+    if (this.maxDurationTimer) clearTimeout(this.maxDurationTimer);
+    if (this.initialSilenceTimer) clearTimeout(this.initialSilenceTimer);
+    if (this.silenceCheckInterval) clearInterval(this.silenceCheckInterval);
+
+    // Release microphone tracks immediately to free hardware
+    if (this.audioStream) {
+      try {
+        this.audioStream.getTracks().forEach((track) => track.stop());
+      } catch {}
+      this.audioStream = null;
+    }
+
     if (!this.isRecording && !this.mediaRecorder) {
+      this._cleanup();
       return { audioBlob: null, audioBase64: '', mimeType: '', durationMs: 0 };
     }
 
     this.isRecording = false;
-
-    // Clear all timers
-    if (this.maxDurationTimer) clearTimeout(this.maxDurationTimer);
-    if (this.initialSilenceTimer) clearTimeout(this.initialSilenceTimer);
-    if (this.silenceCheckInterval) clearInterval(this.silenceCheckInterval);
 
     return new Promise((resolve) => {
       const finish = async () => {

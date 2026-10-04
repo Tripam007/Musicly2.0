@@ -17,6 +17,7 @@ import AfterglowScene from './components/AfterglowScene';
 import AfterglowCinematicFilm from './components/AfterglowCinematicFilm';
 import MinimalStudioScene from './components/MinimalStudioScene';
 import AfterglowIntro from './components/AfterglowIntro';
+import CinematicOpeningScreen from './components/CinematicOpeningScreen';
 import VelocityScene from './components/VelocityScene';
 import CoffeeSupportModal from './components/CoffeeSupportModal';
 import AboutUsExperience from './components/AboutUsExperience';
@@ -26,6 +27,7 @@ import FloatingFeedbackNote from './components/FloatingFeedbackNote';
 import SongRequestModal from './components/SongRequestModal';
 import CommandPalette from './components/CommandPalette';
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal';
+import AudioSettingsModal from './components/AudioSettingsModal';
 import AirControlsPreview from './components/AirControlsPreview';
 import AirControlsModal from './components/AirControlsModal';
 import AirControlsFeedback from './components/AirControlsFeedback';
@@ -36,6 +38,7 @@ import { airControlsService } from './utils/airControlsService';
 import './styles/airControls.css';
 import { VoiceControlManager, MUSICLY_ACTIONS } from './voice';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useButtonTactileFeedback } from './hooks/useButtonTactileFeedback';
 import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage } from './data/tracks';
 import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/audioSynth';
 import { audioEngine } from './utils/audioEngine';
@@ -56,6 +59,9 @@ import {
 } from './utils/audioOutputManager';
 
 export default function App() {
+  // Universal cool button tactile feedback on any click/tap
+  useButtonTactileFeedback();
+
   // Audio & Library state
   const [publicTracks, setPublicTracks] = useState(() => getLocalPublicTracks());
   const [customTracks, setCustomTracks] = useState([]);
@@ -531,6 +537,30 @@ export default function App() {
   const [isSongRequestOpen, setIsSongRequestOpen] = useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
+  const [isAudioSettingsOpen, setIsAudioSettingsOpen] = useState(false);
+
+  // 🎬 Cinematic Opening Screen (Appears whenever website is opened or refreshed)
+  const [showCinematicIntro, setShowCinematicIntro] = useState(true);
+
+  const handleEnterCinematicIntro = useCallback(() => {
+    setShowCinematicIntro(false);
+  }, []);
+
+  // Expose easy development reset hook (run window.resetMusiclyIntro() in console to replay)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.resetMusiclyIntro = () => {
+        try {
+          sessionStorage.removeItem('musicly_cinematic_opening_dismissed');
+          localStorage.removeItem('musicly_cinematic_opening_seen');
+          localStorage.removeItem('musicly_intro_v3_seen');
+          localStorage.removeItem('musicly_intro_v2_seen');
+          localStorage.removeItem('musiclyIntroSeen');
+        } catch (e) {}
+        setShowCinematicIntro(true);
+      };
+    }
+  }, []);
 
   // About Us button visibility tied strictly to clicking the coffee cup icon
   const [isAboutUsVisible, setIsAboutUsVisible] = useState(false);
@@ -639,6 +669,7 @@ export default function App() {
   const actionsRef = useRef({});
 
   // Voice Control System ("Hey Musicly")
+  // Privacy-first: strictly inactive (IDLE) until the user manually clicks the microphone button.
   const [voiceManager] = useState(() => {
     try {
       return new VoiceControlManager({
@@ -650,33 +681,24 @@ export default function App() {
           } catch (e) {
             // ignore
           }
-        }
+        },
+        pausePlayback: () => {
+          if (isPlayingRef.current) {
+            actionsRef.current.togglePlay?.();
+          }
+        },
+        resumePlayback: () => {
+          if (!isPlayingRef.current) {
+            actionsRef.current.togglePlay?.();
+          }
+        },
+        getIsPlaying: () => !!isPlayingRef.current
       });
     } catch (e) {
       console.warn('[VoiceControl] Failed to initialize VoiceControlManager:', e);
       return null;
     }
   });
-
-  // Hands-free Voice AI Activation ("Hey Musicly")
-  // Automatically activates listening when allowed by browser, or upon first click/interaction
-  useEffect(() => {
-    if (!voiceManager) return;
-    const activateVoice = () => {
-      if (voiceManager.state === 'IDLE') {
-        voiceManager.start().catch(() => {});
-      }
-    };
-    // Try immediate start
-    activateVoice();
-    // Also register on user gesture in case browser requires it for mic permission
-    window.addEventListener('click', activateVoice, { once: true });
-    window.addEventListener('keydown', activateVoice, { once: true });
-    return () => {
-      window.removeEventListener('click', activateVoice);
-      window.removeEventListener('keydown', activateVoice);
-    };
-  }, [voiceManager]);
 
   // Listen to Firebase Auth state & sync admin privileges
   useEffect(() => {
@@ -1002,6 +1024,10 @@ export default function App() {
       setIsCommandPaletteOpen(false);
       return;
     }
+    if (isAudioSettingsOpen) {
+      setIsAudioSettingsOpen(false);
+      return;
+    }
     if (isShortcutsOpen) {
       setIsShortcutsOpen(false);
       return;
@@ -1102,6 +1128,7 @@ export default function App() {
     setIsCommandPaletteOpen,
     isShortcutsOpen,
     setIsShortcutsOpen,
+    onOpenCinematicIntro: () => setShowCinematicIntro(true),
     onCloseTopmostModal: handleCloseTopmostModal
   });
 
@@ -2363,6 +2390,8 @@ export default function App() {
           }}
           onOpenCoffeeModal={() => setIsCoffeeOpen(true)}
           onOpenShortcutsModal={() => setIsShortcutsOpen(true)}
+          onOpenAudioSettings={() => setIsAudioSettingsOpen(true)}
+          onOpenCinematicIntro={() => setShowCinematicIntro(true)}
           user={user}
           isAdmin={isAdmin}
           onOpenAdminDashboard={() => setIsAdminDashboardOpen(true)}
@@ -2641,6 +2670,7 @@ export default function App() {
       {currentRoute === '/about-us' && (
         <AboutUsExperience
           onBack={() => navigateTo('/')}
+          onReplayIntro={() => setShowCinematicIntro(true)}
           currentTrack={currentTrack}
           isPlaying={isPlaying}
           onTogglePlay={togglePlay}
@@ -2706,6 +2736,7 @@ export default function App() {
         isAirControlsActive={isAirControlsEnabled}
         onOpenAirAiDashboard={() => navigateTo('/admin/air-ai')}
         onOpenDatasetCollector={() => navigateTo('/admin/air-ai/dataset')}
+        onOpenCinematicIntro={() => setShowCinematicIntro(true)}
       />
 
       {/* ⌨ Keyboard Shortcuts Help Modal */}
@@ -2713,6 +2744,12 @@ export default function App() {
         isOpen={isShortcutsOpen}
         onClose={() => setIsShortcutsOpen(false)}
         allScenes={allScenes}
+      />
+
+      {/* 🎚 Sound & Equalizer Settings Modal */}
+      <AudioSettingsModal
+        isOpen={isAudioSettingsOpen}
+        onClose={() => setIsAudioSettingsOpen(false)}
       />
 
       {/* ✋ Air Controls Floating Confirmation Toast */}
@@ -2768,6 +2805,15 @@ export default function App() {
         <AirAiDatasetCollector
           onBack={() => navigateTo('/')}
           onNavigateToDashboard={() => navigateTo('/admin/air-ai')}
+        />
+      )}
+
+      {/* 🎬 Cinematic Scroll Intro / Entry Experience */}
+      {showCinematicIntro && (
+        <CinematicOpeningScreen
+          activeBackdrop={backdropImage}
+          onEnterApp={handleEnterCinematicIntro}
+          currentTrack={currentTrack}
         />
       )}
     </main>

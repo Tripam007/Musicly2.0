@@ -591,7 +591,17 @@ export function isDirectPlayableAudio(url) {
 export function resolveOriginalTrack(track) {
   if (!track || typeof track !== 'object') return track;
 
-  // YouTube tracks must always be preserved so the full video/audio plays without cutting off!
+  // 1. Direct local master audio stream (local asset, uploaded file, or blob) takes priority for native DSP EQ & zero-delay play
+  if (isDirectPlayableAudio(track.audioUrl) && !track.audioUrl.includes('pixabay.com')) {
+    return {
+      ...track,
+      isOriginalAudio: true,
+      isYouTube: false,
+      _ytFailed: false
+    };
+  }
+
+  // 2. YouTube tracks fallback if no direct audio file exists
   const ytId = track.youtubeId || extractYouTubeId(track.audioUrl || '');
   if (track.isYouTube || ytId) {
     return {
@@ -600,16 +610,6 @@ export function resolveOriginalTrack(track) {
       youtubeId: ytId || track.youtubeId,
       audioUrl: ytId ? `https://www.youtube.com/watch?v=${ytId}` : track.audioUrl,
       isOriginalAudio: false
-    };
-  }
-
-  // 1. Check if track already has a valid direct master audio stream (local asset or blob)
-  if (isDirectPlayableAudio(track.audioUrl) && !track.audioUrl.includes('pixabay.com')) {
-    return {
-      ...track,
-      isOriginalAudio: true,
-      isYouTube: false,
-      _ytFailed: false
     };
   }
 

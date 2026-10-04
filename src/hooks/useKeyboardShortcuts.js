@@ -48,6 +48,8 @@ export function useKeyboardShortcuts({
   setIsCommandPaletteOpen,
   isShortcutsOpen,
   setIsShortcutsOpen,
+  // Cinematic opening screen trigger
+  onOpenCinematicIntro,
   // Topmost modal closure handler
   onCloseTopmostModal
 }) {
@@ -87,6 +89,7 @@ export function useKeyboardShortcuts({
     setIsCommandPaletteOpen,
     isShortcutsOpen,
     setIsShortcutsOpen,
+    onOpenCinematicIntro,
     onCloseTopmostModal
   };
 
@@ -301,6 +304,14 @@ export function useKeyboardShortcuts({
         return;
       }
 
+      // 18b. REPLAY CINEMATIC OPENING SCREEN (Shift + O)
+      if (e.shiftKey && (e.key === 'O' || e.key === 'o')) {
+        e.preventDefault();
+        triggerHapticFeedback();
+        s.onOpenCinematicIntro?.();
+        return;
+      }
+
       // 19. NEXT SCENE (N)
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
@@ -313,7 +324,7 @@ export function useKeyboardShortcuts({
         if (!s.allScenes || s.allScenes.length === 0 || !s.onSelectScene) return;
 
         const targetKeywords = {
-          '1': ['afterglow'],
+          '1': ['after_hours', 'vibe_carousel'],
           '2': ['indie'],
           '3': ['drive'],
           '4': ['studio', 'minimal', 'minimal_studio', 'cozy_bedroom'],

@@ -47,10 +47,10 @@ export const TRACKS = [
     language: 'English',
     duration: 150,
     cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/7e/06/12/7e06123a-c3af-75cf-c611-94334cb0bf20/886444247238.jpg/600x600bb.jpg',
-    audioUrl: 'https://www.youtube.com/watch?v=rm9coqlk8fY',
+    audioUrl: '/assets/audio/sample.mp3',
     youtubeId: 'rm9coqlk8fY',
-    isYouTube: true,
-    isOriginalAudio: false
+    isYouTube: false,
+    isOriginalAudio: true
   },
   {
     id: 'lofi-vienna',
@@ -547,17 +547,6 @@ export const SCENES = [
     primaryColor: '#f59e0b',
     secondaryColor: '#d97706',
     glowColor: 'rgba(245, 158, 11, 0.35)'
-  },
-  {
-    id: 'afterglow',
-    name: 'Afterglow',
-    image: '/assets/images/afterglow_bg.jpg',
-    desc: 'Cinematic vertical scroll music experience with living flowing waveform',
-    isInteractive: true,
-    isTheme: true,
-    primaryColor: '#f59e0b',
-    secondaryColor: '#f97316',
-    glowColor: 'rgba(245, 158, 11, 0.4)'
   },
   {
     id: 'minimal_studio',
