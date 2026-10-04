@@ -2071,7 +2071,7 @@ export default function App() {
   const isRetroScene = backdropImage?.includes('retro_scene');
 
   return (
-    <main className={`app-viewport ${isRetroScene ? 'scene-is-retro' : ''}`}>
+    <main className={`app-viewport ${isRetroScene ? 'scene-is-retro' : ''} ${isCoffeeOpen ? 'coffee-modal-active' : ''}`}>
       {/* Background Wallpaper Image with Smooth Zoom, Brightness & Crossfade Animation */}
       <div 
         className={`scene-backdrop-layer ${isTransitioning ? 'transitioning' : ''} ${backdropImage?.includes('cozy_bedroom') ? 'cozy-backdrop' : ''} ${backdropImage?.includes('peace_scene') ? 'peace-backdrop' : ''} ${backdropImage?.includes('retro_scene') ? 'retro-backdrop' : ''} ${backdropImage?.includes('lofi_scene') ? 'lofi-backdrop' : ''} ${backdropImage?.includes('chill_sleep_scene') ? 'chill-backdrop' : ''} ${backdropImage?.includes('ghazals_bg') ? 'ghazal-backdrop' : ''}`}
