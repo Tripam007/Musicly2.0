@@ -17,7 +17,7 @@ An immersive music experience where sound, atmosphere, and visual storytelling c
 
 <br />
 
-<a href="[PASTE_YOUR_DEPLOYED_WEBSITE_LINK_HERE](https://musicly2-0.vercel.app/)">🌐 **EXPLORE MUSICLY**</a>
+<a href="https://musicly2-0.vercel.app/">🌐 **EXPLORE MUSICLY**</a>
 &nbsp; · &nbsp;
 <a href="https://github.com/Tripam007/Musicly2.0">💻 **SOURCE CODE**</a>
 
