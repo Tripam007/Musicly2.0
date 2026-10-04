@@ -5146,19 +5146,53 @@ body, html, #root {
   transform: scale(1.15) rotate(-4deg);
 }
 
-/* Coffee Modal Overlay & Popover Glass Panel */
+/* ==========================================================================
+   ☕ COFFEE SUPPORT / DONATION MODAL BACKDROP & FLOATING PANEL
+   Full-viewport darkened & strongly blurred cinematic backdrop with crisp card
+   ========================================================================== */
+
+.coffee-modal-root {
+  position: fixed;
+  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 5000;
+  pointer-events: none;
+}
+
+.coffee-modal-root.is-closing {
+  pointer-events: none;
+}
+
+.coffee-modal-backdrop,
 .coffee-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35) !important;
-  backdrop-filter: blur(4px) !important;
-  -webkit-backdrop-filter: blur(4px) !important;
-  z-index: 120;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.52) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  z-index: 5000 !important;
   pointer-events: auto;
   opacity: 1;
-  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.28s ease;
+  transition: opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.28s ease, -webkit-backdrop-filter 0.28s ease;
+  overscroll-behavior: contain;
 }
 
+/* Subtle dark fallback when backdrop-filter is unsupported */
+@supports not ((-webkit-backdrop-filter: blur(10px)) or (backdrop-filter: blur(10px))) {
+  .coffee-modal-backdrop,
+  .coffee-modal-overlay {
+    background: rgba(0, 0, 0, 0.80) !important;
+  }
+}
+
+.coffee-modal-backdrop.is-closing,
 .coffee-modal-overlay.is-closing {
   opacity: 0 !important;
   pointer-events: none;
@@ -5171,15 +5205,15 @@ body, html, #root {
   width: 356px;
   max-width: calc(100vw - 36px);
   max-height: calc(100vh - 164px);
-  background: rgba(12, 16, 26, 0.28);
+  background: rgba(12, 16, 26, 0.35);
   backdrop-filter: blur(32px) saturate(190%) contrast(104%);
   -webkit-backdrop-filter: blur(32px) saturate(190%) contrast(104%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 28px;
   padding: 28px 26px 24px 26px;
   box-shadow: 
-    0 24px 60px rgba(0, 0, 0, 0.45), 
-    0 0 45px rgba(251, 133, 0, 0.12), 
+    0 24px 60px rgba(0, 0, 0, 0.55), 
+    0 0 45px rgba(251, 133, 0, 0.14), 
     inset 0 1px 1px rgba(255, 255, 255, 0.25),
     inset 0 0 20px rgba(255, 255, 255, 0.03);
   /* Precision origin anchored directly at the center of the steaming coffee cup */
@@ -5187,7 +5221,8 @@ body, html, #root {
   text-align: center;
   overflow-y: auto;
   scrollbar-width: none;
-  z-index: 121;
+  z-index: 5001 !important;
+  pointer-events: auto;
   will-change: transform, opacity, filter;
 }
 
@@ -6389,7 +6424,7 @@ body, html, #root {
   justify-content: center;
   align-items: center;
   gap: 7px;
-  z-index: 122;
+  z-index: 5001 !important;
   pointer-events: auto;
 }
 
@@ -6406,7 +6441,7 @@ body, html, #root {
   position: fixed;
   bottom: 44px;
   left: 36px;
-  z-index: 4500 !important;
+  z-index: 30 !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;

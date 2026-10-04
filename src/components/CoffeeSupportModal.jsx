@@ -169,15 +169,22 @@ export default function CoffeeSupportModal({ isOpen, onClose, isAdmin = false, o
 
   return (
     <div 
-      className={`modal-overlay coffee-modal-overlay ${isClosing ? 'is-closing' : 'is-opening'} ${isAdmin ? 'admin-coffee-overlay' : ''}`} 
-      onClick={handleClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="coffee-modal-title"
+      className={`coffee-modal-root ${isClosing ? 'is-closing' : 'is-opening'} ${isAdmin ? 'admin-coffee-root' : ''}`}
     >
+      {/* 1. Full-viewport, fixed-position cinematic backdrop behind the donation card */}
+      <div 
+        className={`modal-overlay coffee-modal-overlay coffee-modal-backdrop ${isClosing ? 'is-closing' : 'is-opening'} ${isAdmin ? 'admin-coffee-overlay' : ''}`} 
+        onClick={handleClose}
+        aria-hidden="true"
+      />
+
+      {/* 2. Crisp, readable donation modal card positioned cleanly above the backdrop */}
       <div 
         className={`glass-modal-panel coffee-modal-panel ${isAdmin ? 'admin-coffee-ledger-panel' : ''} ${isClosing ? 'is-closing' : 'is-opening'}`} 
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="coffee-modal-title"
       >
         {/* Top-right close button */}
         <button 
