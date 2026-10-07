@@ -400,9 +400,29 @@ export default function App() {
       };
     });
 
-    // 🔒 STRICT: When without login, show ONLY the official Musicly Public Library
+    const sanitizedCatalog = TRACKS.filter(t => !deletedTrackIds.includes(t.id)).map(t => {
+      const overridden = genreOverrides[t.id];
+      if (overridden) {
+        return {
+          ...t,
+          isPublic: true,
+          language: t.language || 'English',
+          genres: overridden,
+          genre: overridden.join(', ')
+        };
+      }
+      return {
+        ...t,
+        isPublic: true,
+        language: t.language || 'English'
+      };
+    });
+
+    // 🔒 When without login, show official Musicly Public Library AND Curated Catalog!
+    // (Only user private custom uploads require authentication)
     if (!isAuthed) {
-      return deduplicateTracks(sanitizedPublic).map(t => resolveOriginalTrack(t));
+      const combined = [...sanitizedPublic, ...sanitizedCatalog];
+      return deduplicateTracks(combined).map(t => resolveOriginalTrack(t));
     }
 
     const sanitizedCustom = activeCustom.map(t => {
@@ -427,22 +447,6 @@ export default function App() {
         language: t.language || 'English',
         genres: cleanGenres,
         genre: cleanGenres.join(', ')
-      };
-    });
-
-    const sanitizedCatalog = TRACKS.filter(t => !deletedTrackIds.includes(t.id)).map(t => {
-      const overridden = genreOverrides[t.id];
-      if (overridden) {
-        return {
-          ...t,
-          language: t.language || 'English',
-          genres: overridden,
-          genre: overridden.join(', ')
-        };
-      }
-      return {
-        ...t,
-        language: t.language || 'English'
       };
     });
 

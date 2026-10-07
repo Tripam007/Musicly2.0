@@ -525,9 +525,13 @@ export const TRACKS = [
     audioUrl: 'https://www.youtube.com/watch?v=p2vT10-y6OQ',
     youtubeId: 'p2vT10-y6OQ',
     isYouTube: true,
-    isOriginalAudio: false
   }
-];
+].map(track => ({
+  ...track,
+  isPublic: true,
+  isOfficial: true,
+  publishedBy: 'Musicly'
+}));
 
 export const SCENES = [
   {

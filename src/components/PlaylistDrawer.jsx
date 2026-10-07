@@ -83,10 +83,10 @@ export default function PlaylistDrawer({
     }
   }, [isOpen, autoFocusSearch]);
 
-  // If user is without login, ensure activeTab is strictly public library
+  // Default to 'all' so all catalog and public tracks are visible immediately
   useEffect(() => {
     if (!user || user.isAnonymous) {
-      setActiveTab('public');
+      setActiveTab('all');
     }
   }, [user]);
 
@@ -115,8 +115,6 @@ export default function PlaylistDrawer({
       document.removeEventListener('touchstart', handleOutsideClick);
     };
   }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
 
   const isAuthed = !!(user && !user.isAnonymous);
 
@@ -151,12 +149,12 @@ export default function PlaylistDrawer({
     return AVAILABLE_SECTIONS.filter(s => s.toLowerCase() !== 'ghazal');
   }, [activeLangs]);
 
-  // When without login, show ONLY the official Musicly Public Library
-  const visibleTracks = tracks.filter(t => isAuthed ? (!t.isCustom || isOfflineTrack(t) || t.isCustom) : !!t.isPublic);
+  // When without login, show all official Musicly tracks (Public Library & Curated Catalog)
+  const visibleTracks = tracks.filter(t => isAuthed ? (!t.isCustom || isOfflineTrack(t) || t.isCustom) : (!t.isCustom || !!t.isPublic));
   const youtubeCount = visibleTracks.filter(isYouTubeTrack).length;
   const offlineCount = visibleTracks.filter(isOfflineTrack).length;
   const customCount = isAuthed ? visibleTracks.filter(t => t.isCustom).length : 0;
-  const publicCount = visibleTracks.filter(t => t.isPublic).length;
+  const publicCount = visibleTracks.filter(t => t.isPublic || !t.isCustom).length;
 
   const filteredTracks = visibleTracks.filter((track) => {
     const matchesSearch = 
@@ -171,7 +169,7 @@ export default function PlaylistDrawer({
     }
 
     if (activeTab === 'public') {
-      return !!track.isPublic;
+      return !!track.isPublic || !track.isCustom;
     }
     if (activeTab === 'favorites') {
       return favorites.includes(track.id);
@@ -205,6 +203,8 @@ export default function PlaylistDrawer({
     }
     return 'Lo-Fi';
   };
+
+  if (!isOpen) return null;
 
   return (
     <div 
@@ -241,22 +241,65 @@ export default function PlaylistDrawer({
       </div>
 
       {/* Category / Filter Tabs */}
-      {/* Category / Filter Tabs or Guest Centered Request Row */}
-      {!isAuthed ? (
-        <div 
-          className="drawer-guest-request-row"
-          style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            width: '100%', 
-            padding: '4px 0 12px 0',
-            marginBottom: '10px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.06)'
-          }}
-        >
+      <div className="drawer-tabs-row">
+        <div className="drawer-tabs-group">
           <button 
-            className="drawer-tab-btn request-btn"
+            className={`drawer-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            All ({visibleTracks.length})
+          </button>
+          <button 
+            className={`drawer-tab-btn ${activeTab === 'favorites' ? 'active' : ''}`}
+            onClick={() => setActiveTab('favorites')}
+            title={`Liked (${favorites.length})`}
+          >
+            <Heart size={13} fill={activeTab === 'favorites' ? '#ff4b4b' : 'currentColor'} />
+            <span>({favorites.length})</span>
+          </button>
+          {publicCount > 0 && (
+            <button 
+              className={`drawer-tab-btn ${activeTab === 'public' ? 'active' : ''}`}
+              onClick={() => setActiveTab('public')}
+              title={`Public Library (${publicCount})`}
+              aria-label={`Public Library (${publicCount})`}
+            >
+              <Globe size={14} />
+            </button>
+          )}
+          {isAuthed && customCount > 0 && (
+            <button 
+              className={`drawer-tab-btn ${activeTab === 'custom' ? 'active' : ''}`}
+              onClick={() => setActiveTab('custom')}
+              title="Your uploaded songs & YouTube links"
+            >
+              Uploads ({customCount})
+            </button>
+          )}
+          {offlineCount > 0 && (
+            <button 
+              className={`drawer-tab-btn ${activeTab === 'offline' ? 'active' : ''}`}
+              onClick={() => setActiveTab('offline')}
+              title={`Offline Downloaded (${offlineCount})`}
+              aria-label={`Offline Downloaded (${offlineCount})`}
+            >
+              <Download size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className="drawer-actions-right">
+          {isAdmin && onOpenAdminDashboard && (
+            <button 
+              className="drawer-tab-btn admin-btn"
+              onClick={onOpenAdminDashboard}
+              title="Admin Dashboard: Manage Musicly Public Library"
+            >
+              <Crown size={13} style={{ color: '#ffd166' }} /> Admin
+            </button>
+          )}
+          <button 
+            className="drawer-tab-btn add-btn"
             onClick={() => {
               if (!user || user.isAnonymous) {
                 if (typeof onOpenAuthModal === 'function') {
@@ -264,74 +307,15 @@ export default function PlaylistDrawer({
                   return;
                 }
               }
-              onOpenSongRequest?.();
+              onOpenUpload?.();
             }}
-            title="Request a song for Musicly Public Library"
-            style={{ padding: '6px 18px', fontSize: '12px' }}
+            title="Add your own music"
           >
-            <Music size={13} /> Request Song
+            <Plus size={13} /> Add
           </button>
-        </div>
-      ) : (
-        <div className="drawer-tabs-row">
-          <div className="drawer-tabs-group">
+          {!isAdmin && (
             <button 
-              className={`drawer-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-              onClick={() => setActiveTab('all')}
-            >
-              All ({visibleTracks.length})
-            </button>
-            <button 
-              className={`drawer-tab-btn ${activeTab === 'favorites' ? 'active' : ''}`}
-              onClick={() => setActiveTab('favorites')}
-              title={`Liked (${favorites.length})`}
-            >
-              <Heart size={13} fill={activeTab === 'favorites' ? '#ff4b4b' : 'currentColor'} />
-              <span>({favorites.length})</span>
-            </button>
-            {publicCount > 0 && (
-              <button 
-                className={`drawer-tab-btn ${activeTab === 'public' ? 'active' : ''}`}
-                onClick={() => setActiveTab('public')}
-                title={`Public Library (${publicCount})`}
-                aria-label={`Public Library (${publicCount})`}
-              >
-                <Globe size={14} />
-              </button>
-            )}
-            {isAuthed && customCount > 0 && (
-              <button 
-                className={`drawer-tab-btn ${activeTab === 'custom' ? 'active' : ''}`}
-                onClick={() => setActiveTab('custom')}
-                title="Your uploaded songs & YouTube links"
-              >
-                Uploads ({customCount})
-              </button>
-            )}
-            {offlineCount > 0 && (
-              <button 
-                className={`drawer-tab-btn ${activeTab === 'offline' ? 'active' : ''}`}
-                onClick={() => setActiveTab('offline')}
-                title={`Offline Downloaded (${offlineCount})`}
-                aria-label={`Offline Downloaded (${offlineCount})`}
-              >
-                <Download size={14} />
-              </button>
-            )}
-          </div>
-
-          <div className="drawer-actions-right">
-            {isAdmin && onOpenAdminDashboard && (
-              <button 
-                className="drawer-tab-btn admin-btn"
-                onClick={onOpenAdminDashboard}
-                title="Admin Dashboard: Manage Musicly Public Library"
-              >
-                <Crown size={13} style={{ color: '#ffd166' }} /> Admin
-              </button>
-            )}
-            <button 
-              className="drawer-tab-btn add-btn"
+              className="drawer-tab-btn request-btn"
               onClick={() => {
                 if (!user || user.isAnonymous) {
                   if (typeof onOpenAuthModal === 'function') {
@@ -339,32 +323,15 @@ export default function PlaylistDrawer({
                     return;
                   }
                 }
-                onOpenUpload?.();
+                onOpenSongRequest?.();
               }}
-              title="Add your own music"
+              title="Request a song for Musicly Public Library"
             >
-              <Plus size={13} /> Add
+              <Music size={13} /> Request
             </button>
-            {!isAdmin && (
-              <button 
-                className="drawer-tab-btn request-btn"
-                onClick={() => {
-                  if (!user || user.isAnonymous) {
-                    if (typeof onOpenAuthModal === 'function') {
-                      onOpenAuthModal();
-                      return;
-                    }
-                  }
-                  onOpenSongRequest?.();
-                }}
-                title="Request a song for Musicly Public Library"
-              >
-                <Music size={13} /> Request
-              </button>
-            )}
-          </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Quick Language Filter Chips (English, Hindi, Bengali) */}
       <div 

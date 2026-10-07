@@ -11,6 +11,8 @@ import { checkIsAdmin } from './userModel';
 import { extractYouTubeId } from './youtubePlayer';
 import { generateInstantAudioBlob } from './audioDownloader';
 import { resolveOriginalTrack } from './originalTrackResolver';
+import { deduplicateTracks } from './trackDeduplicator';
+import { TRACKS } from '../data/tracks';
 
 const PUBLIC_CACHE_KEY = 'musicly_public_tracks_cache';
 const PUBLIC_STORE_NAME = 'public_audio_tracks';
@@ -32,109 +34,19 @@ function openPublicDB() {
   });
 }
 
-// Default Seed Public Library Tracks (guarantees public library always has songs even on cold start/offline)
-export const SEED_PUBLIC_TRACKS = [
-  {
-    id: 'public-until-i-found-you',
-    title: 'Until I Found You',
-    artist: 'Stephen Sanchez',
-    genre: 'Retro',
-    genres: ['Retro', 'Indie', 'Lo-Fi'],
-    duration: 178,
-    language: 'English',
-    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/64/d2/c5/64d2c511-67f4-ae09-5153-d39c3da413a3/21UMGIM75467.rgb.jpg/600x600bb.jpg',
-    audioUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/53/82/c1/5382c1d4-ddba-aa2b-90df-57268895fac9/mzaf_8926201202931541051.plus.aac.p.m4a',
-    isPublic: true,
-    isOfficial: true,
-    publishedBy: 'admin',
-    publishedAt: 1710000000000
-  },
-  {
-    id: 'public-agar-tu-hota',
-    title: 'Agar Tu Hota',
-    artist: 'Ankit Tiwari',
-    genre: 'Lo-Fi',
-    genres: ['Lo-Fi', 'Peace', 'Chill/Sleep'],
-    duration: 328,
-    language: 'Hindi',
-    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/a4/6c/48/a46c48cb-fba0-dcc8-ab9c-7b5ccef9c25a/8902894357944_cover.jpg/600x600bb.jpg',
-    audioUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/21/1d/fe/211dfe9f-3e8c-4e15-893c-2f74813b6d8d/mzaf_6771294320303380301.plus.aac.p.m4a',
-    isPublic: true,
-    isOfficial: true,
-    publishedBy: 'admin',
-    publishedAt: 1710000000000
-  },
-  {
-    id: 'public-nightcall',
-    title: 'Nightcall',
-    artist: 'Kavinsky',
-    genre: 'Synthwave',
-    genres: ['Synthwave', 'Retro'],
-    duration: 258,
-    language: 'English',
-    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/c1/2d/fe/c12dfe8f-cdf6-e179-d69a-8ec35f760266/00602537248681.rgb.jpg/600x600bb.jpg',
-    audioUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview221/v4/d2/45/fb/d245fbf9-8570-fdc0-5e6b-aa528c130486/mzaf_11947081694159530687.plus.aac.p.m4a',
-    isPublic: true,
-    isOfficial: true,
-    publishedBy: 'admin',
-    publishedAt: 1710000000000
-  },
-  {
-    id: 'public-iris',
-    title: 'Iris',
-    artist: 'The Goo Goo Dolls',
-    genre: 'Indie',
-    genres: ['Indie', 'Retro'],
-    duration: 290,
-    language: 'English',
-    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/2c/13/18/2c131801-00af-58b1-3cc2-13abf4ad5416/093624919162.jpg/600x600bb.jpg',
-    audioUrl: '/assets/audio/iris.m4a',
-    isPublic: true,
-    isOfficial: true,
-    publishedBy: 'admin',
-    publishedAt: 1710000000000
-  },
-  {
-    id: 'public-heavens-door',
-    title: "Knockin' On Heaven's Door",
-    artist: 'Bob Dylan',
-    genre: 'Retro',
-    genres: ['Retro', 'Indie'],
-    duration: 150,
-    language: 'English',
-    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/7e/06/12/7e06123a-c3af-75cf-c611-94334cb0bf20/886444247238.jpg/600x600bb.jpg',
-    audioUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/a5/98/9a/a5989a67-426b-5fad-7234-339fd2d08488/mzaf_11743263021663924501.plus.aac.p.m4a',
-    isPublic: true,
-    isOfficial: true,
-    publishedBy: 'admin',
-    publishedAt: 1710000000000
-  },
-  {
-    id: 'public-vienna',
-    title: 'Vienna',
-    artist: 'Billy Joel',
-    genre: 'Retro',
-    genres: ['Retro', 'Lo-Fi'],
-    duration: 214,
-    language: 'English',
-    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/37/68/4c/37684c52-dbdf-9bfe-0d87-07492f43dc4c/dj.gmcbwich.jpg/600x600bb.jpg',
-    audioUrl: 'https://audio-ssl.itunes.apple.com/itunes-assets/AudioPreview211/v4/e8/d2/03/e8d203cc-ce97-278b-5abb-c6de33d36d37/mzaf_5153648922176185845.plus.aac.p.m4a',
-    isPublic: true,
-    isOfficial: true,
-    publishedBy: 'admin',
-    publishedAt: 1710000000000
-  }
-];
+// Default Seed Public Library Tracks (guarantees public library always has all songs even on cold start/offline)
+export const SEED_PUBLIC_TRACKS = TRACKS.map(t => ({
+  ...t,
+  isPublic: true,
+  isOfficial: true,
+  publishedBy: 'Musicly',
+  publishedAt: 1710000000000
+}));
 
 export const PUBLIC_DELETED_KEY = 'musicly_public_deleted_track_ids';
 
-// Initial pre-registered deleted IDs to immediately purge the tracks deleted by admin
-export const INITIAL_PURGED_IDS = [
-  'public-weightless',
-  'public-sweater-weather',
-  'public-ghazal-hothon-se-chhoo-lo',
-  'public-ghazal-woh-kagaz-ki-kashti'
-];
+// Initial pre-registered deleted IDs to immediately purge tracks if deleted by admin
+export const INITIAL_PURGED_IDS = [];
 
 /**
  * Returns a Set of track IDs that have been permanently deleted by the admin.
@@ -146,7 +58,11 @@ export function getDeletedPublicTrackIds() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        parsed.forEach(id => set.add(id));
+        parsed.forEach(id => {
+          if (!id.startsWith('public-ghazal-') && id !== 'public-weightless' && id !== 'public-sweater-weather') {
+            set.add(id);
+          }
+        });
       }
     }
   } catch (e) {}
@@ -184,10 +100,10 @@ export function getLocalPublicTracks() {
         // Ensure official seeds are accessible ONLY if they have not been deleted
         const existingIds = new Set(resolvedList.map(t => t.id));
         const missingSeeds = SEED_PUBLIC_TRACKS.filter(s => !existingIds.has(s.id) && !deletedIds.has(s.id));
-        const combined = [...missingSeeds, ...resolvedList];
+        const combined = deduplicateTracks([...missingSeeds, ...resolvedList]);
 
         // If stale deleted items were purged from the cache, save the cleaned list back
-        if (cleanList.length !== parsed.length) {
+        if (cleanList.length !== parsed.length || missingSeeds.length > 0) {
           saveLocalPublicTracks(combined);
         }
         return combined;
@@ -195,7 +111,7 @@ export function getLocalPublicTracks() {
     }
   } catch (e) {}
 
-  return SEED_PUBLIC_TRACKS.filter(s => !deletedIds.has(s.id));
+  return deduplicateTracks(SEED_PUBLIC_TRACKS.filter(s => !deletedIds.has(s.id)));
 }
 
 /**
