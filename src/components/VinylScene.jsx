@@ -688,15 +688,31 @@ export default function VinylScene({
                     <div className="vinyl-sheen-sweep" />
 
                     {/* Split Two-Tone Center Label */}
-                    <div className="vinyl-center-label">
-                      <span className="vinyl-label-top-brand">MUSICLY HI-FI</span>
+                    <div 
+                      className="vinyl-center-label" 
+                      title={`${currentTrack?.title || 'No Track Selected'}${currentTrack?.artist ? ` — ${currentTrack.artist}` : ''}`}
+                    >
+                      {/* Top Cream Half: Micro Brand + Current Track Name */}
+                      <div className="vinyl-label-top-section">
+                        <span className="vinyl-label-sub-brand">MUSICLY • STEREO</span>
+                        <span className="vinyl-label-song-title">
+                          {currentTrack?.title || 'No Track Selected'}
+                        </span>
+                      </div>
 
+                      {/* Center Spindle Core */}
                       <div className="vinyl-label-center-core">
                         {/* Spindle hole */}
                         <div className="vinyl-center-spindle-hole" />
                       </div>
 
-                      <span className="vinyl-label-rpm-badge">{rpmSpeed === 33 ? '33⅓ RPM' : '45 RPM'}</span>
+                      {/* Bottom Black Half: Artist Name + RPM Speed */}
+                      <div className="vinyl-label-bottom-section">
+                        <span className="vinyl-label-song-artist">
+                          {currentTrack?.artist || 'Musicly Audio'}
+                        </span>
+                        <span className="vinyl-label-rpm-badge">{rpmSpeed === 33 ? '33⅓ RPM' : '45 RPM'}</span>
+                      </div>
                     </div>
 
                     {/* Ripple animation on click */}

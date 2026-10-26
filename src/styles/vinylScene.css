@@ -678,59 +678,120 @@
 .vinyl-center-label {
   position: relative;
   z-index: 5;
-  width: 38%;
-  height: 38%;
+  width: 40%;
+  height: 40%;
   border-radius: 50%;
-  background: linear-gradient(180deg, #f5f4ef 0%, #ece9e1 50%, #1e1e22 50%, #121215 100%);
+  background: linear-gradient(180deg, #f7f6f0 0%, #ebe7dc 50%, #1e1e23 50%, #111114 100%);
   border: 3px solid #111114;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5), inset 0 0 10px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.55), inset 0 0 10px rgba(0, 0, 0, 0.25);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 8px;
+  padding: 8px 6px;
   text-align: center;
   overflow: hidden;
+  user-select: none;
 }
 
-.vinyl-label-top-brand {
+/* Top Cream Half with Track Title */
+.vinyl-label-top-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 92%;
+  margin-top: 3px;
+  gap: 2px;
+}
+
+.vinyl-label-sub-brand {
   font-family: var(--vinyl-font-pixel);
-  font-size: 0.58rem;
-  letter-spacing: 0.18em;
-  color: #1a1a1c;
+  font-size: 0.36rem;
+  letter-spacing: 0.16em;
+  color: rgba(26, 26, 30, 0.65);
   font-weight: 700;
   text-transform: uppercase;
+  line-height: 1;
 }
 
+.vinyl-label-song-title {
+  font-family: var(--vinyl-font-sans);
+  font-size: clamp(0.52rem, 1.25vw, 0.65rem);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: 0.02em;
+  color: #111115;
+  text-transform: uppercase;
+  text-align: center;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+/* Center Spindle Hole Assembly */
 .vinyl-label-center-core {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1.5px solid #222;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
 }
 
 .vinyl-center-spindle-hole {
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: radial-gradient(circle, #000 0%, #1a1a1a 80%, #555 100%);
   border: 1.5px solid #d4af37;
   box-shadow: inset 0 1px 3px #000;
 }
 
+/* Bottom Black Half with Artist & RPM */
+.vinyl-label-bottom-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 92%;
+  margin-bottom: 3px;
+  gap: 2px;
+}
+
+.vinyl-label-song-artist {
+  font-family: var(--vinyl-font-sans);
+  font-size: clamp(0.44rem, 1.05vw, 0.54rem);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #e4e2d8;
+  text-transform: capitalize;
+  text-align: center;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.15;
+}
+
 .vinyl-label-rpm-badge {
   font-family: var(--vinyl-font-mono);
-  font-size: 0.52rem;
+  font-size: 0.42rem;
   font-weight: 700;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.55);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  line-height: 1;
 }
 
 /* Vinyl Spin Rotation Keyframe */
