@@ -2501,7 +2501,7 @@ export default function App() {
           audioElement={audioRef.current}
           selectedLanguage={selectedLanguage}
           selectedLanguages={selectedLanguages}
-          onSelectLanguage={handleToggleLanguage}
+          onSelectLanguage={handleSelectLanguage}
         />
       )}
 
