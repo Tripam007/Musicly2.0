@@ -14134,10 +14134,11 @@ body, html, #root {
   transform: translateY(0);
 }
 
-/* Hide standard top & bottom bars when in full immersive Choose Your Vibe scene, Afterglow scene, or Minimal Studio */
+/* Hide standard top & bottom bars when in full immersive Choose Your Vibe scene, Afterglow scene, Minimal Studio, or Vinyl */
 .app-content-shell.vibe-scene-active-shell,
 .app-content-shell.afterglow-scene-active-shell,
-.app-content-shell.minimal-scene-active-shell {
+.app-content-shell.minimal-scene-active-shell,
+.app-content-shell.vinyl-scene-active-shell {
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease;

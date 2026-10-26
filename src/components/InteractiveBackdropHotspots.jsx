@@ -162,7 +162,7 @@ export default function InteractiveBackdropHotspots({
 
   const customHotspots = Array.isArray(currentScene?.interactiveHotspots) ? currentScene.interactiveHotspots : [];
   const hasCustomHotspots = customHotspots.length > 0;
-  const isCozyBedroom = !activeBackdrop || activeBackdrop.includes('cozy_bedroom');
+  const isCozyBedroom = currentScene?.id === 'cozy_bedroom' || (!currentScene?.id && (!activeBackdrop || activeBackdrop.includes('cozy_bedroom')));
 
   const handleDynamicSpotClick = (e, spot) => {
     e.stopPropagation();

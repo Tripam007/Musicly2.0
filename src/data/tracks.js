@@ -541,6 +541,18 @@ export const SCENES = [
     desc: 'Warm glow, neon sign, guitar, candle & coding monitors'
   },
   {
+    id: 'vinyl',
+    name: 'VINYL',
+    image: '/assets/images/vinyl_scene_preview.jpg',
+    desc: 'Where the old records meet a new rhythm.',
+    isInteractive: true,
+    isTheme: true,
+    isPremium: true,
+    primaryColor: '#121214',
+    secondaryColor: '#2b2b2f',
+    glowColor: 'rgba(20, 20, 20, 0.35)'
+  },
+  {
     id: 'vibe_carousel',
     name: 'After Hours',
     image: '/assets/images/after_hours_scene.jpg',

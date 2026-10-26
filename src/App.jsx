@@ -16,6 +16,7 @@ import ChooseYourVibeScene from './components/ChooseYourVibeScene';
 import AfterglowScene from './components/AfterglowScene';
 import AfterglowCinematicFilm from './components/AfterglowCinematicFilm';
 import MinimalStudioScene from './components/MinimalStudioScene';
+import VinylScene from './components/VinylScene';
 import AfterglowIntro from './components/AfterglowIntro';
 import CinematicOpeningScreen from './components/CinematicOpeningScreen';
 import VelocityScene from './components/VelocityScene';
@@ -620,6 +621,29 @@ export default function App() {
 
   const handleNextTrackAutoRef = useRef(null);
 
+  // Shuffle Tracking: Ensure played songs are never repeated in shuffle mode until all songs in playlist have been played
+  const playedShuffleTrackIdsRef = useRef(new Set());
+  const shuffleHistoryRef = useRef([]);
+
+  // Sync shuffle history when current track changes
+  useEffect(() => {
+    if (currentTrackId) {
+      playedShuffleTrackIdsRef.current.add(currentTrackId);
+    }
+  }, [currentTrackId]);
+
+  // Reset or initialize shuffle pool when shuffle mode toggles
+  useEffect(() => {
+    if (isShuffle) {
+      const currentId = currentTrackRef.current?.id;
+      playedShuffleTrackIdsRef.current = new Set(currentId ? [currentId] : []);
+      shuffleHistoryRef.current = currentId ? [currentId] : [];
+    } else {
+      playedShuffleTrackIdsRef.current.clear();
+      shuffleHistoryRef.current = [];
+    }
+  }, [isShuffle]);
+
   // Air Controls State (Camera Hand Gesture Navigation)
   const [isAirControlsEnabled, setIsAirControlsEnabled] = useState(() => {
     try {
@@ -825,6 +849,9 @@ export default function App() {
     setCurrentTrackId(track.id);
     setCurrentTime(0);
     currentTimeRef.current = 0;
+    // Track in shuffle played pool so it is not repeated automatically
+    playedShuffleTrackIdsRef.current.add(track.id);
+    shuffleHistoryRef.current.push(track.id);
     if (shouldPlay) {
       setIsPlaying(true);
       audioEngine.playTrack(track, 0);
@@ -836,18 +863,23 @@ export default function App() {
 
   // Seek handler: delegates cleanly to AudioEngine with ZERO continuous loops
   const handleSeek = (newTime) => {
-    const clampedTime = Math.max(0, Math.min(duration, newTime));
+    const maxDur = (duration && duration > 0) ? duration : (currentTrack?.duration || 180);
+    const clampedTime = Math.max(0, Math.min(maxDur, newTime));
     setCurrentTime(clampedTime);
     currentTimeRef.current = clampedTime;
     audioEngine.seek(clampedTime);
 
     if (!isPlaying) {
       setIsPlaying(true);
-      audioEngine.play();
+      if (audioEngine.playbackMode === 'none' || !audioEngine.currentTrack) {
+        audioEngine.playTrack(currentTrack, clampedTime);
+      } else {
+        audioEngine.play();
+      }
     }
   };
 
-  // Next Track: Jumps to the next song in the active (selected) section
+  // Next Track: Jumps to the next song in the active (selected) section without repeating played songs in shuffle mode
   const handleNextTrack = () => {
     const list = activePlaylistRef.current || [];
     if (list.length === 0) return;
@@ -857,10 +889,28 @@ export default function App() {
 
     let nextTrack;
     if (shuffle) {
-      const candidates = list.filter(t => t.id !== track?.id);
-      nextTrack = candidates.length > 0
-        ? candidates[Math.floor(Math.random() * candidates.length)]
-        : list[0];
+      const currentId = track?.id;
+      // Filter out current track and any track that has already played in this shuffle cycle
+      const unplayedCandidates = list.filter(t => t.id !== currentId && !playedShuffleTrackIdsRef.current.has(t.id));
+
+      if (unplayedCandidates.length > 0) {
+        nextTrack = unplayedCandidates[Math.floor(Math.random() * unplayedCandidates.length)];
+      } else {
+        // All songs in the playlist have been played! Reset pool and start a new shuffle cycle
+        playedShuffleTrackIdsRef.current.clear();
+        if (currentId) {
+          playedShuffleTrackIdsRef.current.add(currentId);
+        }
+        const freshCandidates = list.filter(t => t.id !== currentId);
+        nextTrack = freshCandidates.length > 0
+          ? freshCandidates[Math.floor(Math.random() * freshCandidates.length)]
+          : list[0];
+      }
+
+      if (nextTrack) {
+        playedShuffleTrackIdsRef.current.add(nextTrack.id);
+        shuffleHistoryRef.current.push(nextTrack.id);
+      }
     } else {
       const currentIdxInActive = list.findIndex(t => t.id === track?.id);
       if (currentIdxInActive === -1) {
@@ -884,7 +934,7 @@ export default function App() {
     const rMode = repeatModeRef.current;
     const track = currentTrackRef.current;
     const list = activePlaylistRef.current || [];
-    const vol = volumeRef.current;
+    const shuffle = isShuffleRef.current;
 
     if (rMode === 'one') {
       setCurrentTime(0);
@@ -894,13 +944,24 @@ export default function App() {
     } else if (rMode === 'all') {
       handleNextTrack();
     } else {
-      const currentIdxInActive = list.findIndex(t => t.id === track?.id);
-      if (currentIdxInActive !== -1 && currentIdxInActive === list.length - 1) {
-        setIsPlaying(false);
-        audioEngine.pause();
+      // Repeat mode is OFF
+      if (shuffle) {
+        const unplayed = list.filter(t => t.id !== track?.id && !playedShuffleTrackIdsRef.current.has(t.id));
+        if (unplayed.length === 0) {
+          // All songs in shuffle have finished and repeat is OFF -> stop playback
+          setIsPlaying(false);
+          audioEngine.pause();
+          return;
+        }
       } else {
-        handleNextTrack();
+        const currentIdxInActive = list.findIndex(t => t.id === track?.id);
+        if (currentIdxInActive !== -1 && currentIdxInActive === list.length - 1) {
+          setIsPlaying(false);
+          audioEngine.pause();
+          return;
+        }
       }
+      handleNextTrack();
     }
   };
   handleNextTrackAutoRef.current = handleNextTrackAuto;
@@ -911,13 +972,23 @@ export default function App() {
     if (list.length === 0) return;
 
     const track = currentTrackRef.current;
+    const shuffle = isShuffleRef.current;
     let prevTrack;
-    const currentIdxInActive = list.findIndex(t => t.id === track?.id);
-    if (currentIdxInActive === -1) {
-      prevTrack = list[list.length - 1];
-    } else {
-      const prevIdx = (currentIdxInActive === 0 ? list.length - 1 : currentIdxInActive - 1);
-      prevTrack = list[prevIdx];
+
+    if (shuffle && shuffleHistoryRef.current.length > 1) {
+      shuffleHistoryRef.current.pop(); // remove current song
+      const prevId = shuffleHistoryRef.current[shuffleHistoryRef.current.length - 1];
+      prevTrack = list.find(t => t.id === prevId);
+    }
+
+    if (!prevTrack) {
+      const currentIdxInActive = list.findIndex(t => t.id === track?.id);
+      if (currentIdxInActive === -1) {
+        prevTrack = list[list.length - 1];
+      } else {
+        const prevIdx = (currentIdxInActive === 0 ? list.length - 1 : currentIdxInActive - 1);
+        prevTrack = list[prevIdx];
+      }
     }
 
     if (prevTrack) {
@@ -2372,8 +2443,67 @@ export default function App() {
         />
       )}
 
+      {/* 💽 VINYL Retro Hi-Fi Editorial Scene */}
+      {currentScene?.id === 'vinyl' && (
+        <VinylScene
+          currentScene={currentScene}
+          allTracks={allTracks}
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          currentTime={currentTime}
+          duration={duration}
+          volume={volume}
+          onVolumeChange={setVolume}
+          onSeek={handleSeek}
+          onTogglePlay={togglePlay}
+          onNextTrack={handleNextTrack}
+          onPrevTrack={handlePrevTrack}
+          isShuffle={isShuffle}
+          onToggleShuffle={() => setIsShuffle(!isShuffle)}
+          repeatMode={repeatMode}
+          onToggleRepeat={handleToggleRepeat}
+          favorites={favorites}
+          onToggleFavorite={handleToggleFavorite}
+          onSelectTrack={(track, shouldPlay) => {
+            if (!track) return;
+            setCurrentTrackId(track.id);
+            setCurrentTime(0);
+            currentTimeRef.current = 0;
+            if (shouldPlay !== undefined) {
+              setIsPlaying(shouldPlay);
+            }
+          }}
+          onOpenSceneModal={() => setIsSceneOpen(true)}
+          onOpenPlaylistDrawer={() => {
+            setIsDrawerSearchMode(false);
+            setIsDrawerOpen(true);
+          }}
+          onOpenSearch={(query) => {
+            setIsDrawerSearchMode(true);
+            setIsDrawerOpen(true);
+          }}
+          onOpenAmbient={() => setIsAmbientOpen(true)}
+          activeAmbientCount={activeAmbientCount}
+          onOpenAuthModal={() => setIsAuthOpen(true)}
+          onOpenCoffeeModal={() => setIsCoffeeOpen(true)}
+          onOpenShortcutsModal={() => setIsShortcutsOpen(true)}
+          onOpenAudioSettings={() => setIsAudioSettingsOpen(true)}
+          user={user}
+          isAdmin={isAdmin}
+          onLogout={handleLogout}
+          onClose={() => {
+            const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
+            setCurrentScene(bedroomScene);
+            setBackdropImage(bedroomScene.image);
+          }}
+          selectedGenre={selectedGenre}
+          onSelectGenre={setSelectedGenre}
+          audioElement={audioRef.current}
+        />
+      )}
+
       {/* Application UI Shell */}
-      <div className={`app-content-shell ${currentScene?.id === 'vibe_carousel' ? 'vibe-scene-active-shell' : ''} ${currentScene?.id === 'afterglow' ? 'afterglow-scene-active-shell' : ''} ${currentScene?.id === 'minimal_studio' ? 'minimal-scene-active-shell' : ''}`}>
+      <div className={`app-content-shell ${currentScene?.id === 'vibe_carousel' ? 'vibe-scene-active-shell' : ''} ${currentScene?.id === 'afterglow' ? 'afterglow-scene-active-shell' : ''} ${currentScene?.id === 'minimal_studio' ? 'minimal-scene-active-shell' : ''} ${currentScene?.id === 'vinyl' ? 'vinyl-scene-active-shell' : ''}`}>
         {/* Top Navigation Bar */}
         <TopBar
           selectedGenre={selectedGenre}
