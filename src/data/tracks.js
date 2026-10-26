@@ -1,25 +1,44 @@
-export const GENRES = ['All', 'Retro', 'Indie', 'Lo-Fi', 'Ghazal', 'Synthwave', 'Peace', 'Chill/Sleep'];
+export const GENRES = ['All', 'Retro', 'Indie', 'Lo-Fi', 'Synthwave', 'Peace', 'Chill/Sleep'];
 
 export const isGhazalLanguage = (lang) => {
-  if (!lang) return true;
+  if (!lang) return false;
   if (Array.isArray(lang)) {
-    if (lang.length === 0) return true;
-    return lang.some(l => String(l).trim().toLowerCase() === 'hindi');
+    if (lang.length === 0) return false;
+    return lang.length === 1 && String(lang[0]).trim().toLowerCase() === 'hindi';
   }
   const l = String(lang).trim().toLowerCase();
-  return l === 'all' || l === 'hindi';
+  return l === 'hindi';
+};
+
+export const isCountryLanguage = (lang) => {
+  if (!lang) return false;
+  if (Array.isArray(lang)) {
+    if (lang.length === 0) return false;
+    return lang.length === 1 && String(lang[0]).trim().toLowerCase() === 'english';
+  }
+  const l = String(lang).trim().toLowerCase();
+  return l === 'english';
 };
 
 export const getAvailableGenres = (lang) => {
-  if (isGhazalLanguage(lang)) {
-    return GENRES;
+  const baseGenres = ['All', 'Retro', 'Indie', 'Lo-Fi', 'Synthwave', 'Peace', 'Chill/Sleep'];
+  const genres = [...baseGenres];
+
+  if (isCountryLanguage(lang)) {
+    genres.splice(3, 0, 'Country');
   }
-  return GENRES.filter(g => g.toLowerCase() !== 'ghazal');
+
+  if (isGhazalLanguage(lang)) {
+    genres.splice(4, 0, 'Ghazal');
+  }
+
+  return genres;
 };
 
 export const GENRE_BACKDROPS = {
   'All': '/assets/images/cozy_bedroom.jpg',
   'Retro': '/assets/images/retro_scene.jpg',
+  'Country': 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&auto=format&fit=crop&q=85',
   'Indie': 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=1920&auto=format&fit=crop&q=85',
   'Lo-Fi': '/assets/images/lofi_scene.jpg',
   'Ghazal': '/assets/images/ghazals_bg.png',
@@ -525,6 +544,90 @@ export const TRACKS = [
     audioUrl: 'https://www.youtube.com/watch?v=p2vT10-y6OQ',
     youtubeId: 'p2vT10-y6OQ',
     isYouTube: true,
+  },
+  {
+    id: 'country-take-me-home',
+    title: 'Take Me Home, Country Roads',
+    artist: 'John Denver',
+    genre: 'Country',
+    genres: ['Country', 'Retro', 'Peace'],
+    language: 'English',
+    duration: 198,
+    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/4a/c0/8d/4ac08d27-6f89-8d19-bb17-bdf242cf1a63/886444933934.jpg/600x600bb.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=1vrElj4tD54',
+    youtubeId: '1vrElj4tD54',
+    isYouTube: true,
+    isOriginalAudio: false
+  },
+  {
+    id: 'country-tennessee-whiskey',
+    title: 'Tennessee Whiskey',
+    artist: 'Chris Stapleton',
+    genre: 'Country',
+    genres: ['Country', 'Indie', 'Chill/Sleep'],
+    language: 'English',
+    duration: 293,
+    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/a5/d8/bc/a5d8bcf7-9a8d-ea3c-b169-dc3fa557ea69/15UMGIM13410.rgb.jpg/600x600bb.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=4zAThXFOy2c',
+    youtubeId: '4zAThXFOy2c',
+    isYouTube: true,
+    isOriginalAudio: false
+  },
+  {
+    id: 'country-ring-of-fire',
+    title: 'Ring of Fire',
+    artist: 'Johnny Cash',
+    genre: 'Country',
+    genres: ['Country', 'Retro'],
+    language: 'English',
+    duration: 157,
+    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/64/00/c9/6400c9ea-f698-fa35-3c11-97a151b74287/886443428980.jpg/600x600bb.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=0l3n0m7_Q1E',
+    youtubeId: '0l3n0m7_Q1E',
+    isYouTube: true,
+    isOriginalAudio: false
+  },
+  {
+    id: 'country-fast-car',
+    title: 'Fast Car',
+    artist: 'Luke Combs',
+    genre: 'Country',
+    genres: ['Country', 'Indie'],
+    language: 'English',
+    duration: 265,
+    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/55/e9/8b/55e98b04-a28a-728b-bf99-8e4347c617eb/196589901509.jpg/600x600bb.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=sK7_wFjHw4s',
+    youtubeId: 'sK7_wFjHw4s',
+    isYouTube: true,
+    isOriginalAudio: false
+  },
+  {
+    id: 'ghazal-chitthi-aayi-hai',
+    title: 'Chitthi Aayi Hai',
+    artist: 'Pankaj Udhas',
+    genre: 'Ghazal',
+    genres: ['Ghazal', 'Retro', 'Peace'],
+    language: 'Hindi',
+    duration: 432,
+    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/5a/8a/85/5a8a8553-90d5-0373-b6d4-20c24296dfa5/8902894358897_cover.jpg/600x600bb.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=3JjO4vF40W4',
+    youtubeId: '3JjO4vF40W4',
+    isYouTube: true,
+    isOriginalAudio: false
+  },
+  {
+    id: 'ghazal-hazaaron-khwaishein',
+    title: 'Hazaaron Khwaishein Aisi',
+    artist: 'Jagjit Singh',
+    genre: 'Ghazal',
+    genres: ['Ghazal', 'Retro', 'Chill/Sleep'],
+    language: 'Hindi',
+    duration: 320,
+    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/a9/39/e4/a939e443-41bb-2dc5-bfeb-2a3b0a233632/886444747517.jpg/600x600bb.jpg',
+    audioUrl: 'https://www.youtube.com/watch?v=B8123o_qL5g',
+    youtubeId: 'B8123o_qL5g',
+    isYouTube: true,
+    isOriginalAudio: false
   }
 ].map(track => ({
   ...track,

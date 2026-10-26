@@ -40,7 +40,7 @@ import './styles/airControls.css';
 import { VoiceControlManager, MUSICLY_ACTIONS } from './voice';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useButtonTactileFeedback } from './hooks/useButtonTactileFeedback';
-import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage } from './data/tracks';
+import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage, isCountryLanguage } from './data/tracks';
 import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/audioSynth';
 import { audioEngine } from './utils/audioEngine';
 import { ytEngine, extractYouTubeId } from './utils/youtubePlayer';
@@ -343,9 +343,12 @@ export default function App() {
     } catch (e) {}
   }, [selectedLanguages]);
 
-  // Ensure Ghazal genre is ONLY accessible when language includes Hindi or when no filter is active
+  // Ensure Ghazal is ONLY accessible for Hindi, and Country ONLY for English
   useEffect(() => {
     if (selectedGenre && selectedGenre.toLowerCase() === 'ghazal' && !isGhazalLanguage(selectedLanguages)) {
+      handleSelectGenre('All');
+    }
+    if (selectedGenre && selectedGenre.toLowerCase() === 'country' && !isCountryLanguage(selectedLanguages)) {
       handleSelectGenre('All');
     }
   }, [selectedLanguages, selectedGenre]);
@@ -1258,6 +1261,10 @@ export default function App() {
   // Genre filter selection + Animated Dynamic Backdrop Switch
   const handleSelectGenre = (genre) => {
     if (genre && genre.toLowerCase() === 'ghazal' && !isGhazalLanguage(selectedLanguage)) {
+      setSelectedGenre('All');
+      return;
+    }
+    if (genre && genre.toLowerCase() === 'country' && !isCountryLanguage(selectedLanguage)) {
       setSelectedGenre('All');
       return;
     }

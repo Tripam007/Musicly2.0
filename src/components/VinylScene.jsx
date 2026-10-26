@@ -107,6 +107,33 @@ export default function VinylScene({
       });
     }
   }, [onSelectLanguage]);
+
+  // Dynamic category pills:
+  // English -> adds COUNTRY
+  // Hindi -> adds GHAZALS
+  // All (or other languages) -> neither COUNTRY nor GHAZALS
+  const displayCategories = useMemo(() => {
+    const isEnglishOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'english';
+    const isHindiOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'hindi';
+
+    const categories = ['ALL', 'CLASSIC', '90s', 'NEW'];
+    if (isEnglishOnly) {
+      categories.push('COUNTRY');
+    }
+    if (isHindiOnly) {
+      categories.push('GHAZALS');
+    }
+    categories.push('INSTRUMENTAL', 'MODERN', 'INDIE', 'LO-FI');
+    return categories;
+  }, [activeLanguages]);
+
+  // Reset category to ALL if current category is no longer available in the active language
+  useEffect(() => {
+    if (!displayCategories.includes(activeCategory)) {
+      setActiveCategory('ALL');
+    }
+  }, [displayCategories, activeCategory]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(volume);
@@ -195,6 +222,12 @@ export default function VinylScene({
         if (cat === 'new') {
           return track.isPublic || track.isOriginalAudio || trackGenre.includes('synthwave');
         }
+        if (cat === 'country') {
+          return trackGenre.includes('country') || trackGenres.includes('country') || trackTitle.includes('country') || trackArtist.includes('denver') || trackArtist.includes('stapleton') || trackArtist.includes('cash') || trackArtist.includes('combs');
+        }
+        if (cat === 'ghazals' || cat === 'ghazal') {
+          return trackGenre.includes('ghazal') || trackGenres.includes('ghazal') || trackTitle.includes('ghazal') || trackArtist.includes('jagjit') || trackArtist.includes('pankaj');
+        }
         if (cat === 'instrumental') {
           return trackGenre.includes('peace') || trackGenre.includes('chill') || trackGenre.includes('sleep') || trackGenres.includes('peace');
         }
@@ -259,6 +292,44 @@ export default function VinylScene({
       tracks: lofiTracks.length > 0 ? lofiTracks : allTracks,
       image: lofiTracks[0]?.cover || '/assets/images/lofi_scene.jpg'
     });
+
+    // Language-Specific Featured Playlists (English -> Country, Hindi -> Ghazals, All -> neither)
+    const isEnglishOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'english';
+    const isHindiOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'hindi';
+
+    if (isEnglishOnly) {
+      const countryTracks = allTracks.filter(t => 
+        (t.genre || '').toLowerCase().includes('country') || 
+        (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country')))
+      );
+      if (countryTracks.length > 0) {
+        playlists.push({
+          id: 'country_roots',
+          title: 'Country Roads & Roots',
+          subtitle: `${countryTracks.length} song${countryTracks.length === 1 ? '' : 's'} in this list`,
+          count: countryTracks.length,
+          tracks: countryTracks,
+          image: countryTracks[0]?.cover || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=300&auto=format&fit=crop&q=80'
+        });
+      }
+    }
+
+    if (isHindiOnly) {
+      const ghazalTracks = allTracks.filter(t => 
+        (t.genre || '').toLowerCase().includes('ghazal') || 
+        (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal')))
+      );
+      if (ghazalTracks.length > 0) {
+        playlists.push({
+          id: 'timeless_ghazals',
+          title: 'Timeless Ghazals & Mehfil',
+          subtitle: `${ghazalTracks.length} song${ghazalTracks.length === 1 ? '' : 's'} in this list`,
+          count: ghazalTracks.length,
+          tracks: ghazalTracks,
+          image: ghazalTracks[0]?.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'
+        });
+      }
+    }
 
     // 4. Indie Warmth & Acoustic
     const indieTracks = allTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie'))));
@@ -1078,7 +1149,7 @@ export default function VinylScene({
 
                 {/* Horizontal Category Pills */}
                 <div className="vinyl-categories-row" role="tablist">
-                  {VINYL_CATEGORIES.map(category => {
+                  {displayCategories.map(category => {
                     const isSelected = activeCategory === category;
                     return (
                       <button
