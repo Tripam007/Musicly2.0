@@ -26,6 +26,7 @@ import {
   Sparkles,
   Check
 } from 'lucide-react';
+import { LANGUAGES, LANGUAGE_LABELS } from '../data/tracks';
 import '../styles/vinylScene.css';
 
 // Curated Category Filters inspired by the reference image
@@ -75,9 +76,37 @@ export default function VinylScene({
   onClose,
   selectedGenre = 'All',
   onSelectGenre,
-  audioElement = null
+  audioElement = null,
+  selectedLanguage = null,
+  selectedLanguages = [],
+  onSelectLanguage = null
 }) {
   const [activeCategory, setActiveCategory] = useState('ALL');
+  const [localLanguages, setLocalLanguages] = useState([]);
+
+  // Active languages resolution (supporting global props or local fallback)
+  const activeLanguages = useMemo(() => {
+    if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
+      return selectedLanguages;
+    }
+    if (selectedLanguage && selectedLanguage !== 'All') {
+      return [selectedLanguage];
+    }
+    return localLanguages;
+  }, [selectedLanguages, selectedLanguage, localLanguages]);
+
+  // Language selection toggle
+  const handleLanguageToggle = useCallback((lang) => {
+    if (onSelectLanguage) {
+      onSelectLanguage(lang);
+    } else {
+      setLocalLanguages(prev => {
+        if (!lang || lang === 'All') return [];
+        if (prev.includes(lang)) return prev.filter(l => l !== lang);
+        return [...prev, lang];
+      });
+    }
+  }, [onSelectLanguage]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(volume);
@@ -139,7 +168,16 @@ export default function VinylScene({
     
     let list = allTracks;
 
-    // Category mapping logic to Musicly's real genres and metadata
+    // 1. Language Filter
+    if (activeLanguages && activeLanguages.length > 0) {
+      const lowerSelected = activeLanguages.map(l => l.toLowerCase());
+      list = list.filter(track => {
+        const trackLang = (track.language || 'English').toLowerCase();
+        return lowerSelected.includes(trackLang);
+      });
+    }
+
+    // 2. Category mapping logic to Musicly's real genres and metadata
     if (activeCategory !== 'ALL') {
       const cat = activeCategory.toLowerCase();
       list = list.filter(track => {
@@ -183,7 +221,7 @@ export default function VinylScene({
     }
 
     return list.slice(0, 12);
-  }, [allTracks, activeCategory, searchQuery]);
+  }, [allTracks, activeCategory, activeLanguages, searchQuery]);
 
   // Curated Favorite Playlists Section data
   const favoritePlaylists = useMemo(() => {
@@ -992,14 +1030,50 @@ export default function VinylScene({
               {/* Categories Section */}
               <div className="vinyl-categories-section">
                 <div className="vinyl-section-header">
-                  <h2 className="vinyl-section-title">Music Categories</h2>
-                  <button 
-                    className="vinyl-section-link"
-                    onClick={onOpenPlaylistDrawer}
-                    style={{ background: 'none', border: 'none', padding: 0 }}
-                  >
-                    View all
-                  </button>
+                  <div className="vinyl-section-title-wrap">
+                    <h2 className="vinyl-section-title">Music Categories</h2>
+                  </div>
+
+                  {/* Language Selection Section Beside Here in the Same Format */}
+                  <div className="vinyl-lang-selection-section" aria-label="Language Selection">
+                    <span className="vinyl-lang-header-label">LANGUAGES:</span>
+                    <div className="vinyl-lang-pills-row" role="tablist">
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={activeLanguages.length === 0}
+                        className={`vinyl-category-pill vinyl-lang-pill ${activeLanguages.length === 0 ? 'is-active' : ''}`}
+                        onClick={() => handleLanguageToggle('All')}
+                        title="Show songs in all languages"
+                      >
+                        ALL
+                      </button>
+                      {LANGUAGES.map(lang => {
+                        const isSelected = activeLanguages.some(l => l.toLowerCase() === lang.toLowerCase());
+                        return (
+                          <button
+                            key={lang}
+                            type="button"
+                            role="tab"
+                            aria-selected={isSelected}
+                            className={`vinyl-category-pill vinyl-lang-pill ${isSelected ? 'is-active' : ''}`}
+                            onClick={() => handleLanguageToggle(lang)}
+                            title={`Filter by ${LANGUAGE_LABELS[lang] || lang}`}
+                          >
+                            {lang.toUpperCase()}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button 
+                      className="vinyl-section-link"
+                      onClick={onOpenPlaylistDrawer}
+                      style={{ background: 'none', border: 'none', padding: 0 }}
+                    >
+                      View all
+                    </button>
+                  </div>
                 </div>
 
                 {/* Horizontal Category Pills */}
@@ -1022,47 +1096,63 @@ export default function VinylScene({
 
                 {/* Horizontal Featured Cards Carousel */}
                 <div className="vinyl-cards-carousel">
-                  {filteredCategoryTracks.slice(0, 4).map(track => {
-                    const isCardPlaying = currentTrack?.id === track.id && isPlaying;
-                    const isCurrent = currentTrack?.id === track.id;
-
-                    return (
-                      <div 
-                        key={track.id}
-                        className="vinyl-track-card"
-                        onClick={() => onSelectTrack?.(track, true)}
-                        title={`Play "${track.title}" by ${track.artist}`}
+                  {filteredCategoryTracks.length === 0 ? (
+                    <div className="vinyl-cards-empty">
+                      <span>No tracks found in this category & language.</span>
+                      <button 
+                        type="button"
+                        className="vinyl-category-pill"
+                        onClick={() => {
+                          setActiveCategory('ALL');
+                          handleLanguageToggle('All');
+                        }}
                       >
-                        <div className="vinyl-card-art-box">
-                          <img 
-                            src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'} 
-                            alt={track.title}
-                            className="vinyl-card-img" 
-                            loading="lazy"
-                          />
-                          <div className="vinyl-card-play-overlay">
-                            <div className="vinyl-card-play-circle">
-                              {isCardPlaying ? (
-                                <Pause size={18} fill="#0d0d0f" />
-                              ) : (
-                                <Play size={18} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
-                              )}
-                            </div>
-                          </div>
-                          {isCurrent && (
-                            <div className="vinyl-card-active-indicator">
-                              {isPlaying ? 'PLAYING' : 'ACTIVE'}
-                            </div>
-                          )}
-                        </div>
+                        RESET FILTERS
+                      </button>
+                    </div>
+                  ) : (
+                    filteredCategoryTracks.slice(0, 4).map(track => {
+                      const isCardPlaying = currentTrack?.id === track.id && isPlaying;
+                      const isCurrent = currentTrack?.id === track.id;
 
-                        <div className="vinyl-card-meta">
-                          <span className="vinyl-card-title">{track.title}</span>
-                          <span className="vinyl-card-artist">by {track.artist}</span>
+                      return (
+                        <div 
+                          key={track.id}
+                          className="vinyl-track-card"
+                          onClick={() => onSelectTrack?.(track, true)}
+                          title={`Play "${track.title}" by ${track.artist}`}
+                        >
+                          <div className="vinyl-card-art-box">
+                            <img 
+                              src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'} 
+                              alt={track.title} 
+                              className="vinyl-card-img" 
+                              loading="lazy"
+                            />
+                            <div className="vinyl-card-play-overlay">
+                              <div className="vinyl-card-play-circle">
+                                {isCardPlaying ? (
+                                  <Pause size={18} fill="#0d0d0f" />
+                                ) : (
+                                  <Play size={18} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
+                                )}
+                              </div>
+                            </div>
+                            {isCurrent && (
+                              <div className="vinyl-card-active-indicator">
+                                {isPlaying ? 'PLAYING' : 'ACTIVE'}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="vinyl-card-meta">
+                            <span className="vinyl-card-title">{track.title}</span>
+                            <span className="vinyl-card-artist">by {track.artist}</span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </div>
 

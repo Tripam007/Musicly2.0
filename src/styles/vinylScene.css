@@ -1254,8 +1254,16 @@
 /* Section Header */
 .vinyl-section-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.vinyl-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .vinyl-section-title {
@@ -1264,6 +1272,30 @@
   font-weight: 700;
   color: var(--vinyl-text-primary);
   letter-spacing: -0.02em;
+}
+
+/* Language Selection Section Beside Music Categories */
+.vinyl-lang-selection-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.vinyl-lang-header-label {
+  font-family: var(--vinyl-font-pixel);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--vinyl-text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.vinyl-lang-pills-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .vinyl-section-link {
@@ -1275,6 +1307,7 @@
   text-underline-offset: 4px;
   cursor: pointer;
   transition: color 0.15s ease;
+  margin-left: 4px;
 }
 
 .vinyl-section-link:hover {
@@ -1304,6 +1337,12 @@
   transition: all 0.18s ease;
 }
 
+.vinyl-category-pill.vinyl-lang-pill {
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
 .vinyl-category-pill:hover {
   background: rgba(13, 13, 15, 0.08);
   transform: translateY(-1px);
@@ -1313,6 +1352,22 @@
   background: #0d0d0f;
   color: #ffffff;
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+}
+
+.vinyl-cards-empty {
+  grid-column: 1 / -1;
+  padding: 28px 16px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1.5px dashed rgba(13, 13, 15, 0.25);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--vinyl-font-mono);
+  font-size: 0.85rem;
+  color: var(--vinyl-text-secondary);
 }
 
 /* Featured Track Cards Carousel */

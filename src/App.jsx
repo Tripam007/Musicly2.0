@@ -2499,6 +2499,9 @@ export default function App() {
           selectedGenre={selectedGenre}
           onSelectGenre={setSelectedGenre}
           audioElement={audioRef.current}
+          selectedLanguage={selectedLanguage}
+          selectedLanguages={selectedLanguages}
+          onSelectLanguage={handleToggleLanguage}
         />
       )}
 
