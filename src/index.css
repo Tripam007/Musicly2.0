@@ -1715,14 +1715,25 @@ body, html, #root {
   overscroll-behavior: contain;
 }
 
-/* Deep blurred scene background when Music Library modal is active */
+/* Deep blurred scene background whenever any modal, drawer, or mixer is active */
+.app-viewport.app-modal-open .vinyl-scene-root,
+.app-viewport.app-modal-open .scene-backdrop-layer,
+.app-viewport.app-modal-open .app-content-shell,
+.app-viewport.app-modal-open .retro-tv-container,
+.app-viewport.app-modal-open .backdrop-hotspot-container,
+.app-viewport.app-modal-open .ambient-glow-layer,
+.app-viewport.app-modal-open .minimal-studio-root,
+.app-viewport.app-modal-open .afterglow-scene-root,
+.app-viewport.app-modal-open .choose-your-vibe-root,
 .app-viewport.drawer-modal-open .vinyl-scene-root,
 .app-viewport.drawer-modal-open .scene-backdrop-layer,
 .app-viewport.drawer-modal-open .app-content-shell,
 .app-viewport.drawer-modal-open .retro-tv-container,
 .app-viewport.drawer-modal-open .ambient-glow-layer {
-  filter: blur(14px) brightness(0.68) !important;
-  transition: filter 0.25s ease-out;
+  filter: blur(16px) brightness(0.65) !important;
+  transform: scale(1.02);
+  transition: filter 0.25s ease-out, transform 0.25s ease-out;
+  pointer-events: none;
 }
 
 .playlist-drawer-backdrop {
