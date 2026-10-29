@@ -1620,3 +1620,351 @@
     animation: none !important;
   }
 }
+
+/* ==========================================================================
+   VINYL SCENE — Liked Songs White Popover Box (Beside Rail)
+   ========================================================================== */
+
+/* Soft subtle blurry background veil matching surrounding theme */
+.vinyl-liked-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 450;
+  animation: vinylLikedFadeIn 0.2s ease-out;
+}
+
+@keyframes vinylLikedFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* White box beside the rail matching Vinyl theme */
+.vinyl-liked-popover-panel {
+  position: fixed;
+  left: 84px;
+  top: 76px;
+  width: 400px;
+  max-width: calc(100vw - 100px);
+  max-height: calc(100vh - 100px);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--vinyl-border, #d4d2cb);
+  border-radius: 20px;
+  box-shadow: 
+    0 24px 55px rgba(0, 0, 0, 0.12),
+    0 6px 18px rgba(0, 0, 0, 0.06),
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.95);
+  z-index: 451;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: vinylLikedSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+@keyframes vinylLikedSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+/* Header */
+.vinyl-liked-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px 20px;
+  border-bottom: 1px solid var(--vinyl-border-light, #e5e4de);
+  background: rgba(248, 247, 244, 0.7);
+}
+
+.vinyl-liked-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vinyl-liked-heart-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(255, 75, 96, 0.12);
+  border: 1px solid rgba(255, 75, 96, 0.22);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vinyl-liked-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vinyl-liked-title {
+  font-family: var(--vinyl-font-display, 'Syne', sans-serif);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--vinyl-text-primary, #0d0d0f);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.vinyl-liked-counter {
+  font-family: var(--vinyl-font-pixel, 'Silkscreen', monospace);
+  font-size: 0.62rem;
+  color: var(--vinyl-text-secondary, #57575f);
+  letter-spacing: 0.06em;
+}
+
+.vinyl-liked-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vinyl-liked-playall-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--vinyl-text-primary, #0d0d0f);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-family: var(--vinyl-font-pixel, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.vinyl-liked-playall-btn:hover {
+  background: #27272a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+}
+
+.vinyl-liked-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--vinyl-border, #d4d2cb);
+  background: #ffffff;
+  color: var(--vinyl-text-secondary, #57575f);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.vinyl-liked-close-btn:hover {
+  background: #eceae5;
+  color: #0d0d0f;
+  transform: rotate(90deg);
+}
+
+/* Track list */
+.vinyl-liked-tracks-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: calc(100vh - 190px);
+}
+
+.vinyl-liked-tracks-list::-webkit-scrollbar {
+  width: 5px;
+}
+.vinyl-liked-tracks-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.vinyl-liked-tracks-list::-webkit-scrollbar-thumb {
+  background: #d4d2cb;
+  border-radius: 999px;
+}
+
+/* Empty State */
+.vinyl-liked-empty {
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.vinyl-liked-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #f3f2ee;
+  border: 1px solid var(--vinyl-border, #d4d2cb);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.vinyl-liked-empty-title {
+  font-family: var(--vinyl-font-display, sans-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--vinyl-text-primary, #0d0d0f);
+  margin: 0;
+}
+
+.vinyl-liked-empty-sub {
+  font-family: var(--vinyl-font-body, sans-serif);
+  font-size: 0.78rem;
+  color: var(--vinyl-text-muted, #8e8e96);
+  margin: 0;
+  max-width: 240px;
+  line-height: 1.4;
+}
+
+/* Track Row */
+.vinyl-liked-track-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.vinyl-liked-track-row:hover {
+  background: rgba(236, 234, 229, 0.65);
+  border-color: rgba(212, 210, 203, 0.5);
+}
+
+.vinyl-liked-track-row.is-current {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.35);
+}
+
+.vinyl-liked-row-num {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.70rem;
+  font-weight: 600;
+  color: var(--vinyl-text-muted, #8e8e96);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.vinyl-liked-row-cover-wrap {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.vinyl-liked-row-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.vinyl-liked-row-play-btn {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  cursor: pointer;
+}
+
+.vinyl-liked-track-row:hover .vinyl-liked-row-play-btn,
+.vinyl-liked-row-play-btn.is-playing {
+  opacity: 1;
+}
+
+.vinyl-liked-row-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vinyl-liked-row-title {
+  font-family: var(--vinyl-font-display, sans-serif);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--vinyl-text-primary, #0d0d0f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vinyl-liked-row-artist {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.70rem;
+  color: var(--vinyl-text-secondary, #57575f);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vinyl-liked-row-duration {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.70rem;
+  color: var(--vinyl-text-muted, #8e8e96);
+  flex-shrink: 0;
+}
+
+.vinyl-liked-row-heart-btn {
+  background: transparent;
+  border: none;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.vinyl-liked-row-heart-btn:hover {
+  transform: scale(1.18);
+}
+
+@media (max-width: 768px) {
+  .vinyl-liked-popover-panel {
+    left: 12px;
+    right: 12px;
+    top: 68px;
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 90px);
+  }
+}

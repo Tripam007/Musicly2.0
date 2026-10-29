@@ -84,6 +84,24 @@ export default function VinylScene({
 }) {
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [localLanguages, setLocalLanguages] = useState([]);
+  const [isLikedPanelOpen, setIsLikedPanelOpen] = useState(false);
+
+  // Filtered liked tracks for the favorites flyout panel
+  const likedTracks = useMemo(() => {
+    return allTracks.filter(t => favorites.includes(t.id));
+  }, [allTracks, favorites]);
+
+  // Close favorites panel on Escape key
+  useEffect(() => {
+    if (!isLikedPanelOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsLikedPanelOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isLikedPanelOpen]);
 
   // Active languages resolution (supporting global props or local fallback)
   const activeLanguages = useMemo(() => {
@@ -640,11 +658,11 @@ export default function VinylScene({
 
             <button 
               id="vinyl-rail-favorites"
-              className="vinyl-rail-btn" 
-              onClick={onOpenPlaylistDrawer}
+              className={`vinyl-rail-btn ${isLikedPanelOpen ? 'is-active' : ''}`} 
+              onClick={() => setIsLikedPanelOpen(prev => !prev)}
               title="Favorites & Liked Songs"
             >
-              <Heart size={19} />
+              <Heart size={19} fill={isLikedPanelOpen ? '#ff4b60' : (favorites.length > 0 ? '#ff4b60' : 'none')} color={isLikedPanelOpen || favorites.length > 0 ? '#ff4b60' : 'currentColor'} />
             </button>
 
             <button 
@@ -686,6 +704,148 @@ export default function VinylScene({
             </button>
           </div>
         </aside>
+
+        {/* Soft Blurry Background Backdrop when Liked Songs popover is open */}
+        {isLikedPanelOpen && (
+          <div 
+            className="vinyl-liked-popover-backdrop"
+            onClick={() => setIsLikedPanelOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Liked Songs White Popover Box beside the rail */}
+        {isLikedPanelOpen && (
+          <div 
+            className="vinyl-liked-popover-panel" 
+            role="dialog" 
+            aria-label="Liked Songs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="vinyl-liked-panel-header">
+              <div className="vinyl-liked-header-left">
+                <div className="vinyl-liked-heart-badge">
+                  <Heart size={15} fill="#ff4b60" color="#ff4b60" />
+                </div>
+                <div className="vinyl-liked-title-group">
+                  <h3 className="vinyl-liked-title">Liked Songs</h3>
+                  <span className="vinyl-liked-counter">
+                    {likedTracks.length} {likedTracks.length === 1 ? 'TRACK' : 'TRACKS'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="vinyl-liked-header-actions">
+                {likedTracks.length > 0 && (
+                  <button 
+                    type="button"
+                    className="vinyl-liked-playall-btn"
+                    onClick={() => {
+                      if (likedTracks[0]) {
+                        onSelectTrack?.(likedTracks[0], true);
+                      }
+                    }}
+                    title="Play all liked songs"
+                  >
+                    <Play size={11} fill="currentColor" />
+                    <span>PLAY ALL</span>
+                  </button>
+                )}
+                <button 
+                  type="button"
+                  className="vinyl-liked-close-btn"
+                  onClick={() => setIsLikedPanelOpen(false)}
+                  title="Close"
+                  aria-label="Close liked songs"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* List of liked songs */}
+            <div className="vinyl-liked-tracks-list">
+              {likedTracks.length === 0 ? (
+                <div className="vinyl-liked-empty">
+                  <div className="vinyl-liked-empty-icon">
+                    <Heart size={28} color="#b8b6af" />
+                  </div>
+                  <p className="vinyl-liked-empty-title">No liked songs yet</p>
+                  <p className="vinyl-liked-empty-sub">
+                    Tap the heart icon on any song to save it to your vinyl favorites.
+                  </p>
+                </div>
+              ) : (
+                likedTracks.map((track, idx) => {
+                  const isCurrent = currentTrack?.id === track.id;
+                  const isTrackPlaying = isCurrent && isPlaying;
+
+                  return (
+                    <div 
+                      key={track.id}
+                      className={`vinyl-liked-track-row ${isCurrent ? 'is-current' : ''}`}
+                      onClick={() => onSelectTrack?.(track, true)}
+                    >
+                      <span className="vinyl-liked-row-num">
+                        {String(idx + 1).padStart(2, '0')}
+                      </span>
+
+                      <div className="vinyl-liked-row-cover-wrap">
+                        <img 
+                          src={track.cover || '/assets/images/cozy_bedroom.jpg'} 
+                          alt={track.title} 
+                          className="vinyl-liked-row-cover"
+                          loading="lazy" 
+                        />
+                        <button 
+                          type="button"
+                          className={`vinyl-liked-row-play-btn ${isTrackPlaying ? 'is-playing' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isCurrent) {
+                              onTogglePlay?.();
+                            } else {
+                              onSelectTrack?.(track, true);
+                            }
+                          }}
+                          aria-label={isTrackPlaying ? "Pause" : "Play"}
+                        >
+                          {isTrackPlaying ? (
+                            <Pause size={12} fill="currentColor" />
+                          ) : (
+                            <Play size={12} fill="currentColor" />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="vinyl-liked-row-info">
+                        <span className="vinyl-liked-row-title">{track.title}</span>
+                        <span className="vinyl-liked-row-artist">{track.artist}</span>
+                      </div>
+
+                      <span className="vinyl-liked-row-duration">
+                        {track.duration ? `${Math.floor(track.duration / 60)}:${String(Math.floor(track.duration % 60)).padStart(2, '0')}` : '3:45'}
+                      </span>
+
+                      <button 
+                        type="button"
+                        className="vinyl-liked-row-heart-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavorite?.(track.id);
+                        }}
+                        title="Remove from Liked Songs"
+                        aria-label="Remove from Liked Songs"
+                      >
+                        <Heart size={14} fill="#ff4b60" color="#ff4b60" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Scrollable Main Workspace */}
         <main className="vinyl-main-scroll">
@@ -1228,7 +1388,13 @@ export default function VinylScene({
                       <div 
                         key={playlist.id} 
                         className="vinyl-playlist-item"
-                        onClick={onOpenPlaylistDrawer}
+                        onClick={() => {
+                          if (playlist.id === 'liked_songs') {
+                            setIsLikedPanelOpen(true);
+                          } else {
+                            onOpenPlaylistDrawer?.();
+                          }
+                        }}
                         title={`Open ${playlist.title} in music library`}
                       >
                         <div className="vinyl-playlist-info-left">
