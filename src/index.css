@@ -1704,9 +1704,10 @@ body, html, #root {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  /* Lighter ambient veil matching surrounding lighting */
+  background: rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(14px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
   z-index: 3500 !important;
   display: flex;
   align-items: center;
@@ -1715,7 +1716,7 @@ body, html, #root {
   overscroll-behavior: contain;
 }
 
-/* Deep blurred scene background whenever any modal, drawer, or mixer is active */
+/* Atmospheric scene blur whenever any modal, drawer, or mixer is active - preserving ambient warmth and scene colors */
 .app-viewport.app-modal-open .vinyl-scene-root,
 .app-viewport.app-modal-open .scene-backdrop-layer,
 .app-viewport.app-modal-open .app-content-shell,
@@ -1730,7 +1731,7 @@ body, html, #root {
 .app-viewport.drawer-modal-open .app-content-shell,
 .app-viewport.drawer-modal-open .retro-tv-container,
 .app-viewport.drawer-modal-open .ambient-glow-layer {
-  filter: blur(16px) brightness(0.65) !important;
+  filter: blur(14px) brightness(0.92) saturate(110%) !important;
   transform: scale(1.02);
   transition: filter 0.25s ease-out, transform 0.25s ease-out;
   pointer-events: none;
@@ -1742,9 +1743,9 @@ body, html, #root {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.62) !important;
-  backdrop-filter: blur(20px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  background: rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(14px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
   z-index: 3500 !important;
   display: flex;
   align-items: center;
@@ -1761,19 +1762,20 @@ body, html, #root {
   max-width: calc(100vw - 32px);
   max-height: 85vh;
   height: 590px;
-  /* Sleek Dark Charcoal Frosted Glass UI matching Image 2 */
-  background: rgba(22, 25, 34, 0.86) !important;
-  backdrop-filter: blur(40px) saturate(200%) brightness(1.05) !important;
-  -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  /* Transparent Apple Glass UI harmonizing with surroundings */
+  background: rgba(16, 20, 28, 0.36) !important;
+  backdrop-filter: blur(36px) saturate(190%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(190%) brightness(1.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
   border-radius: 24px;
   padding: 22px 20px 18px 20px;
   display: flex;
   flex-direction: column;
   box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
-    0 32px 85px rgba(0, 0, 0, 0.80),
-    0 8px 30px rgba(0, 0, 0, 0.45) !important;
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.05),
+    0 24px 60px rgba(0, 0, 0, 0.35),
+    0 4px 16px rgba(0, 0, 0, 0.20) !important;
   z-index: 3501 !important;
   box-sizing: border-box;
   animation: popoverFadeUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1786,15 +1788,20 @@ body, html, #root {
 }
 
 .glass-modal-panel {
-  background: rgba(10, 13, 22, 0.60);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: var(--radius-lg);
+  /* Transparent Apple Glass Modal UI */
+  background: rgba(16, 20, 28, 0.36) !important;
+  backdrop-filter: blur(36px) saturate(190%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(190%) brightness(1.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 24px;
   padding: 28px;
   width: 90%;
   max-width: 480px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(251, 133, 0, 0.12);
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.05),
+    0 24px 60px rgba(0, 0, 0, 0.35),
+    0 4px 16px rgba(0, 0, 0, 0.20) !important;
   animation: modalScale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overscroll-behavior: contain;
 }
@@ -2193,13 +2200,17 @@ body, html, #root {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  /* Transparent frosted glass row */
+  background: rgba(255, 255, 255, 0.055) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   cursor: pointer;
   transition: background 0.18s ease, border-color 0.18s ease;
   min-width: 0;
   transform: none !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.12);
 }
 
 .drawer-track-row:hover {
@@ -2593,16 +2604,33 @@ body, html, #root {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Transparent frosted glass card */
+  background: rgba(255, 255, 255, 0.055) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
   padding: 12px 16px;
-  border-radius: var(--radius-md);
-  transition: all 0.2s ease;
+  border-radius: 16px;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.18),
+    0 4px 14px rgba(0, 0, 0, 0.12) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ambient-fader-card:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  box-shadow: 
+    inset 0 1px 1px rgba(255, 255, 255, 0.28),
+    0 6px 18px rgba(0, 0, 0, 0.18) !important;
 }
 
 .ambient-fader-card.is-active {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(255, 255, 255, 0.30) !important;
+  box-shadow: 
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.35),
+    0 6px 20px rgba(0, 0, 0, 0.22) !important;
 }
 
 .fader-label-side {
