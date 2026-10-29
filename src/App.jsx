@@ -2509,6 +2509,7 @@ export default function App() {
           selectedLanguage={selectedLanguage}
           selectedLanguages={selectedLanguages}
           onSelectLanguage={handleSelectLanguage}
+          onOpenAboutUs={() => navigateTo('/about-us')}
         />
       )}
 

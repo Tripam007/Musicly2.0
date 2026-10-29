@@ -72,6 +72,8 @@
   align-items: center;
   gap: 12px;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .vinyl-brand-logo-mark {
@@ -812,28 +814,6 @@
 .vinyl-record-disc.is-paused {
   animation: vinylSpin var(--vinyl-spin-duration, 6.5s) linear infinite;
   animation-play-state: paused;
-}
-
-/* Click Ripple Wave on Record */
-.vinyl-click-ripple {
-  position: absolute;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.6);
-  pointer-events: none;
-  animation: vinylRippleAnim 0.6s ease-out forwards;
-}
-
-@keyframes vinylRippleAnim {
-  0% {
-    transform: scale(0.4);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(2.6);
-    opacity: 0;
-  }
 }
 
 /* S-Shaped Chrome Tonearm Assembly */
@@ -1637,8 +1617,5 @@
   }
   .vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played {
     animation: none !important;
-  }
-  .vinyl-click-ripple {
-    display: none !important;
   }
 }

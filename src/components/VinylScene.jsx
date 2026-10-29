@@ -79,7 +79,8 @@ export default function VinylScene({
   audioElement = null,
   selectedLanguage = null,
   selectedLanguages = [],
-  onSelectLanguage = null
+  onSelectLanguage = null,
+  onOpenAboutUs = null
 }) {
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [localLanguages, setLocalLanguages] = useState([]);
@@ -137,7 +138,6 @@ export default function VinylScene({
   const [searchQuery, setSearchQuery] = useState('');
   const [isMuted, setIsMuted] = useState(false);
   const [prevVolume, setPrevVolume] = useState(volume);
-  const [clickRipple, setClickRipple] = useState(null);
   const [isHoveringWaveform, setIsHoveringWaveform] = useState(false);
   const [hoverSeekRatio, setHoverSeekRatio] = useState(null);
   const [isDraggingWaveform, setIsDraggingWaveform] = useState(false);
@@ -150,15 +150,7 @@ export default function VinylScene({
   const [showFaderTooltip, setShowFaderTooltip] = useState(false);
 
   const waveformTrackRef = useRef(null);
-  const rippleTimeoutRef = useRef(null);
   const faderGrooveRef = useRef(null);
-
-  // Clean up ripple timer on unmount
-  useEffect(() => {
-    return () => {
-      if (rippleTimeoutRef.current) clearTimeout(rippleTimeoutRef.current);
-    };
-  }, []);
 
   // Format seconds to mm:ss
   const formatSeconds = (sec) => {
@@ -348,16 +340,6 @@ export default function VinylScene({
   // Click on turntable record directly to toggle playback
   const handleRecordClick = (e) => {
     e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    setClickRipple({ x, y, id: Date.now() });
-    if (rippleTimeoutRef.current) clearTimeout(rippleTimeoutRef.current);
-    rippleTimeoutRef.current = setTimeout(() => {
-      setClickRipple(null);
-    }, 600);
-
     if (onTogglePlay) {
       onTogglePlay();
     }
@@ -537,7 +519,22 @@ export default function VinylScene({
       {/* Top Header Bar */}
       <header className="vinyl-top-header">
         {/* Brand / Logo */}
-        <div className="vinyl-brand-group" onClick={onClose} title="Musicly — Return to default room">
+        <div 
+          className="vinyl-brand-group" 
+          onClick={(e) => {
+            // Explicitly do nothing on single click (not even take to the home page)
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (onOpenAboutUs) {
+              onOpenAboutUs();
+            }
+          }}
+          title="Musicly — Double-click to open About Us"
+        >
           <div className="vinyl-brand-logo-mark">
             <Disc size={16} />
           </div>
@@ -823,17 +820,6 @@ export default function VinylScene({
                         <span className="vinyl-label-rpm-badge">{rpmSpeed === 33 ? '33⅓ RPM' : '45 RPM'}</span>
                       </div>
                     </div>
-
-                    {/* Ripple animation on click */}
-                    {clickRipple && (
-                      <div 
-                        className="vinyl-click-ripple"
-                        style={{
-                          left: `${clickRipple.x - 30}px`,
-                          top: `${clickRipple.y - 30}px`
-                        }}
-                      />
-                    )}
                   </div>
                 </div>
 
