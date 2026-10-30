@@ -72,6 +72,7 @@ export default function VinylScene({
   onOpenAudioSettings,
   user = null,
   isAdmin = false,
+  isAdminDashboardOpen = false,
   onLogout,
   onClose,
   selectedGenre = 'All',
@@ -706,7 +707,7 @@ export default function VinylScene({
         </aside>
 
         {/* Soft Blurry Background Backdrop when Liked Songs popover is open */}
-        {isLikedPanelOpen && (
+        {isLikedPanelOpen && !isAdminDashboardOpen && (
           <div 
             className="vinyl-liked-popover-backdrop"
             onClick={() => setIsLikedPanelOpen(false)}
@@ -715,7 +716,7 @@ export default function VinylScene({
         )}
 
         {/* Liked Songs White Popover Box beside the rail */}
-        {isLikedPanelOpen && (
+        {isLikedPanelOpen && !isAdminDashboardOpen && (
           <div 
             className="vinyl-liked-popover-panel" 
             role="dialog" 

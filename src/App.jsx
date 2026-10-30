@@ -2513,6 +2513,7 @@ export default function App() {
           onOpenAudioSettings={() => setIsAudioSettingsOpen(true)}
           user={user}
           isAdmin={isAdmin}
+          isAdminDashboardOpen={isAdminDashboardOpen}
           onLogout={handleLogout}
           onClose={() => {
             const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
@@ -2598,18 +2599,21 @@ export default function App() {
       </div>
 
       {/* 📜 Music Library & Search Floating Modal Overlay */}
-      {isDrawerOpen && (
+      {isDrawerOpen && !isAdminDashboardOpen && (
         <div 
           className="playlist-drawer-backdrop modal-overlay"
           onClick={() => setIsDrawerOpen(false)}
         >
           <PlaylistDrawer
-            isOpen={isDrawerOpen}
+            isOpen={isDrawerOpen && !isAdminDashboardOpen}
             onClose={() => setIsDrawerOpen(false)}
             tracks={allTracks}
             user={user}
             isAdmin={isAdmin}
-            onOpenAdminDashboard={() => setIsAdminDashboardOpen(true)}
+            onOpenAdminDashboard={() => {
+              setIsDrawerOpen(false);
+              setIsAdminDashboardOpen(true);
+            }}
             selectedLanguage={selectedLanguage}
             selectedLanguages={selectedLanguages}
             onSelectLanguage={handleSelectLanguage}
@@ -2666,7 +2670,7 @@ export default function App() {
 
       {/* Ambient Sounds Mixer Modal */}
       <AmbientMixer
-        isOpen={isAmbientOpen}
+        isOpen={isAmbientOpen && !isAdminDashboardOpen}
         onClose={() => setIsAmbientOpen(false)}
         ambientVolumes={ambientVolumes}
         onVolumeChange={handleAmbientVolumeChange}
@@ -2697,7 +2701,7 @@ export default function App() {
 
       {/* Room Themes & Backdrops Modal */}
       <SceneSelector
-        isOpen={isSceneOpen}
+        isOpen={isSceneOpen && !isAdminDashboardOpen}
         onClose={() => setIsSceneOpen(false)}
         currentScene={currentScene}
         onSelectScene={handleSelectScene}
@@ -2708,7 +2712,7 @@ export default function App() {
 
       {/* Custom Music Upload Modal */}
       <UploadModal
-        isOpen={isUploadOpen}
+        isOpen={isUploadOpen && !isAdminDashboardOpen}
         onClose={() => setIsUploadOpen(false)}
         onAddCustomTrack={handleAddCustomTrack}
         currentGenre={selectedGenre}
@@ -2717,7 +2721,7 @@ export default function App() {
 
       {/* ☕ Buy Me a Coffee Support Modal / Admin Received Coffee Ledger */}
       <CoffeeSupportModal
-        isOpen={isCoffeeOpen}
+        isOpen={isCoffeeOpen && !isAdminDashboardOpen}
         onClose={() => setIsCoffeeOpen(false)}
         isAdmin={isAdmin}
         onOpenFeedback={() => setIsFeedbackOpen(true)}
@@ -2737,7 +2741,7 @@ export default function App() {
 
       {/* 🎵 Song Request Modal */}
       <SongRequestModal
-        isOpen={isSongRequestOpen}
+        isOpen={isSongRequestOpen && !isAdminDashboardOpen}
         onClose={() => setIsSongRequestOpen(false)}
         user={user}
       />
