@@ -51,6 +51,7 @@ import { playTingSound, playClickSound } from '../utils/audioSynth';
 import { extractPaletteFromImage } from '../utils/aiThemeGenerator';
 import { loadSongRequests, updateSongRequestStatus, deleteSongRequest, updateSongRequestAdminNote, updateSongRequestAudio, updateSongRequestDetails } from '../utils/songRequestsDB';
 import { loadSavedFeedback, deleteFeedback } from '../utils/feedbackDB';
+import { fetchLiveStreamRecommendations, LIVE_STREAM_PRESETS } from '../utils/youtubeLiveAgent';
 
 const AVAILABLE_SECTIONS = GENRES.filter(g => g !== 'All');
 const AVAILABLE_LANGUAGES = LANGUAGES;
@@ -100,6 +101,100 @@ export default function AdminDashboardModal({
 }) {
   const [activeTab, setActiveTab] = useState('list'); // 'list' | 'upload' | 'scenes'
   const [searchQuery, setSearchQuery] = useState('');
+
+  // 🔴 Live Stream AI Agent States
+  const [isLiveAgentActive, setIsLiveAgentActive] = useState(false);
+  const [liveRecommendations, setLiveRecommendations] = useState(LIVE_STREAM_PRESETS);
+  const [isLoadingLiveStreams, setIsLoadingLiveStreams] = useState(false);
+  const [addingTrackId, setAddingTrackId] = useState(null);
+  const [addedTrackIds, setAddedTrackIds] = useState(new Set());
+  const [agentToast, setAgentToast] = useState('');
+
+  // Auto-fetch real-time YouTube recommendations when AI Agent is active or query changes
+  React.useEffect(() => {
+    if (!isLiveAgentActive) return;
+
+    let isMounted = true;
+    setIsLoadingLiveStreams(true);
+    const timer = setTimeout(async () => {
+      try {
+        const results = await fetchLiveStreamRecommendations(searchQuery);
+        if (isMounted) {
+          setLiveRecommendations(results);
+        }
+      } catch (err) {
+        console.warn("Live stream recommendations fetch error:", err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingLiveStreams(false);
+        }
+      }
+    }, 380);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
+  }, [isLiveAgentActive, searchQuery]);
+
+  // One-click Add recommended live stream track directly to Musicly Public Library
+  const handleAddLiveStreamToLibrary = async (streamTrack) => {
+    if (addedTrackIds.has(streamTrack.id)) return;
+    setAddingTrackId(streamTrack.id);
+
+    try {
+      const chosenSections = Array.isArray(streamTrack.genres) && streamTrack.genres.length > 0 
+        ? streamTrack.genres 
+        : [streamTrack.genre || 'Lo-Fi'];
+
+      const trackPayload = {
+        id: `public-${Date.now()}`,
+        title: streamTrack.title,
+        artist: streamTrack.artist || 'YouTube Artist',
+        genre: chosenSections.join(', '),
+        genres: chosenSections,
+        language: streamTrack.language || 'English',
+        duration: streamTrack.duration || 240,
+        cover: streamTrack.cover || `https://img.youtube.com/vi/${streamTrack.youtubeId}/hqdefault.jpg`,
+        audioUrl: streamTrack.audioUrl || `https://www.youtube.com/watch?v=${streamTrack.youtubeId}`,
+        isYouTube: true,
+        youtubeId: streamTrack.youtubeId,
+        isPublic: true,
+        requestedBy: 'Live Stream AI Agent'
+      };
+
+      await onPublishTrack(trackPayload, null);
+      playTingSound();
+      setAddedTrackIds(prev => new Set(prev).add(streamTrack.id));
+      setAgentToast(`Added "${streamTrack.title}" to Musicly Public Library!`);
+      setTimeout(() => setAgentToast(''), 4500);
+    } catch (err) {
+      console.error("Error adding live stream track to library:", err);
+      setAgentToast(`Failed to add: ${err.message || 'Unknown error'}`);
+      setTimeout(() => setAgentToast(''), 4500);
+    } finally {
+      setAddingTrackId(null);
+    }
+  };
+
+  // Play audio only of live recommendation stream
+  const handlePlayLiveStreamAudio = (streamTrack) => {
+    const playableTrack = {
+      id: streamTrack.id,
+      title: streamTrack.title,
+      artist: streamTrack.artist,
+      duration: streamTrack.duration || 240,
+      cover: streamTrack.cover,
+      audioUrl: streamTrack.audioUrl,
+      isYouTube: true,
+      youtubeId: streamTrack.youtubeId,
+      genre: streamTrack.genre || 'Lo-Fi',
+      genres: streamTrack.genres || ['Lo-Fi'],
+      language: streamTrack.language || 'English',
+      isPublic: true
+    };
+    onPlayTrack(playableTrack);
+  };
   
   // Upload form state
   const [title, setTitle] = useState('');
@@ -953,11 +1048,38 @@ export default function AdminDashboardModal({
                 <Search size={15} />
                 <input 
                   type="text" 
-                  placeholder="Filter public tracks..."
+                  placeholder={
+                    isLiveAgentActive 
+                      ? "✨ Search YouTube audio streams (e.g. Coldplay Live, Hindi Lo-Fi, Lofi Girl)..." 
+                      : "Filter public tracks..."
+                  }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                {searchQuery && (
+                  <button 
+                    type="button" 
+                    className="admin-clear-search-btn" 
+                    onClick={() => setSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
+
+              {/* 🔴 LIVE STREAM AI AGENT BUTTON */}
+              <button 
+                type="button"
+                className={`admin-ai-stream-agent-btn ${isLiveAgentActive ? 'is-active' : ''}`}
+                onClick={() => setIsLiveAgentActive(prev => !prev)}
+                title={isLiveAgentActive ? "Turn off Live Stream AI Agent" : "Activate Live Stream AI Agent: Search YouTube live audio & import tracks directly"}
+              >
+                <span className="live-stream-radar-dot" />
+                <Radio size={14} className="live-stream-radio-icon" />
+                <span>{isLiveAgentActive ? 'Live Stream AI: ON' : 'Live Stream AI Agent'}</span>
+              </button>
+
               <button 
                 className="admin-quick-add-btn"
                 onClick={() => setActiveTab('upload')}
@@ -966,87 +1088,231 @@ export default function AdminDashboardModal({
               </button>
             </div>
 
-            <div className="admin-tracks-scroll-area">
-              {filteredPublicTracks.length === 0 ? (
-                <div className="admin-empty-state">
-                  <Music size={36} style={{ opacity: 0.4 }} />
-                  <p>No public songs found.</p>
-                  <button className="admin-publish-action-btn" onClick={() => setActiveTab('upload')}>
-                    Publish First Song
-                  </button>
-                </div>
-              ) : (
-                <div className="admin-tracks-list">
-                  {filteredPublicTracks.map(track => {
-                    const isCurrent = currentTrackId === track.id;
-                    const isTrackPlaying = isCurrent && isPlaying;
-                    return (
-                      <div 
-                        key={track.id} 
-                        className={`admin-track-card ${isCurrent ? 'active' : ''} ${isTrackPlaying ? 'playing' : ''}`}
-                        onClick={() => onPlayTrack(track)}
-                        title={isTrackPlaying ? `Click anywhere to pause "${track.title}"` : `Click anywhere to play "${track.title}"`}
-                      >
-                        <div className="admin-track-cover-wrap">
-                          <img src={track.cover} alt={track.title} className="admin-track-cover" />
-                          <button 
-                            type="button"
-                            className="admin-track-play-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onPlayTrack(track);
-                            }}
-                            title={isTrackPlaying ? "Pause" : "Play preview"}
-                          >
-                            {isTrackPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                          </button>
-                        </div>
+            {/* Notification Toast for Live Stream AI Agent Actions */}
+            {agentToast && (
+              <div className="admin-ai-agent-toast">
+                <Check size={14} className="ai-toast-check-icon" />
+                <span>{agentToast}</span>
+              </div>
+            )}
 
-                        <div className="admin-track-info">
-                          <div className="admin-track-header-row">
-                            <span className="admin-track-title">{track.title}</span>
-                            <span className="admin-public-badge">Public</span>
-                          </div>
-                          <p className="admin-track-artist">{track.artist}</p>
-                          <div className="admin-track-meta-chips">
-                            <span className="admin-chip genre">{track.genre}</span>
-                            <span className="admin-chip lang">{track.language || 'English'}</span>
-                            <span className="admin-chip type">
-                              {track.isYouTube ? 'YouTube Stream' : 'Direct Audio'}
-                            </span>
-                          </div>
-                        </div>
+            {/* VIEW MODE A: Live Stream AI Agent Active */}
+            {isLiveAgentActive ? (
+              <div className="admin-ai-agent-deck">
+                {/* AI Agent Status Header */}
+                <div className="admin-ai-agent-banner">
+                  <div className="admin-ai-banner-left">
+                    <div className="admin-ai-pulse-badge">
+                      <span className="pulse-beacon" />
+                      <Sparkles size={13} />
+                      <span>LIVE STREAM AI AGENT</span>
+                    </div>
+                    <p className="admin-ai-banner-sub">
+                      Recommends live YouTube music & broadcasts. Click to stream pure audio, or import directly into Musicly Public Library.
+                    </p>
+                  </div>
 
-                        <div className="admin-track-actions" onClick={(e) => e.stopPropagation()}>
-                          <button 
-                            type="button"
-                            className="admin-action-icon-btn edit"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEditTrack(track);
-                            }}
-                            title="Edit metadata"
-                          >
-                            <Edit3 size={15} />
-                          </button>
-                          <button 
-                            type="button"
-                            className="admin-action-icon-btn delete"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(track.id, track.title);
-                            }}
-                            title="Delete from public library"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {isLoadingLiveStreams && (
+                    <div className="admin-ai-loading-pill">
+                      <RefreshCw size={12} className="spin-slow" />
+                      <span>Scanning YouTube audio streams...</span>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+
+                {/* Quick Stream Preset Filters */}
+                <div className="admin-ai-presets-row">
+                  <span className="ai-presets-label">Prompt Presets:</span>
+                  {[
+                    { label: '🔥 Trending Live', q: 'live music radio stream' },
+                    { label: '📚 24/7 Lofi Girl', q: 'lofi hip hop radio beats to relax study to' },
+                    { label: '☕ Rainy Cafe & Jazz', q: 'coffee shop jazz radio warm rain' },
+                    { label: '🌙 Midnight Hindi Lo-Fi', q: 'hindi lofi chill beats live' },
+                    { label: '🌌 Synthwave Chill', q: 'synthwave radio retro beats live' },
+                    { label: '🎸 Live Concerts', q: 'live concert acoustic set audio' },
+                    { label: '🌧️ Sleep Waves', q: 'deep sleep rain sound ambient music' }
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      className={`ai-preset-chip ${searchQuery === preset.q ? 'active' : ''}`}
+                      onClick={() => setSearchQuery(preset.q)}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Live Stream Recommendations List */}
+                <div className="admin-tracks-scroll-area">
+                  {liveRecommendations.length === 0 ? (
+                    <div className="admin-empty-state">
+                      <Radio size={36} style={{ opacity: 0.4 }} />
+                      <p>No streams found for "{searchQuery}". Try searching for another artist or song.</p>
+                    </div>
+                  ) : (
+                    <div className="admin-streams-list">
+                      {liveRecommendations.map(item => {
+                        const isCurrent = currentTrackId === item.id;
+                        const isTrackPlaying = isCurrent && isPlaying;
+                        const isAdded = addedTrackIds.has(item.id) || publicTracks.some(pt => pt.youtubeId === item.youtubeId);
+                        const isAdding = addingTrackId === item.id;
+
+                        return (
+                          <div 
+                            key={item.id} 
+                            className={`admin-stream-card ${isCurrent ? 'active' : ''} ${isTrackPlaying ? 'playing' : ''}`}
+                            onClick={() => handlePlayLiveStreamAudio(item)}
+                            title={isTrackPlaying ? `Pause audio stream "${item.title}"` : `Play pure audio stream "${item.title}"`}
+                          >
+                            <div className="admin-stream-cover-wrap">
+                              <img src={item.cover} alt={item.title} className="admin-stream-cover" loading="lazy" />
+                              <div className="admin-stream-live-pill">
+                                {item.isLive ? 'LIVE' : (item.durationText || 'AUDIO')}
+                              </div>
+                              <button 
+                                type="button"
+                                className="admin-stream-play-btn"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePlayLiveStreamAudio(item);
+                                }}
+                                title={isTrackPlaying ? "Pause audio" : "Play pure audio stream"}
+                              >
+                                {isTrackPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                              </button>
+                            </div>
+
+                            <div className="admin-stream-info">
+                              <div className="admin-stream-title-row">
+                                <span className="admin-stream-title">{item.title}</span>
+                                <span className="admin-audio-only-pill">🎧 Audio Only</span>
+                              </div>
+                              <p className="admin-stream-artist">{item.artist}</p>
+                              <div className="admin-stream-chips">
+                                <span className="admin-chip genre">{item.genre || 'Lo-Fi'}</span>
+                                <span className="admin-chip lang">{item.language || 'English'}</span>
+                                {item.isLive && <span className="admin-chip live-broadcast-chip">Live Broadcast</span>}
+                              </div>
+                            </div>
+
+                            <div className="admin-stream-actions" onClick={(e) => e.stopPropagation()}>
+                              <button 
+                                type="button" 
+                                className={`admin-stream-add-btn ${isAdded ? 'is-added' : ''}`}
+                                disabled={isAdded || isAdding}
+                                onClick={() => handleAddLiveStreamToLibrary(item)}
+                                title={isAdded ? "Already published in Musicly Public Library" : "Import and publish to Musicly Public Library"}
+                              >
+                                {isAdded ? (
+                                  <>
+                                    <Check size={13} />
+                                    <span>In Library</span>
+                                  </>
+                                ) : isAdding ? (
+                                  <>
+                                    <RefreshCw size={13} className="spin-slow" />
+                                    <span>Adding...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus size={13} />
+                                    <span>Add to Library</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* VIEW MODE B: Standard Musicly Public Directory */
+              <div className="admin-tracks-scroll-area">
+                {filteredPublicTracks.length === 0 ? (
+                  <div className="admin-empty-state">
+                    <Music size={36} style={{ opacity: 0.4 }} />
+                    <p>No public songs found.</p>
+                    <button className="admin-publish-action-btn" onClick={() => setActiveTab('upload')}>
+                      Publish First Song
+                    </button>
+                  </div>
+                ) : (
+                  <div className="admin-tracks-list">
+                    {filteredPublicTracks.map(track => {
+                      const isCurrent = currentTrackId === track.id;
+                      const isTrackPlaying = isCurrent && isPlaying;
+                      return (
+                        <div 
+                          key={track.id} 
+                          className={`admin-track-card ${isCurrent ? 'active' : ''} ${isTrackPlaying ? 'playing' : ''}`}
+                          onClick={() => onPlayTrack(track)}
+                          title={isTrackPlaying ? `Click anywhere to pause "${track.title}"` : `Click anywhere to play "${track.title}"`}
+                        >
+                          <div className="admin-track-cover-wrap">
+                            <img src={track.cover} alt={track.title} className="admin-track-cover" />
+                            <button 
+                              type="button"
+                              className="admin-track-play-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPlayTrack(track);
+                              }}
+                              title={isTrackPlaying ? "Pause" : "Play preview"}
+                            >
+                              {isTrackPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                            </button>
+                          </div>
+
+                          <div className="admin-track-info">
+                            <div className="admin-track-header-row">
+                              <span className="admin-track-title">{track.title}</span>
+                              <span className="admin-public-badge">Public</span>
+                            </div>
+                            <p className="admin-track-artist">{track.artist}</p>
+                            <div className="admin-track-meta-chips">
+                              <span className="admin-chip genre">{track.genre}</span>
+                              <span className="admin-chip lang">{track.language || 'English'}</span>
+                              <span className="admin-chip type">
+                                {track.isYouTube ? 'YouTube Stream' : 'Direct Audio'}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="admin-track-actions" onClick={(e) => e.stopPropagation()}>
+                            <button 
+                              type="button"
+                              className="admin-action-icon-btn edit"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                startEditTrack(track);
+                              }}
+                              title="Edit metadata"
+                            >
+                              <Edit3 size={15} />
+                            </button>
+                            <button 
+                              type="button" 
+                              className="admin-action-icon-btn delete"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDelete(track.id, track.title);
+                              }}
+                              title="Delete from public library"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

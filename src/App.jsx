@@ -2769,6 +2769,10 @@ export default function App() {
         onUpdateTrack={handleUpdatePublicTrack}
         onDeleteTrack={handleDeletePublicTrack}
         onPlayTrack={(track) => {
+          if (!track) return;
+          if (!allTracks.some(t => t.id === track.id)) {
+            setCustomTracks(prev => [track, ...prev.filter(t => t.id !== track.id)]);
+          }
           if (currentTrackId === track.id) {
             setIsPlaying(prev => !prev);
           } else {
