@@ -208,11 +208,25 @@ export async function fetchLiveStreamRecommendations(query = '') {
   }
 
   // Filter presets or build query-based recommendations as seamless fallback
-  const filteredPresets = LIVE_STREAM_PRESETS.filter(p => 
-    p.title.toLowerCase().includes(cleanQ.toLowerCase()) || 
-    p.artist.toLowerCase().includes(cleanQ.toLowerCase()) ||
-    p.genre.toLowerCase().includes(cleanQ.toLowerCase())
-  );
+  const qLow = cleanQ.toLowerCase();
+  const scoredPresets = LIVE_STREAM_PRESETS.map(p => {
+    let score = 0;
+    const t = p.title.toLowerCase();
+    const a = p.artist.toLowerCase();
+    if (a.startsWith(qLow)) score += 2000;
+    if (t.startsWith(qLow)) score += 1800;
+    if (a.includes(qLow)) score += 800;
+    if (t.includes(qLow)) score += 600;
+    if (p.genre.toLowerCase().includes(qLow)) score += 500;
+    return {
+      ...p,
+      score,
+      isTopMatch: score >= 1200
+    };
+  });
 
-  return filteredPresets.length > 0 ? filteredPresets : LIVE_STREAM_PRESETS;
+  const matchingPresets = scoredPresets.filter(p => p.score > 0);
+  matchingPresets.sort((a, b) => b.score - a.score);
+
+  return matchingPresets.length > 0 ? matchingPresets : LIVE_STREAM_PRESETS;
 }

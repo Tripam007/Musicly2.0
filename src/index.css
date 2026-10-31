@@ -20601,17 +20601,18 @@ body, html, #root {
 .admin-ai-stream-agent-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  padding: 8px 14px;
+  padding: 0 14px;
+  height: 38px;
   border-radius: 10px;
   background: rgba(168, 85, 247, 0.12);
   border: 1px solid rgba(168, 85, 247, 0.35);
   color: #c084fc;
-  font-size: 13px;
-  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .admin-ai-stream-agent-btn:hover {
@@ -20937,6 +20938,14 @@ body, html, #root {
   align-items: center;
   gap: 6px;
   margin-top: 2px;
+}
+
+.admin-chip.top-match-chip {
+  background: rgba(234, 179, 8, 0.2);
+  border: 1px solid rgba(234, 179, 8, 0.45);
+  color: #fde047;
+  font-weight: 700;
+  letter-spacing: 0.3px;
 }
 
 .admin-chip.live-broadcast-chip {

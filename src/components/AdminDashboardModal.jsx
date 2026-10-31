@@ -129,7 +129,7 @@ export default function AdminDashboardModal({
           setIsLoadingLiveStreams(false);
         }
       }
-    }, 380);
+    }, 240);
 
     return () => {
       isMounted = false;
@@ -1068,16 +1068,16 @@ export default function AdminDashboardModal({
                 )}
               </div>
 
-              {/* 🔴 LIVE STREAM AI AGENT BUTTON */}
+              {/* 🔴 LIVE STREAM AI AGENT ICON BUTTON */}
               <button 
                 type="button"
                 className={`admin-ai-stream-agent-btn ${isLiveAgentActive ? 'is-active' : ''}`}
                 onClick={() => setIsLiveAgentActive(prev => !prev)}
-                title={isLiveAgentActive ? "Turn off Live Stream AI Agent" : "Activate Live Stream AI Agent: Search YouTube live audio & import tracks directly"}
+                title={isLiveAgentActive ? "Live Stream AI Agent (Active) - Click to deactivate" : "Live Stream AI Agent - Search YouTube live audio & import tracks"}
+                aria-label="Live Stream AI Agent"
               >
                 <span className="live-stream-radar-dot" />
-                <Radio size={14} className="live-stream-radio-icon" />
-                <span>{isLiveAgentActive ? 'Live Stream AI: ON' : 'Live Stream AI Agent'}</span>
+                <Radio size={16} className="live-stream-radio-icon" />
               </button>
 
               <button 
@@ -1112,12 +1112,17 @@ export default function AdminDashboardModal({
                     </p>
                   </div>
 
-                  {isLoadingLiveStreams && (
+                  {isLoadingLiveStreams ? (
                     <div className="admin-ai-loading-pill">
                       <RefreshCw size={12} className="spin-slow" />
                       <span>Scanning YouTube audio streams...</span>
                     </div>
-                  )}
+                  ) : searchQuery.trim() ? (
+                    <div className="admin-ai-loading-pill" style={{ color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.4)' }}>
+                      <Sparkles size={12} />
+                      <span>Top recommendations for "{searchQuery}"</span>
+                    </div>
+                  ) : null}
                 </div>
 
                 {/* Quick Stream Preset Filters */}
@@ -1190,6 +1195,9 @@ export default function AdminDashboardModal({
                               </div>
                               <p className="admin-stream-artist">{item.artist}</p>
                               <div className="admin-stream-chips">
+                                {item.isTopMatch && (
+                                  <span className="admin-chip top-match-chip">⭐ Top Match</span>
+                                )}
                                 <span className="admin-chip genre">{item.genre || 'Lo-Fi'}</span>
                                 <span className="admin-chip lang">{item.language || 'English'}</span>
                                 {item.isLive && <span className="admin-chip live-broadcast-chip">Live Broadcast</span>}
