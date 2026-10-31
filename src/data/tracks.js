@@ -4,20 +4,39 @@ export const isGhazalLanguage = (lang) => {
   if (!lang) return false;
   if (Array.isArray(lang)) {
     if (lang.length === 0) return false;
-    return lang.length === 1 && String(lang[0]).trim().toLowerCase() === 'hindi';
+    return lang.some(l => {
+      const s = String(l).trim().toLowerCase();
+      return s === 'hindi' || s === 'hin';
+    });
   }
   const l = String(lang).trim().toLowerCase();
-  return l === 'hindi';
+  return l === 'hindi' || l === 'hin';
 };
 
 export const isCountryLanguage = (lang) => {
   if (!lang) return false;
   if (Array.isArray(lang)) {
     if (lang.length === 0) return false;
-    return lang.length === 1 && String(lang[0]).trim().toLowerCase() === 'english';
+    return lang.some(l => {
+      const s = String(l).trim().toLowerCase();
+      return s === 'english' || s === 'eng';
+    });
   }
   const l = String(lang).trim().toLowerCase();
-  return l === 'english';
+  return l === 'english' || l === 'eng';
+};
+
+export const isRabindraSangeetLanguage = (lang) => {
+  if (!lang) return false;
+  if (Array.isArray(lang)) {
+    if (lang.length === 0) return false;
+    return lang.some(l => {
+      const s = String(l).trim().toLowerCase();
+      return s === 'bengali' || s === 'beng' || s === 'bangla';
+    });
+  }
+  const l = String(lang).trim().toLowerCase();
+  return l === 'bengali' || l === 'beng' || l === 'bangla';
 };
 
 export const getAvailableGenres = (lang) => {
@@ -32,7 +51,30 @@ export const getAvailableGenres = (lang) => {
     genres.splice(4, 0, 'Ghazal');
   }
 
+  if (isRabindraSangeetLanguage(lang)) {
+    genres.splice(5, 0, 'Rabindra Sangeet');
+  }
+
   return genres;
+};
+
+export const getAvailableSections = (lang) => {
+  const baseSections = ['Retro', 'Indie', 'Lo-Fi', 'Synthwave', 'Peace', 'Chill/Sleep'];
+  const sections = [...baseSections];
+
+  if (isCountryLanguage(lang)) {
+    sections.splice(2, 0, 'Country');
+  }
+
+  if (isGhazalLanguage(lang)) {
+    sections.splice(3, 0, 'Ghazal');
+  }
+
+  if (isRabindraSangeetLanguage(lang)) {
+    sections.splice(4, 0, 'Rabindra Sangeet');
+  }
+
+  return sections;
 };
 
 export const GENRE_BACKDROPS = {
@@ -42,6 +84,7 @@ export const GENRE_BACKDROPS = {
   'Indie': 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=1920&auto=format&fit=crop&q=85',
   'Lo-Fi': '/assets/images/lofi_scene.jpg',
   'Ghazal': '/assets/images/ghazals_bg.png',
+  'Rabindra Sangeet': 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1920&auto=format&fit=crop&q=85',
   'Synthwave': 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1920&auto=format&fit=crop&q=85',
   'Peace': '/assets/images/peace_scene.jpg',
   'Chill/Sleep': '/assets/images/chill_sleep_scene.jpg'

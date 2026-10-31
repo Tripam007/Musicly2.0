@@ -117,7 +117,19 @@ export function inferTrackMetadata(title = '', artist = '') {
   let genres = ['Lo-Fi'];
   let language = 'English';
 
-  if (text.includes('sleep') || text.includes('relax') || text.includes('meditation') || text.includes('rain') || text.includes('deep sleep')) {
+  if (text.includes('ghazal')) {
+    genre = 'Ghazal';
+    genres = ['Ghazal', 'Retro'];
+    language = 'Hindi';
+  } else if (text.includes('rabindra') || text.includes('sangeet') || text.includes('tagore')) {
+    genre = 'Rabindra Sangeet';
+    genres = ['Rabindra Sangeet', 'Peace'];
+    language = 'Bengali';
+  } else if (text.includes('country') || text.includes('nashville') || text.includes('bluegrass')) {
+    genre = 'Country';
+    genres = ['Country', 'Indie'];
+    language = 'English';
+  } else if (text.includes('sleep') || text.includes('relax') || text.includes('meditation') || text.includes('rain') || text.includes('deep sleep')) {
     genre = 'Chill/Sleep';
     genres = ['Chill/Sleep', 'Peace'];
   } else if (text.includes('synth') || text.includes('retro') || text.includes('80s') || text.includes('vaporwave') || text.includes('cyberpunk')) {

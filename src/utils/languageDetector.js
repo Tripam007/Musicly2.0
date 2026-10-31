@@ -277,6 +277,22 @@ const SECTION_KEYWORDS = {
     'lofi hip hop', 'lofi beats', 'lofi remix', 'lofi study', 'sleepy fish', 'potsu', 
     'jinsang', 'kupla', 'idealism', 'slowed', 'reverb', 'slowed reverb', 'reverbed', 
     'coffee beats', 'chill beats', 'bedroom pop', 'aesthetic'
+  ],
+  'Country': [
+    'country', 'country music', 'nashville', 'bluegrass', 'americana', 'western', 'cowboy', 'banjo',
+    'acoustic country', 'folk country', 'john denver', 'luke combs', 'morgan wallen', 'chris stapleton',
+    'dolly parton', 'johnny cash', 'kacey musgraves', 'zach bryan', 'willie nelson'
+  ],
+  'Ghazal': [
+    'ghazal', 'ghazals', 'jagjit singh', 'pankaj udhas', 'mehdi hassan', 'ghulam ali', 'talat mahmood',
+    'begum akhtar', 'chitra singh', 'munni begum', 'farida khanum', 'bhupinder singh', 'shayari', 'sher',
+    'hothon se chhoo lo', 'woh kaghaz ki kashti', 'chitthi aayi hai', 'ahista ahista', 'ranjish hi sahi'
+  ],
+  'Rabindra Sangeet': [
+    'rabindra', 'sangeet', 'rabindrasangeet', 'tagore', 'rabindranath', 'rabindranath tagore',
+    'gitabitan', 'gitanjali', 'swagatalakshmi', 'rezwana choudhury', 'srikanto acharya', 'somlata',
+    'lopamudra mitra', 'sahana bajpaie', 'tumi robe nirobe', 'amaro porano jaha chay', 
+    'purano shei diner kotha', 'ekla cholo re', 'majhe majhe tobo', 'mor bhabonare', 'anandaloke'
   ]
 };
 

@@ -43,7 +43,7 @@ import {
   Activity
 } from 'lucide-react';
 
-import { GENRES, LANGUAGES } from '../data/tracks';
+import { GENRES, LANGUAGES, getAvailableSections, getAvailableGenres, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
 import { extractYouTubeId, extractYouTubeStartTime } from '../utils/youtubePlayer';
 import { detectSongLanguage, detectSongSections } from '../utils/languageDetector';
 import { parseAudioFilename, parseYouTubeTitle, fetchYouTubeMetadata } from '../utils/trackParser';
@@ -1403,7 +1403,7 @@ export default function AdminDashboardModal({
             <div className="admin-form-group">
               <label>Genre / Section Categorization (Select all that apply)</label>
               <div className="admin-chips-picker">
-                {AVAILABLE_SECTIONS.map(sec => {
+                {Array.from(new Set([...getAvailableSections(language), ...selectedSections])).map(sec => {
                   const isSel = selectedSections.includes(sec);
                   return (
                     <button 
@@ -1979,7 +1979,7 @@ export default function AdminDashboardModal({
                               <Layers size={12} /> Song Sections / Genres (Click to toggle):
                             </label>
                             <div className="admin-inline-editor-section-chips">
-                              {AVAILABLE_SECTIONS.map(sec => {
+                              {Array.from(new Set([...getAvailableSections(req.language || 'All'), ...editReqSections])).map(sec => {
                                 const isSelected = editReqSections.includes(sec);
                                 return (
                                   <button
@@ -2521,7 +2521,7 @@ export default function AdminDashboardModal({
                 <div className="admin-form-group">
                   <label>Sections / Moods</label>
                   <div className="admin-chips-picker">
-                    {AVAILABLE_SECTIONS.map(sec => {
+                    {Array.from(new Set([...getAvailableSections(editLanguage), ...editSections])).map(sec => {
                       const isSel = editSections.includes(sec);
                       return (
                         <button 

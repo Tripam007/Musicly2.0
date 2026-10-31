@@ -6,13 +6,15 @@ import {
   SkipBack, 
   Heart
 } from 'lucide-react';
-import { isGhazalLanguage } from '../data/tracks';
+import { isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
 
 // Floating editorial genres (zero boxes, zero cards)
 const GENRES = [
   { id: 'indie', name: 'INDIE', x: 26, y: 38, glow: 'rgba(245, 158, 11, 0.45)', color: '#fbbf24' },
   { id: 'retro', name: 'RETRO', x: 74, y: 34, glow: 'rgba(251, 146, 60, 0.45)', color: '#fb923c' },
+  { id: 'country', name: 'COUNTRY', x: 50, y: 25, glow: 'rgba(234, 179, 8, 0.45)', color: '#eab308' },
   { id: 'ghazal', name: 'GHAZAL', x: 80, y: 55, glow: 'rgba(217, 119, 6, 0.45)', color: '#d97706' },
+  { id: 'rabindra-sangeet', name: 'RABINDRA SANGEET', x: 52, y: 60, glow: 'rgba(20, 184, 166, 0.45)', color: '#14b8a6' },
   { id: 'lo-fi', name: 'LO-FI', x: 25, y: 64, glow: 'rgba(56, 189, 248, 0.45)', color: '#38bdf8' },
   { id: 'synthwave', name: 'SYNTHWAVE', x: 48, y: 80, glow: 'rgba(236, 72, 153, 0.45)', color: '#ec4899' },
   { id: 'peace', name: 'PEACE', x: 18, y: 50, glow: 'rgba(167, 139, 250, 0.45)', color: '#a78bfa' },
@@ -111,10 +113,12 @@ export default function AfterglowCinematicFilm({
   
   // Stages: 'intro' -> 'eye_transition' -> 'iris_flash' -> 'car_reveal' -> 'journey'
   const availableGenres = useMemo(() => {
-    if (isGhazalLanguage(selectedLanguage)) {
-      return GENRES;
-    }
-    return GENRES.filter(g => g.id !== 'ghazal');
+    return GENRES.filter(g => {
+      if (g.id === 'ghazal') return isGhazalLanguage(selectedLanguage);
+      if (g.id === 'country') return isCountryLanguage(selectedLanguage);
+      if (g.id === 'rabindra-sangeet') return isRabindraSangeetLanguage(selectedLanguage);
+      return true;
+    });
   }, [selectedLanguage]);
   const [stage, setStage] = useState('intro');
   const [selectedGenre, setSelectedGenre] = useState('INDIE');

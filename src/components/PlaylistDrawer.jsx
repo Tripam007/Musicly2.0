@@ -18,7 +18,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { playPeacefulLikeSound } from '../utils/audioSynth';
-import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage } from '../data/tracks';
+import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections } from '../data/tracks';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
 
 const AVAILABLE_SECTIONS = GENRES.filter(g => g !== 'All');
@@ -143,10 +143,7 @@ export default function PlaylistDrawer({
 
   // Filter available sections based on selected languages
   const availableSections = useMemo(() => {
-    if (isGhazalLanguage(activeLangs)) {
-      return AVAILABLE_SECTIONS;
-    }
-    return AVAILABLE_SECTIONS.filter(s => s.toLowerCase() !== 'ghazal');
+    return getAvailableSections(activeLangs);
   }, [activeLangs]);
 
   // When without login, show all official Musicly tracks (Public Library & Curated Catalog)

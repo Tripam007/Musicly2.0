@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Music, Sparkles, Send, Check, RefreshCw, Layers, Globe, MessageSquare } from 'lucide-react';
-import { GENRES, LANGUAGES, isGhazalLanguage } from '../data/tracks';
+import { GENRES, LANGUAGES, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections } from '../data/tracks';
 import { extractYouTubeId } from '../utils/youtubePlayer';
 import { detectSongLanguage, detectSongSections } from '../utils/languageDetector';
 import { fetchYouTubeMetadata } from '../utils/trackParser';
@@ -29,11 +29,8 @@ export default function SongRequestModal({
   const [errorMessage, setErrorMessage] = useState('');
 
   const displayedSections = React.useMemo(() => {
-    if (isGhazalLanguage(language)) {
-      return AVAILABLE_SECTIONS;
-    }
-    return AVAILABLE_SECTIONS.filter(s => s.toLowerCase() !== 'ghazal');
-  }, [language]);
+    return Array.from(new Set([...getAvailableSections(language), ...selectedSections]));
+  }, [language, selectedSections]);
 
   // Clear when modal opens
   useEffect(() => {

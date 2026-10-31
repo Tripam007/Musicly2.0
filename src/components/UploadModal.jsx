@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, Link2, Music, CheckCircle2, FileAudio, Check, Plus, Layers, Sparkles, Globe, AlertCircle } from 'lucide-react';
 import { playTingSound } from '../utils/audioSynth';
-import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage } from '../data/tracks';
+import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections } from '../data/tracks';
 import { extractYouTubeId, extractYouTubeStartTime } from '../utils/youtubePlayer';
 import { detectSongLanguage, detectSongSections } from '../utils/languageDetector';
 import { parseAudioFilename, parseYouTubeTitle, fetchYouTubeMetadata } from '../utils/trackParser';
@@ -47,11 +47,8 @@ export default function UploadModal({
   const fileInputRef = useRef(null);
 
   const displayedSections = React.useMemo(() => {
-    if (isGhazalLanguage(language)) {
-      return AVAILABLE_SECTIONS;
-    }
-    return AVAILABLE_SECTIONS.filter(s => s.toLowerCase() !== 'ghazal');
-  }, [language]);
+    return Array.from(new Set([...getAvailableSections(language), ...selectedSections]));
+  }, [language, selectedSections]);
 
   // Clear selections at start when opening fresh modal
   React.useEffect(() => {

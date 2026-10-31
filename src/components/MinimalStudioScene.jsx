@@ -31,7 +31,7 @@ import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
 import StudioNotificationsDropdown from './StudioNotificationsDropdown';
 import { STUDIO_THEMES, getSavedStudioTheme, saveStudioTheme, getIsAutoThemeEnabled, setIsAutoThemeEnabled } from '../data/studioThemes';
-import { LANGUAGES, isGhazalLanguage } from '../data/tracks';
+import { LANGUAGES, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
 import { extractThemeFromImage, generateThemeFromHex } from '../utils/themeExtractor';
 import { getStudioBackgrounds, saveStudioBackgrounds, DEFAULT_STUDIO_PHOTOS, process4KImageFile } from '../utils/studioBackgroundsDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
@@ -67,6 +67,18 @@ const STUDIO_GENRES = [
     image: '/assets/images/ghazals_bg.png',
     accent: '#f39c12',
     subtitle: 'Poetic Soul'
+  },
+  {
+    name: 'Country',
+    image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&auto=format&fit=crop&q=85',
+    accent: '#e67e22',
+    subtitle: 'Acoustic Americana'
+  },
+  {
+    name: 'Rabindra Sangeet',
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1200&auto=format&fit=crop&q=85',
+    accent: '#1abc9c',
+    subtitle: 'Tagore Melodies'
   },
   {
     name: 'Peace',
@@ -641,12 +653,21 @@ export default function MinimalStudioScene({
     };
   }, [currentTrack, allTracks]);
 
-  // Filter available studio genres based on language (Ghazal visible for Hindi or when no filter)
+  // Filter available studio genres based on language (Ghazal for Hindi, Country for English, Rabindra Sangeet for Bengali)
   const availableStudioGenres = useMemo(() => {
-    if (isGhazalLanguage(activeLangs)) {
-      return STUDIO_GENRES;
-    }
-    return STUDIO_GENRES.filter(g => g.name.toLowerCase() !== 'ghazal');
+    return STUDIO_GENRES.filter(g => {
+      const gName = g.name.toLowerCase();
+      if (gName === 'ghazal') {
+        return isGhazalLanguage(activeLangs);
+      }
+      if (gName === 'country') {
+        return isCountryLanguage(activeLangs);
+      }
+      if (gName === 'rabindra sangeet') {
+        return isRabindraSangeetLanguage(activeLangs);
+      }
+      return true;
+    });
   }, [activeLangs]);
 
   // Resolve track genre to index in availableStudioGenres with strict priority matching
