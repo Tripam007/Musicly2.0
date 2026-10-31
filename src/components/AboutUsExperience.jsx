@@ -13,7 +13,8 @@ import {
   SkipForward,
   Mic,
   Keyboard,
-  Hand
+  Hand,
+  Compass
 } from 'lucide-react';
 import { TRACKS } from '../data/tracks';
 import { playCatSound } from '../utils/audioSynth';
@@ -201,17 +202,17 @@ export default function AboutUsExperience({
   const [activeChapter, setActiveChapter] = useState(1);
   const [scrollPercent, setScrollPercent] = useState(0);
 
-  // Single-Click View Switcher: 'story' (The Musicly Story) vs 'classic' (Classic About)
+  // Single-Click View Switcher: 'pirate' (Pirate Ship Moving Experience) vs 'classic' (Classic About)
   const [aboutViewMode, setAboutViewMode] = useState(() => {
     try {
-      return sessionStorage.getItem('musicly_about_view_mode') || 'story';
+      return sessionStorage.getItem('musicly_about_view_mode') || 'pirate';
     } catch {
-      return 'story';
+      return 'pirate';
     }
   });
 
   const handleToggleView = (mode) => {
-    const newMode = mode || (aboutViewMode === 'story' ? 'classic' : 'story');
+    const newMode = mode || (aboutViewMode === 'pirate' ? 'classic' : 'pirate');
     setAboutViewMode(newMode);
     try {
       sessionStorage.setItem('musicly_about_view_mode', newMode);
@@ -772,10 +773,10 @@ export default function AboutUsExperience({
   // Currently playing or fallback iconic song info
   const displayTrack = currentTrack || FLOATING_TRACK_FRAGMENTS[0];
 
-  // If in 'story' view mode, render the new illustrated "THE MUSICLY STORY" experience
-  if (aboutViewMode === 'story') {
+  // If in 'pirate' (or 'story') view mode, render the 3D Pirate Ship moving experience
+  if (aboutViewMode === 'pirate' || aboutViewMode === 'story') {
     return (
-      <TheMusiclyStory
+      <AboutCreationView
         onBack={onBack}
         onSwitchView={() => handleToggleView('classic')}
         currentTrack={currentTrack}
@@ -843,11 +844,11 @@ export default function AboutUsExperience({
             <button
               type="button"
               className="about-view-switcher-hud-btn"
-              onClick={() => handleToggleView('story')}
+              onClick={() => handleToggleView('pirate')}
               title="Switch to The Musicly Story"
             >
-              <Sparkles size={12} style={{ color: '#ffd166' }} />
-              <span>The Musicly Story</span>
+              <Compass size={13} style={{ color: '#ffd166' }} />
+              <span>The Pirate Voyage</span>
             </button>
           </div>
 

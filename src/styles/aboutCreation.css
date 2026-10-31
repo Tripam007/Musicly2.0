@@ -1,465 +1,424 @@
 /* ==========================================================================
-   ABOUT CREATION VIEW STYLES (In-Focus Cinematic Pirate Voyage & Scroll Scrubbing)
+   ABOUT CREATION VIEW - 3D PIRATE SHIP MOVING SCENE
+   Authentic Dribbble Pirate Website Experience
+   Warm Parchment / Ivory Editorial Aesthetic with Kinetic Scroll Scrubbing
    ========================================================================== */
 
-.about-creation-container {
+.pirate-ship-experience {
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #0d0c0a;
-  color: #ffffff;
+  background-color: #eae4d3;
+  color: #1e1b18;
   overflow: hidden;
   z-index: 99999;
   user-select: none;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   cursor: default;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
 }
 
-/* ---------------- 1. Razor-Sharp In-Focus Pirate Scene ---------------- */
-.creation-pirate-bg-wrapper {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  z-index: 1;
-  pointer-events: none;
-  will-change: transform;
-  transform-origin: center center;
-  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.creation-pirate-bg-video {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  min-width: 100%;
-  min-height: 100%;
-  width: 100%;
-  height: 100%;
-  transform: translate(-50%, -50%);
-  object-fit: cover;
-  /* 100% IN FOCUS, CRISP, NOT BLURRY */
-  opacity: 1 !important;
-  filter: contrast(1.06) brightness(1.02) saturate(1.05);
-}
-
-/* Subtle edge veils: only protects top nav & bottom dock readability */
-.creation-pirate-top-veil {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 110px;
-  background: linear-gradient(to bottom, rgba(10, 8, 7, 0.75) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 2;
-}
-
-.creation-pirate-bottom-veil {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 130px;
-  background: linear-gradient(to top, rgba(10, 8, 7, 0.85) 0%, transparent 100%);
-  pointer-events: none;
-  z-index: 2;
-}
-
-/* ---------------- 2. Interactive Effects Canvas ---------------- */
-.about-creation-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  z-index: 3;
-  pointer-events: none;
-}
-
-/* ---------------- 3. Fixed Top Navigation Bar ---------------- */
-.about-creation-nav {
+/* ---------------- 1. Refined Top Navigation Bar ---------------- */
+.pirate-nav-header {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  padding: 24px 36px;
+  height: 68px;
+  padding: 0 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  z-index: 20;
-  pointer-events: none;
+  background: rgba(234, 228, 211, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(45, 41, 37, 0.08);
+  z-index: 50;
 }
 
-.about-creation-nav button {
-  pointer-events: auto;
+.pirate-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
-.creation-nav-back-btn {
+.pirate-nav-back-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 18px;
+  padding: 8px 16px;
   border-radius: 999px;
-  background: rgba(18, 15, 12, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(45, 41, 37, 0.07);
+  border: 1px solid rgba(45, 41, 37, 0.12);
+  color: #2d2925;
   font-size: 13px;
   font-weight: 500;
-  letter-spacing: 0.3px;
   cursor: pointer;
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.creation-nav-back-btn:hover {
-  background: rgba(18, 15, 12, 0.8);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #ffffff;
+.pirate-nav-back-btn:hover {
+  background: rgba(45, 41, 37, 0.14);
+  color: #000000;
   transform: translateX(-2px);
 }
 
-/* Single-Click Switcher Button */
-.creation-view-switcher-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 20px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.22) 0%, rgba(168, 85, 247, 0.22) 100%);
-  border: 1px solid rgba(234, 179, 8, 0.45);
-  color: #fde047;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  cursor: pointer;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.25);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+.pirate-nav-divider {
+  color: rgba(45, 41, 37, 0.22);
+  font-size: 15px;
+  font-weight: 300;
 }
 
-.creation-view-switcher-btn:hover {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.35) 0%, rgba(168, 85, 247, 0.35) 100%);
-  border-color: rgba(234, 179, 8, 0.7);
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 26px rgba(234, 179, 8, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.35);
-}
-
-.creation-view-switcher-btn .switcher-icon {
-  color: #ffd166;
-  transition: transform 0.2s ease;
-}
-
-.creation-view-switcher-btn:hover .switcher-icon {
-  transform: scale(1.15) rotate(-5deg);
-}
-
-/* ---------------- 4. Parallax Voyage Story Card ---------------- */
-.voyage-chapter-card {
-  position: absolute;
-  top: 110px;
-  left: 48px;
-  max-width: 420px;
-  padding: 24px 28px;
-  background: rgba(18, 15, 12, 0.52);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 20px;
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.12);
-  z-index: 10;
-  pointer-events: none;
-  animation: voyageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes voyageFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.voyage-tag-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.voyage-chapter-tag {
-  font-family: 'DM Mono', monospace, ui-monospace, SFMono-Regular, monospace;
-  font-size: 11px;
-  letter-spacing: 1.8px;
-  font-weight: 600;
+.pirate-nav-brand {
+  font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
+  letter-spacing: 2.2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #38332d;
   text-transform: uppercase;
 }
 
-.voyage-progress-num {
-  font-family: 'DM Mono', monospace, ui-monospace, monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
-  letter-spacing: 1px;
-}
-
-.voyage-chapter-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 0 0 4px 0;
-  letter-spacing: -0.3px;
-  line-height: 1.25;
-}
-
-.voyage-chapter-sub {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.75);
-  margin: 0 0 12px 0;
-  letter-spacing: 0.2px;
-}
-
-.voyage-chapter-desc {
-  font-size: 13px;
-  line-height: 1.55;
-  color: rgba(255, 255, 255, 0.6);
-  margin: 0;
-}
-
-/* ---------------- 5. Vertical Voyage Rail Navigator ---------------- */
-.voyage-vertical-nav {
-  position: fixed;
-  right: 36px;
-  top: 50%;
-  transform: translateY(-50%);
+.pirate-nav-right {
   display: flex;
   align-items: center;
-  gap: 16px;
-  z-index: 20;
+  gap: 12px;
 }
 
-.voyage-rail-track {
-  position: relative;
-  width: 2px;
-  height: 160px;
-  background: rgba(255, 255, 255, 0.12);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.voyage-rail-fill {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  background: linear-gradient(to bottom, #ffd166 0%, #38bdf8 100%);
-  border-radius: 999px;
-  box-shadow: 0 0 8px #ffd166;
-  transition: height 0.1s linear;
-}
-
-.voyage-milestone-nodes {
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-}
-
-.voyage-nav-dot {
-  display: flex;
+/* 1-Click Toggle to Classic About */
+.pirate-switcher-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  background: none;
-  border: none;
-  padding: 4px;
-  cursor: pointer;
-  color: rgba(255, 255, 255, 0.35);
-  font-family: 'DM Mono', monospace, ui-monospace, monospace;
-  font-size: 11px;
-  transition: all 0.2s ease;
-}
-
-.voyage-nav-dot:hover {
-  color: #ffffff;
-  transform: translateX(-2px);
-}
-
-.voyage-nav-dot.is-active {
-  color: #ffd166;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #1e1b18;
+  border: 1px solid #1e1b18;
+  color: #fbf8f2;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(30, 27, 24, 0.15);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.voyage-dot-pip {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+.pirate-switcher-btn:hover {
+  background: #38332d;
+  border-color: #38332d;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(30, 27, 24, 0.24);
 }
 
-.voyage-nav-dot.is-active .voyage-dot-pip {
-  transform: scale(1.4);
-  box-shadow: 0 0 10px #ffd166;
+.pirate-switcher-btn .pirate-switcher-icon {
+  color: #e5b869;
+  transition: transform 0.2s ease;
 }
 
-/* ---------------- 6. Floating Bottom Audiophile Dock ---------------- */
-.about-creation-bottom-dock {
+.pirate-switcher-btn:hover .pirate-switcher-icon {
+  transform: scale(1.15) rotate(-5deg);
+}
+
+/* ---------------- 2. Central 3D Pirate Ship Video Stage ---------------- */
+/* 100% IN FOCUS, CRISP, NOT BLURRY, NO DARK OVERLAYS */
+.pirate-video-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
+  padding: 76px 24px 84px 24px;
+  background-color: #eae4d3;
+}
+
+.pirate-video-frame {
+  position: relative;
+  width: 100%;
+  max-width: 980px;
+  height: 100%;
+  max-height: 735px;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #eae4d3;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 16px 50px rgba(45, 41, 37, 0.13), 0 3px 12px rgba(45, 41, 37, 0.06);
+  border: 1px solid rgba(45, 41, 37, 0.09);
+  transition: box-shadow 0.3s ease;
+}
+
+.pirate-ship-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: translateZ(0);
+}
+
+/* Interactive CTA Hotspot positioned over "EXPLORE NOW" in the video artwork */
+.pirate-explore-overlay-hotspot {
+  position: absolute;
+  left: 7.8%;
+  bottom: 16.5%;
+  z-index: 25;
+}
+
+.pirate-explore-cta-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: rgba(30, 27, 24, 0.92);
+  color: #fbf8f2;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pirate-explore-cta-button:hover {
+  background: #000000;
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+}
+
+/* ---------------- 3. Floating Audiophile Bottom Dock ---------------- */
+.pirate-bottom-dock {
   position: fixed;
-  bottom: 24px;
+  bottom: 22px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 22px;
-  background: rgba(18, 15, 12, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  gap: 14px;
+  padding: 10px 22px;
   border-radius: 999px;
-  padding: 8px 26px 8px 12px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.15);
-  z-index: 25;
+  background: rgba(251, 248, 242, 0.92);
+  border: 1px solid rgba(45, 41, 37, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(45, 41, 37, 0.12), 0 2px 8px rgba(45, 41, 37, 0.05);
+  z-index: 50;
+  max-width: 92vw;
 }
 
-.creation-dock-play-btn {
-  position: relative;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  color: #ffffff;
+.pirate-dock-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.creation-dock-play-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.45);
-  transform: scale(1.08);
-  box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
-}
-
-.creation-dock-play-btn.is-playing {
-  background: linear-gradient(135deg, rgba(234, 179, 8, 0.35) 0%, rgba(56, 189, 248, 0.35) 100%);
-  border-color: rgba(234, 179, 8, 0.6);
-  box-shadow: 0 0 25px rgba(234, 179, 8, 0.35);
-}
-
-.play-dock-dashed-ring {
-  position: absolute;
-  inset: -5px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.2);
-  animation: rotateDiskRing 20s linear infinite;
+  background: rgba(45, 41, 37, 0.07);
+  border: none;
+  color: #2d2925;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-@keyframes rotateDiskRing {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.pirate-dock-icon-btn:hover {
+  background: rgba(45, 41, 37, 0.15);
+  color: #000000;
+  transform: scale(1.06);
 }
 
-.creation-dock-track-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.dock-track-title-row {
+.pirate-dock-audio-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  padding: 7px 15px;
+  border-radius: 999px;
+  background: rgba(45, 41, 37, 0.07);
+  border: 1px solid rgba(45, 41, 37, 0.09);
+  color: #2d2925;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  max-width: 260px;
 }
 
-.dock-live-pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #38bdf8;
-  box-shadow: 0 0 8px #38bdf8;
+.pirate-dock-audio-btn:hover {
+  background: rgba(45, 41, 37, 0.12);
 }
 
-.dock-track-name {
-  max-width: 320px;
+.pirate-dock-audio-btn.is-playing {
+  background: #1e1b18;
+  color: #fbf8f2;
+}
+
+.pirate-dock-track-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.dock-scroll-hint {
+/* Scrub Timeline Range */
+.pirate-timeline-group {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
+  padding-left: 4px;
+  border-left: 1px solid rgba(45, 41, 37, 0.1);
+}
+
+.pirate-compass-icon {
+  color: #8c8375;
+  flex-shrink: 0;
+}
+
+.pirate-timeline-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 130px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(45, 41, 37, 0.14);
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pirate-timeline-slider:hover {
+  background: rgba(45, 41, 37, 0.22);
+}
+
+.pirate-timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1e1b18;
+  border: 2px solid #eae4d3;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+  transition: transform 0.15s ease;
+}
+
+.pirate-timeline-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+}
+
+.pirate-timeline-percent {
+  font-family: 'DM Mono', monospace, ui-monospace, SFMono-Regular, monospace;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.42);
-  letter-spacing: 0.2px;
-}
-
-.bounce-subtle {
-  animation: bounceDown 1.8s ease-in-out infinite;
-}
-
-@keyframes bounceDown {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(3px); }
-}
-
-.creation-dock-brand {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  padding-left: 14px;
-  border-left: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.dock-brand-name {
-  font-family: 'DM Mono', monospace, ui-monospace, monospace;
-  font-size: 12px;
   font-weight: 600;
-  color: #ffd166;
-  letter-spacing: 1px;
+  color: #635b50;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
-.dock-brand-author {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 0.5px;
+/* Animated Sound Waveforms in Dock */
+.pirate-dock-waves {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 14px;
+  padding-left: 4px;
+  flex-shrink: 0;
 }
 
-/* ---------------- Responsive Tweaks ---------------- */
+.dock-wave {
+  width: 2.5px;
+  height: 4px;
+  background-color: #8c8375;
+  border-radius: 999px;
+  transition: height 0.2s ease;
+}
+
+.animate-wave-1 {
+  animation: waveBounce 0.8s ease-in-out infinite alternate;
+}
+.animate-wave-2 {
+  animation: waveBounce 1.1s ease-in-out infinite alternate 0.2s;
+}
+.animate-wave-3 {
+  animation: waveBounce 0.9s ease-in-out infinite alternate 0.4s;
+}
+.animate-wave-4 {
+  animation: waveBounce 1.2s ease-in-out infinite alternate 0.1s;
+}
+
+@keyframes waveBounce {
+  0% { height: 4px; background-color: #8c8375; }
+  100% { height: 14px; background-color: #1e1b18; }
+}
+
+/* ---------------- 4. Responsive Design for Mobile & Tablet ---------------- */
 @media (max-width: 900px) {
-  .voyage-chapter-card {
-    top: auto;
-    bottom: 96px;
-    left: 20px;
-    right: 20px;
-    max-width: none;
-    padding: 18px 20px;
+  .pirate-video-stage {
+    padding: 72px 16px 80px 16px;
   }
-  .voyage-vertical-nav {
+
+  .pirate-video-frame {
+    max-width: 100%;
+    max-height: 80vh;
+  }
+
+  .pirate-dock-audio-btn {
+    max-width: 180px;
+  }
+
+  .pirate-timeline-slider {
+    width: 90px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pirate-nav-header {
+    padding: 0 16px;
+    height: 60px;
+  }
+
+  .pirate-nav-brand {
     display: none;
   }
-  .about-creation-bottom-dock {
-    width: calc(100% - 40px);
-    bottom: 16px;
+
+  .pirate-nav-divider {
+    display: none;
+  }
+
+  .pirate-explore-overlay-hotspot {
+    left: 5%;
+    bottom: 12%;
+  }
+
+  .pirate-explore-cta-button {
     padding: 8px 16px;
+    font-size: 11px;
   }
-  .dock-brand-name, .dock-brand-author {
+
+  .pirate-bottom-dock {
+    bottom: 14px;
+    padding: 8px 14px;
+    gap: 8px;
+  }
+
+  .pirate-dock-audio-btn {
     display: none;
+  }
+
+  .pirate-timeline-slider {
+    width: 80px;
   }
 }
