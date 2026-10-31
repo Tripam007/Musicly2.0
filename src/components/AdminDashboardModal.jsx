@@ -1050,12 +1050,15 @@ export default function AdminDashboardModal({
                   type="text" 
                   placeholder={
                     isLiveAgentActive 
-                      ? "✨ Search YouTube audio streams (e.g. Coldplay Live, Hindi Lo-Fi, Lofi Girl)..." 
+                      ? "Search YouTube audio streams (e.g. Coldplay, Kesariya, Lo-Fi, Arijit)..." 
                       : "Filter public tracks..."
                   }
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
+                {isLoadingLiveStreams && isLiveAgentActive && (
+                  <RefreshCw size={13} className="spin-slow admin-search-spinner" style={{ opacity: 0.65, color: '#c084fc', flexShrink: 0 }} title="Scanning YouTube..." />
+                )}
                 {searchQuery && (
                   <button 
                     type="button" 
@@ -1099,32 +1102,6 @@ export default function AdminDashboardModal({
             {/* VIEW MODE A: Live Stream AI Agent Active */}
             {isLiveAgentActive ? (
               <div className="admin-ai-agent-deck">
-                {/* AI Agent Status Header */}
-                <div className="admin-ai-agent-banner">
-                  <div className="admin-ai-banner-left">
-                    <div className="admin-ai-pulse-badge">
-                      <span className="pulse-beacon" />
-                      <Sparkles size={13} />
-                      <span>LIVE STREAM AI AGENT</span>
-                    </div>
-                    <p className="admin-ai-banner-sub">
-                      Recommends live YouTube music & broadcasts. Click to stream pure audio, or import directly into Musicly Public Library.
-                    </p>
-                  </div>
-
-                  {isLoadingLiveStreams ? (
-                    <div className="admin-ai-loading-pill">
-                      <RefreshCw size={12} className="spin-slow" />
-                      <span>Scanning YouTube audio streams...</span>
-                    </div>
-                  ) : searchQuery.trim() ? (
-                    <div className="admin-ai-loading-pill" style={{ color: '#fbbf24', borderColor: 'rgba(251, 191, 36, 0.4)' }}>
-                      <Sparkles size={12} />
-                      <span>Top recommendations for "{searchQuery}"</span>
-                    </div>
-                  ) : null}
-                </div>
-
                 {/* Quick Stream Preset Filters */}
                 <div className="admin-ai-presets-row">
                   <span className="ai-presets-label">Prompt Presets:</span>
@@ -1191,12 +1168,12 @@ export default function AdminDashboardModal({
                             <div className="admin-stream-info">
                               <div className="admin-stream-title-row">
                                 <span className="admin-stream-title">{item.title}</span>
-                                <span className="admin-audio-only-pill">🎧 Audio Only</span>
+                                <span className="admin-audio-only-pill" title="Audio Only">🎧</span>
                               </div>
                               <p className="admin-stream-artist">{item.artist}</p>
                               <div className="admin-stream-chips">
                                 {item.isTopMatch && (
-                                  <span className="admin-chip top-match-chip">⭐ Top Match</span>
+                                  <span className="admin-chip top-match-chip" title="Top Match">⭐</span>
                                 )}
                                 <span className="admin-chip genre">{item.genre || 'Lo-Fi'}</span>
                                 <span className="admin-chip lang">{item.language || 'English'}</span>
