@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { TRACKS } from '../data/tracks';
 import { playCatSound } from '../utils/audioSynth';
+import AboutCreationView from './AboutCreationView';
 import '../styles/aboutUs.css';
 
 // SVG Icons for Social Links
@@ -198,6 +199,23 @@ export default function AboutUsExperience({
   // Current visible chapter (1 through 5)
   const [activeChapter, setActiveChapter] = useState(1);
   const [scrollPercent, setScrollPercent] = useState(0);
+
+  // Single-Click View Switcher: 'creation' (Touch of Creation View) vs 'story' (Classic Story View)
+  const [aboutViewMode, setAboutViewMode] = useState(() => {
+    try {
+      return localStorage.getItem('musicly_about_view_mode') || 'creation';
+    } catch {
+      return 'creation';
+    }
+  });
+
+  const handleToggleView = (mode) => {
+    const newMode = mode || (aboutViewMode === 'creation' ? 'story' : 'creation');
+    setAboutViewMode(newMode);
+    try {
+      localStorage.setItem('musicly_about_view_mode', newMode);
+    } catch {}
+  };
 
   // Dynamic Vinyl Track Rotation over time (different songs at different times)
   const vinylSongCatalog = useMemo(() => {
@@ -753,6 +771,19 @@ export default function AboutUsExperience({
   // Currently playing or fallback iconic song info
   const displayTrack = currentTrack || FLOATING_TRACK_FRAGMENTS[0];
 
+  // If in 'creation' view mode, render the interactive Touch of Creation experience
+  if (aboutViewMode === 'creation') {
+    return (
+      <AboutCreationView
+        onBack={onBack}
+        onSwitchView={() => handleToggleView('story')}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        onTogglePlay={onTogglePlay}
+      />
+    );
+  }
+
   return (
     <div 
       className="about-us-experience" 
@@ -805,6 +836,18 @@ export default function AboutUsExperience({
         <header className="about-hud" aria-label="About Us Header">
           <div className="about-hud-brand">
             <h1 className="about-hud-title">ABOUT US</h1>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'auto' }}>
+            <button
+              type="button"
+              className="about-view-switcher-hud-btn"
+              onClick={() => handleToggleView('creation')}
+              title="Switch to Creation Touch View"
+            >
+              <Sparkles size={12} style={{ color: '#ffd166' }} />
+              <span>Touch of Creation</span>
+            </button>
           </div>
 
           {/* 🎬 Slow Auto-Scroll Cinematic Drift Status Pill */}

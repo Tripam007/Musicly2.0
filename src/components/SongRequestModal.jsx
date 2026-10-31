@@ -133,8 +133,8 @@ export default function SongRequestModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div 
-        className="glass-modal-panel song-request-panel" 
+      <div
+        className="glass-modal-panel song-request-panel"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
@@ -147,9 +147,9 @@ export default function SongRequestModal({
               <p>Suggest a track for the Musicly Public Library</p>
             </div>
           </div>
-          <button 
-            id="btn-close-song-request" 
-            className="glass-close-btn bookmark-close-btn" 
+          <button
+            id="btn-close-song-request"
+            className="glass-close-btn bookmark-close-btn"
             onClick={onClose}
             title="Close"
           >
@@ -178,7 +178,7 @@ export default function SongRequestModal({
             <div className="admin-form-group">
               <label>YouTube Link or Streaming Audio URL (Optional)</label>
               <div className="admin-input-wrapper">
-                <input 
+                <input
                   type="text"
                   placeholder="https://www.youtube.com/watch?v=... or https://.../audio.mp3"
                   value={audioUrl}
@@ -186,15 +186,15 @@ export default function SongRequestModal({
                   style={{ paddingRight: isLoadingYtMeta ? '135px' : '16px' }}
                 />
                 {isLoadingYtMeta && (
-                  <div style={{ 
-                    position: 'absolute', 
-                    right: '12px', 
-                    top: '50%', 
-                    transform: 'translateY(-50%)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '6px', 
-                    color: '#ffd166', 
+                  <div style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    color: '#ffd166',
                     fontSize: '0.8rem',
                     fontWeight: 600,
                     pointerEvents: 'none'
@@ -210,7 +210,7 @@ export default function SongRequestModal({
             <div className="admin-form-grid">
               <div className="admin-form-group">
                 <label>Song Title *</label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. Tu Jo Paas or Midnight Horizon"
                   value={title}
@@ -224,7 +224,7 @@ export default function SongRequestModal({
 
               <div className="admin-form-group">
                 <label>Artist / Creator Name *</label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. Suzonn / Prateek Kuhad"
                   value={artist}
@@ -246,7 +246,7 @@ export default function SongRequestModal({
                 {displayedSections.map(sec => {
                   const isSel = selectedSections.includes(sec);
                   return (
-                    <button 
+                    <button
                       key={sec}
                       type="button"
                       className={`admin-picker-chip ${isSel ? 'selected' : ''}`}
@@ -268,7 +268,7 @@ export default function SongRequestModal({
                 {AVAILABLE_LANGUAGES.map(lang => {
                   const isSel = language === lang;
                   return (
-                    <button 
+                    <button
                       key={lang}
                       type="button"
                       className={`admin-picker-chip ${isSel ? 'selected' : ''}`}
@@ -286,7 +286,7 @@ export default function SongRequestModal({
                 <MessageSquare size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
                 Note or Dedication for Admin (Optional)
               </label>
-              <input 
+              <input
                 type="text"
                 placeholder="Why do you love this track? Or who would you dedicate it to?"
                 value={note}
@@ -296,15 +296,15 @@ export default function SongRequestModal({
             </div>
 
             <div className="request-modal-footer">
-              <button 
-                type="button" 
-                className="admin-cancel-btn" 
+              <button
+                type="button"
+                className="admin-cancel-btn"
                 onClick={onClose}
               >
                 Cancel
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="request-submit-btn"
                 disabled={isSubmitting || !title.trim() || !artist.trim()}
               >
