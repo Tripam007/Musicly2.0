@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { TRACKS } from '../data/tracks';
 import { playCatSound } from '../utils/audioSynth';
+import TheMusiclyStory from './TheMusiclyStory';
 import AboutCreationView from './AboutCreationView';
 import '../styles/aboutUs.css';
 
@@ -200,20 +201,20 @@ export default function AboutUsExperience({
   const [activeChapter, setActiveChapter] = useState(1);
   const [scrollPercent, setScrollPercent] = useState(0);
 
-  // Single-Click View Switcher: 'creation' (Touch of Creation View) vs 'story' (Classic Story View)
+  // Single-Click View Switcher: 'story' (The Musicly Story) vs 'classic' (Classic About)
   const [aboutViewMode, setAboutViewMode] = useState(() => {
     try {
-      return localStorage.getItem('musicly_about_view_mode') || 'creation';
+      return sessionStorage.getItem('musicly_about_view_mode') || 'story';
     } catch {
-      return 'creation';
+      return 'story';
     }
   });
 
   const handleToggleView = (mode) => {
-    const newMode = mode || (aboutViewMode === 'creation' ? 'story' : 'creation');
+    const newMode = mode || (aboutViewMode === 'story' ? 'classic' : 'story');
     setAboutViewMode(newMode);
     try {
-      localStorage.setItem('musicly_about_view_mode', newMode);
+      sessionStorage.setItem('musicly_about_view_mode', newMode);
     } catch {}
   };
 
@@ -771,12 +772,12 @@ export default function AboutUsExperience({
   // Currently playing or fallback iconic song info
   const displayTrack = currentTrack || FLOATING_TRACK_FRAGMENTS[0];
 
-  // If in 'creation' view mode, render the interactive Touch of Creation experience
-  if (aboutViewMode === 'creation') {
+  // If in 'story' view mode, render the new illustrated "THE MUSICLY STORY" experience
+  if (aboutViewMode === 'story') {
     return (
-      <AboutCreationView
+      <TheMusiclyStory
         onBack={onBack}
-        onSwitchView={() => handleToggleView('story')}
+        onSwitchView={() => handleToggleView('classic')}
         currentTrack={currentTrack}
         isPlaying={isPlaying}
         onTogglePlay={onTogglePlay}
@@ -842,11 +843,11 @@ export default function AboutUsExperience({
             <button
               type="button"
               className="about-view-switcher-hud-btn"
-              onClick={() => handleToggleView('creation')}
-              title="Switch to Creation Touch View"
+              onClick={() => handleToggleView('story')}
+              title="Switch to The Musicly Story"
             >
               <Sparkles size={12} style={{ color: '#ffd166' }} />
-              <span>Touch of Creation</span>
+              <span>The Musicly Story</span>
             </button>
           </div>
 
