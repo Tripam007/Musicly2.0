@@ -10,27 +10,42 @@ export default function AboutCreationView({
   isPlaying = false,
   onTogglePlay = null
 }) {
-  const canvasRef = useRef(null);
   const containerRef = useRef(null);
+  const effectsCanvasRef = useRef(null);
+  const digitalHandRef = useRef(null);
+  const humanHandRef = useRef(null);
+  const videoRef = useRef(null);
 
-  // Interaction State Refs (bypasses React state for 60fps animation loop)
+  // Interaction State Refs (bypasses React re-renders for smooth 60fps kinematics)
   const animRef = useRef(null);
   const mouseRef = useRef({ x: window.innerWidth * 0.5, y: window.innerHeight * 0.5, isDown: false });
   const targetMouseRef = useRef({ x: window.innerWidth * 0.5, y: window.innerHeight * 0.5 });
-  const scrollReachRef = useRef(0.85); // 0.0 (far apart) to 1.0 (touching)
+  const reachRef = useRef(0.85); // 0.3 (pulled back) to 1.0 (fingertips touching)
   const targetReachRef = useRef(0.85);
-  const touchStateRef = useRef({ isTouching: false, touchTime: 0, sparkIntensity: 0 });
+  const isTouchingRef = useRef(false);
   const particlesRef = useRef([]);
-  const lightningArcsRef = useRef([]);
   const pulseRingsRef = useRef([]);
+  const sparkIntensityRef = useRef(0);
   const hasTriggeredInitialSound = useRef(false);
 
   const [hasInteracted, setHasInteracted] = useState(false);
-  const [touchLocked, setTouchLocked] = useState(false);
 
-  // Initialize and run Canvas Loop
+  // High-Resolution Image Dimensions and Tip Offsets:
+  // Both images are 1376 x 768.
+  // digital_hand_wireframe.png: tip at (1171, 531)
+  // human_hand_real.png: tip at (236, 132)
+  const D_WIDTH = 1376;
+  const D_HEIGHT = 768;
+  const D_TIP_X = 1171;
+  const D_TIP_Y = 531;
+
+  const H_WIDTH = 1376;
+  const H_HEIGHT = 768;
+  const H_TIP_X = 236;
+  const H_TIP_Y = 132;
+
   useEffect(() => {
-    const canvas = canvasRef.current;
+    const canvas = effectsCanvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -38,27 +53,26 @@ export default function AboutCreationView({
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    // Starfield setup
-    const numStars = 140;
+    // Initial mouse center
+    targetMouseRef.current = { x: width * 0.5, y: height * 0.52 };
+    mouseRef.current = { x: width * 0.5, y: height * 0.52, isDown: false };
+
+    // Twinkling stars in the cosmic mist
+    const numStars = 80;
     const stars = Array.from({ length: numStars }, () => ({
       x: Math.random() * width,
       y: Math.random() * height,
-      size: Math.random() * 1.8 + 0.4,
-      baseAlpha: Math.random() * 0.7 + 0.2,
-      twinkleSpeed: Math.random() * 0.03 + 0.008,
+      size: Math.random() * 1.6 + 0.4,
+      baseAlpha: Math.random() * 0.6 + 0.2,
+      speed: Math.random() * 0.02 + 0.005,
       phase: Math.random() * Math.PI * 2
     }));
 
-    // Handle Window Resize with high DPI scaling
     const handleResize = () => {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
-      targetMouseRef.current.x = width * 0.5;
-      targetMouseRef.current.y = height * 0.5;
     };
-    window.addEventListener('resize', handleResize);
 
-    // Touch & Mouse Event Listeners
     const handleMouseMove = (e) => {
       targetMouseRef.current.x = e.clientX;
       targetMouseRef.current.y = e.clientY;
@@ -74,21 +88,21 @@ export default function AboutCreationView({
     };
 
     const handleWheel = (e) => {
-      // Scroll moves hands closer (scroll down = meet) or farther (scroll up = retreat)
-      const delta = e.deltaY * 0.0015;
-      targetReachRef.current = Math.max(0.3, Math.min(1.08, targetReachRef.current + delta));
+      // Scroll down: fingers meet closer (reach -> 1.0)
+      // Scroll up: fingers pull back
+      const delta = e.deltaY * 0.0018;
+      targetReachRef.current = Math.max(0.35, Math.min(1.05, targetReachRef.current + delta));
       if (!hasInteracted) setHasInteracted(true);
     };
 
-    const handleMouseDown = () => {
+    const handleMouseDown = (e) => {
       mouseRef.current.isDown = true;
-      targetReachRef.current = 1.0; // Snap fingers to touch on click
-      // Trigger instant pulse ring and sparks
+      targetReachRef.current = 1.0; // Snap to touch on click
       pulseRingsRef.current.push({
         x: mouseRef.current.x,
         y: mouseRef.current.y,
-        radius: 5,
-        maxRadius: 180,
+        radius: 6,
+        maxRadius: 220,
         alpha: 1,
         color: '#ffd166'
       });
@@ -99,124 +113,218 @@ export default function AboutCreationView({
       mouseRef.current.isDown = false;
     };
 
+    window.addEventListener('resize', handleResize);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('wheel', handleWheel, { passive: true });
     window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mouseup', handleMouseUp);
 
-    // Animation Render Loop
+    // 60FPS Kinematics and Effect Loop
     let time = 0;
     const render = () => {
       time += 0.02;
 
       // Smooth lerp mouse towards target
-      mouseRef.current.x += (targetMouseRef.current.x - mouseRef.current.x) * 0.12;
-      mouseRef.current.y += (targetMouseRef.current.y - mouseRef.current.y) * 0.12;
+      mouseRef.current.x += (targetMouseRef.current.x - mouseRef.current.x) * 0.14;
+      mouseRef.current.y += (targetMouseRef.current.y - mouseRef.current.y) * 0.14;
 
       // Smooth lerp reach factor
-      scrollReachRef.current += (targetReachRef.current - scrollReachRef.current) * 0.1;
-      const reach = scrollReachRef.current;
+      reachRef.current += (targetReachRef.current - reachRef.current) * 0.12;
+      const reach = reachRef.current;
 
-      ctx.clearRect(0, 0, width, height);
-
-      // 1. Cosmic Deep Space Background
-      ctx.fillStyle = '#060608';
-      ctx.fillRect(0, 0, width, height);
-
-      // Subtle radial center nebula glow
-      const radialGrad = ctx.createRadialGradient(
-        width * 0.5, height * 0.5, 50,
-        width * 0.5, height * 0.5, width * 0.7
-      );
-      radialGrad.addColorStop(0, 'rgba(25, 20, 36, 0.45)');
-      radialGrad.addColorStop(0.5, 'rgba(14, 12, 22, 0.25)');
-      radialGrad.addColorStop(1, 'rgba(6, 6, 8, 0)');
-      ctx.fillStyle = radialGrad;
-      ctx.fillRect(0, 0, width, height);
-
-      // 2. Twinkling Stars with parallax shift
-      const parallaxX = (mouseRef.current.x - width * 0.5) * 0.02;
-      const parallaxY = (mouseRef.current.y - height * 0.5) * 0.02;
-
-      for (let i = 0; i < stars.length; i++) {
-        const star = stars[i];
-        const alpha = star.baseAlpha + Math.sin(time * star.twinkleSpeed * 60 + star.phase) * 0.3;
-        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0.08, Math.min(1, alpha))})`;
-        ctx.beginPath();
-        ctx.arc(star.x + parallaxX * (star.size * 0.6), star.y + parallaxY * (star.size * 0.6), star.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // =========================================================================
-      // KINEMATICS & HAND ANCHORS
-      // =========================================================================
       const mx = mouseRef.current.x;
       const my = mouseRef.current.y;
 
-      // Digital Hand Anchor (Top-Left)
-      const dOriginX = -40;
-      const dOriginY = -40;
+      // =======================================================================
+      // ANATOMICAL KINEMATICS & HAND POSITIONING
+      // =======================================================================
+      // Scale factor responsive to viewport size
+      const handScale = Math.min(0.68, Math.max(0.38, width / 2100));
 
-      // Human Hand Anchor (Bottom-Right)
-      const hOriginX = width + 40;
-      const hOriginY = height + 40;
+      // Scaled dimensions
+      const dScaledW = D_WIDTH * handScale;
+      const dScaledH = D_HEIGHT * handScale;
+      const dTipOffX = D_TIP_X * handScale;
+      const dTipOffY = D_TIP_Y * handScale;
 
-      // Distance and angles to target cursor
-      const dDx = mx - dOriginX;
-      const dDy = my - dOriginY;
-      const dDist = Math.hypot(dDx, dDy);
-      const dAngle = Math.atan2(dDy, dDx);
+      const hScaledW = H_WIDTH * handScale;
+      const hScaledH = H_HEIGHT * handScale;
+      const hTipOffX = H_TIP_X * handScale;
+      const hTipOffY = H_TIP_Y * handScale;
 
-      const hDx = mx - hOriginX;
-      const hDy = my - hOriginY;
-      const hDist = Math.hypot(hDx, hDy);
-      const hAngle = Math.atan2(hDy, hDx);
+      // Anchors for arm entry
+      // Digital hand enters from top-left
+      const dAnchorX = -dScaledW * 0.25;
+      const dAnchorY = -dScaledH * 0.25;
 
-      // Fingertip meeting calculation:
-      // When reach is 1.0, fingertips meet exactly at (mx, my)
-      // When reach < 1.0, fingertips maintain a gap
-      const gapOffset = Math.max(0, (1 - reach) * 160);
+      // Human hand enters from bottom-right
+      const hAnchorX = width + hScaledW * 0.25;
+      const hAnchorY = height + hScaledH * 0.25;
 
-      const dTipX = mx - Math.cos(dAngle) * gapOffset;
-      const dTipY = my - Math.sin(dAngle) * gapOffset;
+      // Angles to cursor
+      const angleD = Math.atan2(my - dAnchorY, mx - dAnchorX);
+      const angleH = Math.atan2(my - hAnchorY, mx - hAnchorX);
 
-      const hTipX = mx - Math.cos(hAngle) * gapOffset;
-      const hTipY = my - Math.sin(hAngle) * gapOffset;
+      // Fingertip meeting gap calculation:
+      // When reach is 1.0, gap is 0 -> fingertips touch exactly at (mx, my)
+      // When reach < 1.0, gap separates fingertips along their reach vectors
+      const gapOffset = Math.max(0, (1 - reach) * 130);
 
-      const currentFingerGap = Math.hypot(dTipX - hTipX, dTipY - hTipY);
-      const isTouching = currentFingerGap < 26 || reach >= 0.98;
+      const dTipX = mx - Math.cos(angleD) * gapOffset;
+      const dTipY = my - Math.sin(angleD) * gapOffset;
+
+      const hTipX = mx - Math.cos(angleH) * gapOffset;
+      const hTipY = my - Math.sin(angleH) * gapOffset;
+
+      const fingerDistance = Math.hypot(dTipX - hTipX, dTipY - hTipY);
+      const isTouching = fingerDistance < 18 || reach >= 0.99;
+      isTouchingRef.current = isTouching;
 
       if (isTouching) {
-        touchStateRef.current.isTouching = true;
-        touchStateRef.current.sparkIntensity = Math.min(1, touchStateRef.current.sparkIntensity + 0.1);
+        sparkIntensityRef.current = Math.min(1, sparkIntensityRef.current + 0.15);
         if (!hasTriggeredInitialSound.current) {
-          playShootingStarSound();
+          playPeacefulLikeSound();
           hasTriggeredInitialSound.current = true;
         }
       } else {
-        touchStateRef.current.isTouching = false;
-        touchStateRef.current.sparkIntensity = Math.max(0, touchStateRef.current.sparkIntensity - 0.05);
+        sparkIntensityRef.current = Math.max(0, sparkIntensityRef.current - 0.05);
+        if (fingerDistance > 80) {
+          hasTriggeredInitialSound.current = false;
+        }
       }
 
-      // =========================================================================
-      // 3. DRAW DIGITAL WIREFRAME AI HAND (Top-Left to Tip1)
-      // =========================================================================
-      drawDigitalWireframeHand(ctx, dOriginX, dOriginY, dTipX, dTipY, dAngle, time, isTouching);
+      // Natural resting orientation of each hand asset:
+      // digital_hand: points down-right (~22 deg = 0.38 rad)
+      // human_hand: points up-left (-152 deg = -2.65 rad)
+      const naturalAngleD = 0.38;
+      const naturalAngleH = -2.65;
 
-      // =========================================================================
-      // 4. DRAW REALISTIC HUMAN HAND (Bottom-Right to Tip2)
-      // =========================================================================
-      drawRealisticHumanHand(ctx, hOriginX, hOriginY, hTipX, hTipY, hAngle, isTouching, time);
+      // Soft pivot rotation (only 35% tracking so wrists do not over-rotate unnaturally)
+      const rotD = (angleD - naturalAngleD) * 0.35;
+      const rotH = (angleH - naturalAngleH) * 0.35;
 
-      // =========================================================================
-      // 5. TOUCH POINT: QUANTUM ARCS & SPARK CORONA
-      // =========================================================================
-      drawQuantumTouchSpark(ctx, dTipX, dTipY, hTipX, hTipY, mx, my, currentFingerGap, isTouching, time);
+      // Apply transforms to DOM hand images
+      if (digitalHandRef.current) {
+        digitalHandRef.current.style.width = `${dScaledW}px`;
+        digitalHandRef.current.style.height = `${dScaledH}px`;
+        digitalHandRef.current.style.transformOrigin = `${dTipOffX}px ${dTipOffY}px`;
+        digitalHandRef.current.style.transform = `translate3d(${dTipX - dTipOffX}px, ${dTipY - dTipOffY}px, 0) rotate(${rotD}rad)`;
+      }
 
-      // 6. Particle & Pulse Wave Updates
-      updateAndDrawParticles(ctx);
-      updateAndDrawPulseRings(ctx);
+      if (humanHandRef.current) {
+        humanHandRef.current.style.width = `${hScaledW}px`;
+        humanHandRef.current.style.height = `${hScaledH}px`;
+        humanHandRef.current.style.transformOrigin = `${hTipOffX}px ${hTipOffY}px`;
+        humanHandRef.current.style.transform = `translate3d(${hTipX - hTipOffX}px, ${hTipY - hTipOffY}px, 0) rotate(${rotH}rad)`;
+      }
+
+      // =======================================================================
+      // EFFECTS CANVAS RENDERING (Spark Corona, Lightning Arcs, Stardust)
+      // =======================================================================
+      ctx.clearRect(0, 0, width, height);
+
+      // Draw subtle twinkling stars in the cosmic mist
+      for (let i = 0; i < stars.length; i++) {
+        const star = stars[i];
+        const alpha = star.baseAlpha + Math.sin(time * 30 * star.speed + star.phase) * 0.25;
+        ctx.fillStyle = `rgba(255, 235, 200, ${Math.max(0.08, Math.min(0.9, alpha))})`;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Proximity Lightning Arcs (< 100px)
+      if (fingerDistance < 110) {
+        const arcIntensity = Math.max(0, 1 - fingerDistance / 110);
+        const numArcs = isTouching ? 4 : 2;
+
+        for (let a = 0; a < numArcs; a++) {
+          ctx.beginPath();
+          ctx.moveTo(dTipX, dTipY);
+          const segments = 5;
+          for (let s = 1; s < segments; s++) {
+            const frac = s / segments;
+            const px = dTipX + (hTipX - dTipX) * frac;
+            const py = dTipY + (hTipY - dTipY) * frac;
+            const jitter = (Math.random() - 0.5) * 22 * arcIntensity;
+            ctx.lineTo(px + jitter, py + jitter);
+          }
+          ctx.lineTo(hTipX, hTipY);
+          ctx.strokeStyle = a % 2 === 0 ? 'rgba(56, 189, 248, 0.9)' : 'rgba(255, 209, 102, 0.95)';
+          ctx.lineWidth = Math.random() * 1.8 + 0.8;
+          ctx.stroke();
+        }
+      }
+
+      // Radiant Celestial Corona on contact
+      if (isTouching || fingerDistance < 24) {
+        const midX = (dTipX + hTipX) * 0.5;
+        const midY = (dTipY + hTipY) * 0.5;
+
+        // Radial golden-blue plasma lens flare
+        const coronaGrad = ctx.createRadialGradient(midX, midY, 2, midX, midY, 56);
+        coronaGrad.addColorStop(0, 'rgba(255, 255, 255, 0.98)');
+        coronaGrad.addColorStop(0.2, 'rgba(255, 214, 102, 0.8)');
+        coronaGrad.addColorStop(0.55, 'rgba(56, 189, 248, 0.45)');
+        coronaGrad.addColorStop(1, 'rgba(255, 110, 89, 0)');
+
+        ctx.fillStyle = coronaGrad;
+        ctx.beginPath();
+        ctx.arc(midX, midY, 56, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Emit glowing stardust particles
+        if (Math.random() < 0.45) {
+          particlesRef.current.push({
+            x: midX + (Math.random() - 0.5) * 12,
+            y: midY + (Math.random() - 0.5) * 12,
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4 - 0.6,
+            size: Math.random() * 2.8 + 1,
+            alpha: 1,
+            color: Math.random() > 0.45 ? '#ffd166' : '#38bdf8'
+          });
+        }
+      }
+
+      // Particle simulation
+      const particles = particlesRef.current;
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.024;
+        if (p.alpha <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      // Pulse waves simulation
+      const rings = pulseRingsRef.current;
+      for (let i = rings.length - 1; i >= 0; i--) {
+        const r = rings[i];
+        r.radius += 4.2;
+        r.alpha -= 0.022;
+        if (r.alpha <= 0 || r.radius >= r.maxRadius) {
+          rings.splice(i, 1);
+          continue;
+        }
+        ctx.strokeStyle = r.color;
+        ctx.lineWidth = 1.6;
+        ctx.globalAlpha = r.alpha;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
 
       animRef.current = requestAnimationFrame(render);
     };
@@ -234,311 +342,50 @@ export default function AboutCreationView({
     };
   }, [hasInteracted]);
 
-  // =========================================================================
-  // DIGITAL WIREFRAME HAND RENDERER (3D Neon Polygonal Mesh)
-  // =========================================================================
-  const drawDigitalWireframeHand = (ctx, startX, startY, endX, endY, angle, time, isTouching) => {
-    ctx.save();
-
-    const dx = endX - startX;
-    const dy = endY - startY;
-    const length = Math.hypot(dx, dy);
-
-    ctx.translate(startX, startY);
-    ctx.rotate(angle);
-
-    // Subtle neon glow effect
-    ctx.shadowColor = isTouching ? '#ff9e7d' : '#ff6e59';
-    ctx.shadowBlur = isTouching ? 18 : 10;
-    ctx.strokeStyle = '#ff6e59';
-    ctx.lineWidth = 1.2;
-
-    // Cross-sectional 3D wireframe mesh rings along forearm -> palm -> finger
-    const numRings = 14;
-    const ringPoints = [];
-
-    for (let r = 0; r <= numRings; r++) {
-      const t = r / numRings;
-      const x = t * length;
-
-      // Realistic anatomical thickness profile
-      let radiusY = 48 * Math.sin(t * Math.PI * 0.8 + 0.3);
-      if (t > 0.65) {
-        // Taper towards outstretched index finger
-        radiusY = 14 * (1 - (t - 0.65) / 0.35) + 4;
-      }
-
-      // Small cyber vibration
-      const vib = Math.sin(time * 8 + r) * 0.8;
-      const rY = Math.max(3, radiusY + vib);
-
-      // 6 vertices per elliptical cylinder ring
-      const points = [];
-      const numVerts = 6;
-      for (let v = 0; v < numVerts; v++) {
-        const phi = (v / numVerts) * Math.PI * 2;
-        const py = Math.sin(phi) * rY;
-        const pz = Math.cos(phi) * (rY * 0.85); // Simulated Z depth
-        points.push({ x: x + pz * 0.25, y: py });
-      }
-      ringPoints.push(points);
-
-      // Draw the transverse ring
-      ctx.beginPath();
-      for (let v = 0; v <= numVerts; v++) {
-        const pt = points[v % numVerts];
-        if (v === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.stroke();
-
-      // Translucent polygon mesh fill
-      ctx.fillStyle = `rgba(255, 110, 89, ${0.03 + (1 - t) * 0.05})`;
-      ctx.fill();
-    }
-
-    // Connect longitudinal spine lines across rings
-    const numSpines = 6;
-    for (let s = 0; s < numSpines; s++) {
-      ctx.beginPath();
-      for (let r = 0; r <= numRings; r++) {
-        const pt = ringPoints[r][s];
-        if (r === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      }
-      ctx.stroke();
-    }
-
-    // Curled thumb wireframe polygon
-    ctx.beginPath();
-    const thumbBaseX = length * 0.42;
-    const thumbBaseY = 32;
-    ctx.moveTo(thumbBaseX, thumbBaseY);
-    ctx.lineTo(thumbBaseX + 28, thumbBaseY + 24);
-    ctx.lineTo(thumbBaseX + 44, thumbBaseY + 12);
-    ctx.lineTo(thumbBaseX + 32, thumbBaseY - 6);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(255, 110, 89, 0.08)';
-    ctx.fill();
-
-    // Curled middle & ring fingers (foreshortened perspective wireframe)
-    for (let f = 1; f <= 3; f++) {
-      const fBaseX = length * 0.58;
-      const fBaseY = -12 - f * 10;
-      ctx.beginPath();
-      ctx.moveTo(fBaseX, fBaseY);
-      ctx.lineTo(fBaseX + 22, fBaseY - 12);
-      ctx.lineTo(fBaseX + 36, fBaseY - 4);
-      ctx.lineTo(fBaseX + 26, fBaseY + 10);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.fill();
-    }
-
-    // Glowing tip vertex on index finger
-    ctx.beginPath();
-    ctx.arc(length, 0, isTouching ? 4.5 : 3, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
-    ctx.fill();
-
-    ctx.restore();
-  };
-
-  // =========================================================================
-  // REALISTIC HUMAN HAND RENDERER (Warm Anatomical Gradients & Shading)
-  // =========================================================================
-  const drawRealisticHumanHand = (ctx, startX, startY, endX, endY, angle, isTouching, time) => {
-    ctx.save();
-
-    const dx = endX - startX;
-    const dy = endY - startY;
-    const length = Math.hypot(dx, dy);
-
-    ctx.translate(startX, startY);
-    ctx.rotate(angle);
-
-    // Realistic human skin tones
-    const skinBase = '#d79b7d';
-    const skinShadow = '#78432a';
-    const skinHighlight = '#f4c5ad';
-    const orangeRimLight = 'rgba(255, 110, 89, 0.45)';
-
-    // 1. Forearm & Palm Outer Silhouette Path
-    ctx.beginPath();
-    ctx.moveTo(0, -45); // Top of wrist
-    ctx.bezierCurveTo(length * 0.25, -42, length * 0.45, -34, length * 0.62, -22); // Dorsum & Knuckles
-    ctx.bezierCurveTo(length * 0.72, -18, length * 0.88, -10, length, 0); // Outstretched index finger tip
-    ctx.bezierCurveTo(length * 0.92, 10, length * 0.76, 16, length * 0.64, 18); // Finger bottom to palm
-    ctx.bezierCurveTo(length * 0.50, 38, length * 0.32, 48, 0, 48); // Thenar palm muscle to inner wrist
-    ctx.closePath();
-
-    // 2. Realistic 3D Organic Skin Gradient Fill
-    const skinGrad = ctx.createLinearGradient(0, -45, 0, 48);
-    skinGrad.addColorStop(0, skinHighlight);
-    skinGrad.addColorStop(0.35, skinBase);
-    skinGrad.addColorStop(0.75, '#b87556');
-    skinGrad.addColorStop(1, skinShadow);
-
-    ctx.fillStyle = skinGrad;
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-    ctx.shadowBlur = 24;
-    ctx.fill();
-
-    // 3. Warm rim lighting reflection from cyber hand on the dorsal edge
-    ctx.lineWidth = 2.2;
-    ctx.strokeStyle = orangeRimLight;
-    ctx.stroke();
-
-    // 4. Palm crease lines & anatomical knuckles
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(92, 45, 26, 0.35)';
-    ctx.lineWidth = 1.2;
-    // Proximal joint crease
-    ctx.moveTo(length * 0.68, -12);
-    ctx.quadraticCurveTo(length * 0.70, 2, length * 0.69, 14);
-    // Interphalangeal joint crease
-    ctx.moveTo(length * 0.83, -6);
-    ctx.quadraticCurveTo(length * 0.84, 0, length * 0.83, 8);
-    ctx.stroke();
-
-    // 5. Realistic Fingernail on index tip
-    const nailX = length - 12;
-    const nailY = -3;
-    ctx.beginPath();
-    ctx.ellipse(nailX, nailY, 7, 4.5, -0.15, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 230, 220, 0.55)';
-    ctx.fill();
-    // Specular nail sheen
-    ctx.beginPath();
-    ctx.ellipse(nailX - 1, nailY - 1, 4, 1.8, -0.15, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-    ctx.fill();
-
-    // 6. Curled fingers and thumb resting naturally below
-    ctx.beginPath();
-    ctx.arc(length * 0.52, 22, 12, 0, Math.PI * 2);
-    ctx.fillStyle = '#a66244';
-    ctx.fill();
-
-    ctx.restore();
-  };
-
-  // =========================================================================
-  // QUANTUM TOUCH SPARK & PLASMA ARCS (When fingertips meet)
-  // =========================================================================
-  const drawQuantumTouchSpark = (ctx, dX, dY, hX, hY, mx, my, gap, isTouching, time) => {
-    // If fingers are within proximity (< 75px), draw electric plasma arcs bridging them
-    if (gap < 85) {
-      const arcIntensity = Math.max(0, 1 - gap / 85);
-
-      // Dynamic electric lightning arcs between fingertips
-      const numArcs = isTouching ? 4 : 2;
-      for (let a = 0; a < numArcs; a++) {
-        ctx.beginPath();
-        ctx.moveTo(dX, dY);
-
-        const segments = 6;
-        for (let s = 1; s < segments; s++) {
-          const frac = s / segments;
-          const px = dX + (hX - dX) * frac;
-          const py = dY + (hY - dY) * frac;
-          // Jitter offset
-          const jitter = (Math.random() - 0.5) * 18 * arcIntensity;
-          ctx.lineTo(px + jitter, py + jitter);
-        }
-
-        ctx.lineTo(hX, hY);
-        ctx.strokeStyle = a % 2 === 0 ? 'rgba(56, 189, 248, 0.85)' : 'rgba(255, 214, 102, 0.9)';
-        ctx.lineWidth = Math.random() * 1.5 + 0.8;
-        ctx.stroke();
-      }
-    }
-
-    // If fingertips touch: Radiant Celestial Corona
-    if (isTouching || gap < 20) {
-      const midX = (dX + hX) * 0.5;
-      const midY = (dY + hY) * 0.5;
-
-      // Soft expanding light corona
-      const coronaGrad = ctx.createRadialGradient(midX, midY, 2, midX, midY, 45);
-      coronaGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-      coronaGrad.addColorStop(0.25, 'rgba(255, 215, 100, 0.7)');
-      coronaGrad.addColorStop(0.6, 'rgba(56, 189, 248, 0.35)');
-      coronaGrad.addColorStop(1, 'rgba(255, 110, 89, 0)');
-
-      ctx.fillStyle = coronaGrad;
-      ctx.beginPath();
-      ctx.arc(midX, midY, 45, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Emit stardust particles periodically on contact
-      if (Math.random() < 0.45) {
-        particlesRef.current.push({
-          x: midX + (Math.random() - 0.5) * 10,
-          y: midY + (Math.random() - 0.5) * 10,
-          vx: (Math.random() - 0.5) * 3.5,
-          vy: (Math.random() - 0.5) * 3.5 - 0.8,
-          size: Math.random() * 2.5 + 1,
-          alpha: 1,
-          color: Math.random() > 0.5 ? '#ffd166' : '#38bdf8'
-        });
-      }
-    }
-  };
-
-  // Particle simulation loop
-  const updateAndDrawParticles = (ctx) => {
-    const list = particlesRef.current;
-    for (let i = list.length - 1; i >= 0; i--) {
-      const p = list[i];
-      p.x += p.vx;
-      p.y += p.vy;
-      p.alpha -= 0.02;
-
-      if (p.alpha <= 0) {
-        list.splice(i, 1);
-        continue;
-      }
-
-      ctx.fillStyle = p.color;
-      ctx.globalAlpha = p.alpha;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-  };
-
-  // Pulse wave rings loop
-  const updateAndDrawPulseRings = (ctx) => {
-    const rings = pulseRingsRef.current;
-    for (let i = rings.length - 1; i >= 0; i--) {
-      const r = rings[i];
-      r.radius += 3.8;
-      r.alpha -= 0.022;
-
-      if (r.alpha <= 0 || r.radius >= r.maxRadius) {
-        rings.splice(i, 1);
-        continue;
-      }
-
-      ctx.strokeStyle = r.color;
-      ctx.lineWidth = 1.4;
-      ctx.globalAlpha = r.alpha;
-      ctx.beginPath();
-      ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-  };
-
   return (
     <div className="about-creation-container" ref={containerRef} tabIndex={0}>
-      {/* Interactive Fullscreen Canvas */}
-      <canvas ref={canvasRef} className="about-creation-canvas" />
+      {/* 1. CINEMATIC PIRATE WEBSITE BACKGROUND VIDEO */}
+      <div className="creation-pirate-bg-wrapper">
+        <video
+          ref={videoRef}
+          className="creation-pirate-bg-video"
+          src="/assets/about/pirate_bg.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+        {/* Atmospheric vignette & mist overlay matching Dribbble color palette */}
+        <div className="creation-pirate-vignette" />
+      </div>
 
-      {/* FIXED TOP NAVIGATION BAR */}
+      {/* 2. REAL HANDS LAYER (Photorealistic Human Hand & 3D Wireframe Cyber Hand) */}
+      <div className="creation-hands-stage" aria-hidden="true">
+        {/* Left Digital Wireframe Hand */}
+        <div className="creation-hand-wrapper digital-hand-wrapper" ref={digitalHandRef}>
+          <img
+            src="/assets/about/digital_hand_wireframe.png"
+            alt="3D Wireframe Cybernetic Hand"
+            className="creation-hand-img digital-hand-img"
+            draggable={false}
+          />
+        </div>
+
+        {/* Right Photorealistic Human Hand */}
+        <div className="creation-hand-wrapper human-hand-wrapper" ref={humanHandRef}>
+          <img
+            src="/assets/about/human_hand_real.png"
+            alt="Photorealistic Human Hand"
+            className="creation-hand-img human-hand-img"
+            draggable={false}
+          />
+        </div>
+      </div>
+
+      {/* 3. INTERACTIVE EFFECTS CANVAS (Quantum sparks, lightning arcs, star particles) */}
+      <canvas ref={effectsCanvasRef} className="about-creation-canvas" />
+
+      {/* 4. FIXED TOP NAVIGATION BAR */}
       <header className="about-creation-nav">
         <button 
           type="button" 
@@ -555,16 +402,15 @@ export default function AboutCreationView({
           type="button"
           className="creation-view-switcher-btn"
           onClick={onSwitchView}
-          title="Switch to the full narrative editorial story view"
+          title="Switch to the classic editorial story view"
         >
           <BookOpen size={14} className="switcher-icon" />
           <span>Classic Story View</span>
         </button>
       </header>
 
-      {/* CENTER COZY AUDIOPHILE EMBLEM & MINIMAL TYPOGRAPHY */}
+      {/* 5. CENTER AUDIOPHILE EMBLEM & MINIMAL TYPOGRAPHY */}
       <div className="about-creation-center-hero" aria-label="Creation Story Typography">
-        {/* Play/Pause Button inside Glass Ring */}
         <button
           type="button"
           className={`creation-center-play-disk ${isPlaying ? 'is-playing' : ''}`}
@@ -596,7 +442,7 @@ export default function AboutCreationView({
         )}
       </div>
 
-      {/* FOOTER MINIMAL CREDITS & INTERACTIVE TIP */}
+      {/* 6. FOOTER MINIMAL CREDITS & INTERACTIVE TIP */}
       <footer className="about-creation-footer">
         <p className="creation-guide-hint">
           <span>✨ Move cursor or scroll wheel to guide the fingertips</span>
