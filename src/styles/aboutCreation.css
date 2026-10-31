@@ -1,6 +1,6 @@
 /* ==========================================================================
-   THE MUSICLY VOYAGE - FULL SCREEN HERO WITH FLOWING MUSICAL WAVES
-   Edge-to-Edge Whole Screen Illustration + Continuous Living Ocean Canvas
+   THE MUSICLY VOYAGE - LIVING ARTWORK EXPERIENCE
+   100% Fit in Screen (Zero Cropping) + Moving Waves, Clouds, Birds & Sailing Wake
    ========================================================================== */
 
 .musicly-voyage-master {
@@ -8,26 +8,25 @@
   inset: 0;
   width: 100vw;
   height: 100vh;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background-color: #f6ecdf;
   color: #1e1b18;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   user-select: none;
+  overflow: hidden;
   z-index: 99999;
 }
 
 /* ---------------- 1. Fixed Top Editorial Header ---------------- */
 .voyage-fixed-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 68px;
-  padding: 0 32px;
+  height: 56px;
+  flex-shrink: 0;
+  padding: 0 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(246, 236, 223, 0.85);
+  background: rgba(246, 236, 223, 0.88);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(45, 41, 37, 0.08);
@@ -37,14 +36,14 @@
 .voyage-header-left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .voyage-back-pill-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
+  gap: 7px;
+  padding: 7px 15px;
   border-radius: 999px;
   background: rgba(45, 41, 37, 0.07);
   border: 1px solid rgba(45, 41, 37, 0.12);
@@ -63,13 +62,13 @@
 
 .voyage-header-divider {
   color: rgba(45, 41, 37, 0.22);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 300;
 }
 
 .voyage-header-brand {
   font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
-  letter-spacing: 2.2px;
+  letter-spacing: 2px;
   font-size: 12px;
   font-weight: 700;
   color: #38332d;
@@ -87,7 +86,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 18px;
+  padding: 7px 16px;
   border-radius: 999px;
   background: #1e1b18;
   border: 1px solid #1e1b18;
@@ -116,108 +115,130 @@
   transform: scale(1.15) rotate(-5deg);
 }
 
-/* ---------------- 2. Whole Screen Hero (Edge-to-Edge, No Box) ---------------- */
-.voyage-hero-fullscreen-section {
-  position: absolute;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  background-color: #f6ecdf;
-}
-
-.voyage-hero-artwork-canvas {
+/* ---------------- 2. Perfect Screen-Fit Viewport Stage ---------------- */
+/* Fits 100% of the artwork on ANY screen with ZERO cropping of any part */
+.voyage-stage-viewport {
   position: relative;
+  flex: 1;
   width: 100%;
-  height: 100%;
-  overflow: hidden;
+  height: calc(100vh - 56px);
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden;
+  padding: 6px 16px 12px 16px;
+  box-sizing: border-box;
 }
 
-.voyage-hero-main-img {
-  width: 100vw;
-  height: 100vh;
-  object-fit: cover;
-  object-position: center;
+.voyage-stage-canvas-frame {
+  position: relative;
+  /* Maintains the exact 1024:768 aspect ratio with zero cut-off */
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1024 / 768;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 42px rgba(45, 41, 37, 0.12), 0 2px 10px rgba(45, 41, 37, 0.06);
+}
+
+.voyage-base-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
   display: block;
   user-select: none;
   -webkit-user-drag: none;
 }
 
-/* Interactive CTA Hotspot on "EXPLORE MUSICLY" button */
-.voyage-hero-cta-hotspot {
+/* Living High-Performance 60FPS Animation Canvas */
+.voyage-interactive-canvas {
   position: absolute;
-  left: 14.6%;
-  top: 57.5%;
-  z-index: 25;
-}
-
-.voyage-hero-cta-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 13px 26px;
-  border-radius: 999px;
-  background: rgba(30, 27, 24, 0.94);
-  color: #fbf8f2;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.voyage-hero-cta-btn:hover {
-  background: #000000;
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-  border-color: rgba(255, 255, 255, 0.45);
-}
-
-/* Continuously Flowing Waves Canvas */
-.voyage-flowing-waves-canvas {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  inset: 0;
   width: 100%;
-  height: 250px;
+  height: 100%;
   pointer-events: none;
   z-index: 10;
 }
 
-/* Floating Audiophile Dock */
+/* ---------------- 3. Interactive Hotspot on Drawn "EXPLORE MUSICLY" Button ---------------- */
+.voyage-button-hotspot {
+  position: absolute;
+  left: 8.6%;
+  top: 74.8%;
+  width: 21.0%;
+  height: 8.4%;
+  cursor: pointer;
+  border-radius: 999px;
+  z-index: 25;
+  background: rgba(255, 255, 255, 0.01);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+}
+
+.voyage-button-hotspot:hover {
+  background: rgba(234, 179, 8, 0.15);
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.35), inset 0 0 12px rgba(255, 255, 255, 0.5);
+  transform: scale(1.02);
+}
+
+.voyage-button-hotspot:active {
+  transform: scale(0.98);
+}
+
+.voyage-button-hotspot.is-playing {
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.3), inset 0 0 10px rgba(255, 255, 255, 0.4);
+}
+
+.voyage-hotspot-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #1e1b18;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.voyage-button-hotspot:hover .voyage-hotspot-hint,
+.voyage-button-hotspot.is-playing .voyage-hotspot-hint {
+  opacity: 1;
+}
+
+/* ---------------- 4. Floating Audiophile Dock ---------------- */
 .voyage-floating-audiophile-dock {
   position: absolute;
-  bottom: 24px;
+  bottom: 14px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 22px;
+  gap: 12px;
+  padding: 8px 18px;
   border-radius: 999px;
   background: rgba(251, 248, 242, 0.92);
   border: 1px solid rgba(45, 41, 37, 0.12);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 30px rgba(45, 41, 37, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(45, 41, 37, 0.12);
   z-index: 50;
-  max-width: 92vw;
+  max-width: 90vw;
 }
 
 .voyage-dock-audio-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 16px;
+  padding: 6px 14px;
   border-radius: 999px;
   background: rgba(45, 41, 37, 0.07);
   border: 1px solid rgba(45, 41, 37, 0.09);
@@ -227,11 +248,11 @@
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  max-width: 270px;
+  max-width: 260px;
 }
 
 .voyage-dock-audio-btn:hover {
-  background: rgba(45, 41, 37, 0.12);
+  background: rgba(45, 41, 37, 0.13);
 }
 
 .voyage-dock-audio-btn.is-playing {
@@ -251,7 +272,7 @@
   align-items: flex-end;
   gap: 3px;
   height: 14px;
-  padding-left: 4px;
+  padding-left: 2px;
   flex-shrink: 0;
 }
 
@@ -281,24 +302,11 @@
   100% { height: 14px; background-color: #1e1b18; }
 }
 
-/* ---------------- 3. Responsive Design ---------------- */
-@media (max-width: 900px) {
+/* ---------------- 5. Responsive Design ---------------- */
+@media (max-width: 768px) {
   .voyage-fixed-header {
-    padding: 0 16px;
-  }
-  .voyage-hero-cta-hotspot {
-    left: 10%;
-    top: 56%;
-  }
-  .voyage-dock-audio-btn {
-    max-width: 200px;
-  }
-}
-
-@media (max-width: 640px) {
-  .voyage-fixed-header {
-    height: 60px;
     padding: 0 14px;
+    height: 50px;
   }
   .voyage-header-brand {
     display: none;
@@ -306,21 +314,16 @@
   .voyage-header-divider {
     display: none;
   }
-  .voyage-hero-main-img {
-    object-fit: contain;
-    background-color: #f6ecdf;
+  .voyage-stage-viewport {
+    height: calc(100vh - 50px);
+    padding: 4px 8px 8px 8px;
   }
-  .voyage-hero-cta-hotspot {
-    left: 8%;
-    top: 54%;
-  }
-  .voyage-hero-cta-btn {
-    padding: 10px 18px;
+  .voyage-dock-audio-btn {
+    max-width: 170px;
     font-size: 11px;
   }
   .voyage-floating-audiophile-dock {
-    bottom: 16px;
-    padding: 8px 14px;
-    gap: 8px;
+    bottom: 8px;
+    padding: 6px 12px;
   }
 }
