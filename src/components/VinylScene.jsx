@@ -24,8 +24,14 @@ import {
   Minimize2, 
   X,
   Sparkles,
-  Check
+  Check,
+  Plus,
+  Trash2,
+  Edit3,
+  CheckSquare,
+  Square
 } from 'lucide-react';
+import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
 import { LANGUAGES, LANGUAGE_LABELS } from '../data/tracks';
 import '../styles/vinylScene.css';
 
@@ -86,6 +92,157 @@ export default function VinylScene({
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [localLanguages, setLocalLanguages] = useState([]);
   const [isLikedPanelOpen, setIsLikedPanelOpen] = useState(false);
+
+  // User Custom Playlists Persistence
+  const [customPlaylists, setCustomPlaylists] = useState(() => {
+    try {
+      const raw = localStorage.getItem('musicly_user_custom_playlists');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Modal & Management States
+  const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
+  const [selectedCustomPlaylist, setSelectedCustomPlaylist] = useState(null);
+  const [isAddSongsToExistingOpen, setIsAddSongsToExistingOpen] = useState(false);
+  const [isEditingPlaylistTitle, setIsEditingPlaylistTitle] = useState(false);
+  const [editedPlaylistTitle, setEditedPlaylistTitle] = useState('');
+
+  // Form states for creating new playlist
+  const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
+  const [selectedTrackIdsForNew, setSelectedTrackIdsForNew] = useState([]);
+  const [songSearchQuery, setSongSearchQuery] = useState('');
+
+  // Save custom playlists to localStorage
+  const saveCustomPlaylists = useCallback((playlists) => {
+    try {
+      localStorage.setItem('musicly_user_custom_playlists', JSON.stringify(playlists));
+    } catch (e) {
+      console.error('Failed to save custom playlists:', e);
+    }
+  }, []);
+
+  // Filtered tracks for the song picker modal
+  const filteredPickerTracks = useMemo(() => {
+    if (!songSearchQuery.trim()) return allTracks.slice(0, 60);
+    const q = songSearchQuery.toLowerCase();
+    return allTracks.filter(t => 
+      (t.title || '').toLowerCase().includes(q) ||
+      (t.artist || '').toLowerCase().includes(q) ||
+      (t.genre || '').toLowerCase().includes(q)
+    );
+  }, [allTracks, songSearchQuery]);
+
+  // Create Playlist Handler
+  const handleCreatePlaylist = (e) => {
+    e?.preventDefault?.();
+    if (!newPlaylistTitle.trim()) return;
+
+    const newPlaylist = {
+      id: 'playlist_' + Date.now(),
+      title: newPlaylistTitle.trim(),
+      trackIds: selectedTrackIdsForNew,
+      image: selectedTrackIdsForNew.length > 0
+        ? (allTracks.find(t => t.id === selectedTrackIdsForNew[0])?.cover || '/assets/images/lofi_scene.jpg')
+        : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+      createdAt: Date.now(),
+      isCustom: true
+    };
+
+    const updated = [newPlaylist, ...customPlaylists];
+    setCustomPlaylists(updated);
+    saveCustomPlaylists(updated);
+    setIsCreatePlaylistOpen(false);
+    playPeacefulLikeSound();
+  };
+
+  // Delete Custom Playlist Handler
+  const handleDeleteCustomPlaylist = (playlistId) => {
+    if (window.confirm('Are you sure you want to delete this playlist?')) {
+      const updated = customPlaylists.filter(p => p.id !== playlistId);
+      setCustomPlaylists(updated);
+      saveCustomPlaylists(updated);
+      setSelectedCustomPlaylist(null);
+      playClickSound('light');
+    }
+  };
+
+  // Save Renamed Custom Playlist Title
+  const handleSaveEditedTitle = (playlistId) => {
+    if (!editedPlaylistTitle.trim()) {
+      setIsEditingPlaylistTitle(false);
+      return;
+    }
+    const updated = customPlaylists.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, title: editedPlaylistTitle.trim() };
+      }
+      return p;
+    });
+    setCustomPlaylists(updated);
+    saveCustomPlaylists(updated);
+    if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
+      setSelectedCustomPlaylist(prev => ({ ...prev, title: editedPlaylistTitle.trim() }));
+    }
+    setIsEditingPlaylistTitle(false);
+    playClickSound('light');
+  };
+
+  // Remove Song from Custom Playlist
+  const handleRemoveSongFromPlaylist = (playlistId, trackId) => {
+    const updated = customPlaylists.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, trackIds: (p.trackIds || []).filter(id => id !== trackId) };
+      }
+      return p;
+    });
+    setCustomPlaylists(updated);
+    saveCustomPlaylists(updated);
+    if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
+      const newTrackIds = (selectedCustomPlaylist.trackIds || []).filter(id => id !== trackId);
+      const newTracks = allTracks.filter(t => newTrackIds.includes(t.id));
+      setSelectedCustomPlaylist(prev => ({
+        ...prev,
+        trackIds: newTrackIds,
+        tracks: newTracks,
+        subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} in this list`,
+        count: newTracks.length
+      }));
+    }
+    playClickSound('light');
+  };
+
+  // Toggle Song in Existing Custom Playlist
+  const handleToggleSongInExistingPlaylist = (playlistId, trackId) => {
+    const target = customPlaylists.find(p => p.id === playlistId);
+    if (!target) return;
+    const curIds = target.trackIds || [];
+    const newIds = curIds.includes(trackId)
+      ? curIds.filter(id => id !== trackId)
+      : [...curIds, trackId];
+
+    const updated = customPlaylists.map(p => {
+      if (p.id === playlistId) {
+        return { ...p, trackIds: newIds };
+      }
+      return p;
+    });
+    setCustomPlaylists(updated);
+    saveCustomPlaylists(updated);
+    if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
+      const newTracks = allTracks.filter(t => newIds.includes(t.id));
+      setSelectedCustomPlaylist(prev => ({
+        ...prev,
+        trackIds: newIds,
+        tracks: newTracks,
+        subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} in this list`,
+        count: newTracks.length
+      }));
+    }
+    playClickSound('light');
+  };
 
   // Filtered liked tracks for the favorites flyout panel
   const likedTracks = useMemo(() => {
@@ -353,8 +510,25 @@ export default function VinylScene({
       image: indieTracks[0]?.cover || 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80'
     });
 
+    // 5. User Custom Playlists
+    if (Array.isArray(customPlaylists)) {
+      customPlaylists.forEach(cp => {
+        const cpTracks = allTracks.filter(t => (cp.trackIds || []).includes(t.id));
+        playlists.push({
+          id: cp.id,
+          title: cp.title,
+          subtitle: `${cpTracks.length} song${cpTracks.length === 1 ? '' : 's'} in this list`,
+          count: cpTracks.length,
+          tracks: cpTracks,
+          trackIds: cp.trackIds || [],
+          image: cp.image || cpTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+          isCustom: true
+        });
+      });
+    }
+
     return playlists;
-  }, [allTracks, favorites]);
+  }, [allTracks, favorites, activeLanguages, customPlaylists]);
 
   // Click on turntable record directly to toggle playback
   const handleRecordClick = (e) => {
@@ -1377,9 +1551,26 @@ export default function VinylScene({
               {/* Favorite Playlists Section */}
               <div className="vinyl-playlists-section">
                 <div className="vinyl-section-header">
-                  <h2 className="vinyl-section-title">
-                    Favorite Playlists ({favoritePlaylists.length})
-                  </h2>
+                  <div className="vinyl-section-title-wrap">
+                    <h2 className="vinyl-section-title">
+                      Favorite Playlists ({favoritePlaylists.length})
+                    </h2>
+                    <button
+                      type="button"
+                      className="vinyl-add-playlist-btn"
+                      onClick={() => {
+                        setNewPlaylistTitle('');
+                        setSelectedTrackIdsForNew([]);
+                        setSongSearchQuery('');
+                        setIsCreatePlaylistOpen(true);
+                        playClickSound('light');
+                      }}
+                      title="Create your own playlist and add songs"
+                      aria-label="Create new playlist"
+                    >
+                      <Plus size={16} strokeWidth={2.8} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Playlist Rows */}
@@ -1388,15 +1579,19 @@ export default function VinylScene({
                     return (
                       <div 
                         key={playlist.id} 
-                        className="vinyl-playlist-item"
+                        className={`vinyl-playlist-item ${playlist.isCustom ? 'is-custom' : ''}`}
                         onClick={() => {
                           if (playlist.id === 'liked_songs') {
                             setIsLikedPanelOpen(true);
+                          } else if (playlist.isCustom) {
+                            setSelectedCustomPlaylist(playlist);
+                            setIsEditingPlaylistTitle(false);
+                            playClickSound('light');
                           } else {
                             onOpenPlaylistDrawer?.();
                           }
                         }}
-                        title={`Open ${playlist.title} in music library`}
+                        title={playlist.isCustom ? `Manage ${playlist.title}` : `Open ${playlist.title} in music library`}
                       >
                         <div className="vinyl-playlist-info-left">
                           <img 
@@ -1406,7 +1601,12 @@ export default function VinylScene({
                             loading="lazy"
                           />
                           <div className="vinyl-playlist-text">
-                            <span className="vinyl-playlist-name">{playlist.title}</span>
+                            <div className="vinyl-playlist-name-row">
+                              <span className="vinyl-playlist-name">{playlist.title}</span>
+                              {playlist.isCustom && (
+                                <span className="vinyl-playlist-custom-badge">CUSTOM</span>
+                              )}
+                            </div>
                             <span className="vinyl-playlist-sub">{playlist.subtitle}</span>
                           </div>
                         </div>
@@ -1435,6 +1635,370 @@ export default function VinylScene({
 
           </div>
         </main>
+        {/* ================= 1. CREATE NEW PLAYLIST MODAL ================= */}
+        {isCreatePlaylistOpen && (
+          <div className="vinyl-playlist-modal-backdrop" onClick={() => setIsCreatePlaylistOpen(false)}>
+            <div 
+              className="vinyl-playlist-modal" 
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-label="Create New Playlist"
+            >
+              <div className="vinyl-playlist-modal-header">
+                <h3 className="vinyl-playlist-modal-title">CREATE NEW PLAYLIST</h3>
+                <button
+                  type="button"
+                  className="vinyl-playlist-close-btn"
+                  onClick={() => setIsCreatePlaylistOpen(false)}
+                  title="Close"
+                  aria-label="Close modal"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreatePlaylist} className="vinyl-playlist-modal-body">
+                <div>
+                  <label className="vinyl-playlist-input-label">PLAYLIST NAME</label>
+                  <input
+                    type="text"
+                    className="vinyl-playlist-text-input"
+                    placeholder="e.g. Midnight Lo-Fi, Rainy Coffee, Roadtrip..."
+                    value={newPlaylistTitle}
+                    onChange={(e) => setNewPlaylistTitle(e.target.value)}
+                    autoFocus
+                    maxLength={60}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label className="vinyl-playlist-input-label" style={{ margin: 0 }}>
+                      ADD SONGS ({selectedTrackIdsForNew.length} selected)
+                    </label>
+                    {selectedTrackIdsForNew.length > 0 && (
+                      <button
+                        type="button"
+                        style={{ background: 'none', border: 'none', color: '#ffd166', fontSize: '0.78rem', cursor: 'pointer', padding: 0 }}
+                        onClick={() => setSelectedTrackIdsForNew([])}
+                      >
+                        Clear Selection
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="vinyl-playlist-song-search-wrap">
+                    <Search size={15} className="vinyl-playlist-search-icon" />
+                    <input
+                      type="text"
+                      className="vinyl-playlist-search-input"
+                      placeholder="Search songs by title, artist, genre..."
+                      value={songSearchQuery}
+                      onChange={(e) => setSongSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="vinyl-playlist-picker-list">
+                  {filteredPickerTracks.map((track) => {
+                    const isSelected = selectedTrackIdsForNew.includes(track.id);
+                    return (
+                      <div
+                        key={track.id}
+                        className={`vinyl-playlist-song-item ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => {
+                          setSelectedTrackIdsForNew(prev => 
+                            prev.includes(track.id) ? prev.filter(id => id !== track.id) : [...prev, track.id]
+                          );
+                          playClickSound('light');
+                        }}
+                      >
+                        <span className="vinyl-song-check-btn">
+                          {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
+                        </span>
+                        <img src={track.cover} alt={track.title} className="vinyl-song-thumb" />
+                        <div className="vinyl-song-meta">
+                          <span className="vinyl-song-title">{track.title}</span>
+                          <span className="vinyl-song-artist">{track.artist}</span>
+                        </div>
+                        {track.genre && (
+                          <span className="vinyl-song-genre-tag">{track.genre}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="vinyl-playlist-modal-footer">
+                  <button
+                    type="button"
+                    className="vinyl-btn-secondary"
+                    onClick={() => setIsCreatePlaylistOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="vinyl-btn-primary"
+                    disabled={!newPlaylistTitle.trim()}
+                  >
+                    <Plus size={16} strokeWidth={2.5} />
+                    <span>Create Playlist</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ================= 2. CUSTOM PLAYLIST DETAILS & MANAGER MODAL ================= */}
+        {selectedCustomPlaylist && (
+          <div className="vinyl-playlist-modal-backdrop" onClick={() => setSelectedCustomPlaylist(null)}>
+            <div 
+              className="vinyl-playlist-modal" 
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-label="Playlist Details"
+            >
+              <div className="vinyl-playlist-detail-header">
+                <img 
+                  src={selectedCustomPlaylist.image} 
+                  alt={selectedCustomPlaylist.title} 
+                  className="vinyl-playlist-detail-cover" 
+                />
+                <div className="vinyl-playlist-detail-info">
+                  {isEditingPlaylistTitle ? (
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        className="vinyl-playlist-text-input"
+                        value={editedPlaylistTitle}
+                        onChange={(e) => setEditedPlaylistTitle(e.target.value)}
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveEditedTitle(selectedCustomPlaylist.id);
+                          if (e.key === 'Escape') setIsEditingPlaylistTitle(false);
+                        }}
+                        style={{ padding: '6px 12px', fontSize: '1.1rem' }}
+                      />
+                      <button
+                        type="button"
+                        className="vinyl-btn-primary"
+                        style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                        onClick={() => handleSaveEditedTitle(selectedCustomPlaylist.id)}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="vinyl-playlist-detail-title-row">
+                      <h3 className="vinyl-playlist-detail-title">{selectedCustomPlaylist.title}</h3>
+                      <button
+                        type="button"
+                        className="vinyl-playlist-edit-title-btn"
+                        onClick={() => {
+                          setEditedPlaylistTitle(selectedCustomPlaylist.title);
+                          setIsEditingPlaylistTitle(true);
+                          playClickSound('light');
+                        }}
+                        title="Rename playlist"
+                      >
+                        <Edit3 size={15} />
+                      </button>
+                    </div>
+                  )}
+
+                  <span className="vinyl-playlist-detail-sub">
+                    {selectedCustomPlaylist.tracks?.length || 0} track{selectedCustomPlaylist.tracks?.length === 1 ? '' : 's'} • Custom Playlist
+                  </span>
+
+                  <div className="vinyl-playlist-detail-actions">
+                    <button
+                      type="button"
+                      className="vinyl-btn-primary"
+                      onClick={() => {
+                        if (selectedCustomPlaylist.tracks && selectedCustomPlaylist.tracks.length > 0) {
+                          onSelectTrack?.(selectedCustomPlaylist.tracks[0], true);
+                        }
+                      }}
+                      disabled={!selectedCustomPlaylist.tracks || selectedCustomPlaylist.tracks.length === 0}
+                    >
+                      <Play size={15} fill="currentColor" />
+                      <span>Play All</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="vinyl-btn-secondary"
+                      onClick={() => {
+                        setSongSearchQuery('');
+                        setIsAddSongsToExistingOpen(true);
+                        playClickSound('light');
+                      }}
+                    >
+                      <Plus size={15} />
+                      <span>Add Songs</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="vinyl-btn-secondary"
+                      style={{ color: '#ff6b6b', borderColor: 'rgba(255, 107, 107, 0.3)' }}
+                      onClick={() => handleDeleteCustomPlaylist(selectedCustomPlaylist.id)}
+                      title="Delete this playlist"
+                    >
+                      <Trash2 size={15} />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="vinyl-playlist-close-btn"
+                  onClick={() => setSelectedCustomPlaylist(null)}
+                  title="Close"
+                  style={{ position: 'absolute', top: 16, right: 16 }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Tracks in Playlist */}
+              <div className="vinyl-playlist-modal-body">
+                {(!selectedCustomPlaylist.tracks || selectedCustomPlaylist.tracks.length === 0) ? (
+                  <div style={{ textAlign: 'center', padding: '36px 16px', color: '#8c8375' }}>
+                    <Music size={36} style={{ marginBottom: 10, opacity: 0.5 }} />
+                    <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>No songs in this playlist yet.</p>
+                    <button
+                      type="button"
+                      className="vinyl-btn-primary"
+                      onClick={() => {
+                        setSongSearchQuery('');
+                        setIsAddSongsToExistingOpen(true);
+                        playClickSound('light');
+                      }}
+                    >
+                      <Plus size={15} />
+                      <span>Add Songs Now</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {selectedCustomPlaylist.tracks.map((track, idx) => {
+                      const isCurrentPlaying = currentTrack?.id === track.id && isPlaying;
+                      return (
+                        <div
+                          key={track.id}
+                          className={`vinyl-playlist-track-row ${isCurrentPlaying ? 'is-active' : ''}`}
+                          onClick={() => onSelectTrack?.(track, true)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <span style={{ fontSize: '0.82rem', color: '#8c8375', width: 20, textAlign: 'center' }}>
+                            {idx + 1}
+                          </span>
+                          <img src={track.cover} alt={track.title} className="vinyl-song-thumb" />
+                          <div className="vinyl-song-meta">
+                            <span className="vinyl-song-title">{track.title}</span>
+                            <span className="vinyl-song-artist">{track.artist}</span>
+                          </div>
+                          {track.genre && (
+                            <span className="vinyl-song-genre-tag">{track.genre}</span>
+                          )}
+                          <button
+                            type="button"
+                            className="vinyl-playlist-track-remove-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveSongFromPlaylist(selectedCustomPlaylist.id, track.id);
+                            }}
+                            title="Remove from playlist"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= 3. ADD SONGS TO EXISTING PLAYLIST MODAL ================= */}
+        {isAddSongsToExistingOpen && selectedCustomPlaylist && (
+          <div className="vinyl-playlist-modal-backdrop" onClick={() => setIsAddSongsToExistingOpen(false)}>
+            <div 
+              className="vinyl-playlist-modal" 
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-label="Add Songs to Playlist"
+            >
+              <div className="vinyl-playlist-modal-header">
+                <h3 className="vinyl-playlist-modal-title">ADD SONGS TO {selectedCustomPlaylist.title.toUpperCase()}</h3>
+                <button
+                  type="button"
+                  className="vinyl-playlist-close-btn"
+                  onClick={() => setIsAddSongsToExistingOpen(false)}
+                  title="Close"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="vinyl-playlist-modal-body">
+                <div className="vinyl-playlist-song-search-wrap">
+                  <Search size={15} className="vinyl-playlist-search-icon" />
+                  <input
+                    type="text"
+                    className="vinyl-playlist-search-input"
+                    placeholder="Search songs to add..."
+                    value={songSearchQuery}
+                    onChange={(e) => setSongSearchQuery(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+
+                <div className="vinyl-playlist-picker-list" style={{ maxHeight: 360 }}>
+                  {filteredPickerTracks.map((track) => {
+                    const isAlreadyIn = (selectedCustomPlaylist.trackIds || []).includes(track.id);
+                    return (
+                      <div
+                        key={track.id}
+                        className={`vinyl-playlist-song-item ${isAlreadyIn ? 'is-selected' : ''}`}
+                        onClick={() => handleToggleSongInExistingPlaylist(selectedCustomPlaylist.id, track.id)}
+                      >
+                        <span className="vinyl-song-check-btn">
+                          {isAlreadyIn ? <CheckSquare size={18} /> : <Square size={18} />}
+                        </span>
+                        <img src={track.cover} alt={track.title} className="vinyl-song-thumb" />
+                        <div className="vinyl-song-meta">
+                          <span className="vinyl-song-title">{track.title}</span>
+                          <span className="vinyl-song-artist">{track.artist}</span>
+                        </div>
+                        {track.genre && (
+                          <span className="vinyl-song-genre-tag">{track.genre}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="vinyl-playlist-modal-footer">
+                <button
+                  type="button"
+                  className="vinyl-btn-primary"
+                  onClick={() => setIsAddSongsToExistingOpen(false)}
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

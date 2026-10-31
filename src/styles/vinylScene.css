@@ -1968,3 +1968,471 @@
     max-height: calc(100vh - 90px);
   }
 }
+
+/* ==========================================================================
+   CUSTOM PLAYLISTS: PLUS BUTTON, CREATION & SONG PICKER MODALS
+   ========================================================================== */
+
+/* Add Playlist Button beside Section Title */
+.vinyl-add-playlist-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--vinyl-card-bg);
+  border: 1px solid var(--vinyl-border);
+  color: var(--vinyl-text-primary);
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.vinyl-add-playlist-btn:hover {
+  background: #ffd166;
+  color: #0d0c0a;
+  border-color: #ffd166;
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 0 16px rgba(255, 209, 102, 0.5);
+}
+
+.vinyl-playlist-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.vinyl-playlist-custom-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: var(--vinyl-font-pixel);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 209, 102, 0.18);
+  color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.38);
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.vinyl-playlist-item.is-custom {
+  border-left: 3px solid #ffd166;
+}
+
+/* Modal Backdrop */
+.vinyl-playlist-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 9, 8, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: vinylFadeIn 0.2s ease-out;
+}
+
+.vinyl-playlist-modal {
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  background: #141312;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 20px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  color: #f5f2eb;
+  overflow: hidden;
+  animation: vinylModalSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes vinylModalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.vinyl-playlist-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vinyl-playlist-modal-title {
+  font-family: var(--vinyl-font-pixel);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffd166;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.vinyl-playlist-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a09a8f;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vinyl-playlist-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  transform: scale(1.05);
+}
+
+.vinyl-playlist-modal-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: calc(85vh - 140px);
+}
+
+.vinyl-playlist-input-label {
+  font-family: var(--vinyl-font-pixel);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #c4bcb0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.vinyl-playlist-text-input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-size: 0.98rem;
+  font-family: var(--vinyl-font-body);
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.vinyl-playlist-text-input:focus {
+  border-color: #ffd166;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 16px rgba(255, 209, 102, 0.25);
+}
+
+.vinyl-playlist-song-search-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.vinyl-playlist-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #8c8375;
+  pointer-events: none;
+}
+
+.vinyl-playlist-search-input {
+  width: 100%;
+  padding: 10px 14px 10px 40px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 0.9rem;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.vinyl-playlist-search-input:focus {
+  border-color: rgba(255, 209, 102, 0.5);
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.vinyl-playlist-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.vinyl-playlist-picker-list::-webkit-scrollbar {
+  width: 4px;
+}
+.vinyl-playlist-picker-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+}
+
+.vinyl-playlist-song-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.vinyl-playlist-song-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.vinyl-playlist-song-item.is-selected {
+  background: rgba(255, 209, 102, 0.12);
+  border-color: rgba(255, 209, 102, 0.4);
+}
+
+.vinyl-song-check-btn {
+  color: #8c8375;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color 0.15s ease;
+}
+
+.vinyl-playlist-song-item.is-selected .vinyl-song-check-btn {
+  color: #ffd166;
+}
+
+.vinyl-song-thumb {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.vinyl-song-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.vinyl-song-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #f5f2eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vinyl-song-artist {
+  font-size: 0.76rem;
+  color: #a09a8f;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vinyl-song-genre-tag {
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d1c9bd;
+  flex-shrink: 0;
+}
+
+.vinyl-playlist-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.vinyl-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #c4bcb0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vinyl-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.vinyl-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 22px;
+  border-radius: 999px;
+  background: #ffd166;
+  border: 1px solid #ffd166;
+  color: #0d0c0a;
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(255, 209, 102, 0.3);
+}
+
+.vinyl-btn-primary:hover:not(:disabled) {
+  background: #ffe08a;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255, 209, 102, 0.45);
+}
+
+.vinyl-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Custom Playlist Details Modal */
+.vinyl-playlist-detail-header {
+  display: flex;
+  gap: 18px;
+  padding: 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.vinyl-playlist-detail-cover {
+  width: 88px;
+  height: 88px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.vinyl-playlist-detail-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.vinyl-playlist-detail-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vinyl-playlist-detail-title {
+  font-family: var(--vinyl-font-pixel);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.vinyl-playlist-edit-title-btn {
+  background: transparent;
+  border: none;
+  color: #8c8375;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease;
+}
+
+.vinyl-playlist-edit-title-btn:hover {
+  color: #ffd166;
+}
+
+.vinyl-playlist-detail-sub {
+  font-size: 0.82rem;
+  color: #a09a8f;
+}
+
+.vinyl-playlist-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.vinyl-playlist-track-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.18s ease;
+}
+
+.vinyl-playlist-track-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.vinyl-playlist-track-row.is-active {
+  background: rgba(255, 209, 102, 0.12);
+  border-color: rgba(255, 209, 102, 0.35);
+}
+
+.vinyl-playlist-track-remove-btn {
+  background: transparent;
+  border: none;
+  color: #736b60;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.vinyl-playlist-track-remove-btn:hover {
+  color: #ff5252;
+  background: rgba(255, 82, 82, 0.12);
+}
