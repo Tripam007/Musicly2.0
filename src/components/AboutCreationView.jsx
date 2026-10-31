@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Play, Pause, ArrowLeft, BookOpen, ChevronDown, ChevronUp, Compass, Volume2, Music } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Play, Pause, ArrowLeft, BookOpen, Volume2, Music, Sparkles } from 'lucide-react';
 import { playClickSound, playShootingStarSound } from '../utils/audioSynth';
 import '../styles/aboutCreation.css';
 
@@ -10,108 +10,10 @@ export default function AboutCreationView({
   isPlaying = false,
   onTogglePlay = null
 }) {
-  const scrollContainerRef = useRef(null);
-  const videoRef = useRef(null);
   const waveCanvasRef = useRef(null);
-  const animFrameRef = useRef(null);
   const waveAnimRef = useRef(null);
 
-  const [scrollProgress, setScrollProgress] = useState(0); // 0 to 100% of pirate track
-  const [activeScreen, setActiveScreen] = useState('hero'); // 'hero' | 'pirate'
-  const targetTimeRef = useRef(0);
-  const isScrubbingRef = useRef(false);
-
-  // Smoothly scroll to the 3D Pirate Ship Voyage
-  const scrollToPirate = useCallback(() => {
-    if (scrollContainerRef.current) {
-      const vh = window.innerHeight;
-      scrollContainerRef.current.scrollTo({
-        top: vh,
-        behavior: 'smooth'
-      });
-      playClickSound('light');
-    }
-  }, []);
-
-  // Smoothly scroll back to the Hero Illustration
-  const scrollToHero = useCallback(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-      playClickSound('light');
-    }
-  }, []);
-
-  // ---------------- 1. Scroll Event Handler ----------------
-  const handleScroll = useCallback(() => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const scrollTop = container.scrollTop;
-    const vh = window.innerHeight;
-
-    // Determine current screen
-    if (scrollTop < vh * 0.4) {
-      setActiveScreen('hero');
-    } else {
-      setActiveScreen('pirate');
-    }
-
-    // Pirate voyage track is from 1*vh to 3*vh (2*vh travel distance)
-    const pirateTrackStart = vh;
-    const pirateTrackDistance = vh * 2;
-    const progress = Math.max(0, Math.min(1, (scrollTop - pirateTrackStart) / pirateTrackDistance));
-
-    setScrollProgress(Math.round(progress * 100));
-
-    // Bound video time strictly to user scroll position (NEVER AUTOPLAY)
-    const video = videoRef.current;
-    if (video && video.duration) {
-      // Ensure video is strictly paused so it never autoplays
-      if (!video.paused) {
-        video.pause();
-      }
-      targetTimeRef.current = progress * (video.duration - 0.05);
-      isScrubbingRef.current = true;
-    }
-  }, []);
-
-  // ---------------- 2. Scroll-Driven Video Scrubbing Loop (No Autoplay) ----------------
-  useEffect(() => {
-    const video = videoRef.current;
-    if (video) {
-      // Strictly pause video on mount - never play automatically
-      video.pause();
-      video.currentTime = 0;
-    }
-
-    const renderVideoScrub = () => {
-      if (videoRef.current && videoRef.current.duration) {
-        const vid = videoRef.current;
-        if (!vid.paused) vid.pause(); // Always stay paused
-
-        const target = targetTimeRef.current;
-        const cur = vid.currentTime;
-        const diff = target - cur;
-
-        // Smooth spring-damped frame seek
-        if (Math.abs(diff) > 0.015) {
-          vid.currentTime = Math.max(0, Math.min(vid.duration - 0.05, cur + diff * 0.14));
-        }
-      }
-      animFrameRef.current = requestAnimationFrame(renderVideoScrub);
-    };
-
-    animFrameRef.current = requestAnimationFrame(renderVideoScrub);
-
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, []);
-
-  // ---------------- 3. Continuous Flowing Musical Waves Canvas ----------------
+  // ---------------- Continuously Flowing Musical Waves Canvas ----------------
   useEffect(() => {
     const canvas = waveCanvasRef.current;
     if (!canvas) return;
@@ -127,7 +29,7 @@ export default function AboutCreationView({
     };
     window.addEventListener('resize', handleResize);
 
-    // Drifting musical notes that ride along wave crests
+    // Drifting musical notes that ride along the wave crests
     const musicalNotes = [
       { sym: '♩', x: 80, speed: 0.65, size: 22, offset: 0 },
       { sym: '♪', x: 280, speed: 0.85, size: 26, offset: 1.2 },
@@ -146,7 +48,7 @@ export default function AboutCreationView({
 
       ctx.clearRect(0, 0, width, height);
 
-      // Wave calculation functions
+      // Procedural sine waves
       const wave1Y = (x) => height * 0.52 + Math.sin(x * 0.0045 + elapsed * 1.2) * 14 + Math.cos(x * 0.0028 + elapsed * 0.8) * 8;
       const wave2Y = (x) => height * 0.62 + Math.sin(x * 0.0065 + elapsed * 1.6 + 1.1) * 16 + Math.cos(x * 0.0035 + elapsed * 0.9) * 10;
       const wave3Y = (x) => height * 0.72 + Math.sin(x * 0.0085 + elapsed * 2.0 + 2.4) * 20 + Math.cos(x * 0.0045 + elapsed * 1.1) * 12;
@@ -230,7 +132,7 @@ export default function AboutCreationView({
         const currentX = note.x - 30;
         const currentY = wave3Y(currentX) - 12 + Math.sin(elapsed * 2.8 + note.offset) * 4.5;
 
-        // Wave slope tangent
+        // Wave slope tangent for natural tilt
         const slope = (wave3Y(currentX + 6) - wave3Y(currentX - 6)) / 12;
         const angle = Math.atan(slope) * 0.55;
 
@@ -254,7 +156,7 @@ export default function AboutCreationView({
   }, []);
 
   return (
-    <div className="musicly-voyage-master" ref={scrollContainerRef} onScroll={handleScroll}>
+    <div className="musicly-voyage-master">
       {/* ================= FIXED TOP EDITORIAL HEADER ================= */}
       <header className="voyage-fixed-header">
         <div className="voyage-header-left">
@@ -287,9 +189,8 @@ export default function AboutCreationView({
         </div>
       </header>
 
-      {/* ================= SCREEN 1: WHOLE SCREEN HERO (Not in a box) ================= */}
-      <section className="voyage-hero-fullscreen-section" aria-label="Musicly Voyage Through Sound">
-        {/* Full-screen edge-to-edge illustration */}
+      {/* ================= WHOLE SCREEN HERO (Edge-to-Edge, Not in a Box) ================= */}
+      <main className="voyage-hero-fullscreen-section" aria-label="Musicly Voyage Through Sound">
         <div className="voyage-hero-artwork-canvas">
           <img
             src="/assets/about/voyage_hero_1080p.jpg"
@@ -303,64 +204,26 @@ export default function AboutCreationView({
               type="button"
               className="voyage-hero-cta-btn"
               onClick={() => {
-                scrollToPirate();
-                if (onTogglePlay && !isPlaying) onTogglePlay();
+                if (onTogglePlay) onTogglePlay();
                 playShootingStarSound();
               }}
-              title="Explore Musicly 3D Pirate Voyage"
-              aria-label="Explore Musicly"
+              title={isPlaying ? "Pause Musicly Audio" : "Play Musicly Soundtrack"}
+              aria-label={isPlaying ? "Pause Musicly Audio" : "Play Musicly Soundtrack"}
             >
-              <span>EXPLORE MUSICLY</span>
-              <Play size={11} fill="currentColor" style={{ marginLeft: 6 }} />
+              <span>{isPlaying ? "PAUSE AUDIO" : "EXPLORE MUSICLY"}</span>
+              {isPlaying ? (
+                <Pause size={11} fill="currentColor" style={{ marginLeft: 6 }} />
+              ) : (
+                <Play size={11} fill="currentColor" style={{ marginLeft: 6 }} />
+              )}
             </button>
           </div>
 
           {/* Continuously Flowing Waves with Musical Staff Lines & Notes */}
           <canvas ref={waveCanvasRef} className="voyage-flowing-waves-canvas" />
 
-          {/* Subtle Ambient Floating Scroll Cue */}
-          <div 
-            className="voyage-scroll-cue-pill" 
-            onClick={scrollToPirate}
-            role="button"
-            tabIndex={0}
-            title="Scroll down to sail the 3D ship"
-          >
-            <span className="voyage-scroll-cue-dot" />
-            <span>Scroll down to sail the ship</span>
-            <ChevronDown size={14} className="voyage-bounce-arrow" />
-          </div>
-        </div>
-      </section>
-
-      {/* ================= SCREEN 2: THAT PIRATE ONE (Scroll-Driven, No Video Play) ================= */}
-      {/* 300vh scroll track pinning the full-screen 3D pirate ship */}
-      <section className="voyage-pirate-sticky-track" aria-label="3D Pirate Ship Voyage Track">
-        <div className="voyage-pirate-sticky-viewport">
-          {/* Full-screen 3D Ship (100% In Focus, Not in a Box) */}
-          <video
-            ref={videoRef}
-            className="voyage-pirate-fullscreen-video"
-            src="/assets/about/pirate_bg.mp4"
-            muted
-            playsInline
-            preload="auto"
-          />
-
-          {/* Discreet Floating Audiophile & Navigation Dock */}
-          <footer className="voyage-pirate-bottom-dock">
-            {/* Scroll back to Hero Map */}
-            <button
-              type="button"
-              className="voyage-dock-icon-btn"
-              onClick={scrollToHero}
-              title="Scroll back up to the illustration map"
-              aria-label="Back to Map"
-            >
-              <ChevronUp size={16} />
-            </button>
-
-            {/* Audio Soundtrack Play / Pause */}
+          {/* Floating Audiophile Dock on the Flowing Ocean Waves */}
+          <footer className="voyage-floating-audiophile-dock">
             <button
               type="button"
               className={`voyage-dock-audio-btn ${isPlaying ? 'is-playing' : ''}`}
@@ -368,8 +231,8 @@ export default function AboutCreationView({
                 if (onTogglePlay) onTogglePlay();
                 playClickSound('light');
               }}
-              title={isPlaying ? "Pause Musicly Audio" : "Play Musicly Soundtrack"}
-              aria-label={isPlaying ? "Pause Musicly Audio" : "Play Musicly Soundtrack"}
+              title={isPlaying ? "Pause soundtrack" : "Play soundtrack"}
+              aria-label={isPlaying ? "Pause soundtrack" : "Play soundtrack"}
             >
               {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" style={{ marginLeft: 1 }} />}
               <span className="voyage-dock-track-name">
@@ -377,15 +240,7 @@ export default function AboutCreationView({
               </span>
             </button>
 
-            {/* Live Nautical Scroll Progress */}
-            <div className="voyage-dock-status">
-              <Compass size={13} className="voyage-compass-icon" />
-              <span className="voyage-status-text">
-                Scroll controls the ship: <strong>{scrollProgress}%</strong>
-              </span>
-            </div>
-
-            {/* Dynamic Soundwaves */}
+            {/* Dynamic Soundwave Equalizer */}
             <div className="voyage-dock-soundwaves" aria-hidden="true">
               <span className={`dock-wave ${isPlaying ? 'animate-wave-1' : ''}`} />
               <span className={`dock-wave ${isPlaying ? 'animate-wave-2' : ''}`} />
@@ -394,7 +249,7 @@ export default function AboutCreationView({
             </div>
           </footer>
         </div>
-      </section>
+      </main>
     </div>
   );
 }

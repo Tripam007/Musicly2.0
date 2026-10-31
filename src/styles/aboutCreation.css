@@ -1,7 +1,6 @@
 /* ==========================================================================
-   THE MUSICLY VOYAGE - FULL SCREEN DUAL EXPERIENCE
-   Screen 1: Full-Screen Hero ("A Voyage Through Sound") with Continuously Flowing Waves
-   Screen 2: Full-Screen 3D Pirate Ship Scene (Scroll-Driven Frame Scrubbing, No Autoplay)
+   THE MUSICLY VOYAGE - FULL SCREEN HERO WITH FLOWING MUSICAL WAVES
+   Edge-to-Edge Whole Screen Illustration + Continuous Living Ocean Canvas
    ========================================================================== */
 
 .musicly-voyage-master {
@@ -9,29 +8,12 @@
   inset: 0;
   width: 100vw;
   height: 100vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  scroll-behavior: smooth;
+  overflow: hidden;
   background-color: #f6ecdf;
   color: #1e1b18;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   user-select: none;
   z-index: 99999;
-}
-
-/* Subtle Custom Scrollbar */
-.musicly-voyage-master::-webkit-scrollbar {
-  width: 6px;
-}
-.musicly-voyage-master::-webkit-scrollbar-track {
-  background: rgba(246, 236, 223, 0.5);
-}
-.musicly-voyage-master::-webkit-scrollbar-thumb {
-  background: rgba(74, 60, 47, 0.3);
-  border-radius: 999px;
-}
-.musicly-voyage-master::-webkit-scrollbar-thumb:hover {
-  background: rgba(74, 60, 47, 0.5);
 }
 
 /* ---------------- 1. Fixed Top Editorial Header ---------------- */
@@ -134,9 +116,10 @@
   transform: scale(1.15) rotate(-5deg);
 }
 
-/* ---------------- 2. Screen 1: Whole Screen Hero (No box) ---------------- */
+/* ---------------- 2. Whole Screen Hero (Edge-to-Edge, No Box) ---------------- */
 .voyage-hero-fullscreen-section {
-  position: relative;
+  position: absolute;
+  inset: 0;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
@@ -159,9 +142,11 @@
   object-fit: cover;
   object-position: center;
   display: block;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
-/* Interactive CTA Hotspot placed on "EXPLORE MUSICLY" button */
+/* Interactive CTA Hotspot on "EXPLORE MUSICLY" button */
 .voyage-hero-cta-hotspot {
   position: absolute;
   left: 14.6%;
@@ -203,96 +188,13 @@
   left: 0;
   right: 0;
   width: 100%;
-  height: 240px;
+  height: 250px;
   pointer-events: none;
   z-index: 10;
 }
 
-/* Subtle Ambient Floating Scroll Cue */
-.voyage-scroll-cue-pill {
-  position: absolute;
-  bottom: 26px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 20px;
-  border-radius: 999px;
-  background: rgba(251, 248, 242, 0.92);
-  border: 1px solid rgba(45, 41, 37, 0.12);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 8px 24px rgba(45, 41, 37, 0.12);
-  font-size: 12px;
-  font-weight: 600;
-  color: #38332d;
-  cursor: pointer;
-  z-index: 30;
-  transition: all 0.22s ease;
-}
-
-.voyage-scroll-cue-pill:hover {
-  background: #ffffff;
-  transform: translateX(-50%) translateY(-2px);
-  box-shadow: 0 10px 30px rgba(45, 41, 37, 0.18);
-}
-
-.voyage-scroll-cue-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #d97706;
-  animation: pulseDot 1.8s infinite;
-}
-
-@keyframes pulseDot {
-  0% { transform: scale(0.9); opacity: 0.6; }
-  50% { transform: scale(1.3); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0.6; }
-}
-
-.voyage-bounce-arrow {
-  animation: bounceDown 1.6s infinite ease-in-out;
-}
-
-@keyframes bounceDown {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(4px); }
-}
-
-/* ---------------- 3. Screen 2: That Pirate One (Scroll-Driven, No Video Play) ---------------- */
-.voyage-pirate-sticky-track {
-  position: relative;
-  width: 100vw;
-  height: 300vh; /* Travel distance for silky-smooth frame scrubbing */
-  background-color: #eae4d3;
-}
-
-.voyage-pirate-sticky-viewport {
-  position: sticky;
-  top: 0;
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  background-color: #eae4d3;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-/* Full-Screen 3D Ship (100% in focus, NOT in a box) */
-.voyage-pirate-fullscreen-video {
-  width: 100vw;
-  height: 100vh;
-  object-fit: contain;
-  display: block;
-  opacity: 1 !important;
-  filter: none !important;
-}
-
-/* Discreet Bottom Dock on the 3D Pirate Scene */
-.voyage-pirate-bottom-dock {
+/* Floating Audiophile Dock */
+.voyage-floating-audiophile-dock {
   position: absolute;
   bottom: 24px;
   left: 50%;
@@ -311,32 +213,11 @@
   max-width: 92vw;
 }
 
-.voyage-dock-icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: rgba(45, 41, 37, 0.07);
-  border: none;
-  color: #2d2925;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-}
-
-.voyage-dock-icon-btn:hover {
-  background: rgba(45, 41, 37, 0.15);
-  color: #000000;
-  transform: scale(1.08);
-}
-
 .voyage-dock-audio-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 15px;
+  padding: 7px 16px;
   border-radius: 999px;
   background: rgba(45, 41, 37, 0.07);
   border: 1px solid rgba(45, 41, 37, 0.09);
@@ -346,7 +227,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  max-width: 250px;
+  max-width: 270px;
 }
 
 .voyage-dock-audio-btn:hover {
@@ -362,26 +243,6 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.voyage-dock-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #554d42;
-  padding-left: 4px;
-  border-left: 1px solid rgba(45, 41, 37, 0.1);
-  flex-shrink: 0;
-}
-
-.voyage-compass-icon {
-  color: #8c8375;
-}
-
-.voyage-status-text strong {
-  font-family: 'DM Mono', monospace, ui-monospace, SFMono-Regular, monospace;
-  color: #1e1b18;
 }
 
 /* Soundwaves animation */
@@ -420,7 +281,7 @@
   100% { height: 14px; background-color: #1e1b18; }
 }
 
-/* ---------------- 4. Responsive Design ---------------- */
+/* ---------------- 3. Responsive Design ---------------- */
 @media (max-width: 900px) {
   .voyage-fixed-header {
     padding: 0 16px;
@@ -430,7 +291,7 @@
     top: 56%;
   }
   .voyage-dock-audio-btn {
-    max-width: 170px;
+    max-width: 200px;
   }
 }
 
@@ -457,10 +318,7 @@
     padding: 10px 18px;
     font-size: 11px;
   }
-  .voyage-dock-audio-btn {
-    display: none;
-  }
-  .voyage-pirate-bottom-dock {
+  .voyage-floating-audiophile-dock {
     bottom: 16px;
     padding: 8px 14px;
     gap: 8px;
