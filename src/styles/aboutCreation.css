@@ -1,29 +1,41 @@
 /* ==========================================================================
-   ABOUT CREATION VIEW - 3D PIRATE SHIP MOVING SCENE
-   Authentic Dribbble Pirate Website Experience
-   Warm Parchment / Ivory Editorial Aesthetic with Kinetic Scroll Scrubbing
+   THE MUSICLY VOYAGE - FULL SCREEN DUAL EXPERIENCE
+   Screen 1: Full-Screen Hero ("A Voyage Through Sound") with Continuously Flowing Waves
+   Screen 2: Full-Screen 3D Pirate Ship Scene (Scroll-Driven Frame Scrubbing, No Autoplay)
    ========================================================================== */
 
-.pirate-ship-experience {
+.musicly-voyage-master {
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #eae4d3;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  background-color: #f6ecdf;
   color: #1e1b18;
-  overflow: hidden;
-  z-index: 99999;
-  user-select: none;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  cursor: default;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  align-items: center;
+  user-select: none;
+  z-index: 99999;
 }
 
-/* ---------------- 1. Refined Top Navigation Bar ---------------- */
-.pirate-nav-header {
+/* Subtle Custom Scrollbar */
+.musicly-voyage-master::-webkit-scrollbar {
+  width: 6px;
+}
+.musicly-voyage-master::-webkit-scrollbar-track {
+  background: rgba(246, 236, 223, 0.5);
+}
+.musicly-voyage-master::-webkit-scrollbar-thumb {
+  background: rgba(74, 60, 47, 0.3);
+  border-radius: 999px;
+}
+.musicly-voyage-master::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 60, 47, 0.5);
+}
+
+/* ---------------- 1. Fixed Top Editorial Header ---------------- */
+.voyage-fixed-header {
   position: fixed;
   top: 0;
   left: 0;
@@ -33,20 +45,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(234, 228, 211, 0.82);
+  background: rgba(246, 236, 223, 0.85);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid rgba(45, 41, 37, 0.08);
-  z-index: 50;
+  z-index: 100;
 }
 
-.pirate-nav-left {
+.voyage-header-left {
   display: flex;
   align-items: center;
   gap: 14px;
 }
 
-.pirate-nav-back-btn {
+.voyage-back-pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -61,19 +73,19 @@
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.pirate-nav-back-btn:hover {
+.voyage-back-pill-btn:hover {
   background: rgba(45, 41, 37, 0.14);
   color: #000000;
   transform: translateX(-2px);
 }
 
-.pirate-nav-divider {
+.voyage-header-divider {
   color: rgba(45, 41, 37, 0.22);
   font-size: 15px;
   font-weight: 300;
 }
 
-.pirate-nav-brand {
+.voyage-header-brand {
   font-family: 'Cinzel', 'Playfair Display', Georgia, serif;
   letter-spacing: 2.2px;
   font-size: 12px;
@@ -82,14 +94,14 @@
   text-transform: uppercase;
 }
 
-.pirate-nav-right {
+.voyage-header-right {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
 /* 1-Click Toggle to Classic About */
-.pirate-switcher-btn {
+.voyage-switcher-pill-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -106,102 +118,183 @@
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.pirate-switcher-btn:hover {
+.voyage-switcher-pill-btn:hover {
   background: #38332d;
   border-color: #38332d;
   transform: translateY(-1px);
   box-shadow: 0 6px 20px rgba(30, 27, 24, 0.24);
 }
 
-.pirate-switcher-btn .pirate-switcher-icon {
+.voyage-switcher-pill-btn .voyage-switcher-icon {
   color: #e5b869;
   transition: transform 0.2s ease;
 }
 
-.pirate-switcher-btn:hover .pirate-switcher-icon {
+.voyage-switcher-pill-btn:hover .voyage-switcher-icon {
   transform: scale(1.15) rotate(-5deg);
 }
 
-/* ---------------- 2. Central 3D Pirate Ship Video Stage ---------------- */
-/* 100% IN FOCUS, CRISP, NOT BLURRY, NO DARK OVERLAYS */
-.pirate-video-stage {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10;
-  padding: 76px 24px 84px 24px;
-  background-color: #eae4d3;
+/* ---------------- 2. Screen 1: Whole Screen Hero (No box) ---------------- */
+.voyage-hero-fullscreen-section {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #f6ecdf;
 }
 
-.pirate-video-frame {
+.voyage-hero-artwork-canvas {
   position: relative;
   width: 100%;
-  max-width: 980px;
   height: 100%;
-  max-height: 735px;
-  aspect-ratio: 4 / 3;
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #eae4d3;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 16px 50px rgba(45, 41, 37, 0.13), 0 3px 12px rgba(45, 41, 37, 0.06);
-  border: 1px solid rgba(45, 41, 37, 0.09);
-  transition: box-shadow 0.3s ease;
 }
 
-.pirate-ship-video {
+.voyage-hero-main-img {
+  width: 100vw;
+  height: 100vh;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Interactive CTA Hotspot placed on "EXPLORE MUSICLY" button */
+.voyage-hero-cta-hotspot {
+  position: absolute;
+  left: 14.6%;
+  top: 57.5%;
+  z-index: 25;
+}
+
+.voyage-hero-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 26px;
+  border-radius: 999px;
+  background: rgba(30, 27, 24, 0.94);
+  color: #fbf8f2;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.voyage-hero-cta-btn:hover {
+  background: #000000;
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+/* Continuously Flowing Waves Canvas */
+.voyage-flowing-waves-canvas {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
   width: 100%;
-  height: 100%;
+  height: 240px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Subtle Ambient Floating Scroll Cue */
+.voyage-scroll-cue-pill {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 20px;
+  border-radius: 999px;
+  background: rgba(251, 248, 242, 0.92);
+  border: 1px solid rgba(45, 41, 37, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(45, 41, 37, 0.12);
+  font-size: 12px;
+  font-weight: 600;
+  color: #38332d;
+  cursor: pointer;
+  z-index: 30;
+  transition: all 0.22s ease;
+}
+
+.voyage-scroll-cue-pill:hover {
+  background: #ffffff;
+  transform: translateX(-50%) translateY(-2px);
+  box-shadow: 0 10px 30px rgba(45, 41, 37, 0.18);
+}
+
+.voyage-scroll-cue-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d97706;
+  animation: pulseDot 1.8s infinite;
+}
+
+@keyframes pulseDot {
+  0% { transform: scale(0.9); opacity: 0.6; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.6; }
+}
+
+.voyage-bounce-arrow {
+  animation: bounceDown 1.6s infinite ease-in-out;
+}
+
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+/* ---------------- 3. Screen 2: That Pirate One (Scroll-Driven, No Video Play) ---------------- */
+.voyage-pirate-sticky-track {
+  position: relative;
+  width: 100vw;
+  height: 300vh; /* Travel distance for silky-smooth frame scrubbing */
+  background-color: #eae4d3;
+}
+
+.voyage-pirate-sticky-viewport {
+  position: sticky;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #eae4d3;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Full-Screen 3D Ship (100% in focus, NOT in a box) */
+.voyage-pirate-fullscreen-video {
+  width: 100vw;
+  height: 100vh;
   object-fit: contain;
   display: block;
   opacity: 1 !important;
   filter: none !important;
-  transform: translateZ(0);
 }
 
-/* Interactive CTA Hotspot positioned over "EXPLORE NOW" in the video artwork */
-.pirate-explore-overlay-hotspot {
+/* Discreet Bottom Dock on the 3D Pirate Scene */
+.voyage-pirate-bottom-dock {
   position: absolute;
-  left: 7.8%;
-  bottom: 16.5%;
-  z-index: 25;
-}
-
-.pirate-explore-cta-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 22px;
-  border-radius: 999px;
-  background: rgba(30, 27, 24, 0.92);
-  color: #fbf8f2;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.22);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.pirate-explore-cta-button:hover {
-  background: #000000;
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
-}
-
-/* ---------------- 3. Floating Audiophile Bottom Dock ---------------- */
-.pirate-bottom-dock {
-  position: fixed;
-  bottom: 22px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -213,12 +306,12 @@
   border: 1px solid rgba(45, 41, 37, 0.12);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 30px rgba(45, 41, 37, 0.12), 0 2px 8px rgba(45, 41, 37, 0.05);
+  box-shadow: 0 10px 30px rgba(45, 41, 37, 0.12);
   z-index: 50;
   max-width: 92vw;
 }
 
-.pirate-dock-icon-btn {
+.voyage-dock-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -233,13 +326,13 @@
   flex-shrink: 0;
 }
 
-.pirate-dock-icon-btn:hover {
+.voyage-dock-icon-btn:hover {
   background: rgba(45, 41, 37, 0.15);
   color: #000000;
-  transform: scale(1.06);
+  transform: scale(1.08);
 }
 
-.pirate-dock-audio-btn {
+.voyage-dock-audio-btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -253,83 +346,46 @@
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
-  max-width: 260px;
+  max-width: 250px;
 }
 
-.pirate-dock-audio-btn:hover {
+.voyage-dock-audio-btn:hover {
   background: rgba(45, 41, 37, 0.12);
 }
 
-.pirate-dock-audio-btn.is-playing {
+.voyage-dock-audio-btn.is-playing {
   background: #1e1b18;
   color: #fbf8f2;
 }
 
-.pirate-dock-track-title {
+.voyage-dock-track-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* Scrub Timeline Range */
-.pirate-timeline-group {
+.voyage-dock-status {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  font-size: 12px;
+  color: #554d42;
   padding-left: 4px;
   border-left: 1px solid rgba(45, 41, 37, 0.1);
+  flex-shrink: 0;
 }
 
-.pirate-compass-icon {
+.voyage-compass-icon {
   color: #8c8375;
-  flex-shrink: 0;
 }
 
-.pirate-timeline-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 130px;
-  height: 5px;
-  border-radius: 999px;
-  background: rgba(45, 41, 37, 0.14);
-  outline: none;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.pirate-timeline-slider:hover {
-  background: rgba(45, 41, 37, 0.22);
-}
-
-.pirate-timeline-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #1e1b18;
-  border: 2px solid #eae4d3;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  cursor: grab;
-  transition: transform 0.15s ease;
-}
-
-.pirate-timeline-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.25);
-}
-
-.pirate-timeline-percent {
+.voyage-status-text strong {
   font-family: 'DM Mono', monospace, ui-monospace, SFMono-Regular, monospace;
-  font-size: 11px;
-  font-weight: 600;
-  color: #635b50;
-  width: 32px;
-  text-align: right;
-  flex-shrink: 0;
+  color: #1e1b18;
 }
 
-/* Animated Sound Waveforms in Dock */
-.pirate-dock-waves {
+/* Soundwaves animation */
+.voyage-dock-soundwaves {
   display: flex;
   align-items: flex-end;
   gap: 3px;
@@ -364,61 +420,49 @@
   100% { height: 14px; background-color: #1e1b18; }
 }
 
-/* ---------------- 4. Responsive Design for Mobile & Tablet ---------------- */
+/* ---------------- 4. Responsive Design ---------------- */
 @media (max-width: 900px) {
-  .pirate-video-stage {
-    padding: 72px 16px 80px 16px;
+  .voyage-fixed-header {
+    padding: 0 16px;
   }
-
-  .pirate-video-frame {
-    max-width: 100%;
-    max-height: 80vh;
+  .voyage-hero-cta-hotspot {
+    left: 10%;
+    top: 56%;
   }
-
-  .pirate-dock-audio-btn {
-    max-width: 180px;
-  }
-
-  .pirate-timeline-slider {
-    width: 90px;
+  .voyage-dock-audio-btn {
+    max-width: 170px;
   }
 }
 
 @media (max-width: 640px) {
-  .pirate-nav-header {
-    padding: 0 16px;
+  .voyage-fixed-header {
     height: 60px;
+    padding: 0 14px;
   }
-
-  .pirate-nav-brand {
+  .voyage-header-brand {
     display: none;
   }
-
-  .pirate-nav-divider {
+  .voyage-header-divider {
     display: none;
   }
-
-  .pirate-explore-overlay-hotspot {
-    left: 5%;
-    bottom: 12%;
+  .voyage-hero-main-img {
+    object-fit: contain;
+    background-color: #f6ecdf;
   }
-
-  .pirate-explore-cta-button {
-    padding: 8px 16px;
+  .voyage-hero-cta-hotspot {
+    left: 8%;
+    top: 54%;
+  }
+  .voyage-hero-cta-btn {
+    padding: 10px 18px;
     font-size: 11px;
   }
-
-  .pirate-bottom-dock {
-    bottom: 14px;
-    padding: 8px 14px;
-    gap: 8px;
-  }
-
-  .pirate-dock-audio-btn {
+  .voyage-dock-audio-btn {
     display: none;
   }
-
-  .pirate-timeline-slider {
-    width: 80px;
+  .voyage-pirate-bottom-dock {
+    bottom: 16px;
+    padding: 8px 14px;
+    gap: 8px;
   }
 }
