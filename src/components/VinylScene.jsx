@@ -336,6 +336,20 @@ export default function VinylScene({
 
   const deckContainerRef = useRef(null);
   const modernLcdRef = useRef(null);
+  const waveformTrackRef = useRef(null);
+  const faderGrooveRef = useRef(null);
+
+  // Format seconds to mm:ss
+  const formatSeconds = (sec) => {
+    if (isNaN(sec) || sec < 0) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  // Safe percentage calculation
+  const safeDuration = duration > 0 ? duration : 180;
+  const currentRatio = Math.max(0, Math.min(1, currentTime / safeDuration));
 
   // Modern Clay Turntable Helpers
   const formatModernTime = useCallback((sec) => {
@@ -475,21 +489,6 @@ export default function VinylScene({
       el.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDraggingFader, isDraggingWaveform]);
-
-  const waveformTrackRef = useRef(null);
-  const faderGrooveRef = useRef(null);
-
-  // Format seconds to mm:ss
-  const formatSeconds = (sec) => {
-    if (isNaN(sec) || sec < 0) return '0:00';
-    const m = Math.floor(sec / 60);
-    const s = Math.floor(sec % 60);
-    return `${m}:${s < 10 ? '0' : ''}${s}`;
-  };
-
-  // Safe percentage calculation
-  const safeDuration = duration > 0 ? duration : 180;
-  const currentRatio = Math.max(0, Math.min(1, currentTime / safeDuration));
 
   // 64 dynamic waveform bars with natural soundwave envelope
   const waveformBars = useMemo(() => {
