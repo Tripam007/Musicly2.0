@@ -336,10 +336,58 @@ export default function VinylScene({
 
   const deckContainerRef = useRef(null);
   const deckStageWrapperRef = useRef(null);
-  const leftScrollZoneRef = useRef(null);
   const modernLcdRef = useRef(null);
   const waveformTrackRef = useRef(null);
   const faderGrooveRef = useRef(null);
+
+  // Modern Clay Turntable Pitch & Knob Drag States
+  const [pitchValue, setPitchValue] = useState(9.661);
+  const [isDraggingTopKnob, setIsDraggingTopKnob] = useState(false);
+  const [isDraggingBottomKnob, setIsDraggingBottomKnob] = useState(false);
+
+  const updatePitch = useCallback((val) => {
+    const clamped = Math.max(0.001, Math.min(33.333, val));
+    setPitchValue(clamped);
+    if (audioElement) {
+      // Subtle realistic pitch calibration from 0.88x to 1.12x (1.0x around 9.661)
+      const rate = 0.88 + (clamped / 33.333) * 0.24;
+      try {
+        audioElement.playbackRate = Math.max(0.5, Math.min(2.0, rate));
+      } catch {}
+    }
+  }, [audioElement]);
+
+  const handleTopKnobPointerDown = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingTopKnob(true);
+    const startY = e.clientY;
+    const startVal = pitchValue;
+
+    const onPointerMove = (moveEvent) => {
+      moveEvent.preventDefault();
+      const deltaY = startY - moveEvent.clientY; // upward drag increases
+      const newVal = Math.max(0.001, Math.min(33.333, startVal + (deltaY * 0.08)));
+      updatePitch(newVal);
+    };
+
+    const onPointerUp = () => {
+      setIsDraggingTopKnob(false);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      playClickSound('light');
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  const handleTopKnobWheel = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const step = e.deltaY < 0 ? 0.35 : -0.35;
+    updatePitch(pitchValue + step);
+  };
 
   // Format seconds to mm:ss
   const formatSeconds = (sec) => {
@@ -400,46 +448,28 @@ export default function VinylScene({
     playClickSound('toggle');
   }, []);
 
-  // SCROLL-ONLY TURNTABLE DECK SWITCHER LISTENER (ONLY IN LEFT OUTSIDE ZONE)
+  // ALT + SCROLL TURNTABLE DECK SWITCHER LISTENER
   useEffect(() => {
     const stageEl = deckStageWrapperRef.current;
-    const zoneEl = leftScrollZoneRef.current;
-    if (!stageEl && !zoneEl) return;
+    if (!stageEl) return;
 
     let lastSwitchTime = 0;
     const switchCooldown = 380; // ms to prevent rapid flip
 
     const handleWheel = (e) => {
-      // If user is actively dragging the pitch fader or waveform scrubber, don't trigger switch
-      if (isDraggingFader || isDraggingWaveform) return;
-
-      // Filter tiny jitter scrolls
-      if (Math.abs(e.deltaY) < 14) return;
-
-      // Determine if cursor is strictly in that left part of the box outside
-      let isInsideLeftZone = false;
-
-      // 1. Direct hit on the left scroll zone element
-      if (zoneEl && (zoneEl === e.target || zoneEl.contains(e.target))) {
-        isInsideLeftZone = true;
-      }
-
-      // 2. Cursor coordinate strictly to the left outside of the turntable deck box
-      if (!isInsideLeftZone && deckContainerRef.current) {
-        const deckRect = deckContainerRef.current.getBoundingClientRect();
-        // Mouse must be to the left of the deck box: e.clientX < deckRect.left
-        // and within vertical range of the hero turntable box (+/- 80px)
-        if (e.clientX < deckRect.left && e.clientY >= deckRect.top - 80 && e.clientY <= deckRect.bottom + 80) {
-          isInsideLeftZone = true;
-        }
-      }
-
-      // If NOT in that left part outside the box, DO NOT SWITCH and let normal scroll proceed!
-      if (!isInsideLeftZone) {
+      // Must be holding the Alt key (Option key on macOS) to switch turntable skins!
+      if (!e.altKey) {
+        // Alt key NOT pressed: let normal scroll happen freely!
         return;
       }
 
-      // Cursor IS in that left part of the box outside -> prevent page scroll and toggle deck!
+      // If user is actively dragging knobs or faders, don't switch
+      if (isDraggingFader || isDraggingWaveform || isDraggingTopKnob || isDraggingBottomKnob) return;
+
+      // Filter tiny jitter scrolls
+      if (Math.abs(e.deltaY) < 10) return;
+
+      // Alt key is held down and user is scrolling mouse wheel:
       e.preventDefault();
       e.stopPropagation();
 
@@ -447,7 +477,7 @@ export default function VinylScene({
       if (now - lastSwitchTime < switchCooldown) return;
 
       if (e.deltaY > 0) {
-        // Scrolling down -> switch to Modern Clay deck
+        // Alt + Scroll Down -> switch to Modern Clay deck
         setTurntableSkin((prev) => {
           if (prev !== 'modern') {
             lastSwitchTime = now;
@@ -458,7 +488,7 @@ export default function VinylScene({
           return prev;
         });
       } else if (e.deltaY < 0) {
-        // Scrolling up -> switch to Vintage Hi-Fi deck
+        // Alt + Scroll Up -> switch to Vintage Hi-Fi deck
         setTurntableSkin((prev) => {
           if (prev !== 'vintage') {
             lastSwitchTime = now;
@@ -471,56 +501,11 @@ export default function VinylScene({
       }
     };
 
-    // Mobile touch swipe gestures on the left zone
-    let touchStartY = 0;
-    let touchStartTime = 0;
-
-    const handleTouchStart = (e) => {
-      if (e.touches.length === 1) {
-        touchStartY = e.touches[0].clientY;
-        touchStartTime = Date.now();
-      }
-    };
-
-    const handleTouchEnd = (e) => {
-      if (e.changedTouches.length === 1) {
-        const deltaY = e.changedTouches[0].clientY - touchStartY;
-        const duration = Date.now() - touchStartTime;
-        if (Math.abs(deltaY) > 35 && duration < 600) {
-          const now = Date.now();
-          if (now - lastSwitchTime < switchCooldown) return;
-          if (deltaY < 0) {
-            // Swiped up -> modern
-            lastSwitchTime = now;
-            setTurntableSkin('modern');
-            try { localStorage.setItem('musicly_turntable_skin', 'modern'); } catch {}
-            playClickSound('toggle');
-          } else {
-            // Swiped down -> vintage
-            lastSwitchTime = now;
-            setTurntableSkin('vintage');
-            try { localStorage.setItem('musicly_turntable_skin', 'vintage'); } catch {}
-            playClickSound('toggle');
-          }
-        }
-      }
-    };
-
-    const target = stageEl || zoneEl;
-    target.addEventListener('wheel', handleWheel, { passive: false });
-    if (zoneEl) {
-      zoneEl.addEventListener('touchstart', handleTouchStart, { passive: true });
-      zoneEl.addEventListener('touchend', handleTouchEnd, { passive: true });
-    }
-
+    stageEl.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
-      target.removeEventListener('wheel', handleWheel);
-      if (zoneEl) {
-        zoneEl.removeEventListener('touchstart', handleTouchStart);
-        zoneEl.removeEventListener('touchend', handleTouchEnd);
-      }
+      stageEl.removeEventListener('wheel', handleWheel);
     };
-  }, [isDraggingFader, isDraggingWaveform]);
+  }, [isDraggingFader, isDraggingWaveform, isDraggingTopKnob, isDraggingBottomKnob]);
 
   // 64 dynamic waveform bars with natural soundwave envelope
   const waveformBars = useMemo(() => {
@@ -853,6 +838,45 @@ export default function VinylScene({
     const nextVol = Math.max(0, Math.min(1, Math.round((currentVol + step) * 100) / 100));
     onVolumeChange(nextVol);
     if (nextVol > 0 && isMuted) setIsMuted(false);
+  };
+
+  // Modern Clay Turntable Master Volume Rotary Dial Drag Handler
+  const handleBottomKnobPointerDown = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingBottomKnob(true);
+    const startY = e.clientY;
+    const startVol = currentVol;
+
+    const onPointerMove = (moveEvent) => {
+      moveEvent.preventDefault();
+      const deltaY = startY - moveEvent.clientY; // upward drag increases
+      const nextVol = Math.max(0, Math.min(1, Math.round((startVol + (deltaY / 120)) * 100) / 100));
+      if (onVolumeChange) {
+        onVolumeChange(nextVol);
+        if (nextVol > 0 && isMuted) setIsMuted(false);
+      }
+    };
+
+    const onPointerUp = () => {
+      setIsDraggingBottomKnob(false);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      playClickSound('light');
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  // Modern Clay Turntable ON / OFF Power & Playback Toggle Button Handler
+  const handlePowerToggleClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onTogglePlay) {
+      onTogglePlay();
+    }
+    playClickSound('toggle');
   };
 
   // Fullscreen toggle
@@ -1237,25 +1261,15 @@ export default function VinylScene({
                     MODERN CLAY
                   </button>
                 </div>
-                <div className="vinyl-deck-scroll-hint" title="Scroll mouse wheel over left outside strip to switch skins">
-                  <span className="scroll-hint-arrows">⇅</span>
-                  <span>Scroll left outside area to switch</span>
+                <div className="vinyl-deck-scroll-hint" title="Hold Alt key and scroll mouse wheel over the turntable to switch between styles">
+                  <span className="scroll-hint-kbd">Alt</span>
+                  <span className="scroll-hint-plus">+</span>
+                  <span>Scroll to switch deck</span>
                 </div>
               </div>
 
-              {/* Turntable Deck Stage Wrapper with Dedicated Left Outside Scroll Zone */}
+              {/* Turntable Deck Stage Wrapper (Hold Alt + Scroll wheel over deck to switch) */}
               <div className="vinyl-deck-stage-wrapper" ref={deckStageWrapperRef}>
-                {/* Left Outside Scroll Zone — entire left area outside the box (seamless, no side vertical bar) */}
-                <div 
-                  className="vinyl-deck-left-scroll-zone"
-                  ref={leftScrollZoneRef}
-                  onClick={() => handleSkinChange(turntableSkin === 'vintage' ? 'modern' : 'vintage')}
-                  title="Scroll here to switch turntable style (Vintage Hi-Fi ⇅ Modern Clay)"
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Scroll left area to switch turntable style"
-                />
-
                 {/* Turntable Switcher Container */}
                 <div 
                   className={`vinyl-deck-switcher-container ${turntableSkin === 'modern' ? 'show-modern' : 'show-vintage'}`}
@@ -1591,27 +1605,32 @@ export default function VinylScene({
                       {/* Right: Elevated Clay Rotary Controls Module */}
                       <div className="modern-rotary-controls-card">
                         {/* Top Knob: Numeric Readout Calibration Knob */}
-                        <div className="modern-knob-unit">
+                        <div 
+                          className={`modern-knob-unit ${isDraggingTopKnob ? 'is-dragging' : ''}`}
+                          onPointerDown={handleTopKnobPointerDown}
+                          onWheel={handleTopKnobWheel}
+                          title={`Pitch Calibration: ${pitchValue.toFixed(3)} (Click & drag up/down or scroll wheel to adjust)`}
+                        >
                           <div 
                             className="modern-conical-knob knob-top" 
-                            style={{ transform: `rotate(${(currentVol * 180) - 90}deg)` }}
-                            title="Fine Frequency Knob"
+                            style={{ transform: `rotate(${((pitchValue / 33.333) * 270) - 135}deg)` }}
                           >
                             <div className="modern-knob-indicator" />
                           </div>
                           <div className="modern-knob-readout">
-                            {(currentVol * 33.313).toFixed(3)}
+                            {pitchValue.toFixed(3)}
                           </div>
                         </div>
 
                         {/* Bottom Knob: Master Volume Rotary */}
                         <div 
-                          className="modern-knob-unit"
+                          className={`modern-knob-unit ${isDraggingBottomKnob ? 'is-dragging' : ''}`}
+                          onPointerDown={handleBottomKnobPointerDown}
                           onWheel={handleFaderWheel}
-                          title={`Master Volume: ${Math.round(currentVol * 100)}% (Scroll wheel to adjust)`}
+                          title={`Master Volume: ${Math.round(currentVol * 100)}% (Click & drag up/down or scroll wheel to adjust)`}
                         >
                           <div 
-                            className="modern-conical-knob knob-bottom"
+                            className="modern-conical-knob knob-bottom" 
                             style={{ transform: `rotate(${(currentVol * 270) - 135}deg)` }}
                           >
                             <div className="modern-knob-indicator" />
@@ -1622,7 +1641,7 @@ export default function VinylScene({
                         <button
                           type="button"
                           className={`modern-power-toggle-btn ${isPlaying ? 'is-on' : 'is-off'}`}
-                          onClick={handleRecordClick}
+                          onClick={handlePowerToggleClick}
                           title={isPlaying ? "Turntable Power: ON (Click to Stop)" : "Turntable Power: OFF (Click to Start)"}
                         >
                           {isPlaying ? 'ON' : 'OFF'}

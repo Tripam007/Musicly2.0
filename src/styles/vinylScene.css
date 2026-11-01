@@ -402,45 +402,40 @@
 .vinyl-deck-scroll-hint {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   font-family: var(--vinyl-font-sans, sans-serif);
   font-size: 0.68rem;
   color: #727278;
   letter-spacing: 0.02em;
 }
-.vinyl-deck-scroll-hint .scroll-hint-arrows {
-  display: inline-block;
-  font-size: 0.88rem;
-  animation: vinylScrollHintBounce 1.8s ease-in-out infinite;
-  color: #3b3b42;
+.scroll-hint-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5px 5px;
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  border-radius: 4px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  color: #1a1a20;
+  line-height: 1.1;
 }
-@keyframes vinylScrollHintBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+.scroll-hint-plus {
+  font-size: 0.65rem;
+  color: #888892;
+  font-weight: 600;
 }
 
-/* Turntable Stage Wrapper: Holds the Left Outside Scroll Zone and the Turntable Deck */
+/* Turntable Stage Wrapper: Holds the Turntable Deck (Hold Alt + Scroll to Switch) */
 .vinyl-deck-stage-wrapper {
   position: relative;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* Dedicated Left Outside Scroll Zone — Covers the whole left area outside the turntable box (completely seamless & borderless) */
-.vinyl-deck-left-scroll-zone {
-  position: absolute;
-  top: -40px;
-  bottom: -40px;
-  right: 100%;
-  left: -240px;
-  cursor: ns-resize;
-  z-index: 25;
-  user-select: none;
-  touch-action: pan-y;
-  background: transparent;
-  outline: none;
 }
 
 /* Deck Switcher Transition Wrapper */
@@ -1650,7 +1645,13 @@
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  cursor: pointer;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.modern-knob-unit.is-dragging {
+  cursor: grabbing;
 }
 
 .modern-conical-knob {
@@ -1672,7 +1673,20 @@
     0 4px 10px rgba(0, 0, 0, 0.22),
     inset 0 1px 1px #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.4);
-  transition: transform 0.1s ease;
+  transition: transform 0.04s linear;
+}
+
+.modern-knob-unit:hover .modern-conical-knob {
+  box-shadow: 
+    0 5px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px #ffffff;
+}
+
+.modern-knob-unit.is-dragging .modern-conical-knob {
+  box-shadow: 
+    0 0 0 2px rgba(0, 0, 0, 0.2),
+    0 6px 14px rgba(0, 0, 0, 0.35),
+    inset 0 1px 2px #ffffff;
 }
 
 .modern-knob-indicator {
@@ -1726,8 +1740,13 @@
     0 0 8px rgba(0, 0, 0, 0.25);
 }
 
+.modern-power-toggle-btn:hover {
+  filter: brightness(1.1);
+  transform: scale(1.02);
+}
+
 .modern-power-toggle-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
 }
 
 /* ==========================================================================
@@ -2447,11 +2466,6 @@
   .modern-conical-knob {
     width: 32px;
     height: 32px;
-  }
-  .vinyl-deck-left-scroll-zone {
-    right: 100%;
-    left: -40px;
-    width: auto;
   }
 }
 
