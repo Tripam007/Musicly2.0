@@ -428,8 +428,8 @@ export default function VinylScene({
       if (!isInsideLeftZone && deckContainerRef.current) {
         const deckRect = deckContainerRef.current.getBoundingClientRect();
         // Mouse must be to the left of the deck box: e.clientX < deckRect.left
-        // and within vertical range of the deck (+/- 30px)
-        if (e.clientX < deckRect.left && e.clientY >= deckRect.top - 30 && e.clientY <= deckRect.bottom + 30) {
+        // and within vertical range of the hero turntable box (+/- 80px)
+        if (e.clientX < deckRect.left && e.clientY >= deckRect.top - 80 && e.clientY <= deckRect.bottom + 80) {
           isInsideLeftZone = true;
         }
       }
@@ -1245,7 +1245,7 @@ export default function VinylScene({
 
               {/* Turntable Deck Stage Wrapper with Dedicated Left Outside Scroll Zone */}
               <div className="vinyl-deck-stage-wrapper" ref={deckStageWrapperRef}>
-                {/* Left Outside Scroll Zone — changes turntable ONLY when mouse is scrolled in this outside space */}
+                {/* Left Outside Scroll Zone — entire left area outside the box (seamless, no side vertical bar) */}
                 <div 
                   className="vinyl-deck-left-scroll-zone"
                   ref={leftScrollZoneRef}
@@ -1253,15 +1253,8 @@ export default function VinylScene({
                   title="Scroll here to switch turntable style (Vintage Hi-Fi ⇅ Modern Clay)"
                   role="button"
                   tabIndex={0}
-                  aria-label="Scroll to switch turntable style"
-                >
-                  <div className="vinyl-deck-left-scroll-pill">
-                    <span className="scroll-pill-arrow arrow-up">▲</span>
-                    <span className="scroll-pill-icon">⇅</span>
-                    <span className="scroll-pill-label">SCROLL</span>
-                    <span className="scroll-pill-arrow arrow-down">▼</span>
-                  </div>
-                </div>
+                  aria-label="Scroll left area to switch turntable style"
+                />
 
                 {/* Turntable Switcher Container */}
                 <div 
