@@ -357,7 +357,81 @@
 .vinyl-hero-column {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 16px;
+}
+
+/* Turntable Skin Header Pill Bar */
+.vinyl-deck-skin-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+  margin-bottom: 2px;
+  user-select: none;
+}
+.vinyl-deck-skin-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.06);
+  padding: 3px 4px;
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+.vinyl-deck-skin-btn {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 4px 11px;
+  border-radius: 14px;
+  border: none;
+  background: transparent;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.vinyl-deck-skin-btn:hover {
+  color: #111;
+}
+.vinyl-deck-skin-btn.is-active {
+  background: #ffffff;
+  color: #111116;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.vinyl-deck-scroll-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--vinyl-font-sans, sans-serif);
+  font-size: 0.68rem;
+  color: #727278;
+  letter-spacing: 0.02em;
+}
+.vinyl-deck-scroll-hint .scroll-hint-arrows {
+  display: inline-block;
+  font-size: 0.88rem;
+  animation: vinylScrollHintBounce 1.8s ease-in-out infinite;
+  color: #3b3b42;
+}
+@keyframes vinylScrollHintBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Deck Switcher Transition Wrapper */
+.vinyl-deck-switcher-container {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  perspective: 1200px;
+  transition: min-height 0.3s ease;
+}
+.vinyl-deck-switcher-container.show-vintage {
+  min-height: 480px;
+}
+.vinyl-deck-switcher-container.show-modern {
+  min-height: 520px;
 }
 
 /* Realistic Brushed Turntable Chassis */
@@ -912,6 +986,724 @@
   background: #fff;
   border-radius: 1px;
   box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+}
+
+/* ==========================================================================
+   FUTURISTIC CLAYMORPHIC TURNTABLE DECK (MODERN SKIN)
+   ========================================================================== */
+
+.vinyl-modern-clay-deck {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  aspect-ratio: 368 / 505;
+  margin: 0 auto;
+  background: #e8e8ea;
+  border-radius: 42px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 35px 70px -15px rgba(0, 0, 0, 0.28),
+    0 15px 30px -8px rgba(0, 0, 0, 0.18),
+    inset 0 3px 4px #ffffff,
+    inset 0 -4px 8px rgba(0, 0, 0, 0.14);
+  user-select: none;
+  animation: modernDeckFadeIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-sizing: border-box;
+}
+
+@keyframes modernDeckFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Top Matte Black Bay
+   -------------------------------------------------------------------------- */
+.modern-deck-top-well {
+  position: relative;
+  width: 100%;
+  flex: 1.35;
+  background: radial-gradient(ellipse at 42% 45%, #2a2a2e 0%, #1a1a1d 65%, #111113 100%);
+  border-radius: 30px;
+  box-shadow: 
+    inset 0 4px 14px rgba(0, 0, 0, 0.8),
+    inset 0 1px 2px rgba(255, 255, 255, 0.08),
+    0 1.5px 2px rgba(255, 255, 255, 0.6);
+  padding: 10px;
+  overflow: hidden;
+  display: flex;
+  box-sizing: border-box;
+}
+
+/* Micro top-left strobe dial */
+.modern-top-dial-mini {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #555 0%, #222 70%, #111 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 2px #fff, 0 2px 4px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  z-index: 5;
+}
+
+/* Platter Well & Rotating Vinyl Disc */
+.modern-platter-well {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  bottom: 22px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-platter-rim {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #25252a 66%, #3a3a42 69%, #141416 71%);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.7), inset 0 1px 2px rgba(255, 255, 255, 0.15);
+}
+
+.modern-record-disc {
+  position: relative;
+  width: 93%;
+  height: 93%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #1a1a1d 0%, #121214 70%, #0c0c0e 100%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: spin var(--vinyl-spin-duration, 6.5s) linear infinite;
+  overflow: hidden;
+}
+
+.modern-record-disc.is-paused {
+  animation-play-state: paused;
+}
+
+.modern-record-grooves {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-radial-gradient(
+    circle at center,
+    transparent 0,
+    transparent 2px,
+    rgba(255, 255, 255, 0.04) 2.5px,
+    transparent 3px
+  );
+  pointer-events: none;
+}
+
+.modern-record-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 25deg at center,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.06) 45deg,
+    transparent 90deg,
+    rgba(255, 255, 255, 0.06) 135deg,
+    transparent 180deg,
+    rgba(255, 255, 255, 0.06) 225deg,
+    transparent 270deg,
+    rgba(255, 255, 255, 0.06) 315deg,
+    transparent 360deg
+  );
+  pointer-events: none;
+}
+
+/* Center Spindle Cap */
+.modern-center-spindle-disc {
+  position: absolute;
+  width: 28%;
+  height: 28%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #2a2a30 0%, #111114 85%);
+  border: 1px solid #333338;
+  box-shadow: 
+    inset 0 1px 2px rgba(255, 255, 255, 0.15),
+    0 2px 6px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.modern-center-spindle-hole {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #08080a 0%, #1e1e22 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* --------------------------------------------------------------------------
+   3D Liquid Chrome Metal Spheres Cluster
+   -------------------------------------------------------------------------- */
+.modern-chrome-spheres-cluster {
+  position: absolute;
+  left: 10%;
+  top: 26%;
+  width: 48%;
+  height: 48%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.chrome-sphere {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #ffffff 0%, #edeef6 25%, #9a9aa8 55%, #3c3c46 82%, #141418 100%);
+  box-shadow: 
+    0 6px 14px rgba(0, 0, 0, 0.65),
+    inset 0 1px 2px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.chrome-sphere::after {
+  content: '';
+  position: absolute;
+  top: 14%;
+  left: 20%;
+  width: 24%;
+  height: 24%;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0) 80%);
+  filter: blur(0.4px);
+}
+
+.chrome-sphere.sphere-main {
+  width: 44px;
+  height: 44px;
+  left: 14px;
+  top: 28px;
+}
+
+.chrome-sphere.sphere-sub-1 {
+  width: 30px;
+  height: 30px;
+  left: 0px;
+  top: 14px;
+}
+
+.chrome-sphere.sphere-sub-2 {
+  width: 26px;
+  height: 26px;
+  left: 24px;
+  top: 2px;
+}
+
+.chrome-sphere.sphere-sub-3 {
+  width: 20px;
+  height: 20px;
+  left: 42px;
+  top: 22px;
+}
+
+.chrome-sphere.sphere-sub-4 {
+  width: 14px;
+  height: 14px;
+  left: 14px;
+  top: 60px;
+}
+
+.chrome-sphere.sphere-sub-5 {
+  width: 11px;
+  height: 11px;
+  left: 32px;
+  top: 56px;
+}
+
+/* Secondary micro satellite cluster near spindle */
+.modern-chrome-micro-cluster {
+  position: absolute;
+  right: 24%;
+  top: 32%;
+  width: 20%;
+  height: 20%;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.chrome-sphere.micro-1 {
+  width: 9px;
+  height: 9px;
+  left: 4px;
+  top: 6px;
+}
+
+.chrome-sphere.micro-2 {
+  width: 7px;
+  height: 7px;
+  left: 12px;
+  top: 2px;
+}
+
+.chrome-sphere.micro-3 {
+  width: 6px;
+  height: 6px;
+  left: 12px;
+  top: 12px;
+}
+
+/* --------------------------------------------------------------------------
+   Audio-Technica Style Straight Tonearm
+   -------------------------------------------------------------------------- */
+.modern-tonearm-assembly {
+  position: absolute;
+  top: 18px;
+  right: 58px;
+  width: 36px;
+  height: 185px;
+  z-index: 6;
+  pointer-events: none;
+  transform-origin: 18px 22px;
+  transition: transform 0.75s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.modern-tonearm-assembly.is-playing {
+  transform: rotate(20deg);
+}
+
+.modern-tonearm-assembly.is-resting {
+  transform: rotate(0deg);
+}
+
+.modern-tonearm-gimbal {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #444 0%, #222 70%, #111 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-tonearm-counterweight {
+  width: 14px;
+  height: 18px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #f2f2f4 0%, #b0b0b8 40%, #707078 80%, #d8d8e0 100%);
+  border: 1px solid #777;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+}
+
+.modern-tonearm-pipe {
+  position: absolute;
+  top: 26px;
+  left: 16px;
+  width: 4px;
+  height: 128px;
+  background: linear-gradient(90deg, #333 0%, #111 50%, #444 100%);
+  border-radius: 2px;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.modern-tonearm-headshell {
+  position: absolute;
+  bottom: 8px;
+  left: 10px;
+  width: 16px;
+  height: 24px;
+  background: #18181c;
+  border-radius: 2px;
+  border: 1px solid #444;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+  transform: rotate(-10deg);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+}
+
+.modern-tonearm-needle-tip {
+  width: 3px;
+  height: 4px;
+  background: #ffffff;
+  border-radius: 1px;
+  box-shadow: 0 0 4px #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   Pitch Fader Slider (Right side of Black Bay)
+   -------------------------------------------------------------------------- */
+.modern-pitch-slider-bay {
+  position: absolute;
+  top: 48px;
+  right: 18px;
+  width: 22px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 5;
+  cursor: ns-resize;
+}
+
+.modern-pitch-track-ticks {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.62rem;
+  color: #6a6a72;
+  line-height: 1;
+}
+
+.modern-pitch-slider-groove {
+  position: relative;
+  width: 4px;
+  height: 100%;
+  background: #0d0d0f;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.modern-pitch-slider-thumb {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 8px;
+  background: linear-gradient(180deg, #eaeaf0 0%, #909098 100%);
+  border-radius: 2px;
+  border: 1px solid #444;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* --------------------------------------------------------------------------
+   Top Well Footer (Strobe Dial & Audio-Technica Branding)
+   -------------------------------------------------------------------------- */
+.modern-top-well-footer {
+  position: absolute;
+  bottom: 8px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 5;
+}
+
+.modern-strobe-dial-mini {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #444 0%, #1a1a1e 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+.modern-strobe-dial-mini.is-off {
+  opacity: 0.4;
+}
+
+.modern-branding-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--vinyl-font-sans, sans-serif);
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #72727a;
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+.modern-brand-logo-icon {
+  font-size: 0.5rem;
+  color: #888892;
+}
+
+/* --------------------------------------------------------------------------
+   Bottom Row: LCD Display Card + Rotary Module
+   -------------------------------------------------------------------------- */
+.modern-deck-bottom-row {
+  display: flex;
+  gap: 12px;
+  height: 155px;
+  box-sizing: border-box;
+}
+
+/* Left: Recessed Frosted LCD Display Card */
+.modern-digital-display-card {
+  flex: 1.55;
+  background: #ceced2;
+  border-radius: 26px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 
+    inset 0 3px 6px rgba(0, 0, 0, 0.18),
+    inset 0 1px 2px rgba(0, 0, 0, 0.25),
+    0 1px 1px rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: background 0.2s ease;
+}
+
+.modern-digital-display-card:hover {
+  background: #c8c8cc;
+}
+
+/* Equalizer Barcode Waveform */
+.modern-barcode-waveform {
+  position: relative;
+  width: 100%;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.modern-barcode-column {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+}
+
+.modern-barcode-bar {
+  width: 100%;
+  max-width: 5px;
+  background: #606068;
+  border-radius: 1px;
+  transition: height 0.15s ease;
+}
+
+.modern-barcode-column.is-active .modern-barcode-bar {
+  animation: modernBarcodeDance 1.4s ease-in-out infinite alternate;
+}
+
+.modern-barcode-column.is-passed .modern-barcode-bar {
+  background: #25252a;
+}
+
+@keyframes modernBarcodeDance {
+  0% { transform: scaleY(0.7); }
+  50% { transform: scaleY(1.1); }
+  100% { transform: scaleY(0.85); }
+}
+
+/* Tracking Cursor Needle */
+.modern-tracking-needle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.needle-stem {
+  width: 1.5px;
+  flex: 1;
+  background: #1c1c20;
+}
+
+.needle-head-top {
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 5px solid #1c1c20;
+}
+
+.needle-head-bottom {
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-bottom: 5px solid #1c1c20;
+}
+
+/* Display Footer */
+.modern-display-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.modern-track-code {
+  font-family: var(--vinyl-font-sans, sans-serif);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: #1a1a1e;
+  line-height: 1;
+}
+
+.modern-time-readouts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+
+.modern-time-elapsed {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #383840;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+.modern-time-total {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #7a7a84;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+/* --------------------------------------------------------------------------
+   Right: Elevated Clay Rotary Controls Module
+   -------------------------------------------------------------------------- */
+.modern-rotary-controls-card {
+  flex: 0.95;
+  background: #e8e8ea;
+  border-radius: 26px;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 
+    0 8px 18px rgba(0, 0, 0, 0.12),
+    inset 0 1px 2px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  box-sizing: border-box;
+}
+
+.modern-knob-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.modern-conical-knob {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 40deg,
+    #f4f4f6 0%,
+    #b4b4bc 25%,
+    #5a5a64 50%,
+    #202026 65%,
+    #5a5a64 80%,
+    #b4b4bc 92%,
+    #f4f4f6 100%
+  );
+  box-shadow: 
+    0 4px 10px rgba(0, 0, 0, 0.22),
+    inset 0 1px 1px #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transition: transform 0.1s ease;
+}
+
+.modern-knob-indicator {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 8px;
+  background: #111;
+  border-radius: 1px;
+}
+
+.modern-knob-readout {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #6a6a72;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+/* Pill ON / OFF Button */
+.modern-power-toggle-btn {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 5px 16px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  outline: none;
+  line-height: 1;
+}
+
+.modern-power-toggle-btn.is-off {
+  background: #b4b4bc;
+  color: #ffffff;
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+.modern-power-toggle-btn.is-on {
+  background: #1c1c20;
+  color: #ffffff;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(0, 0, 0, 0.25);
+}
+
+.modern-power-toggle-btn:active {
+  transform: scale(0.95);
 }
 
 /* ==========================================================================
@@ -1606,17 +2398,46 @@
   .vinyl-volume-cluster {
     min-width: 90px;
   }
+  .vinyl-deck-switcher-container.show-vintage {
+    min-height: auto;
+  }
+  .vinyl-deck-switcher-container.show-modern {
+    min-height: auto;
+  }
+  .vinyl-modern-clay-deck {
+    max-width: 100%;
+    border-radius: 32px;
+    padding: 12px;
+    gap: 10px;
+  }
+  .modern-deck-bottom-row {
+    height: 140px;
+    gap: 8px;
+  }
+  .modern-digital-display-card {
+    padding: 10px 12px;
+  }
+  .modern-track-code {
+    font-size: 1.25rem;
+  }
+  .modern-conical-knob {
+    width: 32px;
+    height: 32px;
+  }
 }
 
 /* Accessibility: Respect Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  .vinyl-record-disc.is-spinning {
+  .vinyl-record-disc.is-spinning,
+  .modern-record-disc.is-spinning {
     animation: none !important;
   }
-  .vinyl-tonearm-assembly {
+  .vinyl-tonearm-assembly,
+  .modern-tonearm-assembly {
     transition: none !important;
   }
-  .vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played {
+  .vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played,
+  .modern-barcode-column.is-active .modern-barcode-bar {
     animation: none !important;
   }
 }
