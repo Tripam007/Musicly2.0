@@ -335,6 +335,8 @@ export default function VinylScene({
   });
 
   const deckContainerRef = useRef(null);
+  const deckStageWrapperRef = useRef(null);
+  const leftScrollZoneRef = useRef(null);
   const modernLcdRef = useRef(null);
   const waveformTrackRef = useRef(null);
   const faderGrooveRef = useRef(null);
@@ -398,10 +400,11 @@ export default function VinylScene({
     playClickSound('toggle');
   }, []);
 
-  // SCROLL-ONLY TURNTABLE DECK SWITCHER LISTENER
+  // SCROLL-ONLY TURNTABLE DECK SWITCHER LISTENER (ONLY IN LEFT OUTSIDE ZONE)
   useEffect(() => {
-    const el = deckContainerRef.current;
-    if (!el) return;
+    const stageEl = deckStageWrapperRef.current;
+    const zoneEl = leftScrollZoneRef.current;
+    if (!stageEl && !zoneEl) return;
 
     let lastSwitchTime = 0;
     const switchCooldown = 380; // ms to prevent rapid flip
@@ -411,10 +414,34 @@ export default function VinylScene({
       if (isDraggingFader || isDraggingWaveform) return;
 
       // Filter tiny jitter scrolls
-      if (Math.abs(e.deltaY) < 18) return;
+      if (Math.abs(e.deltaY) < 14) return;
 
-      // Prevent the outer page from scrolling away while scrolling directly on the turntable deck
+      // Determine if cursor is strictly in that left part of the box outside
+      let isInsideLeftZone = false;
+
+      // 1. Direct hit on the left scroll zone element
+      if (zoneEl && (zoneEl === e.target || zoneEl.contains(e.target))) {
+        isInsideLeftZone = true;
+      }
+
+      // 2. Cursor coordinate strictly to the left outside of the turntable deck box
+      if (!isInsideLeftZone && deckContainerRef.current) {
+        const deckRect = deckContainerRef.current.getBoundingClientRect();
+        // Mouse must be to the left of the deck box: e.clientX < deckRect.left
+        // and within vertical range of the deck (+/- 30px)
+        if (e.clientX < deckRect.left && e.clientY >= deckRect.top - 30 && e.clientY <= deckRect.bottom + 30) {
+          isInsideLeftZone = true;
+        }
+      }
+
+      // If NOT in that left part outside the box, DO NOT SWITCH and let normal scroll proceed!
+      if (!isInsideLeftZone) {
+        return;
+      }
+
+      // Cursor IS in that left part of the box outside -> prevent page scroll and toggle deck!
       e.preventDefault();
+      e.stopPropagation();
 
       const now = Date.now();
       if (now - lastSwitchTime < switchCooldown) return;
@@ -444,7 +471,7 @@ export default function VinylScene({
       }
     };
 
-    // Mobile touch swipe gestures
+    // Mobile touch swipe gestures on the left zone
     let touchStartY = 0;
     let touchStartTime = 0;
 
@@ -479,14 +506,19 @@ export default function VinylScene({
       }
     };
 
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    el.addEventListener('touchstart', handleTouchStart, { passive: true });
-    el.addEventListener('touchend', handleTouchEnd, { passive: true });
+    const target = stageEl || zoneEl;
+    target.addEventListener('wheel', handleWheel, { passive: false });
+    if (zoneEl) {
+      zoneEl.addEventListener('touchstart', handleTouchStart, { passive: true });
+      zoneEl.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
 
     return () => {
-      el.removeEventListener('wheel', handleWheel);
-      el.removeEventListener('touchstart', handleTouchStart);
-      el.removeEventListener('touchend', handleTouchEnd);
+      target.removeEventListener('wheel', handleWheel);
+      if (zoneEl) {
+        zoneEl.removeEventListener('touchstart', handleTouchStart);
+        zoneEl.removeEventListener('touchend', handleTouchEnd);
+      }
     };
   }, [isDraggingFader, isDraggingWaveform]);
 
@@ -1205,17 +1237,37 @@ export default function VinylScene({
                     MODERN CLAY
                   </button>
                 </div>
-                <div className="vinyl-deck-scroll-hint" title="Scroll mouse wheel or trackpad over deck to switch skins">
+                <div className="vinyl-deck-scroll-hint" title="Scroll mouse wheel over left outside strip to switch skins">
                   <span className="scroll-hint-arrows">⇅</span>
-                  <span>Scroll over deck to switch</span>
+                  <span>Scroll left outside area to switch</span>
                 </div>
               </div>
 
-              {/* Turntable Switcher Container — Listens for scroll wheel & touch swipe */}
-              <div 
-                className={`vinyl-deck-switcher-container ${turntableSkin === 'modern' ? 'show-modern' : 'show-vintage'}`}
-                ref={deckContainerRef}
-              >
+              {/* Turntable Deck Stage Wrapper with Dedicated Left Outside Scroll Zone */}
+              <div className="vinyl-deck-stage-wrapper" ref={deckStageWrapperRef}>
+                {/* Left Outside Scroll Zone — changes turntable ONLY when mouse is scrolled in this outside space */}
+                <div 
+                  className="vinyl-deck-left-scroll-zone"
+                  ref={leftScrollZoneRef}
+                  onClick={() => handleSkinChange(turntableSkin === 'vintage' ? 'modern' : 'vintage')}
+                  title="Scroll here to switch turntable style (Vintage Hi-Fi ⇅ Modern Clay)"
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Scroll to switch turntable style"
+                >
+                  <div className="vinyl-deck-left-scroll-pill">
+                    <span className="scroll-pill-arrow arrow-up">▲</span>
+                    <span className="scroll-pill-icon">⇅</span>
+                    <span className="scroll-pill-label">SCROLL</span>
+                    <span className="scroll-pill-arrow arrow-down">▼</span>
+                  </div>
+                </div>
+
+                {/* Turntable Switcher Container */}
+                <div 
+                  className={`vinyl-deck-switcher-container ${turntableSkin === 'modern' ? 'show-modern' : 'show-vintage'}`}
+                  ref={deckContainerRef}
+                >
                 {turntableSkin === 'vintage' ? (
                   /* Realistic Retro Turntable Chassis */
                   <div className="vinyl-turntable-deck">
@@ -1586,6 +1638,7 @@ export default function VinylScene({
                     </div>
                   </div>
                 )}
+                </div>
               </div>
 
               {/* Now Playing Information Block */}
