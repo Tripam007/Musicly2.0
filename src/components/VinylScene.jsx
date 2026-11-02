@@ -94,7 +94,9 @@ export default function VinylScene({
   onSelectLanguage = null,
   onOpenAboutUs = null,
   customQueue = [],
-  onSetCustomQueue = null
+  onSetCustomQueue = null,
+  activePlayingPlaylistId: propActivePlayingPlaylistId = undefined,
+  onSetActivePlayingPlaylistId = null
 }) {
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [localLanguages, setLocalLanguages] = useState([]);
@@ -819,14 +821,34 @@ export default function VinylScene({
   // Playlist Source Choice: 'all' | 'musicly' | 'custom'
   const [playlistSourceMode, setPlaylistSourceMode] = useState('all');
 
-  // Active playing playlist tracking
-  const [activePlayingPlaylistId, setActivePlayingPlaylistId] = useState(() => {
+  // Active playing playlist tracking (synchronized with App.jsx to stop once finished)
+  const [localActivePlaylistId, setLocalActivePlaylistId] = useState(() => {
     try {
       return localStorage.getItem('musicly_active_playlist_id') || null;
     } catch {
       return null;
     }
   });
+
+  const activePlayingPlaylistId = propActivePlayingPlaylistId !== undefined
+    ? propActivePlayingPlaylistId
+    : localActivePlaylistId;
+
+  const setActivePlayingPlaylistId = useCallback((id) => {
+    setLocalActivePlaylistId(id);
+    if (onSetActivePlayingPlaylistId) {
+      onSetActivePlayingPlaylistId(id);
+    }
+    if (id) {
+      try {
+        localStorage.setItem('musicly_active_playlist_id', id);
+      } catch {}
+    } else {
+      try {
+        localStorage.removeItem('musicly_active_playlist_id');
+      } catch {}
+    }
+  }, [onSetActivePlayingPlaylistId]);
 
   const musiclyPlaylists = useMemo(() => {
     return favoritePlaylists.filter(p => !p.isCustom);
@@ -853,19 +875,24 @@ export default function VinylScene({
     if (!playlist || !playlist.tracks || playlist.tracks.length === 0) return;
 
     setActivePlayingPlaylistId(playlist.id);
-    try {
-      localStorage.setItem('musicly_active_playlist_id', playlist.id);
-    } catch {}
 
-    const [firstSong, ...remainingSongs] = playlist.tracks;
+    let tracksToPlay = [...playlist.tracks];
+    if (isShuffle) {
+      for (let i = tracksToPlay.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [tracksToPlay[i], tracksToPlay[j]] = [tracksToPlay[j], tracksToPlay[i]];
+      }
+    }
+
+    const [firstSong, ...remainingSongs] = tracksToPlay;
     if (firstSong) {
-      onSelectTrack?.(firstSong, true);
+      onSelectTrack?.(firstSong, true, true);
     }
     if (onSetCustomQueue) {
       onSetCustomQueue(remainingSongs);
     }
     playPeacefulLikeSound();
-  }, [onSelectTrack, onSetCustomQueue]);
+  }, [isShuffle, onSelectTrack, onSetCustomQueue, setActivePlayingPlaylistId]);
 
   // Click on turntable record directly to toggle playback
   const handleRecordClick = (e) => {
@@ -2947,7 +2974,14 @@ export default function VinylScene({
                         <div
                           key={track.id}
                           className={`vinyl-playlist-track-row ${isCurrentPlaying ? 'is-active' : ''}`}
-                          onClick={() => onSelectTrack?.(track, true)}
+                          onClick={() => {
+                            setActivePlayingPlaylistId(selectedCustomPlaylist.id);
+                            const remaining = selectedCustomPlaylist.tracks.slice(idx + 1);
+                            onSelectTrack?.(track, true, true);
+                            if (onSetCustomQueue) {
+                              onSetCustomQueue(remaining);
+                            }
+                          }}
                           style={{ cursor: 'pointer' }}
                         >
                           <span style={{ fontSize: '0.82rem', color: '#8c8375', width: 20, textAlign: 'center' }}>

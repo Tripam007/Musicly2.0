@@ -627,6 +627,17 @@ export default function App() {
   const customQueueRef = useRef(customQueue);
   customQueueRef.current = customQueue;
 
+  // Active playing playlist tracking (ensures playback terminates when playlist finishes)
+  const [activePlayingPlaylistId, setActivePlayingPlaylistId] = useState(() => {
+    try {
+      return localStorage.getItem('musicly_active_playlist_id') || null;
+    } catch {
+      return null;
+    }
+  });
+  const activePlayingPlaylistIdRef = useRef(activePlayingPlaylistId);
+  activePlayingPlaylistIdRef.current = activePlayingPlaylistId;
+
   const handleNextTrackAutoRef = useRef(null);
 
   // Shuffle Tracking: Ensure played songs are never repeated in shuffle mode until all songs in playlist have been played
@@ -903,6 +914,17 @@ export default function App() {
       }
     }
 
+    // 2. If a playlist was actively playing and its queue is now exhausted, stop playback!
+    if (activePlayingPlaylistIdRef.current) {
+      setIsPlaying(false);
+      audioEngine.pause();
+      setActivePlayingPlaylistId(null);
+      try {
+        localStorage.removeItem('musicly_active_playlist_id');
+      } catch {}
+      return;
+    }
+
     const list = activePlaylistRef.current || [];
     if (list.length === 0) return;
 
@@ -963,31 +985,46 @@ export default function App() {
       currentTimeRef.current = 0;
       audioEngine.seek(0);
       audioEngine.play();
-    } else if (rMode === 'all') {
-      handleNextTrack();
     } else {
-      // Repeat mode is OFF
+      // 1. Prioritize user's customized playback queue if present
       if (customQueueRef.current && customQueueRef.current.length > 0) {
         handleNextTrack();
         return;
       }
-      if (shuffle) {
-        const unplayed = list.filter(t => t.id !== track?.id && !playedShuffleTrackIdsRef.current.has(t.id));
-        if (unplayed.length === 0) {
-          // All songs in shuffle have finished and repeat is OFF -> stop playback
-          setIsPlaying(false);
-          audioEngine.pause();
-          return;
-        }
-      } else {
-        const currentIdxInActive = list.findIndex(t => t.id === track?.id);
-        if (currentIdxInActive !== -1 && currentIdxInActive === list.length - 1) {
-          setIsPlaying(false);
-          audioEngine.pause();
-          return;
-        }
+
+      // 2. If a playlist was actively playing and all songs have finished playing -> STOP PLAYBACK!
+      if (activePlayingPlaylistIdRef.current) {
+        setIsPlaying(false);
+        audioEngine.pause();
+        setActivePlayingPlaylistId(null);
+        try {
+          localStorage.removeItem('musicly_active_playlist_id');
+        } catch {}
+        return;
       }
-      handleNextTrack();
+
+      if (rMode === 'all') {
+        handleNextTrack();
+      } else {
+        // Repeat mode is OFF
+        if (shuffle) {
+          const unplayed = list.filter(t => t.id !== track?.id && !playedShuffleTrackIdsRef.current.has(t.id));
+          if (unplayed.length === 0) {
+            // All songs in shuffle have finished and repeat is OFF -> stop playback
+            setIsPlaying(false);
+            audioEngine.pause();
+            return;
+          }
+        } else {
+          const currentIdxInActive = list.findIndex(t => t.id === track?.id);
+          if (currentIdxInActive !== -1 && currentIdxInActive === list.length - 1) {
+            setIsPlaying(false);
+            audioEngine.pause();
+            return;
+          }
+        }
+        handleNextTrack();
+      }
     }
   };
   handleNextTrackAutoRef.current = handleNextTrackAuto;
@@ -2512,7 +2549,9 @@ export default function App() {
           onToggleFavorite={handleToggleFavorite}
           customQueue={customQueue}
           onSetCustomQueue={setCustomQueue}
-          onSelectTrack={(track, shouldPlay) => {
+          activePlayingPlaylistId={activePlayingPlaylistId}
+          onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
+          onSelectTrack={(track, shouldPlay, isFromPlaylist = false) => {
             if (!track) return;
             setCurrentTrackId(track.id);
             setCurrentTime(0);
@@ -2521,6 +2560,12 @@ export default function App() {
               setIsPlaying(shouldPlay);
             }
             setCustomQueue(prev => prev.filter(t => t.id !== track.id));
+            if (!isFromPlaylist) {
+              setActivePlayingPlaylistId(null);
+              try {
+                localStorage.removeItem('musicly_active_playlist_id');
+              } catch {}
+            }
           }}
           onOpenSceneModal={() => setIsSceneOpen(true)}
           onOpenPlaylistDrawer={() => {
