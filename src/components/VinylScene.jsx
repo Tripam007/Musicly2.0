@@ -117,6 +117,48 @@ export default function VinylScene({
     }
   }, []);
 
+  // Horizontal mouse-wheel scrolling for track cards carousel (Queue & Categories)
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+
+    const handleWheel = (e) => {
+      // If predominantly horizontal movement (e.g. trackpad horizontal swipe), let native handle it
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      if (e.deltaY === 0) return;
+
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll <= 0) return;
+
+      // Normalize delta based on deltaMode:
+      // deltaMode 1 = lines (standard desktop mouse wheel on Windows/Linux)
+      // deltaMode 2 = pages
+      // deltaMode 0 = pixels (trackpads, smooth mice)
+      let delta = e.deltaY;
+      if (e.deltaMode === 1) {
+        delta *= 40;
+      } else if (e.deltaMode === 2) {
+        delta *= el.clientWidth * 0.8;
+      }
+
+      const canScrollLeft = el.scrollLeft > 1;
+      const canScrollRight = el.scrollLeft < maxScroll - 1;
+
+      // When the mouse is over this container and scrolling in an available direction,
+      // prevent default vertical page scrolling and scroll this container horizontally
+      if ((delta > 0 && canScrollRight) || (delta < 0 && canScrollLeft)) {
+        e.preventDefault();
+        e.stopPropagation();
+        el.scrollLeft += delta;
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   // Derived upcoming queue: user's custom queue if set, otherwise tracks succeeding currentTrack
   const upcomingQueue = useMemo(() => {
     if (customQueue && customQueue.length > 0) {
@@ -125,11 +167,11 @@ export default function VinylScene({
     if (!allTracks || allTracks.length === 0) return [];
     const currentIdx = allTracks.findIndex(t => t.id === currentTrack?.id);
     if (currentIdx === -1) {
-      return allTracks.slice(0, 10);
+      return allTracks.slice(0, 50);
     }
     const after = allTracks.slice(currentIdx + 1);
     const before = allTracks.slice(0, currentIdx);
-    return [...after, ...before].slice(0, 10);
+    return [...after, ...before].slice(0, 50);
   }, [customQueue, allTracks, currentTrack]);
 
   // Queue reorder drag and drop handler
@@ -2286,14 +2328,6 @@ export default function VinylScene({
                 <div 
                   ref={carouselRef}
                   className={`vinyl-cards-carousel ${carouselViewMode === 'queue' ? 'vinyl-queue-carousel' : ''}`}
-                  onWheel={(e) => {
-                    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                      const el = e.currentTarget;
-                      if (el && el.scrollWidth > el.clientWidth) {
-                        el.scrollLeft += e.deltaY;
-                      }
-                    }
-                  }}
                 >
                   {carouselViewMode === 'queue' ? (
                     upcomingQueue.length === 0 ? (
@@ -2455,7 +2489,7 @@ export default function VinylScene({
                         </button>
                       </div>
                     ) : (
-                      filteredCategoryTracks.slice(0, 4).map(track => {
+                      filteredCategoryTracks.slice(0, 50).map(track => {
                         const isCardPlaying = currentTrack?.id === track.id && isPlaying;
                         const isCurrent = currentTrack?.id === track.id;
 
