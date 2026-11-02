@@ -32,7 +32,9 @@ import {
   Square,
   GripVertical,
   ListPlus,
-  ArrowUpDown
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
 import { LANGUAGES, LANGUAGE_LABELS } from '../data/tracks';
@@ -102,6 +104,15 @@ export default function VinylScene({
   const [carouselViewMode, setCarouselViewMode] = useState('queue');
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
+  const carouselRef = useRef(null);
+
+  const scrollCarousel = useCallback((direction) => {
+    if (carouselRef.current) {
+      const scrollAmount = carouselRef.current.clientWidth * 0.75;
+      carouselRef.current.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+      playClickSound('light');
+    }
+  }, []);
 
   // Derived upcoming queue: user's custom queue if set, otherwise tracks succeeding currentTrack
   const upcomingQueue = useMemo(() => {
@@ -1950,10 +1961,34 @@ export default function VinylScene({
                       {carouselViewMode === 'queue' ? 'UP NEXT QUEUE' : 'MUSIC CATEGORIES'}
                     </h2>
                     {carouselViewMode === 'queue' && (
-                      <span className="vinyl-queue-drag-hint-pill" title="Drag cards horizontally to reorder playback queue">
-                        <GripVertical size={13} />
-                        Drag to reorder
-                      </span>
+                      <>
+                        <span className="vinyl-queue-drag-hint-pill" title="Drag cards horizontally to reorder playback queue">
+                          <GripVertical size={13} />
+                          Drag to reorder
+                        </span>
+                        {upcomingQueue.length > 4 && (
+                          <div className="vinyl-queue-nav-controls">
+                            <button
+                              type="button"
+                              className="vinyl-queue-nav-btn"
+                              onClick={() => scrollCarousel(-1)}
+                              title="Scroll queue left"
+                              aria-label="Scroll queue left"
+                            >
+                              <ChevronLeft size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              className="vinyl-queue-nav-btn"
+                              onClick={() => scrollCarousel(1)}
+                              title="Scroll queue right"
+                              aria-label="Scroll queue right"
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
 
@@ -2051,7 +2086,18 @@ export default function VinylScene({
                 )}
 
                 {/* Carousel: Queue Mode (Drag-and-Drop) vs Categories Browse Mode */}
-                <div className={`vinyl-cards-carousel ${carouselViewMode === 'queue' ? 'vinyl-queue-carousel' : ''}`}>
+                <div 
+                  ref={carouselRef}
+                  className={`vinyl-cards-carousel ${carouselViewMode === 'queue' ? 'vinyl-queue-carousel' : ''}`}
+                  onWheel={(e) => {
+                    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                      const el = e.currentTarget;
+                      if (el && el.scrollWidth > el.clientWidth) {
+                        el.scrollLeft += e.deltaY;
+                      }
+                    }
+                  }}
+                >
                   {carouselViewMode === 'queue' ? (
                     upcomingQueue.length === 0 ? (
                       <div className="vinyl-cards-empty">
@@ -2068,7 +2114,7 @@ export default function VinylScene({
                         </button>
                       </div>
                     ) : (
-                      upcomingQueue.slice(0, 8).map((track, index) => {
+                      upcomingQueue.map((track, index) => {
                         const isCardPlaying = currentTrack?.id === track.id && isPlaying;
                         const isCurrent = currentTrack?.id === track.id;
                         const isDragging = draggedCardIndex === index;
@@ -2088,6 +2134,16 @@ export default function VinylScene({
                             onDragOver={(e) => {
                               e.preventDefault();
                               e.dataTransfer.dropEffect = 'move';
+                              const container = carouselRef.current;
+                              if (container) {
+                                const rect = container.getBoundingClientRect();
+                                const threshold = 55;
+                                if (e.clientX < rect.left + threshold) {
+                                  container.scrollLeft -= 8;
+                                } else if (e.clientX > rect.right - threshold) {
+                                  container.scrollLeft += 8;
+                                }
+                              }
                             }}
                             onDragEnter={(e) => {
                               e.preventDefault();

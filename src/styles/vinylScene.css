@@ -2172,6 +2172,9 @@
 
 .vinyl-cards-empty {
   grid-column: 1 / -1;
+  width: 100%;
+  flex: 1 0 100%;
+  box-sizing: border-box;
   padding: 28px 16px;
   text-align: center;
   background: rgba(255, 255, 255, 0.45);
@@ -2201,6 +2204,34 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+.vinyl-queue-nav-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vinyl-queue-nav-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #383840;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.vinyl-queue-nav-btn:hover {
+  background: #1c1c20;
+  color: #ffffff;
+  border-color: #1c1c20;
+  transform: scale(1.08);
+}
+
 .vinyl-section-mode-tabs {
   display: flex;
   align-items: center;
@@ -2215,12 +2246,34 @@
   border-radius: 14px !important;
 }
 
-/* Featured Track Cards Carousel */
+/* Single Horizontal Line Track Cards Carousel (No 2-row wrapping) */
 .vinyl-cards-carousel {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 16px;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  gap: 14px;
   margin-top: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 2px 10px 2px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Discreet Scrollbar for Horizontal Line Carousel */
+.vinyl-cards-carousel::-webkit-scrollbar {
+  height: 5px;
+}
+.vinyl-cards-carousel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 999px;
+}
+.vinyl-cards-carousel::-webkit-scrollbar-thumb {
+  background: #c5c4bd;
+  border-radius: 999px;
+}
+.vinyl-cards-carousel::-webkit-scrollbar-thumb:hover {
+  background: #9d9c94;
 }
 
 .vinyl-track-card {
@@ -2228,7 +2281,10 @@
   flex-direction: column;
   gap: 8px;
   cursor: pointer;
-  group: card;
+  flex: 0 0 calc((100% - 3 * 14px) / 4);
+  min-width: 135px;
+  max-width: 190px;
+  box-sizing: border-box;
 }
 
 /* Playback Queue Drag and Drop Card Styles */
