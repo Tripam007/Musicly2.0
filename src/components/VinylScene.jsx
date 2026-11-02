@@ -107,80 +107,32 @@ export default function VinylScene({
   const [carouselViewMode, setCarouselViewMode] = useState('queue');
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
-  const carouselRef = useRef(null);
-  const categoriesSectionRef = useRef(null);
 
-  const scrollCarousel = useCallback((direction) => {
-    if (carouselRef.current) {
-      const scrollAmount = carouselRef.current.clientWidth * 0.75;
-      carouselRef.current.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
-      playClickSound('light');
-    }
-  }, []);
-
-  // Unconditional horizontal wheel scrolling:
-  // When mouse cursor is hovered over this section, vertical page scrolling is 100% prevented,
-  // and translated purely into horizontal scroll to show the rest of the songs!
-  const handleCarouselWheel = useCallback((e) => {
-    // 1. ALWAYS prevent default vertical scrolling when wheel is turned over this section!
-    e.preventDefault();
-    e.stopPropagation();
-
-    const el = carouselRef.current;
-    if (!el) return;
-
-    // Detect if this is a native horizontal gesture (e.g. trackpad horizontal swipe)
-    const isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
-    let delta = isHorizontal ? e.deltaX : e.deltaY;
-
-    if (delta === 0) return;
-
-    // Normalize delta across input devices (standard mouse wheel vs trackpad)
-    if (e.deltaMode === 1) {
-      // Lines mode (standard mouse wheel on Windows/Linux)
-      delta *= 42;
-    } else if (e.deltaMode === 2) {
-      // Pages mode
-      delta *= el.clientWidth * 0.75;
-    }
-
-    // Direct, instant, jitter-free horizontal scroll
-    el.scrollLeft += delta;
-  }, []);
-
-  const setCarouselRef = useCallback((node) => {
-    if (carouselRef.current) {
-      carouselRef.current.removeEventListener('wheel', handleCarouselWheel);
-    }
-    carouselRef.current = node;
-    if (node) {
-      node.addEventListener('wheel', handleCarouselWheel, { passive: false });
-    }
-  }, [handleCarouselWheel]);
-
-  const setCategoriesSectionRef = useCallback((node) => {
-    if (categoriesSectionRef.current) {
-      categoriesSectionRef.current.removeEventListener('wheel', handleCarouselWheel);
-    }
-    categoriesSectionRef.current = node;
-    if (node) {
-      node.addEventListener('wheel', handleCarouselWheel, { passive: false });
-    }
-  }, [handleCarouselWheel]);
-
-  // Derived upcoming queue: user's custom queue if set, otherwise tracks succeeding currentTrack
+  // Derived upcoming queue: shows only the next 4 upcoming songs at a time,
+  // automatically reloading as songs finish playing
   const upcomingQueue = useMemo(() => {
-    if (customQueue && customQueue.length > 0) {
-      return customQueue;
-    }
     if (!allTracks || allTracks.length === 0) return [];
+
+    // Prioritize user's customized playback queue if present
+    if (customQueue && customQueue.length > 0) {
+      if (customQueue.length >= 4) {
+        return customQueue.slice(0, 4);
+      }
+      const currentIdx = allTracks.findIndex(t => t.id === currentTrack?.id);
+      const customIds = new Set(customQueue.map(t => t.id));
+      const after = allTracks.slice(currentIdx + 1).filter(t => !customIds.has(t.id) && t.id !== currentTrack?.id);
+      const before = allTracks.slice(0, Math.max(0, currentIdx)).filter(t => !customIds.has(t.id) && t.id !== currentTrack?.id);
+      const remaining = [...after, ...before];
+      return [...customQueue, ...remaining].slice(0, 4);
+    }
+
     const currentIdx = allTracks.findIndex(t => t.id === currentTrack?.id);
     if (currentIdx === -1) {
-      return allTracks.slice(0, 50);
+      return allTracks.slice(0, 4);
     }
     const after = allTracks.slice(currentIdx + 1);
     const before = allTracks.slice(0, currentIdx);
-    return [...after, ...before].slice(0, 50);
+    return [...after, ...before].slice(0, 4);
   }, [customQueue, allTracks, currentTrack]);
 
   // Queue reorder drag and drop handler
@@ -2202,41 +2154,17 @@ export default function VinylScene({
             <section className="vinyl-content-column" aria-label="Music Discovery and Playlists">
 
               {/* Up Next Playback Queue & Categories Section */}
-              <div ref={setCategoriesSectionRef} className="vinyl-categories-section">
+              <div className="vinyl-categories-section">
                 <div className="vinyl-section-header">
                   <div className="vinyl-section-title-wrap">
                     <h2 className="vinyl-section-title">
                       {carouselViewMode === 'queue' ? 'UP NEXT QUEUE' : 'MUSIC CATEGORIES'}
                     </h2>
                     {carouselViewMode === 'queue' && (
-                      <>
-                        <span className="vinyl-queue-drag-hint-pill" title="Drag cards horizontally to reorder playback queue">
-                          <GripVertical size={13} />
-                          Drag to reorder
-                        </span>
-                        {upcomingQueue.length > 4 && (
-                          <div className="vinyl-queue-nav-controls">
-                            <button
-                              type="button"
-                              className="vinyl-queue-nav-btn"
-                              onClick={() => scrollCarousel(-1)}
-                              title="Scroll queue left"
-                              aria-label="Scroll queue left"
-                            >
-                              <ChevronLeft size={14} />
-                            </button>
-                            <button
-                              type="button"
-                              className="vinyl-queue-nav-btn"
-                              onClick={() => scrollCarousel(1)}
-                              title="Scroll queue right"
-                              aria-label="Scroll queue right"
-                            >
-                              <ChevronRight size={14} />
-                            </button>
-                          </div>
-                        )}
-                      </>
+                      <span className="vinyl-queue-drag-hint-pill" title="Drag cards horizontally to reorder playback queue">
+                        <GripVertical size={13} />
+                        Drag to reorder
+                      </span>
                     )}
                   </div>
 
@@ -2333,9 +2261,8 @@ export default function VinylScene({
                   </>
                 )}
 
-                {/* Carousel: Queue Mode (Drag-and-Drop) vs Categories Browse Mode */}
+                {/* 4 Cards Row: Queue Mode (Drag-and-Drop) vs Categories Browse Mode */}
                 <div
-                  ref={setCarouselRef}
                   className={`vinyl-cards-carousel ${carouselViewMode === 'queue' ? 'vinyl-queue-carousel' : ''}`}
                 >
                   {carouselViewMode === 'queue' ? (
@@ -2374,16 +2301,6 @@ export default function VinylScene({
                             onDragOver={(e) => {
                               e.preventDefault();
                               e.dataTransfer.dropEffect = 'move';
-                              const container = carouselRef.current;
-                              if (container) {
-                                const rect = container.getBoundingClientRect();
-                                const threshold = 55;
-                                if (e.clientX < rect.left + threshold) {
-                                  container.scrollLeft -= 8;
-                                } else if (e.clientX > rect.right - threshold) {
-                                  container.scrollLeft += 8;
-                                }
-                              }
                             }}
                             onDragEnter={(e) => {
                               e.preventDefault();
@@ -2498,7 +2415,7 @@ export default function VinylScene({
                         </button>
                       </div>
                     ) : (
-                      filteredCategoryTracks.slice(0, 50).map(track => {
+                      filteredCategoryTracks.slice(0, 4).map(track => {
                         const isCardPlaying = currentTrack?.id === track.id && isPlaying;
                         const isCurrent = currentTrack?.id === track.id;
 
