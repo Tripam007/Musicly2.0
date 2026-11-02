@@ -2186,6 +2186,35 @@
   color: var(--vinyl-text-secondary);
 }
 
+/* Queue Drag Hint Badge & Mode Tabs */
+.vinyl-queue-drag-hint-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--vinyl-font-sans, sans-serif);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #727278;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.vinyl-section-mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vinyl-mode-pill {
+  font-size: 0.68rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  padding: 5px 12px !important;
+  border-radius: 14px !important;
+}
+
 /* Featured Track Cards Carousel */
 .vinyl-cards-carousel {
   display: grid;
@@ -2200,6 +2229,144 @@
   gap: 8px;
   cursor: pointer;
   group: card;
+}
+
+/* Playback Queue Drag and Drop Card Styles */
+.vinyl-queue-card {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.22s ease, opacity 0.2s ease;
+}
+
+.vinyl-queue-card:active {
+  cursor: grabbing;
+}
+
+.vinyl-queue-card.is-dragging {
+  opacity: 0.35;
+  transform: scale(0.94);
+  cursor: grabbing;
+}
+
+.vinyl-queue-card.is-drop-target .vinyl-card-art-box {
+  transform: scale(1.05) translateY(-4px);
+  border-color: #ffb703 !important;
+  box-shadow: 0 0 0 2px #ffb703, 0 10px 24px rgba(251, 133, 0, 0.35) !important;
+}
+
+/* Queue Position Badge */
+.vinyl-queue-order-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(14, 16, 22, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffb703;
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 3px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 183, 3, 0.35);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+  pointer-events: none;
+  line-height: 1.1;
+}
+
+/* Drag Grip Handle */
+.vinyl-queue-drag-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: rgba(14, 16, 22, 0.72);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.65;
+  transition: all 0.2s ease;
+  z-index: 2;
+  cursor: grab;
+}
+
+.vinyl-track-card:hover .vinyl-queue-drag-handle {
+  opacity: 1;
+  color: #ffffff;
+  background: rgba(22, 25, 36, 0.95);
+  transform: scale(1.06);
+}
+
+/* Queue Remove Action */
+.vinyl-queue-remove-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.85);
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.vinyl-track-card:hover .vinyl-queue-remove-btn {
+  opacity: 1;
+}
+
+.vinyl-queue-remove-btn:hover {
+  transform: scale(1.15);
+  background: #ef4444;
+}
+
+/* Category Card + Queue Button */
+.vinyl-card-queue-add-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(14, 16, 22, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffb703;
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 3px 7px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.vinyl-track-card:hover .vinyl-card-queue-add-btn {
+  opacity: 1;
+}
+
+.vinyl-card-queue-add-btn:hover {
+  transform: scale(1.08);
+  background: #ffb703;
+  color: #0d0d0f;
 }
 
 .vinyl-card-art-box {

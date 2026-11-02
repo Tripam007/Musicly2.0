@@ -622,6 +622,11 @@ export default function App() {
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
 
+  // Custom Playback Queue (allows user to reorder upcoming songs via drag & drop)
+  const [customQueue, setCustomQueue] = useState([]);
+  const customQueueRef = useRef(customQueue);
+  customQueueRef.current = customQueue;
+
   const handleNextTrackAutoRef = useRef(null);
 
   // Shuffle Tracking: Ensure played songs are never repeated in shuffle mode until all songs in playlist have been played
@@ -884,6 +889,20 @@ export default function App() {
 
   // Next Track: Jumps to the next song in the active (selected) section without repeating played songs in shuffle mode
   const handleNextTrack = () => {
+    // 1. Prioritize user's customized playback queue if present
+    if (customQueueRef.current && customQueueRef.current.length > 0) {
+      const [nextQueuedTrack, ...remainingQueue] = customQueueRef.current;
+      setCustomQueue(remainingQueue);
+      customQueueRef.current = remainingQueue;
+      if (nextQueuedTrack) {
+        setCurrentTime(0);
+        currentTimeRef.current = 0;
+        setCurrentTrackId(nextQueuedTrack.id);
+        setIsPlaying(true);
+        return;
+      }
+    }
+
     const list = activePlaylistRef.current || [];
     if (list.length === 0) return;
 
@@ -948,6 +967,10 @@ export default function App() {
       handleNextTrack();
     } else {
       // Repeat mode is OFF
+      if (customQueueRef.current && customQueueRef.current.length > 0) {
+        handleNextTrack();
+        return;
+      }
       if (shuffle) {
         const unplayed = list.filter(t => t.id !== track?.id && !playedShuffleTrackIdsRef.current.has(t.id));
         if (unplayed.length === 0) {
@@ -2487,6 +2510,8 @@ export default function App() {
           onToggleRepeat={handleToggleRepeat}
           favorites={favorites}
           onToggleFavorite={handleToggleFavorite}
+          customQueue={customQueue}
+          onSetCustomQueue={setCustomQueue}
           onSelectTrack={(track, shouldPlay) => {
             if (!track) return;
             setCurrentTrackId(track.id);
@@ -2495,6 +2520,7 @@ export default function App() {
             if (shouldPlay !== undefined) {
               setIsPlaying(shouldPlay);
             }
+            setCustomQueue(prev => prev.filter(t => t.id !== track.id));
           }}
           onOpenSceneModal={() => setIsSceneOpen(true)}
           onOpenPlaylistDrawer={() => {

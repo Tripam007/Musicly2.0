@@ -29,7 +29,10 @@ import {
   Trash2,
   Edit3,
   CheckSquare,
-  Square
+  Square,
+  GripVertical,
+  ListPlus,
+  ArrowUpDown
 } from 'lucide-react';
 import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
 import { LANGUAGES, LANGUAGE_LABELS } from '../data/tracks';
@@ -87,11 +90,69 @@ export default function VinylScene({
   selectedLanguage = null,
   selectedLanguages = [],
   onSelectLanguage = null,
-  onOpenAboutUs = null
+  onOpenAboutUs = null,
+  customQueue = [],
+  onSetCustomQueue = null
 }) {
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [localLanguages, setLocalLanguages] = useState([]);
   const [isLikedPanelOpen, setIsLikedPanelOpen] = useState(false);
+
+  // Playback Queue & Drag-and-Drop States
+  const [carouselViewMode, setCarouselViewMode] = useState('queue');
+  const [draggedCardIndex, setDraggedCardIndex] = useState(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState(null);
+
+  // Derived upcoming queue: user's custom queue if set, otherwise tracks succeeding currentTrack
+  const upcomingQueue = useMemo(() => {
+    if (customQueue && customQueue.length > 0) {
+      return customQueue;
+    }
+    if (!allTracks || allTracks.length === 0) return [];
+    const currentIdx = allTracks.findIndex(t => t.id === currentTrack?.id);
+    if (currentIdx === -1) {
+      return allTracks.slice(0, 10);
+    }
+    const after = allTracks.slice(currentIdx + 1);
+    const before = allTracks.slice(0, currentIdx);
+    return [...after, ...before].slice(0, 10);
+  }, [customQueue, allTracks, currentTrack]);
+
+  // Queue reorder drag and drop handler
+  const handleQueueReorder = useCallback((fromIndex, toIndex) => {
+    if (fromIndex === toIndex || fromIndex === null || toIndex === null) return;
+    const reordered = [...upcomingQueue];
+    const [movedItem] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, movedItem);
+    if (onSetCustomQueue) {
+      onSetCustomQueue(reordered);
+    }
+    playClickSound('toggle');
+  }, [upcomingQueue, onSetCustomQueue]);
+
+  // Remove track from queue
+  const handleRemoveFromQueue = useCallback((trackId, e) => {
+    e?.stopPropagation?.();
+    const filtered = upcomingQueue.filter(t => t.id !== trackId);
+    if (onSetCustomQueue) {
+      onSetCustomQueue(filtered);
+    }
+    playClickSound('light');
+  }, [upcomingQueue, onSetCustomQueue]);
+
+  // Add track to queue from categories
+  const handleAddToQueue = useCallback((track, e) => {
+    e?.stopPropagation?.();
+    if (!track) return;
+    const alreadyIn = upcomingQueue.some(t => t.id === track.id);
+    const updated = alreadyIn
+      ? [...upcomingQueue.filter(t => t.id !== track.id), track]
+      : [...upcomingQueue, track];
+    if (onSetCustomQueue) {
+      onSetCustomQueue(updated);
+    }
+    playPeacefulLikeSound();
+  }, [upcomingQueue, onSetCustomQueue]);
 
   // User Custom Playlists Persistence
   const [customPlaylists, setCustomPlaylists] = useState(() => {
@@ -1881,131 +1942,307 @@ export default function VinylScene({
                ========================================================================== */}
             <section className="vinyl-content-column" aria-label="Music Discovery and Playlists">
               
-              {/* Categories Section */}
+              {/* Up Next Playback Queue & Categories Section */}
               <div className="vinyl-categories-section">
                 <div className="vinyl-section-header">
                   <div className="vinyl-section-title-wrap">
-                    <h2 className="vinyl-section-title">Music Categories</h2>
+                    <h2 className="vinyl-section-title">
+                      {carouselViewMode === 'queue' ? 'UP NEXT QUEUE' : 'MUSIC CATEGORIES'}
+                    </h2>
+                    {carouselViewMode === 'queue' && (
+                      <span className="vinyl-queue-drag-hint-pill" title="Drag cards horizontally to reorder playback queue">
+                        <GripVertical size={13} />
+                        Drag to reorder
+                      </span>
+                    )}
                   </div>
 
-                  {/* Language Selection Section Beside Here in the Same Format */}
-                  <div className="vinyl-lang-selection-section" aria-label="Language Selection">
-                    <span className="vinyl-lang-header-label">LANGUAGES:</span>
-                    <div className="vinyl-lang-pills-row" role="tablist">
-                      <button
-                        type="button"
-                        role="tab"
-                        aria-selected={activeLanguages.length === 0}
-                        className={`vinyl-category-pill vinyl-lang-pill ${activeLanguages.length === 0 ? 'is-active' : ''}`}
-                        onClick={() => handleLanguageToggle('All')}
-                        title="Show songs in all languages"
-                      >
-                        ALL
-                      </button>
-                      {LANGUAGES.map(lang => {
-                        const isSelected = activeLanguages.some(l => l.toLowerCase() === lang.toLowerCase());
-                        return (
-                          <button
-                            key={lang}
-                            type="button"
-                            role="tab"
-                            aria-selected={isSelected}
-                            className={`vinyl-category-pill vinyl-lang-pill ${isSelected ? 'is-active' : ''}`}
-                            onClick={() => handleLanguageToggle(lang)}
-                            title={`Filter by ${LANGUAGE_LABELS[lang] || lang}`}
-                          >
-                            {lang.toUpperCase()}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <button 
-                      className="vinyl-section-link"
-                      onClick={onOpenPlaylistDrawer}
-                      style={{ background: 'none', border: 'none', padding: 0 }}
+                  {/* Section Mode Switcher Tabs */}
+                  <div className="vinyl-section-mode-tabs" role="tablist">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={carouselViewMode === 'queue'}
+                      className={`vinyl-category-pill vinyl-mode-pill ${carouselViewMode === 'queue' ? 'is-active' : ''}`}
+                      onClick={() => {
+                        setCarouselViewMode('queue');
+                        playClickSound('light');
+                      }}
+                      title="View and reorder upcoming playback queue"
                     >
-                      View all
+                      UP NEXT ({upcomingQueue.length})
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={carouselViewMode === 'categories'}
+                      className={`vinyl-category-pill vinyl-mode-pill ${carouselViewMode === 'categories' ? 'is-active' : ''}`}
+                      onClick={() => {
+                        setCarouselViewMode('categories');
+                        playClickSound('light');
+                      }}
+                      title="Browse tracks by music category & language"
+                    >
+                      BROWSE CATEGORIES
                     </button>
                   </div>
                 </div>
 
-                {/* Horizontal Category Pills */}
-                <div className="vinyl-categories-row" role="tablist">
-                  {displayCategories.map(category => {
-                    const isSelected = activeCategory === category;
-                    return (
-                      <button
-                        key={category}
-                        role="tab"
-                        aria-selected={isSelected}
-                        className={`vinyl-category-pill ${isSelected ? 'is-active' : ''}`}
-                        onClick={() => handleCategoryClick(category)}
-                      >
-                        {category}
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* If in Categories Mode: Display Language & Category Selector Pills */}
+                {carouselViewMode === 'categories' && (
+                  <>
+                    <div className="vinyl-lang-selection-section" aria-label="Language Selection">
+                      <span className="vinyl-lang-header-label">LANGUAGES:</span>
+                      <div className="vinyl-lang-pills-row" role="tablist">
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={activeLanguages.length === 0}
+                          className={`vinyl-category-pill vinyl-lang-pill ${activeLanguages.length === 0 ? 'is-active' : ''}`}
+                          onClick={() => handleLanguageToggle('All')}
+                          title="Show songs in all languages"
+                        >
+                          ALL
+                        </button>
+                        {LANGUAGES.map(lang => {
+                          const isSelected = activeLanguages.some(l => l.toLowerCase() === lang.toLowerCase());
+                          return (
+                            <button
+                              key={lang}
+                              type="button"
+                              role="tab"
+                              aria-selected={isSelected}
+                              className={`vinyl-category-pill vinyl-lang-pill ${isSelected ? 'is-active' : ''}`}
+                              onClick={() => handleLanguageToggle(lang)}
+                              title={`Filter by ${LANGUAGE_LABELS[lang] || lang}`}
+                            >
+                              {lang.toUpperCase()}
+                            </button>
+                          );
+                        })}
+                      </div>
 
-                {/* Horizontal Featured Cards Carousel */}
-                <div className="vinyl-cards-carousel">
-                  {filteredCategoryTracks.length === 0 ? (
-                    <div className="vinyl-cards-empty">
-                      <span>No tracks found in this category & language.</span>
                       <button 
-                        type="button"
-                        className="vinyl-category-pill"
-                        onClick={() => {
-                          setActiveCategory('ALL');
-                          handleLanguageToggle('All');
-                        }}
+                        className="vinyl-section-link"
+                        onClick={onOpenPlaylistDrawer}
+                        style={{ background: 'none', border: 'none', padding: 0 }}
                       >
-                        RESET FILTERS
+                        View all
                       </button>
                     </div>
-                  ) : (
-                    filteredCategoryTracks.slice(0, 4).map(track => {
-                      const isCardPlaying = currentTrack?.id === track.id && isPlaying;
-                      const isCurrent = currentTrack?.id === track.id;
 
-                      return (
-                        <div 
-                          key={track.id}
-                          className="vinyl-track-card"
-                          onClick={() => onSelectTrack?.(track, true)}
-                          title={`Play "${track.title}" by ${track.artist}`}
+                    <div className="vinyl-categories-row" role="tablist">
+                      {displayCategories.map(category => {
+                        const isSelected = activeCategory === category;
+                        return (
+                          <button
+                            key={category}
+                            role="tab"
+                            aria-selected={isSelected}
+                            className={`vinyl-category-pill ${isSelected ? 'is-active' : ''}`}
+                            onClick={() => handleCategoryClick(category)}
+                          >
+                            {category}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {/* Carousel: Queue Mode (Drag-and-Drop) vs Categories Browse Mode */}
+                <div className={`vinyl-cards-carousel ${carouselViewMode === 'queue' ? 'vinyl-queue-carousel' : ''}`}>
+                  {carouselViewMode === 'queue' ? (
+                    upcomingQueue.length === 0 ? (
+                      <div className="vinyl-cards-empty">
+                        <span>No upcoming tracks in queue.</span>
+                        <button 
+                          type="button"
+                          className="vinyl-category-pill"
+                          onClick={() => {
+                            setCarouselViewMode('categories');
+                            playClickSound('light');
+                          }}
                         >
-                          <div className="vinyl-card-art-box">
-                            <img 
-                              src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'} 
-                              alt={track.title} 
-                              className="vinyl-card-img" 
-                              loading="lazy"
-                            />
-                            <div className="vinyl-card-play-overlay">
-                              <div className="vinyl-card-play-circle">
-                                {isCardPlaying ? (
-                                  <Pause size={18} fill="#0d0d0f" />
-                                ) : (
-                                  <Play size={18} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
-                                )}
-                              </div>
-                            </div>
-                            {isCurrent && (
-                              <div className="vinyl-card-active-indicator">
-                                {isPlaying ? 'PLAYING' : 'ACTIVE'}
-                              </div>
-                            )}
-                          </div>
+                          BROWSE SONGS TO QUEUE
+                        </button>
+                      </div>
+                    ) : (
+                      upcomingQueue.slice(0, 8).map((track, index) => {
+                        const isCardPlaying = currentTrack?.id === track.id && isPlaying;
+                        const isCurrent = currentTrack?.id === track.id;
+                        const isDragging = draggedCardIndex === index;
+                        const isDropTarget = dropTargetIndex === index;
 
-                          <div className="vinyl-card-meta">
-                            <span className="vinyl-card-title">{track.title}</span>
-                            <span className="vinyl-card-artist">by {track.artist}</span>
+                        return (
+                          <div 
+                            key={track.id}
+                            className={`vinyl-track-card vinyl-queue-card ${isDragging ? 'is-dragging' : ''} ${isDropTarget ? 'is-drop-target' : ''}`}
+                            draggable={true}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', String(index));
+                              e.dataTransfer.effectAllowed = 'move';
+                              setDraggedCardIndex(index);
+                              playClickSound('light');
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.dataTransfer.dropEffect = 'move';
+                            }}
+                            onDragEnter={(e) => {
+                              e.preventDefault();
+                              setDropTargetIndex(index);
+                            }}
+                            onDragLeave={() => {
+                              if (dropTargetIndex === index) setDropTargetIndex(null);
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedCardIndex !== null && draggedCardIndex !== index) {
+                                handleQueueReorder(draggedCardIndex, index);
+                              }
+                              setDraggedCardIndex(null);
+                              setDropTargetIndex(null);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedCardIndex(null);
+                              setDropTargetIndex(null);
+                            }}
+                            onClick={() => {
+                              onSelectTrack?.(track, true);
+                              if (onSetCustomQueue) {
+                                onSetCustomQueue(upcomingQueue.filter(t => t.id !== track.id));
+                              }
+                            }}
+                            title={`#${index + 1} in queue: "${track.title}" by ${track.artist}. Drag to reorder, click to play.`}
+                          >
+                            <div className="vinyl-card-art-box">
+                              <img 
+                                src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'} 
+                                alt={track.title} 
+                                className="vinyl-card-img" 
+                                loading="lazy"
+                                draggable={false}
+                              />
+
+                              {/* Queue Position Badge */}
+                              <div className="vinyl-queue-order-badge">
+                                {index === 0 ? 'UP NEXT' : `#${index + 1}`}
+                              </div>
+
+                              {/* Drag Handle Indicator */}
+                              <div className="vinyl-queue-drag-handle" title="Drag to reorder position in queue">
+                                <GripVertical size={14} />
+                              </div>
+
+                              {/* Remove from queue quick action */}
+                              <button
+                                type="button"
+                                className="vinyl-queue-remove-btn"
+                                onClick={(e) => handleRemoveFromQueue(track.id, e)}
+                                title="Remove from queue"
+                                aria-label="Remove from queue"
+                              >
+                                <X size={12} />
+                              </button>
+
+                              <div className="vinyl-card-play-overlay">
+                                <div className="vinyl-card-play-circle">
+                                  {isCardPlaying ? (
+                                    <Pause size={18} fill="#0d0d0f" />
+                                  ) : (
+                                    <Play size={18} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
+                                  )}
+                                </div>
+                              </div>
+
+                              {isCurrent && (
+                                <div className="vinyl-card-active-indicator">
+                                  {isPlaying ? 'PLAYING' : 'ACTIVE'}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="vinyl-card-meta">
+                              <span className="vinyl-card-title">{track.title}</span>
+                              <span className="vinyl-card-artist">by {track.artist}</span>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })
+                    )
+                  ) : (
+                    filteredCategoryTracks.length === 0 ? (
+                      <div className="vinyl-cards-empty">
+                        <span>No tracks found in this category & language.</span>
+                        <button 
+                          type="button"
+                          className="vinyl-category-pill"
+                          onClick={() => {
+                            setActiveCategory('ALL');
+                            handleLanguageToggle('All');
+                          }}
+                        >
+                          RESET FILTERS
+                        </button>
+                      </div>
+                    ) : (
+                      filteredCategoryTracks.slice(0, 4).map(track => {
+                        const isCardPlaying = currentTrack?.id === track.id && isPlaying;
+                        const isCurrent = currentTrack?.id === track.id;
+
+                        return (
+                          <div 
+                            key={track.id}
+                            className="vinyl-track-card"
+                            onClick={() => onSelectTrack?.(track, true)}
+                            title={`Play "${track.title}" by ${track.artist}`}
+                          >
+                            <div className="vinyl-card-art-box">
+                              <img 
+                                src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'} 
+                                alt={track.title} 
+                                className="vinyl-card-img" 
+                                loading="lazy"
+                              />
+
+                              {/* Add to Queue Button */}
+                              <button
+                                type="button"
+                                className="vinyl-card-queue-add-btn"
+                                onClick={(e) => handleAddToQueue(track, e)}
+                                title="Add to upcoming queue"
+                                aria-label="Add to upcoming queue"
+                              >
+                                <ListPlus size={12} />
+                                Queue
+                              </button>
+
+                              <div className="vinyl-card-play-overlay">
+                                <div className="vinyl-card-play-circle">
+                                  {isCardPlaying ? (
+                                    <Pause size={18} fill="#0d0d0f" />
+                                  ) : (
+                                    <Play size={18} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
+                                  )}
+                                </div>
+                              </div>
+
+                              {isCurrent && (
+                                <div className="vinyl-card-active-indicator">
+                                  {isPlaying ? 'PLAYING' : 'ACTIVE'}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="vinyl-card-meta">
+                              <span className="vinyl-card-title">{track.title}</span>
+                              <span className="vinyl-card-artist">by {track.artist}</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
                   )}
                 </div>
               </div>
