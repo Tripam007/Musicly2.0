@@ -1,86 +1,75 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Heart, Sun, Moon } from 'lucide-react';
-import { playCatSound, playClickSound } from '../utils/audioSynth';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { playCatSound } from '../utils/audioSynth';
 import '../styles/pixelCat.css';
 
 // -------------------------------------------------------------
-// Realistic Anatomical Pixel Cat Sprites
-// Natural feline proportions: distinct oval head, pointed ears with pink interior,
-// centered almond eyes with pupils and highlights, cute muzzle with whiskers,
-// curved body, realistic quadruped legs and curved tail.
+// Pure Black & White Realistic Pixel Cat Sprites
+// Natural feline anatomy: distinct head, pointed ears with inner ear,
+// almond eyes with pupils, nose, whiskers, 4 realistic legs with paws,
+// and an elegant curved tail.
 //
 // Legend:
 // . = transparent
-// 1 = outline / dark definition
-// 2 = primary fur
-// 3 = secondary fur / belly / chest / muzzle bib
-// 4 = inner ear (pink)
-// 5 = eye iris
-// 6 = eye pupil
-// 7 = eye specular shine
-// 8 = nose pink
-// 9 = whisker (subtle)
-// A = fur stripe / pattern patch
-// B = headphone ear cup (amber / gold)
-// C = headphone headband (silver)
-// - = closed resting eye line
+// 1 = pure black (#111111)
+// 2 = pure white (#ffffff)
+// - = closed sleeping/blinking eye line (#111111)
 // -------------------------------------------------------------
 const SPRITES = {
   sit: [
     '..........................',
     '....11..............11....',
-    '...1441............1441...',
-    '...14221111111111112241...',
+    '...1221............1221...',
+    '...12221111111111112221...',
     '..1222222222222222222221..',
     '..1222222222222222222221..',
-    '..1225622222222222256221..',
-    '.912276222288222222762219.',
-    '99122222223333222222222199',
-    '.9.11222233333322222211.9.',
-    '....112233333333222211....',
-    '....12223333333322221.....',
-    '...1222233333333222221....',
-    '..122222333333332222221...',
-    '..122212333333332122221...',
-    '..1221.1221111221.12221..1',
-    '..1221.1221..1221.12221.121',
-    '..1221.1221..1221.122221221',
-    '.12221.1221..1221..11122221',
-    '.11111.1111..1111....11111.'
+    '..1221122222222222211221..',
+    '.122211222211222222112221.',
+    '11122222221111222222222111',
+    '..12222222211222222222221..',
+    '...1122222222222222222211..',
+    '....1222222222222222221....',
+    '...122222222222222222221...',
+    '..12222222222222222222221..',
+    '..12221222211222212222221..1',
+    '..1221.1221..1221.1222221.121',
+    '..1221.1221..1221.12222211221',
+    '..1221.1221..1221..1222221221',
+    '.12221.1221..1221...111111221',
+    '.11111.1111..1111........1111'
   ],
   sitBlink: [
     '..........................',
     '....11..............11....',
-    '...1441............1441...',
-    '...14221111111111112241...',
+    '...1221............1221...',
+    '...12221111111111112221...',
     '..1222222222222222222221..',
     '..1222222222222222222221..',
     '..122--222222222222--221..',
-    '.9122--222288222222--2219.',
-    '99122222223333222222222199',
-    '.9.11222233333322222211.9.',
-    '....112233333333222211....',
-    '....12223333333322221.....',
-    '...1222233333333222221....',
-    '..122222333333332222221...',
-    '..122212333333332122221...',
-    '..1221.1221111221.12221..1',
-    '..1221.1221..1221.12221.121',
-    '..1221.1221..1221.122221221',
-    '.12221.1221..1221..11122221',
-    '.11111.1111..1111....11111.'
+    '.1222--222211222222--2221.',
+    '11122222221111222222222111',
+    '..12222222211222222222221..',
+    '...1122222222222222222211..',
+    '....1222222222222222221....',
+    '...122222222222222222221...',
+    '..12222222222222222222221..',
+    '..12221222211222212222221..1',
+    '..1221.1221..1221.1222221.121',
+    '..1221.1221..1221.12222211221',
+    '..1221.1221..1221..1222221221',
+    '.12221.1221..1221...111111221',
+    '.11111.1111..1111........1111'
   ],
   walk1: [
     '............................',
     '...11.....11................',
-    '..1441...1441...............',
-    '..14221112241...............',
+    '..1221...1221...............',
+    '..12221112221...............',
     '.1222222222211111111111.....',
     '.12222222222222222222221....',
-    '.125622222222222222222221...',
-    '91276222882223333333222211..',
-    '912222222222233333332222121.',
-    '.11122222222233333332222121.',
+    '.121122222222222222222221...',
+    '11211222112222222222222211..',
+    '112222222222222222222222121.',
+    '.11122222222222222222222121.',
     '...112222222222222222222121.',
     '....122211221.122211222121..',
     '...12221..1221.12221111121..',
@@ -91,14 +80,14 @@ const SPRITES = {
   walk2: [
     '............................',
     '...11.....11................',
-    '..1441...1441...............',
-    '..14221112241...............',
+    '..1221...1221...............',
+    '..12221112221...............',
     '.1222222222211111111111.....',
     '.12222222222222222222221....',
-    '.125622222222222222222221.1.',
-    '9127622288222333333322221121',
-    '9122222222222333333322221221',
-    '.11122222222233333332222121.',
+    '.121122222222222222222221.1.',
+    '1121122211222222222222221121',
+    '1122222222222222222222221221',
+    '.11122222222222222222222121.',
     '...112222222222222222222121.',
     '....1111222221111111111111..',
     '....1221.1221.1221.1221.....',
@@ -109,14 +98,14 @@ const SPRITES = {
   walk3: [
     '............................',
     '...11.....11................',
-    '..1441...1441...............',
-    '..14221112241...............',
+    '..1221...1221...............',
+    '..12221112221...............',
     '.1222222222211111111111.....',
     '.12222222222222222222221....',
-    '.125622222222222222222221...',
-    '91276222882223333333222211..',
-    '912222222222233333332222121.',
-    '.11122222222233333332222121.',
+    '.121122222222222222222221...',
+    '11211222112222222222222211..',
+    '112222222222222222222222121.',
+    '.11122222222222222222222121.',
     '...112222222222222222222121.',
     '....1222112221..12211222121.',
     '....1221..12221.1221.111121.',
@@ -132,14 +121,14 @@ const SPRITES = {
     '..........................',
     '..........................',
     '....11..............11....',
-    '...1441............1441...',
-    '...14221111111111112241...',
+    '...1221............1221...',
+    '...12221111111111112221...',
     '..1222222222222222222221..',
     '..122--222222222222--221..',
-    '.9122--222288222222--2219.',
-    '99122222223333222222222199',
-    '.9122222222222222222222219',
-    '..12223333333333332222221.',
+    '.1222--222211222222--2221.',
+    '11122222221111222222222111',
+    '..12222222222222222222221.',
+    '..12222222222222222222221.',
     '..12222222222222222222221.',
     '..122222222222222222222111',
     '..122222222222222222221121',
@@ -149,230 +138,86 @@ const SPRITES = {
   play: [
     '..........................',
     '....11..............11....',
-    '...1441............1441...',
-    '...14221111111111112241...',
+    '...1221............1221...',
+    '...12221111111111112221...',
     '..1222222222222222222221..',
-    '..1225622222222222256221..',
-    '.912276222288222222762219.',
-    '99122222223333222222222199',
-    '.9.11222233333322222211.9.',
-    '....112233333333222211.11.',
-    '....12223333333322221.1221',
-    '...1222233333333222221.11.',
-    '..122222333333332222221...',
-    '..122212333333332122221...',
-    '..11221111111111112211....',
-    '...1221..........1221.....',
-    '..1221............1221....',
-    '..111..............111...'
-  ],
-  vibe: [
-    '......CCCCCCCCCCCC........',
-    '....CC11CCCCCCCC11CC......',
-    '...CB44BC......CB44BC.....',
-    '...CB22B11111111B22BC.....',
-    '..CB222B22222222B222BC....',
-    '..CB222B22222222B222BC....',
-    '..1B256B22222222B562B1....',
-    '.91B276B22288222B762B19...',
-    '991222222233332222222199..',
-    '.9.11222233333322222211.9.',
-    '....112233333333222211....',
-    '....12223333333322221.....',
-    '...1222233333333222221....',
-    '..122222333333332222221...',
-    '..122212333333332122221...',
-    '..1221.1221111221.12221..1',
-    '..1221.1221..1221.12221.121',
-    '..1221.1221..1221.122221221',
-    '.12221.1221..1221..11122221',
-    '.11111.1111..1111....11111.'
+    '..1221122222222222211221..',
+    '.122211222211222222112221.',
+    '11122222221111222222222111',
+    '..12222222211222222222221..',
+    '...1122222222222222222211..',
+    '....1222222222222222221.11.',
+    '...122222222222222222211221',
+    '..122222222222222222222111.',
+    '..1222122221122221222221...',
+    '..112211111111111122111....',
+    '...1221..........1221......',
+    '..1221............1221.....',
+    '..111..............111....'
   ]
-};
-
-// Realistic Breeds & Palettes
-const BREEDS = {
-  calico: {
-    name: 'Boba (Calico)',
-    outline: '#1f1c1a',
-    main: '#faf7f2', // soft cream white
-    accent: '#df7c32', // rich copper ginger patches
-    ear: '#fca5b3',
-    eyeIris: '#2e7d32', // emerald green
-    eyePupil: '#161413',
-    eyeShine: '#ffffff',
-    nose: '#f87171',
-    whisker: '#c2bcb3'
-  },
-  ginger: {
-    name: 'Mikan (Orange Tabby)',
-    outline: '#1f1c1a',
-    main: '#e6822c', // warm orange coat
-    accent: '#fef2e0', // creamy bib / belly
-    ear: '#fca5b3',
-    eyeIris: '#d97706', // amber gold
-    eyePupil: '#161413',
-    eyeShine: '#ffffff',
-    nose: '#f87171',
-    whisker: '#d1c7bc'
-  },
-  mochi: {
-    name: 'Mochi (Pure White)',
-    outline: '#262220',
-    main: '#ffffff', // pure white
-    accent: '#e8e2d8', // soft shading
-    ear: '#fca5b3',
-    eyeIris: '#2563eb', // sapphire blue
-    eyePupil: '#161413',
-    eyeShine: '#ffffff',
-    nose: '#f87171',
-    whisker: '#b8b2a8'
-  },
-  kuro: {
-    name: 'Kuro (Velvet Black)',
-    outline: '#141218',
-    main: '#22202a', // charcoal velvet
-    accent: '#3a3746', // slate highlight
-    ear: '#f87171',
-    eyeIris: '#84cc16', // bright chartreuse green
-    eyePupil: '#111014',
-    eyeShine: '#ffffff',
-    nose: '#f87171',
-    whisker: '#4a4659'
-  }
 };
 
 export default function PixelCat({ isPlaying = false }) {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
 
-  // User Breed Selection
-  const [selectedBreed, setSelectedBreed] = useState(() => {
-    try {
-      return localStorage.getItem('musicly_cat_breed') || 'calico';
-    } catch {
-      return 'calico';
-    }
-  });
-
-  // Cat State Management
-  const [catAction, setCatAction] = useState('idle'); // 'idle' | 'walking' | 'sleeping' | 'playing' | 'vibe'
-  const [statusMessage, setStatusMessage] = useState('Resting by the turntable');
-  const [isSleeping, setIsSleeping] = useState(false);
-
   // Simulation physics & positions
   const simRef = useRef({
     x: 60,
     targetX: 60,
-    speed: 0.95,
+    speed: 1.0,
     facing: 1, // 1 = right, -1 = left
     frameIndex: 0,
     tick: 0,
     blinkTick: 0,
     isBlinking: false,
-    tailSwing: 0,
+    catAction: 'idle', // 'idle' | 'walking' | 'sleeping' | 'playing'
+    isSleeping: false,
     yarn: {
-      x: 210,
-      y: 72,
+      x: 200,
+      y: 64,
       vx: 0,
-      targetX: null,
-      color: '#fb7185'
+      targetX: null
     },
-    treat: null, // { x, y, life }
-    particles: [] // { x, y, text, life, maxLife, vy, vx, color }
+    particles: [] // floating B&W hearts or zzz
   });
 
-  // Switch Cat Breed
-  const handleSelectBreed = (key) => {
-    setSelectedBreed(key);
-    try {
-      localStorage.setItem('musicly_cat_breed', key);
-    } catch {}
-    playClickSound('light');
-    triggerHeartBubble();
-  };
-
-  // Helper: Trigger floating hearts or text particles
-  const triggerHeartBubble = useCallback((text = '❤️', color = '#ef4444') => {
+  // Action: Pet Cat (plays purr audio & floats monochrome heart)
+  const handlePetCat = useCallback(() => {
     const sim = simRef.current;
+    sim.isSleeping = false;
+    sim.catAction = 'idle';
+    playCatSound(0);
+
     sim.particles.push({
-      x: sim.x + (sim.facing === 1 ? 32 : -4) + (Math.random() * 8 - 4),
-      y: 38,
-      text,
-      life: 52,
-      maxLife: 52,
-      vy: -0.7 - Math.random() * 0.5,
-      vx: (Math.random() - 0.5) * 0.4,
-      color
+      x: sim.x + (sim.facing === 1 ? 28 : 2),
+      y: 30,
+      text: '♥',
+      life: 45,
+      maxLife: 45,
+      vy: -0.8
     });
   }, []);
 
-  // Action: Pet Cat
-  const handlePetCat = useCallback(() => {
-    playCatSound(0);
-    setIsSleeping(false);
-    setCatAction('idle');
-    setStatusMessage('Purring softly...');
-    triggerHeartBubble('❤️', '#ef4444');
-    triggerHeartBubble('✨', '#ffd166');
-  }, [triggerHeartBubble]);
-
-  // Action: Toss Yarn Ball
-  const handleTossYarn = useCallback((targetSpotX = null) => {
+  // Action: Toss Yarn / Ball Toy
+  const handleTossToy = useCallback((targetSpotX = null) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const sim = simRef.current;
 
-    setIsSleeping(false);
-    playClickSound('light');
+    sim.isSleeping = false;
 
     const destX = targetSpotX !== null 
-      ? Math.max(30, Math.min(canvas.width - 50, targetSpotX))
-      : (sim.x > canvas.width / 2 ? 40 + Math.random() * 60 : canvas.width - 90 - Math.random() * 60);
+      ? Math.max(25, Math.min(canvas.width - 40, targetSpotX))
+      : (sim.x > canvas.width / 2 ? 40 + Math.random() * 50 : canvas.width - 80 - Math.random() * 50);
 
-    sim.yarn.vx = (destX - sim.yarn.x) * 0.08;
+    sim.yarn.vx = (destX - sim.yarn.x) * 0.085;
     sim.yarn.targetX = destX;
-    sim.targetX = destX + (sim.x < destX ? -32 : 32);
-    setCatAction('walking');
-    setStatusMessage('Stalking the yarn ball...');
+    sim.targetX = destX + (sim.x < destX ? -30 : 30);
+    sim.catAction = 'walking';
   }, []);
 
-  // Action: Give Treat
-  const handleGiveTreat = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const sim = simRef.current;
-
-    setIsSleeping(false);
-    playClickSound('light');
-
-    const dropX = Math.max(35, Math.min(canvas.width - 50, sim.x + (sim.facing === 1 ? 80 : -80)));
-    sim.treat = { x: dropX, y: 74, life: 180 };
-    sim.targetX = dropX + (sim.x < dropX ? -26 : 26);
-    setCatAction('walking');
-    setStatusMessage('Trotting over for a snack!');
-  }, []);
-
-  // Action: Toggle Sleep / Wake
-  const handleToggleSleep = useCallback(() => {
-    setIsSleeping(prev => {
-      const next = !prev;
-      playClickSound('light');
-      if (next) {
-        setCatAction('sleeping');
-        setStatusMessage('Curled up in a peaceful catnap...');
-        triggerHeartBubble('💤', '#94a3b8');
-      } else {
-        setCatAction('idle');
-        setStatusMessage('Awake and stretching!');
-        playCatSound(0);
-        triggerHeartBubble('✨', '#ffd166');
-      }
-      return next;
-    });
-  }, [triggerHeartBubble]);
-
-  // Handle Canvas Click: Click cat to pet, or click floor to roll yarn
+  // Click on box: click cat to pet, click floor to toss toy
   const handleCanvasClick = (e) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -382,8 +227,8 @@ export default function PixelCat({ isPlaying = false }) {
 
     const sim = simRef.current;
     const catBox = {
-      x: sim.x - 12,
-      y: 28,
+      x: sim.x - 10,
+      y: 20,
       w: 68,
       h: 52
     };
@@ -396,11 +241,11 @@ export default function PixelCat({ isPlaying = false }) {
     ) {
       handlePetCat();
     } else {
-      handleTossYarn(clickX);
+      handleTossToy(clickX);
     }
   };
 
-  // Main Canvas Animation Loop
+  // Main Canvas Render Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -413,10 +258,10 @@ export default function PixelCat({ isPlaying = false }) {
     const handleResize = () => {
       if (!containerRef.current) return;
       const width = containerRef.current.clientWidth || 360;
-      canvas.width = Math.max(320, width);
-      canvas.height = 92;
+      canvas.width = Math.max(300, width);
+      canvas.height = 76;
       ctx.imageSmoothingEnabled = false;
-      sim.yarn.y = 72;
+      sim.yarn.y = 64;
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -425,78 +270,51 @@ export default function PixelCat({ isPlaying = false }) {
       sim.tick++;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. Draw Minimalist Studio Floor Line & Woven Rug
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-      ctx.fillRect(0, 78, canvas.width, 2);
-
-      // Subtle woven rug
-      ctx.fillStyle = 'rgba(214, 211, 203, 0.5)';
-      ctx.fillRect(32, 76, 110, 4);
-      ctx.fillStyle = 'rgba(180, 175, 164, 0.4)';
-      for (let rx = 36; rx < 140; rx += 8) {
-        ctx.fillRect(rx, 75, 4, 6);
-      }
+      // 1. Subtle minimal ground line
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.07)';
+      ctx.fillRect(0, 68, canvas.width, 1);
 
       // 2. Behavioral AI decision loop
-      if (!isSleeping && sim.tick % 170 === 0 && !sim.treat && !sim.yarn.targetX) {
-        if (isPlaying) {
-          setCatAction('vibe');
-          setStatusMessage('Listening to the vinyl record ♪');
-          if (Math.random() < 0.4) {
-            triggerHeartBubble('♪', '#f59e0b');
-          }
+      if (!sim.isSleeping && sim.tick % 180 === 0 && !sim.yarn.targetX) {
+        const rand = Math.random();
+        if (rand < 0.45) {
+          // Wander across the room
+          const wanderX = 35 + Math.random() * (canvas.width - 90);
+          sim.targetX = wanderX;
+          sim.catAction = 'walking';
+        } else if (rand < 0.8) {
+          // Sit & look around
+          sim.catAction = 'idle';
         } else {
-          const rand = Math.random();
-          if (rand < 0.42) {
-            // Pick a wander spot
-            const wanderX = 40 + Math.random() * (canvas.width - 100);
-            sim.targetX = wanderX;
-            setCatAction('walking');
-            setStatusMessage('Strolling across the studio');
-          } else if (rand < 0.75) {
-            setCatAction('idle');
-            setStatusMessage('Watching the turntable gently spin');
-          } else {
-            handleTossYarn();
-          }
+          // Play with toy
+          handleTossToy();
         }
-      }
-
-      // Floating music notes when music is playing
-      if (isPlaying && !isSleeping && catAction !== 'walking' && Math.random() < 0.018) {
-        triggerHeartBubble(Math.random() > 0.5 ? '♪' : '♫', '#f59e0b');
       }
 
       // 3. Movement Physics
       const distToTarget = sim.targetX - sim.x;
-      if (Math.abs(distToTarget) > 3 && (catAction === 'walking' || sim.yarn.targetX || sim.treat)) {
+      if (Math.abs(distToTarget) > 3 && (sim.catAction === 'walking' || sim.yarn.targetX)) {
         sim.facing = distToTarget > 0 ? 1 : -1;
         sim.x += (distToTarget > 0 ? 1 : -1) * sim.speed;
         if (sim.tick % 7 === 0) {
           sim.frameIndex = (sim.frameIndex + 1) % 4;
         }
       } else {
-        if (catAction === 'walking') {
-          if (sim.treat) {
-            sim.treat = null;
-            setCatAction('play');
-            setStatusMessage('Snacking on treat *crunch crunch*');
-            playCatSound(0);
-            triggerHeartBubble('✨', '#ffd166');
-            setTimeout(() => setCatAction('idle'), 2400);
-          } else if (sim.yarn.targetX) {
+        if (sim.catAction === 'walking') {
+          if (sim.yarn.targetX) {
             sim.yarn.targetX = null;
-            sim.yarn.vx = (sim.facing === 1 ? 1 : -1) * (2.2 + Math.random() * 1.6);
-            setCatAction('play');
-            setStatusMessage('Batting at the yarn ball!');
-            setTimeout(() => setCatAction('idle'), 1800);
+            sim.yarn.vx = (sim.facing === 1 ? 1 : -1) * (2.2 + Math.random() * 1.5);
+            sim.catAction = 'play';
+            setTimeout(() => {
+              sim.catAction = 'idle';
+            }, 1800);
           } else {
-            setCatAction('idle');
+            sim.catAction = 'idle';
           }
         }
       }
 
-      // 4. Yarn Ball Physics
+      // 4. Toy Ball Physics
       if (Math.abs(sim.yarn.vx) > 0.04) {
         sim.yarn.x += sim.yarn.vx;
         sim.yarn.vx *= 0.94;
@@ -509,48 +327,42 @@ export default function PixelCat({ isPlaying = false }) {
         }
       }
 
-      // Draw Yarn Ball with string
-      ctx.strokeStyle = 'rgba(251, 113, 133, 0.45)';
-      ctx.lineWidth = 1.5;
+      // 5. Draw Black & White Pixel Toy Ball
+      // Trailing thread
+      ctx.strokeStyle = '#111111';
+      ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(sim.yarn.x - 14, 76);
-      ctx.quadraticCurveTo(sim.yarn.x - 7, 72, sim.yarn.x, 75);
+      ctx.moveTo(sim.yarn.x - 12, 67);
+      ctx.lineTo(sim.yarn.x - 6, 65);
+      ctx.lineTo(sim.yarn.x, 66);
       ctx.stroke();
 
-      ctx.fillStyle = '#fb7185';
-      ctx.beginPath();
-      ctx.arc(sim.yarn.x, 74, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#fda4af';
-      ctx.beginPath();
-      ctx.arc(sim.yarn.x - 1.5, 72.5, 2, 0, Math.PI * 2);
-      ctx.fill();
+      // Ball: white circle with black outline and pixel texture
+      const yx = Math.round(sim.yarn.x);
+      const yy = 64;
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(yx - 4, yy - 5, 8, 10);
+      ctx.fillRect(yx - 5, yy - 4, 10, 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(yx - 3, yy - 4, 6, 8);
+      ctx.fillRect(yx - 4, yy - 3, 8, 6);
+      // Black winding line pattern
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(yx - 2, yy - 2, 4, 1);
+      ctx.fillRect(yx - 1, yy, 3, 1);
+      ctx.fillRect(yx - 2, yy + 2, 4, 1);
 
-      // Draw Treat if present
-      if (sim.treat) {
-        sim.treat.life--;
-        ctx.fillStyle = '#38bdf8';
-        const tx = sim.treat.x;
-        const ty = 74;
-        ctx.fillRect(tx, ty, 7, 4);
-        ctx.fillRect(tx + 7, ty - 1, 2, 6);
-        ctx.fillStyle = '#0284c7';
-        ctx.fillRect(tx + 2, ty + 1, 1, 1);
-      }
-
-      // 5. Select Realistic Sprite
+      // 6. Select Sprite
       let spriteKey = 'sit';
-      if (isSleeping) {
+      if (sim.isSleeping) {
         spriteKey = 'sleep';
-      } else if (catAction === 'walking') {
+      } else if (sim.catAction === 'walking') {
         const walkFrames = ['walk1', 'walk2', 'walk3', 'walk2'];
         spriteKey = walkFrames[sim.frameIndex] || 'walk1';
-      } else if (catAction === 'play') {
+      } else if (sim.catAction === 'play') {
         spriteKey = 'play';
-      } else if (catAction === 'vibe' || (isPlaying && catAction === 'idle')) {
-        spriteKey = 'vibe';
       } else {
-        if (sim.tick % 100 === 0) {
+        if (sim.tick % 110 === 0) {
           sim.isBlinking = true;
           sim.blinkTick = 12;
         }
@@ -563,15 +375,13 @@ export default function PixelCat({ isPlaying = false }) {
       }
 
       const spriteData = SPRITES[spriteKey] || SPRITES.sit;
-      const breed = BREEDS[selectedBreed] || BREEDS.calico;
-      const pixelSize = 2.4;
+      const pixelSize = 2.3;
       const spriteH = spriteData.length;
       const spriteW = Math.max(...spriteData.map(r => r.length));
 
       ctx.save();
       const catDrawX = Math.round(sim.x);
-      // Paws rest cleanly on floor y = 78
-      const catDrawY = Math.round(78 - spriteH * pixelSize);
+      const catDrawY = Math.round(68 - spriteH * pixelSize);
 
       if (sim.facing === -1) {
         ctx.translate(catDrawX + spriteW * pixelSize, 0);
@@ -580,32 +390,19 @@ export default function PixelCat({ isPlaying = false }) {
         ctx.translate(catDrawX, 0);
       }
 
-      // Soft natural drop shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
-      ctx.beginPath();
-      ctx.ellipse(spriteW * pixelSize * 0.45, 77, spriteW * pixelSize * 0.42, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Render Pixels
+      // Pure Black & White Pixel Rendering
       for (let r = 0; r < spriteData.length; r++) {
         const row = spriteData[r];
         for (let c = 0; c < row.length; c++) {
           const char = row[c];
           if (char === '.') continue;
 
-          let color = breed.outline;
-          if (char === '1') color = breed.outline;
-          else if (char === '2') color = breed.main;
-          else if (char === '3') color = breed.accent;
-          else if (char === '4') color = breed.ear;
-          else if (char === '5') color = breed.eyeIris;
-          else if (char === '6') color = breed.eyePupil;
-          else if (char === '7') color = breed.eyeShine;
-          else if (char === '8') color = breed.nose;
-          else if (char === '9') color = breed.whisker;
-          else if (char === '-') color = breed.outline;
-          else if (char === 'B') color = '#f59e0b'; // vintage amber audio cup
-          else if (char === 'C') color = '#94a3b8'; // brushed silver band
+          let color = '#ffffff';
+          if (char === '1' || char === '-') {
+            color = '#111111'; // Pure Black
+          } else if (char === '2') {
+            color = '#ffffff'; // Pure White
+          }
 
           ctx.fillStyle = color;
           ctx.fillRect(c * pixelSize, catDrawY + r * pixelSize, pixelSize, pixelSize);
@@ -613,18 +410,17 @@ export default function PixelCat({ isPlaying = false }) {
       }
       ctx.restore();
 
-      // 6. Floating Particles (Hearts, Music Notes, ZZZ)
+      // 7. Floating Black/White Particles (Hearts, ZZZ)
       for (let i = sim.particles.length - 1; i >= 0; i--) {
         const p = sim.particles[i];
-        p.x += p.vx;
         p.y += p.vy;
         p.life--;
 
         const alpha = Math.max(0, p.life / p.maxLife);
         ctx.save();
         ctx.globalAlpha = alpha;
-        ctx.font = 'bold 12px monospace';
-        ctx.fillStyle = p.color || '#ef4444';
+        ctx.font = 'bold 13px monospace';
+        ctx.fillStyle = '#111111';
         ctx.fillText(p.text, p.x, p.y);
         ctx.restore();
 
@@ -641,88 +437,16 @@ export default function PixelCat({ isPlaying = false }) {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
     };
-  }, [isPlaying, isSleeping, selectedBreed, catAction, handlePetCat, handleTossYarn]);
+  }, [handleTossToy]);
 
   return (
-    <div className="vinyl-pixel-cat-section" ref={containerRef}>
-      {/* Cat Lounge Header */}
-      <div className="vinyl-pixel-cat-header">
-        <div className="vinyl-pixel-cat-title-wrap">
-          <span className="vinyl-cat-dot-pulse" />
-          <span className="vinyl-pixel-cat-name">
-            {BREEDS[selectedBreed]?.name.split(' ')[0].toUpperCase()}
-          </span>
-          <span className="vinyl-pixel-cat-status">{statusMessage}</span>
-        </div>
-
-        {/* Breed Selector Pills */}
-        <div className="vinyl-cat-breed-pills">
-          {Object.entries(BREEDS).map(([key, b]) => (
-            <button
-              key={key}
-              type="button"
-              className={`vinyl-cat-breed-btn ${selectedBreed === key ? 'is-active' : ''}`}
-              onClick={() => handleSelectBreed(key)}
-              title={`Switch to ${b.name}`}
-            >
-              {key === 'calico' && '🎨'}
-              {key === 'ginger' && '🟠'}
-              {key === 'mochi' && '⚪'}
-              {key === 'kuro' && '⚫'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Interactive Cat Canvas Area */}
-      <div 
-        className="vinyl-pixel-cat-stage" 
-        onClick={handleCanvasClick}
-        title="Click the cat to pet or click floor to roll the yarn ball!"
-      >
-        <canvas ref={canvasRef} className="vinyl-pixel-cat-canvas" />
-      </div>
-
-      {/* Cute Minimal Toolbar Controls */}
-      <div className="vinyl-pixel-cat-toolbar">
-        <button
-          type="button"
-          className="vinyl-cat-tool-btn"
-          onClick={handlePetCat}
-          title="Pet your cat"
-        >
-          <Heart size={13} fill="#f43f5e" color="#f43f5e" />
-          <span>Pet</span>
-        </button>
-
-        <button
-          type="button"
-          className="vinyl-cat-tool-btn"
-          onClick={() => handleTossYarn()}
-          title="Toss the yarn ball across the floor"
-        >
-          <span>🧶 Toss Yarn</span>
-        </button>
-
-        <button
-          type="button"
-          className="vinyl-cat-tool-btn"
-          onClick={handleGiveTreat}
-          title="Give a delicious fish treat"
-        >
-          <span>🐟 Treat</span>
-        </button>
-
-        <button
-          type="button"
-          className={`vinyl-cat-tool-btn ${isSleeping ? 'is-active' : ''}`}
-          onClick={handleToggleSleep}
-          title={isSleeping ? 'Wake up' : 'Take a cozy catnap'}
-        >
-          {isSleeping ? <Sun size={13} /> : <Moon size={13} />}
-          <span>{isSleeping ? 'Wake' : 'Nap'}</span>
-        </button>
-      </div>
+    <div 
+      className="vinyl-pixel-cat-section" 
+      ref={containerRef}
+      onClick={handleCanvasClick}
+      title="Click cat to pet • Click floor to roll toy"
+    >
+      <canvas ref={canvasRef} className="vinyl-pixel-cat-canvas" />
     </div>
   );
 }
