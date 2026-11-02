@@ -2613,6 +2613,280 @@
   transform: scale(1.08);
 }
 
+/* Now Playing Playlist Tag in Hero Panel */
+.vinyl-now-playing-header-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vinyl-now-playing-playlist-badge {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #ffb703;
+  background: rgba(22, 25, 34, 0.9);
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 183, 3, 0.3);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Active Playlist Indicator in Header */
+.vinyl-active-playlist-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #d97706;
+  background: rgba(251, 133, 0, 0.08);
+  border: 1px solid rgba(251, 133, 0, 0.25);
+  padding: 3px 9px;
+  border-radius: 12px;
+}
+
+.vinyl-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffb703;
+  box-shadow: 0 0 6px #ffb703;
+  animation: vinylPulse 1.4s infinite ease-in-out;
+}
+
+@keyframes vinylPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.5; }
+}
+
+/* Playlist Source Selector Cards (Musicly Curated vs User's Own) */
+.vinyl-playlist-source-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+  margin-bottom: 4px;
+}
+
+.vinyl-source-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1.5px solid var(--vinyl-border);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+  position: relative;
+  user-select: none;
+}
+
+.vinyl-source-card:hover {
+  border-color: #0d0d0f;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
+}
+
+.vinyl-source-card.is-active {
+  background: #0d0d0f;
+  border-color: #0d0d0f;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.16);
+}
+
+.vinyl-source-card.is-active .vinyl-source-title {
+  color: #ffffff;
+}
+
+.vinyl-source-card.is-active .vinyl-source-desc {
+  color: #a0a0aa;
+}
+
+.vinyl-source-card.is-active .vinyl-source-icon-wrap {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffb703;
+}
+
+.vinyl-source-icon-wrap {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0d0d0f;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.vinyl-source-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.vinyl-source-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vinyl-source-title {
+  font-family: var(--vinyl-font-pixel);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--vinyl-text-primary);
+  letter-spacing: 0.04em;
+}
+
+.vinyl-source-count {
+  font-family: var(--vinyl-font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+}
+
+.vinyl-source-card.is-active .vinyl-source-count {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffb703;
+}
+
+.vinyl-source-desc {
+  font-family: var(--vinyl-font-body);
+  font-size: 0.72rem;
+  color: var(--vinyl-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vinyl-source-active-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffb703;
+  box-shadow: 0 0 8px #ffb703;
+  flex-shrink: 0;
+}
+
+/* Musicly Playlist Badge */
+.vinyl-playlist-musicly-badge {
+  font-family: var(--vinyl-font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+/* Playing Equalizer Badge */
+.vinyl-playlist-playing-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--vinyl-font-mono);
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #d97706;
+  background: rgba(251, 133, 0, 0.12);
+  border: 1px solid rgba(251, 133, 0, 0.35);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
+.mini-equalizer-bar {
+  width: 2px;
+  background: #ffb703;
+  border-radius: 1px;
+}
+.mini-equalizer-bar.bar-1 { height: 6px; animation: eqAnim1 0.7s infinite alternate ease-in-out; }
+.mini-equalizer-bar.bar-2 { height: 10px; animation: eqAnim2 0.5s infinite alternate ease-in-out; }
+.mini-equalizer-bar.bar-3 { height: 7px; animation: eqAnim3 0.8s infinite alternate ease-in-out; }
+
+@keyframes eqAnim1 { 0% { height: 3px; } 100% { height: 8px; } }
+@keyframes eqAnim2 { 0% { height: 4px; } 100% { height: 11px; } }
+@keyframes eqAnim3 { 0% { height: 2px; } 100% { height: 9px; } }
+
+/* Active Playing Playlist Item Highlights */
+.vinyl-playlist-item.is-active-playing {
+  border-color: #ffb703;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(251, 133, 0, 0.14), 0 0 0 1px #ffb703;
+}
+
+.vinyl-playlist-item.is-active-playing .vinyl-playlist-name {
+  color: #d97706;
+}
+
+.vinyl-playlist-item.is-active-playing .vinyl-playlist-thumb {
+  filter: none;
+  border-color: #ffb703;
+}
+
+.vinyl-playlist-play-btn.is-playing {
+  background: #ffb703;
+  border-color: #ffb703;
+  color: #0d0d0f;
+}
+
+/* Empty State for Custom Playlists */
+.vinyl-playlist-empty-card {
+  padding: 32px 20px;
+  text-align: center;
+  background: #ffffff;
+  border: 1.5px dashed var(--vinyl-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.vinyl-empty-icon {
+  color: #9d9c94;
+}
+
+.vinyl-empty-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vinyl-empty-title {
+  font-family: var(--vinyl-font-pixel);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--vinyl-text-primary);
+  letter-spacing: 0.04em;
+}
+
+.vinyl-empty-sub {
+  font-family: var(--vinyl-font-body);
+  font-size: 0.8rem;
+  color: var(--vinyl-text-muted);
+  max-width: 380px;
+  margin: 0;
+}
+
 /* ==========================================================================
    RESPONSIVE DESIGN & REDUCED MOTION
    ========================================================================== */
