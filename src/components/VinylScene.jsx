@@ -1080,6 +1080,69 @@ export default function VinylScene({
   // Track is currently playing check
   const isCurrentFavorite = favorites.includes(currentTrack?.id);
 
+  // Render single playlist item in the playlist stack
+  const renderPlaylistItem = (playlist) => {
+    const isPlaylistActive = activePlayingPlaylistId === playlist.id;
+    const isPlaylistPlaying = isPlaylistActive && isPlaying;
+
+    return (
+      <div 
+        key={playlist.id} 
+        className={`vinyl-playlist-item ${playlist.isCustom ? 'is-custom' : ''} ${isPlaylistActive ? 'is-active-playing' : ''}`}
+        onClick={() => {
+          if (playlist.id === 'liked_songs') {
+            setIsLikedPanelOpen(true);
+          } else {
+            setSelectedCustomPlaylist(playlist);
+            setIsEditingPlaylistTitle(false);
+            playClickSound('light');
+          }
+        }}
+        title={playlist.isCustom ? `Manage ${playlist.title}` : `Open ${playlist.title} to browse songs`}
+      >
+        <div className="vinyl-playlist-info-left">
+          <img 
+            src={playlist.image} 
+            alt={playlist.title} 
+            className="vinyl-playlist-thumb" 
+            loading="lazy"
+          />
+          <div className="vinyl-playlist-text">
+            <div className="vinyl-playlist-name-row">
+              <span className="vinyl-playlist-name">{playlist.title}</span>
+              {playlist.isCustom && (
+                <span className="vinyl-playlist-custom-badge">YOUR PLAYLIST</span>
+              )}
+              {isPlaylistPlaying && (
+                <span className="vinyl-playlist-playing-badge" title="Playing on Turntable">
+                  <span className="mini-equalizer-bar bar-1" />
+                  <span className="mini-equalizer-bar bar-2" />
+                  <span className="mini-equalizer-bar bar-3" />
+                  PLAYING
+                </span>
+              )}
+            </div>
+            <span className="vinyl-playlist-sub">{playlist.subtitle}</span>
+          </div>
+        </div>
+
+        {/* Circular Play Button: Loads playlist tracks into turntable queue */}
+        <button 
+          className={`vinyl-playlist-play-btn ${isPlaylistPlaying ? 'is-playing' : ''}`}
+          onClick={(e) => handlePlayPlaylist(playlist, e)}
+          title={`Play "${playlist.title}" on turntable and queue all songs`}
+          aria-label={`Play ${playlist.title}`}
+        >
+          {isPlaylistPlaying ? (
+            <Pause size={16} fill="#0d0d0f" />
+          ) : (
+            <Play size={16} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
+          )}
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''}`}>
       {/* Subtle Grain Overlay */}
@@ -2439,12 +2502,12 @@ export default function VinylScene({
                 </div>
               </div>
 
-              {/* Favorite Playlists Section */}
+              {/* Playlists Section: Two Sections for Musicly vs User's Own Playlist */}
               <div className="vinyl-playlists-section">
                 <div className="vinyl-section-header">
                   <div className="vinyl-section-title-wrap">
                     <h2 className="vinyl-section-title">
-                      Favorite Playlists ({favoritePlaylists.length})
+                      PLAYLISTS ({displayedPlaylists.length})
                     </h2>
                     {activePlayingPlaylist && (
                       <span className="vinyl-active-playlist-pill" title={`Active on Turntable: ${activePlayingPlaylist.title}`}>
@@ -2471,69 +2534,157 @@ export default function VinylScene({
                   </button>
                 </div>
 
+                {/* Playlist Source Chooser: Visual Cards for Musicly vs User's Own Playlist */}
+                <div className="vinyl-playlist-source-selector" role="radiogroup" aria-label="Choose playlist source to play">
+                  <div 
+                    className={`vinyl-source-card ${playlistSourceMode === 'musicly' ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setPlaylistSourceMode(prev => prev === 'musicly' ? 'all' : 'musicly');
+                      playClickSound('light');
+                    }}
+                    role="radio"
+                    aria-checked={playlistSourceMode === 'musicly'}
+                    title="Browse and play Musicly's curated editorial playlists"
+                  >
+                    <div className="vinyl-source-icon-wrap">
+                      <Sparkles size={18} />
+                    </div>
+                    <div className="vinyl-source-info">
+                      <div className="vinyl-source-title-row">
+                        <span className="vinyl-source-title">MUSICLY PLAYLISTS</span>
+                        <span className="vinyl-source-count">{musiclyPlaylists.length}</span>
+                      </div>
+                      <span className="vinyl-source-desc">Curated editorial classics, lo-fi & indie</span>
+                    </div>
+                    {activePlayingPlaylist && !activePlayingPlaylist.isCustom && isPlaying && (
+                      <span className="vinyl-source-active-dot" title="A Musicly playlist is currently playing" />
+                    )}
+                  </div>
+
+                  <div 
+                    className={`vinyl-source-card ${playlistSourceMode === 'custom' ? 'is-active' : ''}`}
+                    onClick={() => {
+                      setPlaylistSourceMode(prev => prev === 'custom' ? 'all' : 'custom');
+                      playClickSound('light');
+                    }}
+                    role="radio"
+                    aria-checked={playlistSourceMode === 'custom'}
+                    title="Browse and play your own custom playlists"
+                  >
+                    <div className="vinyl-source-icon-wrap">
+                      <ListMusic size={18} />
+                    </div>
+                    <div className="vinyl-source-info">
+                      <div className="vinyl-source-title-row">
+                        <span className="vinyl-source-title">USER'S OWN PLAYLIST</span>
+                        <span className="vinyl-source-count">{userPlaylists.length}</span>
+                      </div>
+                      <span className="vinyl-source-desc">Custom mixes & tracklists built by you</span>
+                    </div>
+                    {activePlayingPlaylist && activePlayingPlaylist.isCustom && isPlaying && (
+                      <span className="vinyl-source-active-dot" title="Your personal playlist is currently playing" />
+                    )}
+                  </div>
+                </div>
+
                 {/* Playlist Stack */}
                 <div className="vinyl-playlists-stack">
-                  {favoritePlaylists.map(playlist => {
-                    const isPlaylistActive = activePlayingPlaylistId === playlist.id;
-                    const isPlaylistPlaying = isPlaylistActive && isPlaying;
+                  {/* Mode: ALL (Shows both sections clearly separated) */}
+                  {playlistSourceMode === 'all' && (
+                    <>
+                      {/* Section 1: Musicly Playlists */}
+                      <div className="vinyl-playlist-section-label-row">
+                        <span className="vinyl-playlist-section-label">MUSICLY PLAYLISTS ({musiclyPlaylists.length})</span>
+                      </div>
+                      {musiclyPlaylists.map(playlist => renderPlaylistItem(playlist))}
 
-                    return (
-                      <div 
-                        key={playlist.id} 
-                        className={`vinyl-playlist-item ${playlist.isCustom ? 'is-custom' : ''} ${isPlaylistActive ? 'is-active-playing' : ''}`}
-                        onClick={() => {
-                          if (playlist.id === 'liked_songs') {
-                            setIsLikedPanelOpen(true);
-                          } else {
-                            setSelectedCustomPlaylist(playlist);
-                            setIsEditingPlaylistTitle(false);
+                      {/* Section 2: User's Own Playlists */}
+                      <div className="vinyl-playlist-section-label-row" style={{ marginTop: 14 }}>
+                        <span className="vinyl-playlist-section-label">USER'S OWN PLAYLISTS ({userPlaylists.length})</span>
+                        <button
+                          type="button"
+                          className="vinyl-playlist-section-btn"
+                          onClick={() => {
+                            setNewPlaylistTitle('');
+                            setSelectedTrackIdsForNew([]);
+                            setSongSearchQuery('');
+                            setIsCreatePlaylistOpen(true);
                             playClickSound('light');
-                          }
-                        }}
-                        title={playlist.isCustom ? `Manage ${playlist.title}` : `Open ${playlist.title} to browse songs`}
-                      >
-                        <div className="vinyl-playlist-info-left">
-                          <img 
-                            src={playlist.image} 
-                            alt={playlist.title} 
-                            className="vinyl-playlist-thumb" 
-                            loading="lazy"
-                          />
-                          <div className="vinyl-playlist-text">
-                            <div className="vinyl-playlist-name-row">
-                              <span className="vinyl-playlist-name">{playlist.title}</span>
-                              {playlist.isCustom && (
-                                <span className="vinyl-playlist-custom-badge">YOUR PLAYLIST</span>
-                              )}
-                              {isPlaylistPlaying && (
-                                <span className="vinyl-playlist-playing-badge" title="Playing on Turntable">
-                                  <span className="mini-equalizer-bar bar-1" />
-                                  <span className="mini-equalizer-bar bar-2" />
-                                  <span className="mini-equalizer-bar bar-3" />
-                                  PLAYING
-                                </span>
-                              )}
-                            </div>
-                            <span className="vinyl-playlist-sub">{playlist.subtitle}</span>
-                          </div>
-                        </div>
-
-                        {/* Circular Play Button: Loads playlist tracks into turntable queue */}
-                        <button 
-                          className={`vinyl-playlist-play-btn ${isPlaylistPlaying ? 'is-playing' : ''}`}
-                          onClick={(e) => handlePlayPlaylist(playlist, e)}
-                          title={`Play "${playlist.title}" on turntable and queue all songs`}
-                          aria-label={`Play ${playlist.title}`}
+                          }}
                         >
-                          {isPlaylistPlaying ? (
-                            <Pause size={16} fill="#0d0d0f" />
-                          ) : (
-                            <Play size={16} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
-                          )}
+                          <Plus size={13} />
+                          <span>New Playlist</span>
                         </button>
                       </div>
-                    );
-                  })}
+                      {userPlaylists.length === 0 ? (
+                        <div className="vinyl-playlist-empty-card">
+                          <ListMusic size={26} className="vinyl-empty-icon" />
+                          <div className="vinyl-playlist-empty-text">
+                            <span className="vinyl-playlist-empty-title">NO USER PLAYLISTS YET</span>
+                            <span className="vinyl-playlist-empty-sub">
+                              Create your own custom playlists or click the + sign beside songs in Musicly playlists to add them here.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="vinyl-btn-primary"
+                            onClick={() => {
+                              setNewPlaylistTitle('');
+                              setSelectedTrackIdsForNew([]);
+                              setSongSearchQuery('');
+                              setIsCreatePlaylistOpen(true);
+                              playClickSound('light');
+                            }}
+                          >
+                            <Plus size={15} />
+                            <span>Create Your First Playlist</span>
+                          </button>
+                        </div>
+                      ) : (
+                        userPlaylists.map(playlist => renderPlaylistItem(playlist))
+                      )}
+                    </>
+                  )}
+
+                  {/* Mode: MUSICLY ONLY */}
+                  {playlistSourceMode === 'musicly' && (
+                    <>
+                      {musiclyPlaylists.map(playlist => renderPlaylistItem(playlist))}
+                    </>
+                  )}
+
+                  {/* Mode: USER CUSTOM ONLY */}
+                  {playlistSourceMode === 'custom' && (
+                    <>
+                      {userPlaylists.length === 0 ? (
+                        <div className="vinyl-playlist-empty-card">
+                          <ListMusic size={26} className="vinyl-empty-icon" />
+                          <div className="vinyl-playlist-empty-text">
+                            <span className="vinyl-playlist-empty-title">NO USER PLAYLISTS YET</span>
+                            <span className="vinyl-playlist-empty-sub">
+                              Create your own custom playlists or click the + sign beside songs in Musicly playlists to add them here.
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            className="vinyl-btn-primary"
+                            onClick={() => {
+                              setNewPlaylistTitle('');
+                              setSelectedTrackIdsForNew([]);
+                              setSongSearchQuery('');
+                              setIsCreatePlaylistOpen(true);
+                              playClickSound('light');
+                            }}
+                          >
+                            <Plus size={15} />
+                            <span>Create Your First Playlist</span>
+                          </button>
+                        </div>
+                      ) : (
+                        userPlaylists.map(playlist => renderPlaylistItem(playlist))
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 

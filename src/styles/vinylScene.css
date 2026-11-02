@@ -2783,6 +2783,43 @@
   flex-shrink: 0;
 }
 
+/* Section divider in playlist stack */
+.vinyl-playlist-section-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px 4px 4px;
+}
+
+.vinyl-playlist-section-label {
+  font-family: var(--vinyl-font-pixel, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--vinyl-text-muted, #736b60);
+  text-transform: uppercase;
+}
+
+.vinyl-playlist-section-btn {
+  background: transparent;
+  border: 1px solid var(--vinyl-border, #d4d2cb);
+  color: var(--vinyl-text-primary, #141312);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.vinyl-playlist-section-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: #0d0d0f;
+}
+
 /* Musicly Playlist Badge */
 .vinyl-playlist-musicly-badge {
   font-family: var(--vinyl-font-mono);
