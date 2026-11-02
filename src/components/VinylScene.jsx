@@ -819,8 +819,8 @@ export default function VinylScene({
     return playlists;
   }, [allTracks, favorites, activeLanguages, customPlaylists]);
 
-  // Playlist Source Choice: 'all' | 'musicly' | 'custom'
-  const [playlistSourceMode, setPlaylistSourceMode] = useState('all');
+  // Playlist Source Choice: 'musicly' (default) | 'custom' | 'all'
+  const [playlistSourceMode, setPlaylistSourceMode] = useState('musicly');
 
   // Active playing playlist tracking (synchronized with App.jsx to stop once finished)
   const [localActivePlaylistId, setLocalActivePlaylistId] = useState(() => {

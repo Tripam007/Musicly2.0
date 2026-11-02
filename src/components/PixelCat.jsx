@@ -1,179 +1,244 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Sparkles, Heart, Music, Moon, Sun, Disc } from 'lucide-react';
+import { Heart, Sun, Moon } from 'lucide-react';
 import { playCatSound, playClickSound } from '../utils/audioSynth';
 import '../styles/pixelCat.css';
 
 // -------------------------------------------------------------
-// Pixel Art Matrices (Width: 20-22, Height: 14)
+// Realistic Anatomical Pixel Cat Sprites
+// Natural feline proportions: distinct oval head, pointed ears with pink interior,
+// centered almond eyes with pupils and highlights, cute muzzle with whiskers,
+// curved body, realistic quadruped legs and curved tail.
+//
 // Legend:
 // . = transparent
-// 1 = outline (soft charcoal/brown)
-// 2 = main fur
-// 3 = belly / secondary fur / chest
+// 1 = outline / dark definition
+// 2 = primary fur
+// 3 = secondary fur / belly / chest / muzzle bib
 // 4 = inner ear (pink)
-// 5 = eye (dark)
-// 6 = nose / mouth (pink)
-// 7 = blush cheek (soft coral)
-// 8 = headphone ear cup (amber / gold)
-// 9 = headphone band (silver)
-// - = closed sleeping eye
+// 5 = eye iris
+// 6 = eye pupil
+// 7 = eye specular shine
+// 8 = nose pink
+// 9 = whisker (subtle)
+// A = fur stripe / pattern patch
+// B = headphone ear cup (amber / gold)
+// C = headphone headband (silver)
+// - = closed resting eye line
 // -------------------------------------------------------------
 const SPRITES = {
   sit: [
-    '....................',
-    '..11.........11.....',
-    '.1441.......1441....',
-    '.122111111111221....',
-    '12222222222222221...',
-    '12522222222252221...',
-    '12222226222222221...',
-    '.122222222222221....',
-    '.122333333333221....',
-    '12223333333332221...',
-    '12223333333332221..1',
-    '12222222222222221.121',
-    '.1222222222222211221',
-    '..11111111111111111.'
+    '..........................',
+    '....11..............11....',
+    '...1441............1441...',
+    '...14221111111111112241...',
+    '..1222222222222222222221..',
+    '..1222222222222222222221..',
+    '..1225622222222222256221..',
+    '.912276222288222222762219.',
+    '99122222223333222222222199',
+    '.9.11222233333322222211.9.',
+    '....112233333333222211....',
+    '....12223333333322221.....',
+    '...1222233333333222221....',
+    '..122222333333332222221...',
+    '..122212333333332122221...',
+    '..1221.1221111221.12221..1',
+    '..1221.1221..1221.12221.121',
+    '..1221.1221..1221.122221221',
+    '.12221.1221..1221..11122221',
+    '.11111.1111..1111....11111.'
   ],
   sitBlink: [
-    '....................',
-    '..11.........11.....',
-    '.1441.......1441....',
-    '.122111111111221....',
-    '12222222222222221...',
-    '12-222222222-2221...',
-    '12222226222222221...',
-    '.122222222222221....',
-    '.122333333333221....',
-    '12223333333332221...',
-    '12223333333332221..1',
-    '12222222222222221.121',
-    '.1222222222222211221',
-    '..11111111111111111.'
+    '..........................',
+    '....11..............11....',
+    '...1441............1441...',
+    '...14221111111111112241...',
+    '..1222222222222222222221..',
+    '..1222222222222222222221..',
+    '..122--222222222222--221..',
+    '.9122--222288222222--2219.',
+    '99122222223333222222222199',
+    '.9.11222233333322222211.9.',
+    '....112233333333222211....',
+    '....12223333333322221.....',
+    '...1222233333333222221....',
+    '..122222333333332222221...',
+    '..122212333333332122221...',
+    '..1221.1221111221.12221..1',
+    '..1221.1221..1221.12221.121',
+    '..1221.1221..1221.122221221',
+    '.12221.1221..1221..11122221',
+    '.11111.1111..1111....11111.'
   ],
   walk1: [
-    '....................',
-    '...11.........11....',
-    '..1441.......1441...',
-    '..122111111111221...',
-    '.12222222222222221..',
-    '.12522222222252221..',
-    '.12222226222222221..',
-    '..122222222222221...',
-    '.1222233333333221.1.',
-    '12222233333333222121',
-    '12222222222222222121',
-    '.121112222211122111.',
-    '.121..121.121..121..',
-    '.111..111.111..111..'
+    '............................',
+    '...11.....11................',
+    '..1441...1441...............',
+    '..14221112241...............',
+    '.1222222222211111111111.....',
+    '.12222222222222222222221....',
+    '.125622222222222222222221...',
+    '91276222882223333333222211..',
+    '912222222222233333332222121.',
+    '.11122222222233333332222121.',
+    '...112222222222222222222121.',
+    '....122211221.122211222121..',
+    '...12221..1221.12221111121..',
+    '..12221...1221..12221.121...',
+    '..1221....1221...1221.11....',
+    '..1111....1111...1111.......'
   ],
   walk2: [
-    '....................',
-    '...11.........11....',
-    '..1441.......1441...',
-    '..122111111111221...',
-    '.12222222222222221..',
-    '.12522222222252221..',
-    '.12222226222222221..',
-    '..122222222222221...',
-    '.1222233333333221.11',
-    '12222233333333222121',
-    '12222222222222222121',
-    '..11112222211111111.',
-    '..121.121..121.121..',
-    '..111.111..111.111..'
+    '............................',
+    '...11.....11................',
+    '..1441...1441...............',
+    '..14221112241...............',
+    '.1222222222211111111111.....',
+    '.12222222222222222222221....',
+    '.125622222222222222222221.1.',
+    '9127622288222333333322221121',
+    '9122222222222333333322221221',
+    '.11122222222233333332222121.',
+    '...112222222222222222222121.',
+    '....1111222221111111111111..',
+    '....1221.1221.1221.1221.....',
+    '....1221.1221.1221.1221.....',
+    '...1221..1221..1221.1221....',
+    '...1111..1111..1111.1111....'
+  ],
+  walk3: [
+    '............................',
+    '...11.....11................',
+    '..1441...1441...............',
+    '..14221112241...............',
+    '.1222222222211111111111.....',
+    '.12222222222222222222221....',
+    '.125622222222222222222221...',
+    '91276222882223333333222211..',
+    '912222222222233333332222121.',
+    '.11122222222233333332222121.',
+    '...112222222222222222222121.',
+    '....1222112221..12211222121.',
+    '....1221..12221.1221.111121.',
+    '...1221....1221.1221...121..',
+    '...1221.....1221.1221..11...',
+    '...1111.....1111.1111.......'
   ],
   sleep: [
-    '....................',
-    '....................',
-    '....................',
-    '....................',
-    '....................',
-    '..11.........11.....',
-    '.1441.......1441....',
-    '.122111111111221....',
-    '12222222222222221...',
-    '12-222222222-2221...',
-    '12222226222222221.11',
-    '.1223333333322221121',
-    '..12222222222222221.',
-    '...111111111111111..'
+    '..........................',
+    '..........................',
+    '..........................',
+    '..........................',
+    '..........................',
+    '..........................',
+    '....11..............11....',
+    '...1441............1441...',
+    '...14221111111111112241...',
+    '..1222222222222222222221..',
+    '..122--222222222222--221..',
+    '.9122--222288222222--2219.',
+    '99122222223333222222222199',
+    '.9122222222222222222222219',
+    '..12223333333333332222221.',
+    '..12222222222222222222221.',
+    '..122222222222222222222111',
+    '..122222222222222222221121',
+    '..111111111111111111111221',
+    '.......................111'
   ],
   play: [
-    '....................',
-    '..11.........11.....',
-    '.1441.......1441....',
-    '.122111111111221....',
-    '12222222222222221...',
-    '12522222222252221...',
-    '12222226222222221...',
-    '.122222222222221....',
-    '.122333333333221.11.',
-    '12223333333332221221',
-    '1222222222222222111.',
-    '.112111111111211....',
-    '..121......121......',
-    '..111......111......'
+    '..........................',
+    '....11..............11....',
+    '...1441............1441...',
+    '...14221111111111112241...',
+    '..1222222222222222222221..',
+    '..1225622222222222256221..',
+    '.912276222288222222762219.',
+    '99122222223333222222222199',
+    '.9.11222233333322222211.9.',
+    '....112233333333222211.11.',
+    '....12223333333322221.1221',
+    '...1222233333333222221.11.',
+    '..122222333333332222221...',
+    '..122212333333332122221...',
+    '..11221111111111112211....',
+    '...1221..........1221.....',
+    '..1221............1221....',
+    '..111..............111...'
   ],
   vibe: [
-    '.....99999999.......',
-    '...9119....9119.....',
-    '..84489....98448....',
-    '..82281111118228....',
-    '.8222822222282228...',
-    '.8252822222285228...',
-    '..122222622222221...',
-    '..122222222222221...',
-    '..122333333333221...',
-    '.12223333333332221..',
-    '.12223333333332221.1',
-    '.12222222222222221121',
-    '..1222222222222211221',
-    '...11111111111111111'
+    '......CCCCCCCCCCCC........',
+    '....CC11CCCCCCCC11CC......',
+    '...CB44BC......CB44BC.....',
+    '...CB22B11111111B22BC.....',
+    '..CB222B22222222B222BC....',
+    '..CB222B22222222B222BC....',
+    '..1B256B22222222B562B1....',
+    '.91B276B22288222B762B19...',
+    '991222222233332222222199..',
+    '.9.11222233333322222211.9.',
+    '....112233333333222211....',
+    '....12223333333322221.....',
+    '...1222233333333222221....',
+    '..122222333333332222221...',
+    '..122212333333332122221...',
+    '..1221.1221111221.12221..1',
+    '..1221.1221..1221.12221.121',
+    '..1221.1221..1221.122221221',
+    '.12221.1221..1221..11122221',
+    '.11111.1111..1111....11111.'
   ]
 };
 
-// Breeds & Fur Palettes
+// Realistic Breeds & Palettes
 const BREEDS = {
-  mochi: {
-    name: 'Mochi (White)',
-    outline: '#2b2622',
-    main: '#ffffff',
-    accent: '#f2eee9',
-    ear: '#fca5b3',
-    eye: '#3878b4',
-    nose: '#f4728d',
-    blush: '#fecdd3'
-  },
-  ginger: {
-    name: 'Mikan (Orange)',
-    outline: '#2b2622',
-    main: '#f59e0b',
-    accent: '#fef3c7',
-    ear: '#fca5b3',
-    eye: '#3d2514',
-    nose: '#f4728d',
-    blush: '#fed7aa'
-  },
   calico: {
     name: 'Boba (Calico)',
-    outline: '#2b2622',
-    main: '#faf8f5',
-    accent: '#ea8a46',
+    outline: '#1f1c1a',
+    main: '#faf7f2', // soft cream white
+    accent: '#df7c32', // rich copper ginger patches
     ear: '#fca5b3',
-    eye: '#2e7d32',
-    nose: '#f4728d',
-    blush: '#fecdd3'
+    eyeIris: '#2e7d32', // emerald green
+    eyePupil: '#161413',
+    eyeShine: '#ffffff',
+    nose: '#f87171',
+    whisker: '#c2bcb3'
+  },
+  ginger: {
+    name: 'Mikan (Orange Tabby)',
+    outline: '#1f1c1a',
+    main: '#e6822c', // warm orange coat
+    accent: '#fef2e0', // creamy bib / belly
+    ear: '#fca5b3',
+    eyeIris: '#d97706', // amber gold
+    eyePupil: '#161413',
+    eyeShine: '#ffffff',
+    nose: '#f87171',
+    whisker: '#d1c7bc'
+  },
+  mochi: {
+    name: 'Mochi (Pure White)',
+    outline: '#262220',
+    main: '#ffffff', // pure white
+    accent: '#e8e2d8', // soft shading
+    ear: '#fca5b3',
+    eyeIris: '#2563eb', // sapphire blue
+    eyePupil: '#161413',
+    eyeShine: '#ffffff',
+    nose: '#f87171',
+    whisker: '#b8b2a8'
   },
   kuro: {
-    name: 'Kuro (Black)',
-    outline: '#16141a',
-    main: '#2a2833',
-    accent: '#474457',
+    name: 'Kuro (Velvet Black)',
+    outline: '#141218',
+    main: '#22202a', // charcoal velvet
+    accent: '#3a3746', // slate highlight
     ear: '#f87171',
-    eye: '#4ade80',
-    nose: '#f4728d',
-    blush: '#f87171'
+    eyeIris: '#84cc16', // bright chartreuse green
+    eyePupil: '#111014',
+    eyeShine: '#ffffff',
+    nose: '#f87171',
+    whisker: '#4a4659'
   }
 };
 
@@ -192,22 +257,22 @@ export default function PixelCat({ isPlaying = false }) {
 
   // Cat State Management
   const [catAction, setCatAction] = useState('idle'); // 'idle' | 'walking' | 'sleeping' | 'playing' | 'vibe'
-  const [statusMessage, setStatusMessage] = useState('Chilling by the turntable');
+  const [statusMessage, setStatusMessage] = useState('Resting by the turntable');
   const [isSleeping, setIsSleeping] = useState(false);
 
   // Simulation physics & positions
   const simRef = useRef({
-    x: 80,
-    targetX: 80,
-    speed: 1.1,
+    x: 60,
+    targetX: 60,
+    speed: 0.95,
     facing: 1, // 1 = right, -1 = left
     frameIndex: 0,
     tick: 0,
     blinkTick: 0,
     isBlinking: false,
-    vibeBeat: 0,
+    tailSwing: 0,
     yarn: {
-      x: 220,
+      x: 210,
       y: 72,
       vx: 0,
       targetX: null,
@@ -231,11 +296,11 @@ export default function PixelCat({ isPlaying = false }) {
   const triggerHeartBubble = useCallback((text = '❤️', color = '#ef4444') => {
     const sim = simRef.current;
     sim.particles.push({
-      x: sim.x + (sim.facing === 1 ? 24 : -4) + (Math.random() * 8 - 4),
-      y: 42,
+      x: sim.x + (sim.facing === 1 ? 32 : -4) + (Math.random() * 8 - 4),
+      y: 38,
       text,
-      life: 50,
-      maxLife: 50,
+      life: 52,
+      maxLife: 52,
       vy: -0.7 - Math.random() * 0.5,
       vx: (Math.random() - 0.5) * 0.4,
       color
@@ -247,7 +312,7 @@ export default function PixelCat({ isPlaying = false }) {
     playCatSound(0);
     setIsSleeping(false);
     setCatAction('idle');
-    setStatusMessage('Purring warmly...');
+    setStatusMessage('Purring softly...');
     triggerHeartBubble('❤️', '#ef4444');
     triggerHeartBubble('✨', '#ffd166');
   }, [triggerHeartBubble]);
@@ -262,14 +327,14 @@ export default function PixelCat({ isPlaying = false }) {
     playClickSound('light');
 
     const destX = targetSpotX !== null 
-      ? Math.max(30, Math.min(canvas.width - 40, targetSpotX))
-      : (sim.x > canvas.width / 2 ? 50 + Math.random() * 60 : canvas.width - 100 - Math.random() * 60);
+      ? Math.max(30, Math.min(canvas.width - 50, targetSpotX))
+      : (sim.x > canvas.width / 2 ? 40 + Math.random() * 60 : canvas.width - 90 - Math.random() * 60);
 
     sim.yarn.vx = (destX - sim.yarn.x) * 0.08;
     sim.yarn.targetX = destX;
-    sim.targetX = destX + (sim.x < destX ? -26 : 26);
+    sim.targetX = destX + (sim.x < destX ? -32 : 32);
     setCatAction('walking');
-    setStatusMessage('Pouncing after yarn!');
+    setStatusMessage('Stalking the yarn ball...');
   }, []);
 
   // Action: Give Treat
@@ -281,11 +346,11 @@ export default function PixelCat({ isPlaying = false }) {
     setIsSleeping(false);
     playClickSound('light');
 
-    const dropX = Math.max(30, Math.min(canvas.width - 40, sim.x + (sim.facing === 1 ? 90 : -90)));
+    const dropX = Math.max(35, Math.min(canvas.width - 50, sim.x + (sim.facing === 1 ? 80 : -80)));
     sim.treat = { x: dropX, y: 74, life: 180 };
-    sim.targetX = dropX + (sim.x < dropX ? -22 : 22);
+    sim.targetX = dropX + (sim.x < dropX ? -26 : 26);
     setCatAction('walking');
-    setStatusMessage('Sniffing out a yummy treat!');
+    setStatusMessage('Trotting over for a snack!');
   }, []);
 
   // Action: Toggle Sleep / Wake
@@ -295,11 +360,11 @@ export default function PixelCat({ isPlaying = false }) {
       playClickSound('light');
       if (next) {
         setCatAction('sleeping');
-        setStatusMessage('Taking a cozy catnap...');
+        setStatusMessage('Curled up in a peaceful catnap...');
         triggerHeartBubble('💤', '#94a3b8');
       } else {
         setCatAction('idle');
-        setStatusMessage('Woke up & ready to play!');
+        setStatusMessage('Awake and stretching!');
         playCatSound(0);
         triggerHeartBubble('✨', '#ffd166');
       }
@@ -317,10 +382,10 @@ export default function PixelCat({ isPlaying = false }) {
 
     const sim = simRef.current;
     const catBox = {
-      x: sim.x - 10,
-      y: 35,
-      w: 60,
-      h: 45
+      x: sim.x - 12,
+      y: 28,
+      w: 68,
+      h: 52
     };
 
     if (
@@ -345,7 +410,6 @@ export default function PixelCat({ isPlaying = false }) {
     let animId;
     const sim = simRef.current;
 
-    // Resize canvas cleanly to match container width
     const handleResize = () => {
       if (!containerRef.current) return;
       const width = containerRef.current.clientWidth || 360;
@@ -361,74 +425,70 @@ export default function PixelCat({ isPlaying = false }) {
       sim.tick++;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 1. Draw Minimalist Studio Floor / Rug Strip
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+      // 1. Draw Minimalist Studio Floor Line & Woven Rug
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
       ctx.fillRect(0, 78, canvas.width, 2);
 
-      // Subtle woven rug in center-left
-      ctx.fillStyle = 'rgba(212, 210, 203, 0.45)';
-      ctx.fillRect(36, 76, 120, 4);
-      ctx.fillStyle = 'rgba(180, 176, 166, 0.35)';
-      for (let rx = 40; rx < 150; rx += 8) {
+      // Subtle woven rug
+      ctx.fillStyle = 'rgba(214, 211, 203, 0.5)';
+      ctx.fillRect(32, 76, 110, 4);
+      ctx.fillStyle = 'rgba(180, 175, 164, 0.4)';
+      for (let rx = 36; rx < 140; rx += 8) {
         ctx.fillRect(rx, 75, 4, 6);
       }
 
-      // 2. Behavioral AI decision loop (every ~120-180 frames)
-      if (!isSleeping && sim.tick % 160 === 0 && !sim.treat && !sim.yarn.targetX) {
+      // 2. Behavioral AI decision loop
+      if (!isSleeping && sim.tick % 170 === 0 && !sim.treat && !sim.yarn.targetX) {
         if (isPlaying) {
           setCatAction('vibe');
-          setStatusMessage('Grooving to the vinyl record ♪');
+          setStatusMessage('Listening to the vinyl record ♪');
           if (Math.random() < 0.4) {
             triggerHeartBubble('♪', '#f59e0b');
           }
         } else {
           const rand = Math.random();
-          if (rand < 0.4) {
-            // Pick a new wander spot
-            const wanderX = 40 + Math.random() * (canvas.width - 90);
+          if (rand < 0.42) {
+            // Pick a wander spot
+            const wanderX = 40 + Math.random() * (canvas.width - 100);
             sim.targetX = wanderX;
             setCatAction('walking');
-            setStatusMessage('Strolling around the room');
-          } else if (rand < 0.7) {
+            setStatusMessage('Strolling across the studio');
+          } else if (rand < 0.75) {
             setCatAction('idle');
-            setStatusMessage('Watching the record spin');
+            setStatusMessage('Watching the turntable gently spin');
           } else {
-            // Play with yarn
             handleTossYarn();
           }
         }
       }
 
-      // If playing music and not sleeping, vibe occasionally
-      if (isPlaying && !isSleeping && catAction !== 'walking' && Math.random() < 0.015) {
+      // Floating music notes when music is playing
+      if (isPlaying && !isSleeping && catAction !== 'walking' && Math.random() < 0.018) {
         triggerHeartBubble(Math.random() > 0.5 ? '♪' : '♫', '#f59e0b');
       }
 
-      // 3. Cat Movement Physics
+      // 3. Movement Physics
       const distToTarget = sim.targetX - sim.x;
       if (Math.abs(distToTarget) > 3 && (catAction === 'walking' || sim.yarn.targetX || sim.treat)) {
         sim.facing = distToTarget > 0 ? 1 : -1;
         sim.x += (distToTarget > 0 ? 1 : -1) * sim.speed;
-        if (sim.tick % 8 === 0) {
+        if (sim.tick % 7 === 0) {
           sim.frameIndex = (sim.frameIndex + 1) % 4;
         }
       } else {
         if (catAction === 'walking') {
-          // Reached destination!
           if (sim.treat) {
-            // Eat treat!
             sim.treat = null;
             setCatAction('play');
-            setStatusMessage('Munching treat *nom nom*');
+            setStatusMessage('Snacking on treat *crunch crunch*');
             playCatSound(0);
             triggerHeartBubble('✨', '#ffd166');
             setTimeout(() => setCatAction('idle'), 2400);
           } else if (sim.yarn.targetX) {
-            // Bat yarn ball!
             sim.yarn.targetX = null;
-            sim.yarn.vx = (sim.facing === 1 ? 1 : -1) * (2.2 + Math.random() * 1.5);
+            sim.yarn.vx = (sim.facing === 1 ? 1 : -1) * (2.2 + Math.random() * 1.6);
             setCatAction('play');
-            setStatusMessage('Patted the yarn ball!');
+            setStatusMessage('Batting at the yarn ball!');
             setTimeout(() => setCatAction('idle'), 1800);
           } else {
             setCatAction('idle');
@@ -436,10 +496,10 @@ export default function PixelCat({ isPlaying = false }) {
         }
       }
 
-      // 4. Yarn Physics
-      if (Math.abs(sim.yarn.vx) > 0.05) {
+      // 4. Yarn Ball Physics
+      if (Math.abs(sim.yarn.vx) > 0.04) {
         sim.yarn.x += sim.yarn.vx;
-        sim.yarn.vx *= 0.94; // friction
+        sim.yarn.vx *= 0.94;
         if (sim.yarn.x < 15) {
           sim.yarn.x = 15;
           sim.yarn.vx = -sim.yarn.vx * 0.7;
@@ -449,7 +509,7 @@ export default function PixelCat({ isPlaying = false }) {
         }
       }
 
-      // 5. Draw Yarn Ball & Trail Thread
+      // Draw Yarn Ball with string
       ctx.strokeStyle = 'rgba(251, 113, 133, 0.45)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -457,7 +517,6 @@ export default function PixelCat({ isPlaying = false }) {
       ctx.quadraticCurveTo(sim.yarn.x - 7, 72, sim.yarn.x, 75);
       ctx.stroke();
 
-      // Yarn ball circle
       ctx.fillStyle = '#fb7185';
       ctx.beginPath();
       ctx.arc(sim.yarn.x, 74, 5.5, 0, Math.PI * 2);
@@ -467,34 +526,33 @@ export default function PixelCat({ isPlaying = false }) {
       ctx.arc(sim.yarn.x - 1.5, 72.5, 2, 0, Math.PI * 2);
       ctx.fill();
 
-      // 6. Draw Treat if Present
+      // Draw Treat if present
       if (sim.treat) {
         sim.treat.life--;
         ctx.fillStyle = '#38bdf8';
-        // Cute pixel fish shape
         const tx = sim.treat.x;
         const ty = 74;
-        ctx.fillRect(tx, ty, 6, 4);
-        ctx.fillRect(tx + 6, ty - 1, 2, 6);
+        ctx.fillRect(tx, ty, 7, 4);
+        ctx.fillRect(tx + 7, ty - 1, 2, 6);
         ctx.fillStyle = '#0284c7';
-        ctx.fillRect(tx + 2, ty + 1, 1, 1); // eye
+        ctx.fillRect(tx + 2, ty + 1, 1, 1);
       }
 
-      // 7. Select Sprite Matrix for Current Cat State
+      // 5. Select Realistic Sprite
       let spriteKey = 'sit';
       if (isSleeping) {
         spriteKey = 'sleep';
       } else if (catAction === 'walking') {
-        spriteKey = sim.frameIndex % 2 === 0 ? 'walk1' : 'walk2';
+        const walkFrames = ['walk1', 'walk2', 'walk3', 'walk2'];
+        spriteKey = walkFrames[sim.frameIndex] || 'walk1';
       } else if (catAction === 'play') {
         spriteKey = 'play';
       } else if (catAction === 'vibe' || (isPlaying && catAction === 'idle')) {
         spriteKey = 'vibe';
       } else {
-        // Blinking logic during sit/idle
-        if (sim.tick % 90 === 0) {
+        if (sim.tick % 100 === 0) {
           sim.isBlinking = true;
-          sim.blinkTick = 10;
+          sim.blinkTick = 12;
         }
         if (sim.blinkTick > 0) {
           sim.blinkTick--;
@@ -506,43 +564,48 @@ export default function PixelCat({ isPlaying = false }) {
 
       const spriteData = SPRITES[spriteKey] || SPRITES.sit;
       const breed = BREEDS[selectedBreed] || BREEDS.calico;
-      const pixelSize = 2.7;
+      const pixelSize = 2.4;
+      const spriteH = spriteData.length;
+      const spriteW = Math.max(...spriteData.map(r => r.length));
 
-      // 8. Render Pixel Matrix
       ctx.save();
       const catDrawX = Math.round(sim.x);
-      const catDrawY = Math.round(isSleeping ? 46 : 41);
+      // Paws rest cleanly on floor y = 78
+      const catDrawY = Math.round(78 - spriteH * pixelSize);
 
       if (sim.facing === -1) {
-        ctx.translate(catDrawX + 48, 0);
+        ctx.translate(catDrawX + spriteW * pixelSize, 0);
         ctx.scale(-1, 1);
       } else {
         ctx.translate(catDrawX, 0);
       }
 
-      // Draw subtle cat shadow
+      // Soft natural drop shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
       ctx.beginPath();
-      ctx.ellipse(24, 76, 18, 4, 0, 0, Math.PI * 2);
+      ctx.ellipse(spriteW * pixelSize * 0.45, 77, spriteW * pixelSize * 0.42, 4, 0, 0, Math.PI * 2);
       ctx.fill();
 
+      // Render Pixels
       for (let r = 0; r < spriteData.length; r++) {
         const row = spriteData[r];
         for (let c = 0; c < row.length; c++) {
           const char = row[c];
           if (char === '.') continue;
 
-          let color = '#2b2622';
+          let color = breed.outline;
           if (char === '1') color = breed.outline;
           else if (char === '2') color = breed.main;
           else if (char === '3') color = breed.accent;
           else if (char === '4') color = breed.ear;
-          else if (char === '5') color = breed.eye;
-          else if (char === '6') color = breed.nose;
-          else if (char === '7') color = breed.blush;
-          else if (char === '8') color = '#f59e0b'; // retro yellow headphone
-          else if (char === '9') color = '#94a3b8'; // silver band
+          else if (char === '5') color = breed.eyeIris;
+          else if (char === '6') color = breed.eyePupil;
+          else if (char === '7') color = breed.eyeShine;
+          else if (char === '8') color = breed.nose;
+          else if (char === '9') color = breed.whisker;
           else if (char === '-') color = breed.outline;
+          else if (char === 'B') color = '#f59e0b'; // vintage amber audio cup
+          else if (char === 'C') color = '#94a3b8'; // brushed silver band
 
           ctx.fillStyle = color;
           ctx.fillRect(c * pixelSize, catDrawY + r * pixelSize, pixelSize, pixelSize);
@@ -550,7 +613,7 @@ export default function PixelCat({ isPlaying = false }) {
       }
       ctx.restore();
 
-      // 9. Floating Particles (Hearts, Music Notes, ZZZ)
+      // 6. Floating Particles (Hearts, Music Notes, ZZZ)
       for (let i = sim.particles.length - 1; i >= 0; i--) {
         const p = sim.particles[i];
         p.x += p.vx;
@@ -602,10 +665,10 @@ export default function PixelCat({ isPlaying = false }) {
               onClick={() => handleSelectBreed(key)}
               title={`Switch to ${b.name}`}
             >
-              {key === 'mochi' && '⚪'}
-              {key === 'ginger' && '🟠'}
-              {key === 'kuro' && '⚫'}
               {key === 'calico' && '🎨'}
+              {key === 'ginger' && '🟠'}
+              {key === 'mochi' && '⚪'}
+              {key === 'kuro' && '⚫'}
             </button>
           ))}
         </div>
