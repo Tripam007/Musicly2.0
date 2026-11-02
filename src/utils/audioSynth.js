@@ -1406,3 +1406,57 @@ export async function playCatSound(catIndex = 0) {
   } catch (_e) {}
 }
 
+// Iconic Pop Cat Meme Sound ("POP!" / Hollow Mouth Pop)
+export function playPopCatSound() {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+    const now = ctx.currentTime;
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.75, now);
+    masterGain.connect(ctx.destination);
+
+    // 1. Hollow oral cavity pop (rapid downward pitch sweep 640Hz -> 110Hz)
+    const popOsc = ctx.createOscillator();
+    const popGain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    popOsc.type = 'sine';
+    popOsc.frequency.setValueAtTime(640, now);
+    popOsc.frequency.exponentialRampToValueAtTime(115, now + 0.075);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(380, now);
+    filter.Q.setValueAtTime(3.0, now);
+
+    popGain.gain.setValueAtTime(0.001, now);
+    popGain.gain.linearRampToValueAtTime(0.92, now + 0.003);
+    popGain.gain.exponentialRampToValueAtTime(0.001, now + 0.082);
+
+    popOsc.connect(filter);
+    filter.connect(popGain);
+    popGain.connect(masterGain);
+
+    popOsc.start(now);
+    popOsc.stop(now + 0.09);
+
+    // 2. High-speed lip transient click (finger flick / mouth release snap)
+    const clickOsc = ctx.createOscillator();
+    const clickGain = ctx.createGain();
+    clickOsc.type = 'triangle';
+    clickOsc.frequency.setValueAtTime(1450, now);
+    clickOsc.frequency.exponentialRampToValueAtTime(300, now + 0.018);
+
+    clickGain.gain.setValueAtTime(0.001, now);
+    clickGain.gain.linearRampToValueAtTime(0.38, now + 0.002);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
+
+    clickOsc.connect(clickGain);
+    clickGain.connect(masterGain);
+
+    clickOsc.start(now);
+    clickOsc.stop(now + 0.025);
+  } catch (_e) {}
+}
+
