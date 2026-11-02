@@ -1,27 +1,27 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
-import { 
-  Home, 
-  Heart, 
-  Music, 
-  Disc, 
-  Sliders, 
-  Settings, 
-  Coffee, 
-  Search, 
-  Bell, 
-  Play, 
-  Pause, 
-  SkipBack, 
-  SkipForward, 
-  Shuffle, 
-  Repeat, 
-  Repeat1, 
-  Volume2, 
-  VolumeX, 
-  Volume1, 
-  ListMusic, 
-  Maximize2, 
-  Minimize2, 
+import {
+  Home,
+  Heart,
+  Music,
+  Disc,
+  Sliders,
+  Settings,
+  Coffee,
+  Search,
+  Bell,
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Shuffle,
+  Repeat,
+  Repeat1,
+  Volume2,
+  VolumeX,
+  Volume1,
+  ListMusic,
+  Maximize2,
+  Minimize2,
   X,
   Sparkles,
   Check,
@@ -43,13 +43,13 @@ import '../styles/vinylScene.css';
 
 // Curated Category Filters inspired by the reference image
 const VINYL_CATEGORIES = [
-  'ALL', 
-  'CLASSIC', 
-  '90s', 
-  'NEW', 
-  'INSTRUMENTAL', 
-  'MODERN', 
-  'INDIE', 
+  'ALL',
+  'CLASSIC',
+  '90s',
+  'NEW',
+  'INSTRUMENTAL',
+  'MODERN',
+  'INDIE',
   'LO-FI'
 ];
 
@@ -108,6 +108,7 @@ export default function VinylScene({
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
   const carouselRef = useRef(null);
+  const categoriesSectionRef = useRef(null);
 
   const scrollCarousel = useCallback((direction) => {
     if (carouselRef.current) {
@@ -117,47 +118,55 @@ export default function VinylScene({
     }
   }, []);
 
-  // Horizontal mouse-wheel scrolling for track cards carousel (Queue & Categories)
-  useEffect(() => {
+  // Unconditional horizontal wheel scrolling:
+  // When mouse cursor is hovered over this section, vertical page scrolling is 100% prevented,
+  // and translated purely into horizontal scroll to show the rest of the songs!
+  const handleCarouselWheel = useCallback((e) => {
+    // 1. ALWAYS prevent default vertical scrolling when wheel is turned over this section!
+    e.preventDefault();
+    e.stopPropagation();
+
     const el = carouselRef.current;
     if (!el) return;
 
-    const handleWheel = (e) => {
-      // If predominantly horizontal movement (e.g. trackpad horizontal swipe), let native handle it
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      if (e.deltaY === 0) return;
+    // Detect if this is a native horizontal gesture (e.g. trackpad horizontal swipe)
+    const isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+    let delta = isHorizontal ? e.deltaX : e.deltaY;
 
-      const maxScroll = el.scrollWidth - el.clientWidth;
-      if (maxScroll <= 0) return;
+    if (delta === 0) return;
 
-      // Normalize delta based on deltaMode:
-      // deltaMode 1 = lines (standard desktop mouse wheel on Windows/Linux)
-      // deltaMode 2 = pages
-      // deltaMode 0 = pixels (trackpads, smooth mice)
-      let delta = e.deltaY;
-      if (e.deltaMode === 1) {
-        delta *= 40;
-      } else if (e.deltaMode === 2) {
-        delta *= el.clientWidth * 0.8;
-      }
+    // Normalize delta across input devices (standard mouse wheel vs trackpad)
+    if (e.deltaMode === 1) {
+      // Lines mode (standard mouse wheel on Windows/Linux)
+      delta *= 42;
+    } else if (e.deltaMode === 2) {
+      // Pages mode
+      delta *= el.clientWidth * 0.75;
+    }
 
-      const canScrollLeft = el.scrollLeft > 1;
-      const canScrollRight = el.scrollLeft < maxScroll - 1;
-
-      // When the mouse is over this container and scrolling in an available direction,
-      // prevent default vertical page scrolling and scroll this container horizontally
-      if ((delta > 0 && canScrollRight) || (delta < 0 && canScrollLeft)) {
-        e.preventDefault();
-        e.stopPropagation();
-        el.scrollLeft += delta;
-      }
-    };
-
-    el.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      el.removeEventListener('wheel', handleWheel);
-    };
+    // Direct, instant, jitter-free horizontal scroll
+    el.scrollLeft += delta;
   }, []);
+
+  const setCarouselRef = useCallback((node) => {
+    if (carouselRef.current) {
+      carouselRef.current.removeEventListener('wheel', handleCarouselWheel);
+    }
+    carouselRef.current = node;
+    if (node) {
+      node.addEventListener('wheel', handleCarouselWheel, { passive: false });
+    }
+  }, [handleCarouselWheel]);
+
+  const setCategoriesSectionRef = useCallback((node) => {
+    if (categoriesSectionRef.current) {
+      categoriesSectionRef.current.removeEventListener('wheel', handleCarouselWheel);
+    }
+    categoriesSectionRef.current = node;
+    if (node) {
+      node.addEventListener('wheel', handleCarouselWheel, { passive: false });
+    }
+  }, [handleCarouselWheel]);
 
   // Derived upcoming queue: user's custom queue if set, otherwise tracks succeeding currentTrack
   const upcomingQueue = useMemo(() => {
@@ -247,7 +256,7 @@ export default function VinylScene({
   const filteredPickerTracks = useMemo(() => {
     if (!songSearchQuery.trim()) return allTracks.slice(0, 60);
     const q = songSearchQuery.toLowerCase();
-    return allTracks.filter(t => 
+    return allTracks.filter(t =>
       (t.title || '').toLowerCase().includes(q) ||
       (t.artist || '').toLowerCase().includes(q) ||
       (t.genre || '').toLowerCase().includes(q)
@@ -374,8 +383,8 @@ export default function VinylScene({
 
     const updated = customPlaylists.map(p => {
       if (p.id === playlistId) {
-        return { 
-          ...p, 
+        return {
+          ...p,
           trackIds: newIds,
           subtitle: `${newIds.length} song${newIds.length === 1 ? '' : 's'} in this list`,
           count: newIds.length
@@ -517,7 +526,7 @@ export default function VinylScene({
       const rate = 0.88 + (clamped / 33.333) * 0.24;
       try {
         audioElement.playbackRate = Math.max(0.5, Math.min(2.0, rate));
-      } catch {}
+      } catch { }
     }
   }, [audioElement]);
 
@@ -608,7 +617,7 @@ export default function VinylScene({
     setTurntableSkin(skin);
     try {
       localStorage.setItem('musicly_turntable_skin', skin);
-    } catch {}
+    } catch { }
     playClickSound('toggle');
   }, []);
 
@@ -645,7 +654,7 @@ export default function VinylScene({
         setTurntableSkin((prev) => {
           if (prev !== 'modern') {
             lastSwitchTime = now;
-            try { localStorage.setItem('musicly_turntable_skin', 'modern'); } catch {}
+            try { localStorage.setItem('musicly_turntable_skin', 'modern'); } catch { }
             playClickSound('toggle');
             return 'modern';
           }
@@ -656,7 +665,7 @@ export default function VinylScene({
         setTurntableSkin((prev) => {
           if (prev !== 'vintage') {
             lastSwitchTime = now;
-            try { localStorage.setItem('musicly_turntable_skin', 'vintage'); } catch {}
+            try { localStorage.setItem('musicly_turntable_skin', 'vintage'); } catch { }
             playClickSound('toggle');
             return 'vintage';
           }
@@ -691,7 +700,7 @@ export default function VinylScene({
   // Filter tracks by category and search
   const filteredCategoryTracks = useMemo(() => {
     if (!allTracks || allTracks.length === 0) return [];
-    
+
     let list = allTracks;
 
     // 1. Language Filter
@@ -745,8 +754,8 @@ export default function VinylScene({
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      list = list.filter(t => 
-        (t.title || '').toLowerCase().includes(q) || 
+      list = list.filter(t =>
+        (t.title || '').toLowerCase().includes(q) ||
         (t.artist || '').toLowerCase().includes(q) ||
         (t.genre || '').toLowerCase().includes(q)
       );
@@ -797,8 +806,8 @@ export default function VinylScene({
     const isHindiOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'hindi';
 
     if (isEnglishOnly) {
-      const countryTracks = allTracks.filter(t => 
-        (t.genre || '').toLowerCase().includes('country') || 
+      const countryTracks = allTracks.filter(t =>
+        (t.genre || '').toLowerCase().includes('country') ||
         (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country')))
       );
       if (countryTracks.length > 0) {
@@ -814,8 +823,8 @@ export default function VinylScene({
     }
 
     if (isHindiOnly) {
-      const ghazalTracks = allTracks.filter(t => 
-        (t.genre || '').toLowerCase().includes('ghazal') || 
+      const ghazalTracks = allTracks.filter(t =>
+        (t.genre || '').toLowerCase().includes('ghazal') ||
         (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal')))
       );
       if (ghazalTracks.length > 0) {
@@ -885,11 +894,11 @@ export default function VinylScene({
     if (id) {
       try {
         localStorage.setItem('musicly_active_playlist_id', id);
-      } catch {}
+      } catch { }
     } else {
       try {
         localStorage.removeItem('musicly_active_playlist_id');
-      } catch {}
+      } catch { }
     }
   }, [onSetActivePlayingPlaylistId]);
 
@@ -1122,9 +1131,9 @@ export default function VinylScene({
   // Fullscreen toggle
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => { });
     } else {
-      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => { });
     }
   };
 
@@ -1156,8 +1165,8 @@ export default function VinylScene({
     const isPlaylistPlaying = isPlaylistActive && isPlaying;
 
     return (
-      <div 
-        key={playlist.id} 
+      <div
+        key={playlist.id}
         className={`vinyl-playlist-item ${playlist.isCustom ? 'is-custom' : ''} ${isPlaylistActive ? 'is-active-playing' : ''}`}
         onClick={() => {
           if (playlist.id === 'liked_songs') {
@@ -1171,10 +1180,10 @@ export default function VinylScene({
         title={playlist.isCustom ? `Manage ${playlist.title}` : `Open ${playlist.title} to browse songs`}
       >
         <div className="vinyl-playlist-info-left">
-          <img 
-            src={playlist.image} 
-            alt={playlist.title} 
-            className="vinyl-playlist-thumb" 
+          <img
+            src={playlist.image}
+            alt={playlist.title}
+            className="vinyl-playlist-thumb"
             loading="lazy"
           />
           <div className="vinyl-playlist-text">
@@ -1197,7 +1206,7 @@ export default function VinylScene({
         </div>
 
         {/* Circular Play Button: Loads playlist tracks into turntable queue */}
-        <button 
+        <button
           className={`vinyl-playlist-play-btn ${isPlaylistPlaying ? 'is-playing' : ''}`}
           onClick={(e) => handlePlayPlaylist(playlist, e)}
           title={`Play "${playlist.title}" on turntable and queue all songs`}
@@ -1221,8 +1230,8 @@ export default function VinylScene({
       {/* Top Header Bar */}
       <header className="vinyl-top-header">
         {/* Brand / Logo */}
-        <div 
-          className="vinyl-brand-group" 
+        <div
+          className="vinyl-brand-group"
           onClick={(e) => {
             // Explicitly do nothing on single click (not even take to the home page)
             e.preventDefault();
@@ -1260,8 +1269,8 @@ export default function VinylScene({
             }}
           />
           {searchQuery && (
-            <button 
-              className="vinyl-search-clear" 
+            <button
+              className="vinyl-search-clear"
               onClick={() => setSearchQuery('')}
               title="Clear search"
             >
@@ -1273,9 +1282,9 @@ export default function VinylScene({
         {/* Right Header Actions */}
         <div className="vinyl-header-actions">
           {/* Ambience Mixer Icon */}
-          <button 
+          <button
             id="vinyl-btn-ambient"
-            className="vinyl-icon-btn" 
+            className="vinyl-icon-btn"
             onClick={onOpenAmbient}
             title="Ambient Sound Mixer"
           >
@@ -1286,9 +1295,9 @@ export default function VinylScene({
           </button>
 
           {/* Notifications / Shortcuts */}
-          <button 
+          <button
             id="vinyl-btn-shortcuts"
-            className="vinyl-icon-btn" 
+            className="vinyl-icon-btn"
             onClick={onOpenShortcutsModal}
             title="Keyboard Shortcuts & Hints"
           >
@@ -1297,9 +1306,9 @@ export default function VinylScene({
 
           {/* User Profile / Login */}
           {user && !user.isAnonymous ? (
-            <button 
+            <button
               id="vinyl-btn-user"
-              className="vinyl-user-btn" 
+              className="vinyl-user-btn"
               onClick={onOpenAuthModal}
               title={`Logged in as ${user.displayName || user.email}`}
             >
@@ -1313,9 +1322,9 @@ export default function VinylScene({
               <span className="vinyl-user-name">{user.displayName || user.email?.split('@')[0]}</span>
             </button>
           ) : (
-            <button 
+            <button
               id="vinyl-btn-login"
-              className="vinyl-user-btn" 
+              className="vinyl-user-btn"
               onClick={onOpenAuthModal}
               title="Sign in to sync your favorites & playlists"
             >
@@ -1331,36 +1340,36 @@ export default function VinylScene({
         {/* Left Navigation Rail */}
         <aside className="vinyl-nav-rail" aria-label="Navigation Rail">
           <div className="vinyl-rail-group">
-            <button 
+            <button
               id="vinyl-rail-home"
-              className="vinyl-rail-btn is-active" 
+              className="vinyl-rail-btn is-active"
               onClick={onClose}
               title="Home Room (Cozy Bedroom Studio)"
             >
               <Home size={19} />
             </button>
 
-            <button 
+            <button
               id="vinyl-rail-favorites"
-              className={`vinyl-rail-btn ${isLikedPanelOpen ? 'is-active' : ''}`} 
+              className={`vinyl-rail-btn ${isLikedPanelOpen ? 'is-active' : ''}`}
               onClick={() => setIsLikedPanelOpen(prev => !prev)}
               title="Favorites & Liked Songs"
             >
               <Heart size={19} fill={isLikedPanelOpen ? '#ff4b60' : (favorites.length > 0 ? '#ff4b60' : 'none')} color={isLikedPanelOpen || favorites.length > 0 ? '#ff4b60' : 'currentColor'} />
             </button>
 
-            <button 
+            <button
               id="vinyl-rail-library"
-              className="vinyl-rail-btn" 
+              className="vinyl-rail-btn"
               onClick={onOpenPlaylistDrawer}
               title="Music Library & Search"
             >
               <Music size={19} />
             </button>
 
-            <button 
+            <button
               id="vinyl-rail-scenes"
-              className="vinyl-rail-btn" 
+              className="vinyl-rail-btn"
               onClick={onOpenSceneModal}
               title="Room Themes & Backdrops"
             >
@@ -1369,18 +1378,18 @@ export default function VinylScene({
           </div>
 
           <div className="vinyl-rail-group">
-            <button 
+            <button
               id="vinyl-rail-coffee"
-              className="vinyl-rail-btn" 
+              className="vinyl-rail-btn"
               onClick={onOpenCoffeeModal}
               title="Support Musicly / Coffee"
             >
               <Coffee size={19} />
             </button>
 
-            <button 
+            <button
               id="vinyl-rail-settings"
-              className="vinyl-rail-btn" 
+              className="vinyl-rail-btn"
               onClick={onOpenAudioSettings}
               title="Audio Equalizer & Settings"
             >
@@ -1391,7 +1400,7 @@ export default function VinylScene({
 
         {/* Soft Blurry Background Backdrop when Liked Songs popover is open */}
         {isLikedPanelOpen && !isAdminDashboardOpen && (
-          <div 
+          <div
             className="vinyl-liked-popover-backdrop"
             onClick={() => setIsLikedPanelOpen(false)}
             aria-hidden="true"
@@ -1400,9 +1409,9 @@ export default function VinylScene({
 
         {/* Liked Songs White Popover Box beside the rail */}
         {isLikedPanelOpen && !isAdminDashboardOpen && (
-          <div 
-            className="vinyl-liked-popover-panel" 
-            role="dialog" 
+          <div
+            className="vinyl-liked-popover-panel"
+            role="dialog"
             aria-label="Liked Songs"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1421,7 +1430,7 @@ export default function VinylScene({
 
               <div className="vinyl-liked-header-actions">
                 {likedTracks.length > 0 && (
-                  <button 
+                  <button
                     type="button"
                     className="vinyl-liked-playall-btn"
                     onClick={() => {
@@ -1435,7 +1444,7 @@ export default function VinylScene({
                     <span>PLAY ALL</span>
                   </button>
                 )}
-                <button 
+                <button
                   type="button"
                   className="vinyl-liked-close-btn"
                   onClick={() => setIsLikedPanelOpen(false)}
@@ -1465,7 +1474,7 @@ export default function VinylScene({
                   const isTrackPlaying = isCurrent && isPlaying;
 
                   return (
-                    <div 
+                    <div
                       key={track.id}
                       className={`vinyl-liked-track-row ${isCurrent ? 'is-current' : ''}`}
                       onClick={() => onSelectTrack?.(track, true)}
@@ -1475,13 +1484,13 @@ export default function VinylScene({
                       </span>
 
                       <div className="vinyl-liked-row-cover-wrap">
-                        <img 
-                          src={track.cover || '/assets/images/cozy_bedroom.jpg'} 
-                          alt={track.title} 
+                        <img
+                          src={track.cover || '/assets/images/cozy_bedroom.jpg'}
+                          alt={track.title}
                           className="vinyl-liked-row-cover"
-                          loading="lazy" 
+                          loading="lazy"
                         />
-                        <button 
+                        <button
                           type="button"
                           className={`vinyl-liked-row-play-btn ${isTrackPlaying ? 'is-playing' : ''}`}
                           onClick={(e) => {
@@ -1512,7 +1521,7 @@ export default function VinylScene({
                       </span>
 
                       {/* + Add to custom playlist */}
-                      <button 
+                      <button
                         type="button"
                         className="vinyl-liked-row-add-btn"
                         onClick={(e) => {
@@ -1526,7 +1535,7 @@ export default function VinylScene({
                         <Plus size={14} strokeWidth={2.8} />
                       </button>
 
-                      <button 
+                      <button
                         type="button"
                         className="vinyl-liked-row-heart-btn"
                         onClick={(e) => {
@@ -1549,12 +1558,12 @@ export default function VinylScene({
         {/* Scrollable Main Workspace */}
         <main className="vinyl-main-scroll">
           <div className="vinyl-workspace-grid">
-            
+
             {/* ==========================================================================
                LEFT COLUMN: HERO VINYL TURNTABLE & INTEGRATED PLAYER
                ========================================================================== */}
             <section className="vinyl-hero-column" aria-label="Vinyl Turntable Deck">
-              
+
               {/* Turntable Skin Switcher Pill Bar (Can click or scroll over deck to switch) */}
               <div className="vinyl-deck-skin-bar">
                 <div className="vinyl-deck-skin-toggle-group" role="tablist" aria-label="Turntable Deck Style">
@@ -1589,368 +1598,368 @@ export default function VinylScene({
               {/* Turntable Deck Stage Wrapper (Hold Alt + Scroll wheel over deck to switch) */}
               <div className="vinyl-deck-stage-wrapper" ref={deckStageWrapperRef}>
                 {/* Turntable Switcher Container */}
-                <div 
+                <div
                   className={`vinyl-deck-switcher-container ${turntableSkin === 'modern' ? 'show-modern' : 'show-vintage'}`}
                   ref={deckContainerRef}
                 >
-                {turntableSkin === 'vintage' ? (
-                  /* Realistic Retro Turntable Chassis */
-                  <div className="vinyl-turntable-deck">
-                    {/* 4 Corner Screws */}
-                    <div className="vinyl-deck-screw pos-tl" />
-                    <div className="vinyl-deck-screw pos-tr" />
-                    <div className="vinyl-deck-screw pos-bl" />
-                    <div className="vinyl-deck-screw pos-br" />
+                  {turntableSkin === 'vintage' ? (
+                    /* Realistic Retro Turntable Chassis */
+                    <div className="vinyl-turntable-deck">
+                      {/* 4 Corner Screws */}
+                      <div className="vinyl-deck-screw pos-tl" />
+                      <div className="vinyl-deck-screw pos-tr" />
+                      <div className="vinyl-deck-screw pos-bl" />
+                      <div className="vinyl-deck-screw pos-br" />
 
-                    {/* Strobe Power Dial on lower left */}
-                    <button 
-                      className="vinyl-deck-power-toggle" 
-                      onClick={() => setStrobePowerOn(!strobePowerOn)}
-                      title="Strobe Lamp Power"
-                      aria-label="Toggle Turntable Strobe"
-                    >
-                      <Disc size={16} color="#444" />
-                    </button>
-                    <div className={`vinyl-deck-strobe-pillar ${!strobePowerOn ? 'is-off' : ''}`} />
-
-                    {/* 33 & 45 RPM Speed Buttons */}
-                    <div className="vinyl-deck-speed-badges" role="group" aria-label="Turntable rotation speed">
-                      <button 
-                        type="button"
-                        className={`vinyl-speed-btn ${rpmSpeed === 33 ? 'is-active' : ''}`}
-                        onClick={() => setRpmSpeed(33)}
-                        title="33 RPM — Slow, relaxed rotation (6.5s per spin)"
-                        aria-label="33 RPM Speed"
-                        aria-pressed={rpmSpeed === 33}
-                      >
-                        33
-                      </button>
-                      <button 
-                        type="button"
-                        className={`vinyl-speed-btn ${rpmSpeed === 45 ? 'is-active' : ''}`}
-                        onClick={() => setRpmSpeed(45)}
-                        title="45 RPM — Moderate rotation (4.2s per spin)"
-                        aria-label="45 RPM Speed"
-                        aria-pressed={rpmSpeed === 45}
-                      >
-                        45
-                      </button>
-                    </div>
-
-                    {/* Interactive Turntable Volume Fader Slider on Right Edge */}
-                    <div 
-                      className={`vinyl-deck-pitch-fader ${isDraggingFader ? 'is-dragging' : ''}`}
-                      onPointerDown={handleFaderPointerDown}
-                      onWheel={handleFaderWheel}
-                      onKeyDown={handleFaderKeyDown}
-                      onMouseEnter={() => setShowFaderTooltip(true)}
-                      onMouseLeave={() => !isDraggingFader && setShowFaderTooltip(false)}
-                      tabIndex={0}
-                      role="slider"
-                      aria-label="Turntable Volume Slider"
-                      aria-valuenow={Math.round(currentVol * 100)}
-                      aria-valuemin="0"
-                      aria-valuemax="100"
-                      title={`Volume: ${Math.round(currentVol * 100)}% (Click or drag to adjust volume)`}
-                    >
-                      <div className="vinyl-fader-groove" ref={faderGrooveRef}>
-                        <div 
-                          className="vinyl-fader-level-bar" 
-                          style={{ height: `${currentVol * 100}%` }}
-                        />
-                        <div 
-                          className="vinyl-fader-thumb" 
-                          style={{ top: `${thumbPercent}%` }}
-                        />
-                      </div>
-
-                      {(showFaderTooltip || isDraggingFader) && (
-                        <div className="vinyl-fader-tooltip" aria-hidden="true">
-                          {Math.round(currentVol * 100)}%
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Rotating Turntable Platter Well */}
-                    <div 
-                      className="vinyl-platter-well"
-                      onClick={handleRecordClick}
-                      title={isPlaying ? "Click record to pause" : "Click record to play"}
-                    >
-                      {/* Strobe Dots Pattern around Rim */}
-                      <div className="vinyl-platter-strobe-rim" />
-
-                      {/* Black Vinyl Disc */}
-                      <div 
-                        className={`vinyl-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'}`}
-                        style={{ '--vinyl-spin-duration': `${rpmSpeed === 33 ? 6.5 : 4.2}s` }}
-                      >
-                        {/* Concentric Vinyl Grooves */}
-                        <div className="vinyl-grooves-layer" />
-
-                        {/* Radial Light Reflection Sheen Sweeps */}
-                        <div className="vinyl-sheen-sweep" />
-
-                        {/* Split Two-Tone Center Label */}
-                        <div 
-                          className="vinyl-center-label" 
-                          title={`${currentTrack?.title || 'No Track Selected'}${currentTrack?.artist ? ` — ${currentTrack.artist}` : ''}`}
-                        >
-                          {/* Top Cream Half: Micro Brand + Current Track Name */}
-                          <div className="vinyl-label-top-section">
-                            <span className="vinyl-label-sub-brand">MUSICLY • STEREO</span>
-                            <span className="vinyl-label-song-title">
-                              {currentTrack?.title || 'No Track Selected'}
-                            </span>
-                          </div>
-
-                          {/* Center Spindle Core */}
-                          <div className="vinyl-label-center-core">
-                            {/* Spindle hole */}
-                            <div className="vinyl-center-spindle-hole" />
-                          </div>
-
-                          {/* Bottom Black Half: Artist Name + RPM Speed */}
-                          <div className="vinyl-label-bottom-section">
-                            <span className="vinyl-label-song-artist">
-                              {currentTrack?.artist || 'Musicly Audio'}
-                            </span>
-                            <span className="vinyl-label-rpm-badge">{rpmSpeed === 33 ? '33⅓ RPM' : '45 RPM'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* S-Shaped Chrome Tonearm Assembly */}
-                    <div className={`vinyl-tonearm-assembly ${isPlaying ? 'is-playing' : 'is-resting'}`}>
-                      {/* Gimbal Base Bearing */}
-                      <div className="vinyl-arm-base-gimbal">
-                        <div className="vinyl-arm-counterweight" />
-                      </div>
-
-                      {/* Curved Tonearm Pipe (SVG) */}
-                      <svg className="vinyl-arm-rod-svg" viewBox="0 0 90 250" fill="none">
-                        <path
-                          d="M 70 10 C 65 60, 20 120, 25 180 C 27 210, 15 230, 8 245"
-                          stroke="url(#chromeGradient)"
-                          strokeWidth="6"
-                          strokeLinecap="round"
-                        />
-                        <defs>
-                          <linearGradient id="chromeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#ffffff" />
-                            <stop offset="35%" stopColor="#c8c8cf" />
-                            <stop offset="70%" stopColor="#888890" />
-                            <stop offset="100%" stopColor="#eeeeef" />
-                          </linearGradient>
-                        </defs>
-                      </svg>
-
-                      {/* Headshell Cartridge & Stylus Needle */}
-                      <div className="vinyl-arm-headshell">
-                        <div className="vinyl-headshell-fingerlift" />
-                        <div className="vinyl-stylus-needle" />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  /* Futuristic Claymorphic Minimalist Turntable Deck */
-                  <div className="vinyl-modern-clay-deck">
-                    {/* Top Recessed Matte Black Deck Bay */}
-                    <div className="modern-deck-top-well">
-                      {/* Micro Strobe Dial at Top-Left */}
-                      <div 
-                        className="modern-top-dial-mini" 
+                      {/* Strobe Power Dial on lower left */}
+                      <button
+                        className="vinyl-deck-power-toggle"
                         onClick={() => setStrobePowerOn(!strobePowerOn)}
-                        title="Deck Calibration Strobe"
-                      />
-
-                      {/* Rotating Turntable Platter Well */}
-                      <div 
-                        className="modern-platter-well"
-                        onClick={handleRecordClick}
-                        title={isPlaying ? "Click record to pause" : "Click record to play"}
+                        title="Strobe Lamp Power"
+                        aria-label="Toggle Turntable Strobe"
                       >
-                        {/* Outer Metallic Rim Ring */}
-                        <div className="modern-platter-rim" />
+                        <Disc size={16} color="#444" />
+                      </button>
+                      <div className={`vinyl-deck-strobe-pillar ${!strobePowerOn ? 'is-off' : ''}`} />
 
-                        {/* Modern Black Vinyl Disc */}
-                        <div 
-                          className={`modern-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'}`}
-                          style={{ '--vinyl-spin-duration': `${rpmSpeed === 33 ? 6.5 : 4.2}s` }}
+                      {/* 33 & 45 RPM Speed Buttons */}
+                      <div className="vinyl-deck-speed-badges" role="group" aria-label="Turntable rotation speed">
+                        <button
+                          type="button"
+                          className={`vinyl-speed-btn ${rpmSpeed === 33 ? 'is-active' : ''}`}
+                          onClick={() => setRpmSpeed(33)}
+                          title="33 RPM — Slow, relaxed rotation (6.5s per spin)"
+                          aria-label="33 RPM Speed"
+                          aria-pressed={rpmSpeed === 33}
                         >
-                          {/* Fine Concentric Vinyl Grooves */}
-                          <div className="modern-record-grooves" />
-
-                          {/* Specular Sheen Sweep */}
-                          <div className="modern-record-sheen" />
-
-                          {/* Center Minimalist Spindle Hub */}
-                          <div className="modern-center-spindle-disc">
-                            <div className="modern-center-spindle-hole" />
-                          </div>
-                        </div>
+                          33
+                        </button>
+                        <button
+                          type="button"
+                          className={`vinyl-speed-btn ${rpmSpeed === 45 ? 'is-active' : ''}`}
+                          onClick={() => setRpmSpeed(45)}
+                          title="45 RPM — Moderate rotation (4.2s per spin)"
+                          aria-label="45 RPM Speed"
+                          aria-pressed={rpmSpeed === 45}
+                        >
+                          45
+                        </button>
                       </div>
 
-                      {/* Audio-Technica Style Straight Tonearm */}
-                      <div className={`modern-tonearm-assembly ${isPlaying ? 'is-playing' : 'is-resting'}`}>
-                        {/* Gimbal Pivot & Cylindrical Counterweight */}
-                        <div className="modern-tonearm-gimbal">
-                          <div className="modern-tonearm-counterweight" />
-                        </div>
-                        {/* Black Straight Tonearm Rod */}
-                        <div className="modern-tonearm-pipe" />
-                        {/* Cartridge Headshell & Stylus Needle */}
-                        <div className="modern-tonearm-headshell">
-                          <div className="modern-tonearm-needle-tip" />
-                        </div>
-                      </div>
-
-                      {/* Right Edge Pitch Fader Scale */}
-                      <div 
-                        className="modern-pitch-slider-bay"
+                      {/* Interactive Turntable Volume Fader Slider on Right Edge */}
+                      <div
+                        className={`vinyl-deck-pitch-fader ${isDraggingFader ? 'is-dragging' : ''}`}
+                        onPointerDown={handleFaderPointerDown}
                         onWheel={handleFaderWheel}
-                        title={`Pitch & Master Volume: ${Math.round(currentVol * 100)}%`}
+                        onKeyDown={handleFaderKeyDown}
+                        onMouseEnter={() => setShowFaderTooltip(true)}
+                        onMouseLeave={() => !isDraggingFader && setShowFaderTooltip(false)}
+                        tabIndex={0}
+                        role="slider"
+                        aria-label="Turntable Volume Slider"
+                        aria-valuenow={Math.round(currentVol * 100)}
+                        aria-valuemin="0"
+                        aria-valuemax="100"
+                        title={`Volume: ${Math.round(currentVol * 100)}% (Click or drag to adjust volume)`}
                       >
-                        <div className="modern-pitch-track-ticks">
-                          <span>+</span>
-                          <span className="tick-center">—</span>
-                          <span>-</span>
-                        </div>
-                        <div className="modern-pitch-slider-groove">
-                          <div 
-                            className="modern-pitch-slider-thumb"
+                        <div className="vinyl-fader-groove" ref={faderGrooveRef}>
+                          <div
+                            className="vinyl-fader-level-bar"
+                            style={{ height: `${currentVol * 100}%` }}
+                          />
+                          <div
+                            className="vinyl-fader-thumb"
                             style={{ top: `${thumbPercent}%` }}
                           />
                         </div>
+
+                        {(showFaderTooltip || isDraggingFader) && (
+                          <div className="vinyl-fader-tooltip" aria-hidden="true">
+                            {Math.round(currentVol * 100)}%
+                          </div>
+                        )}
                       </div>
 
-                      {/* Top Well Footer: Micro Strobe Toggle & Audio-Technica Branding */}
-                      <div className="modern-top-well-footer">
-                        <div 
-                          className={`modern-strobe-dial-mini ${!strobePowerOn ? 'is-off' : ''}`}
-                          onClick={() => setStrobePowerOn(!strobePowerOn)}
-                          title="Strobe Power Toggle"
-                        />
-                        <div className="modern-branding-text">
-                          <span className="modern-brand-logo-icon">▲</span>
-                          <span>audio-technica</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom Row: Recessed Frosted LCD Display Card + Elevated Clay Rotary Controls */}
-                    <div className="modern-deck-bottom-row">
-                      {/* Left: Recessed Frosted LCD Display Card */}
-                      <div 
-                        className="modern-digital-display-card"
-                        ref={modernLcdRef}
-                        onClick={handleModernLcdSeek}
-                        title="Click to seek track position"
+                      {/* Rotating Turntable Platter Well */}
+                      <div
+                        className="vinyl-platter-well"
+                        onClick={handleRecordClick}
+                        title={isPlaying ? "Click record to pause" : "Click record to play"}
                       >
-                        {/* Equalizer Barcode / Waveform Spectrogram Blocks */}
-                        <div className="modern-barcode-waveform">
-                          {modernWaveformBars.map((bar) => {
-                            const barRatio = bar.id / modernWaveformBars.length;
-                            const isPassed = currentRatio >= barRatio;
-                            return (
-                              <div 
-                                key={bar.id} 
-                                className={`modern-barcode-column ${isPlaying ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
-                              >
-                                <div 
-                                  className="modern-barcode-bar top-bar" 
-                                  style={{ 
-                                    height: `${bar.height}%`,
-                                    opacity: bar.opacity 
-                                  }} 
-                                />
-                                <div 
-                                  className="modern-barcode-bar bottom-bar" 
-                                  style={{ 
-                                    height: `${Math.round(bar.height * 0.72)}%`,
-                                    opacity: Math.max(0.35, bar.opacity * 0.8) 
-                                  }} 
-                                />
-                              </div>
-                            );
-                          })}
+                        {/* Strobe Dots Pattern around Rim */}
+                        <div className="vinyl-platter-strobe-rim" />
 
-                          {/* Tracking Cursor Needle */}
-                          <div 
-                            className="modern-tracking-needle"
-                            style={{ left: `${Math.max(2, Math.min(98, currentRatio * 100))}%` }}
+                        {/* Black Vinyl Disc */}
+                        <div
+                          className={`vinyl-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'}`}
+                          style={{ '--vinyl-spin-duration': `${rpmSpeed === 33 ? 6.5 : 4.2}s` }}
+                        >
+                          {/* Concentric Vinyl Grooves */}
+                          <div className="vinyl-grooves-layer" />
+
+                          {/* Radial Light Reflection Sheen Sweeps */}
+                          <div className="vinyl-sheen-sweep" />
+
+                          {/* Split Two-Tone Center Label */}
+                          <div
+                            className="vinyl-center-label"
+                            title={`${currentTrack?.title || 'No Track Selected'}${currentTrack?.artist ? ` — ${currentTrack.artist}` : ''}`}
                           >
-                            <div className="needle-head-top" />
-                            <div className="needle-stem" />
-                            <div className="needle-head-bottom" />
-                          </div>
-                        </div>
-
-                        {/* Display Footer: Track Code & Digital Time Clocks */}
-                        <div className="modern-display-footer">
-                          <div className="modern-track-code">
-                            T.{modernTrackNumber}
-                          </div>
-                          <div className="modern-time-readouts">
-                            <div className="modern-time-elapsed">
-                              {formatModernTime(currentTime)}
+                            {/* Top Cream Half: Micro Brand + Current Track Name */}
+                            <div className="vinyl-label-top-section">
+                              <span className="vinyl-label-sub-brand">MUSICLY • STEREO</span>
+                              <span className="vinyl-label-song-title">
+                                {currentTrack?.title || 'No Track Selected'}
+                              </span>
                             </div>
-                            <div className="modern-time-total">
-                              {formatModernTime(safeDuration)}
+
+                            {/* Center Spindle Core */}
+                            <div className="vinyl-label-center-core">
+                              {/* Spindle hole */}
+                              <div className="vinyl-center-spindle-hole" />
+                            </div>
+
+                            {/* Bottom Black Half: Artist Name + RPM Speed */}
+                            <div className="vinyl-label-bottom-section">
+                              <span className="vinyl-label-song-artist">
+                                {currentTrack?.artist || 'Musicly Audio'}
+                              </span>
+                              <span className="vinyl-label-rpm-badge">{rpmSpeed === 33 ? '33⅓ RPM' : '45 RPM'}</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      {/* Right: Elevated Clay Rotary Controls Module */}
-                      <div className="modern-rotary-controls-card">
-                        {/* Top Knob: Numeric Readout Calibration Knob */}
-                        <div 
-                          className={`modern-knob-unit ${isDraggingTopKnob ? 'is-dragging' : ''}`}
-                          onPointerDown={handleTopKnobPointerDown}
-                          onWheel={handleTopKnobWheel}
-                          title={`Pitch Calibration: ${pitchValue.toFixed(3)} (Click & drag up/down or scroll wheel to adjust)`}
-                        >
-                          <div 
-                            className="modern-conical-knob knob-top" 
-                            style={{ transform: `rotate(${((pitchValue / 33.333) * 270) - 135}deg)` }}
-                          >
-                            <div className="modern-knob-indicator" />
-                          </div>
-                          <div className="modern-knob-readout">
-                            {pitchValue.toFixed(3)}
-                          </div>
+                      {/* S-Shaped Chrome Tonearm Assembly */}
+                      <div className={`vinyl-tonearm-assembly ${isPlaying ? 'is-playing' : 'is-resting'}`}>
+                        {/* Gimbal Base Bearing */}
+                        <div className="vinyl-arm-base-gimbal">
+                          <div className="vinyl-arm-counterweight" />
                         </div>
 
-                        {/* Bottom Knob: Master Volume Rotary */}
-                        <div 
-                          className={`modern-knob-unit ${isDraggingBottomKnob ? 'is-dragging' : ''}`}
-                          onPointerDown={handleBottomKnobPointerDown}
-                          onWheel={handleFaderWheel}
-                          title={`Master Volume: ${Math.round(currentVol * 100)}% (Click & drag up/down or scroll wheel to adjust)`}
-                        >
-                          <div 
-                            className="modern-conical-knob knob-bottom" 
-                            style={{ transform: `rotate(${(currentVol * 270) - 135}deg)` }}
-                          >
-                            <div className="modern-knob-indicator" />
-                          </div>
-                        </div>
+                        {/* Curved Tonearm Pipe (SVG) */}
+                        <svg className="vinyl-arm-rod-svg" viewBox="0 0 90 250" fill="none">
+                          <path
+                            d="M 70 10 C 65 60, 20 120, 25 180 C 27 210, 15 230, 8 245"
+                            stroke="url(#chromeGradient)"
+                            strokeWidth="6"
+                            strokeLinecap="round"
+                          />
+                          <defs>
+                            <linearGradient id="chromeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#ffffff" />
+                              <stop offset="35%" stopColor="#c8c8cf" />
+                              <stop offset="70%" stopColor="#888890" />
+                              <stop offset="100%" stopColor="#eeeeef" />
+                            </linearGradient>
+                          </defs>
+                        </svg>
 
-                        {/* Pill ON / OFF Playback & Power Button */}
-                        <button
-                          type="button"
-                          className={`modern-power-toggle-btn ${isPlaying ? 'is-on' : 'is-off'}`}
-                          onClick={handlePowerToggleClick}
-                          title={isPlaying ? "Turntable Power: ON (Click to Stop)" : "Turntable Power: OFF (Click to Start)"}
-                        >
-                          {isPlaying ? 'ON' : 'OFF'}
-                        </button>
+                        {/* Headshell Cartridge & Stylus Needle */}
+                        <div className="vinyl-arm-headshell">
+                          <div className="vinyl-headshell-fingerlift" />
+                          <div className="vinyl-stylus-needle" />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    /* Futuristic Claymorphic Minimalist Turntable Deck */
+                    <div className="vinyl-modern-clay-deck">
+                      {/* Top Recessed Matte Black Deck Bay */}
+                      <div className="modern-deck-top-well">
+                        {/* Micro Strobe Dial at Top-Left */}
+                        <div
+                          className="modern-top-dial-mini"
+                          onClick={() => setStrobePowerOn(!strobePowerOn)}
+                          title="Deck Calibration Strobe"
+                        />
+
+                        {/* Rotating Turntable Platter Well */}
+                        <div
+                          className="modern-platter-well"
+                          onClick={handleRecordClick}
+                          title={isPlaying ? "Click record to pause" : "Click record to play"}
+                        >
+                          {/* Outer Metallic Rim Ring */}
+                          <div className="modern-platter-rim" />
+
+                          {/* Modern Black Vinyl Disc */}
+                          <div
+                            className={`modern-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'}`}
+                            style={{ '--vinyl-spin-duration': `${rpmSpeed === 33 ? 6.5 : 4.2}s` }}
+                          >
+                            {/* Fine Concentric Vinyl Grooves */}
+                            <div className="modern-record-grooves" />
+
+                            {/* Specular Sheen Sweep */}
+                            <div className="modern-record-sheen" />
+
+                            {/* Center Minimalist Spindle Hub */}
+                            <div className="modern-center-spindle-disc">
+                              <div className="modern-center-spindle-hole" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Audio-Technica Style Straight Tonearm */}
+                        <div className={`modern-tonearm-assembly ${isPlaying ? 'is-playing' : 'is-resting'}`}>
+                          {/* Gimbal Pivot & Cylindrical Counterweight */}
+                          <div className="modern-tonearm-gimbal">
+                            <div className="modern-tonearm-counterweight" />
+                          </div>
+                          {/* Black Straight Tonearm Rod */}
+                          <div className="modern-tonearm-pipe" />
+                          {/* Cartridge Headshell & Stylus Needle */}
+                          <div className="modern-tonearm-headshell">
+                            <div className="modern-tonearm-needle-tip" />
+                          </div>
+                        </div>
+
+                        {/* Right Edge Pitch Fader Scale */}
+                        <div
+                          className="modern-pitch-slider-bay"
+                          onWheel={handleFaderWheel}
+                          title={`Pitch & Master Volume: ${Math.round(currentVol * 100)}%`}
+                        >
+                          <div className="modern-pitch-track-ticks">
+                            <span>+</span>
+                            <span className="tick-center">—</span>
+                            <span>-</span>
+                          </div>
+                          <div className="modern-pitch-slider-groove">
+                            <div
+                              className="modern-pitch-slider-thumb"
+                              style={{ top: `${thumbPercent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Top Well Footer: Micro Strobe Toggle & Audio-Technica Branding */}
+                        <div className="modern-top-well-footer">
+                          <div
+                            className={`modern-strobe-dial-mini ${!strobePowerOn ? 'is-off' : ''}`}
+                            onClick={() => setStrobePowerOn(!strobePowerOn)}
+                            title="Strobe Power Toggle"
+                          />
+                          <div className="modern-branding-text">
+                            <span className="modern-brand-logo-icon">▲</span>
+                            <span>audio-technica</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bottom Row: Recessed Frosted LCD Display Card + Elevated Clay Rotary Controls */}
+                      <div className="modern-deck-bottom-row">
+                        {/* Left: Recessed Frosted LCD Display Card */}
+                        <div
+                          className="modern-digital-display-card"
+                          ref={modernLcdRef}
+                          onClick={handleModernLcdSeek}
+                          title="Click to seek track position"
+                        >
+                          {/* Equalizer Barcode / Waveform Spectrogram Blocks */}
+                          <div className="modern-barcode-waveform">
+                            {modernWaveformBars.map((bar) => {
+                              const barRatio = bar.id / modernWaveformBars.length;
+                              const isPassed = currentRatio >= barRatio;
+                              return (
+                                <div
+                                  key={bar.id}
+                                  className={`modern-barcode-column ${isPlaying ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
+                                >
+                                  <div
+                                    className="modern-barcode-bar top-bar"
+                                    style={{
+                                      height: `${bar.height}%`,
+                                      opacity: bar.opacity
+                                    }}
+                                  />
+                                  <div
+                                    className="modern-barcode-bar bottom-bar"
+                                    style={{
+                                      height: `${Math.round(bar.height * 0.72)}%`,
+                                      opacity: Math.max(0.35, bar.opacity * 0.8)
+                                    }}
+                                  />
+                                </div>
+                              );
+                            })}
+
+                            {/* Tracking Cursor Needle */}
+                            <div
+                              className="modern-tracking-needle"
+                              style={{ left: `${Math.max(2, Math.min(98, currentRatio * 100))}%` }}
+                            >
+                              <div className="needle-head-top" />
+                              <div className="needle-stem" />
+                              <div className="needle-head-bottom" />
+                            </div>
+                          </div>
+
+                          {/* Display Footer: Track Code & Digital Time Clocks */}
+                          <div className="modern-display-footer">
+                            <div className="modern-track-code">
+                              T.{modernTrackNumber}
+                            </div>
+                            <div className="modern-time-readouts">
+                              <div className="modern-time-elapsed">
+                                {formatModernTime(currentTime)}
+                              </div>
+                              <div className="modern-time-total">
+                                {formatModernTime(safeDuration)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right: Elevated Clay Rotary Controls Module */}
+                        <div className="modern-rotary-controls-card">
+                          {/* Top Knob: Numeric Readout Calibration Knob */}
+                          <div
+                            className={`modern-knob-unit ${isDraggingTopKnob ? 'is-dragging' : ''}`}
+                            onPointerDown={handleTopKnobPointerDown}
+                            onWheel={handleTopKnobWheel}
+                            title={`Pitch Calibration: ${pitchValue.toFixed(3)} (Click & drag up/down or scroll wheel to adjust)`}
+                          >
+                            <div
+                              className="modern-conical-knob knob-top"
+                              style={{ transform: `rotate(${((pitchValue / 33.333) * 270) - 135}deg)` }}
+                            >
+                              <div className="modern-knob-indicator" />
+                            </div>
+                            <div className="modern-knob-readout">
+                              {pitchValue.toFixed(3)}
+                            </div>
+                          </div>
+
+                          {/* Bottom Knob: Master Volume Rotary */}
+                          <div
+                            className={`modern-knob-unit ${isDraggingBottomKnob ? 'is-dragging' : ''}`}
+                            onPointerDown={handleBottomKnobPointerDown}
+                            onWheel={handleFaderWheel}
+                            title={`Master Volume: ${Math.round(currentVol * 100)}% (Click & drag up/down or scroll wheel to adjust)`}
+                          >
+                            <div
+                              className="modern-conical-knob knob-bottom"
+                              style={{ transform: `rotate(${(currentVol * 270) - 135}deg)` }}
+                            >
+                              <div className="modern-knob-indicator" />
+                            </div>
+                          </div>
+
+                          {/* Pill ON / OFF Playback & Power Button */}
+                          <button
+                            type="button"
+                            className={`modern-power-toggle-btn ${isPlaying ? 'is-on' : 'is-off'}`}
+                            onClick={handlePowerToggleClick}
+                            title={isPlaying ? "Turntable Power: ON (Click to Stop)" : "Turntable Power: OFF (Click to Start)"}
+                          >
+                            {isPlaying ? 'ON' : 'OFF'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1961,7 +1970,7 @@ export default function VinylScene({
                     <div className="vinyl-now-playing-header-line">
                       <span className="vinyl-now-playing-kicker">NOW PLAYING</span>
                       {activePlayingPlaylist && (
-                        <span 
+                        <span
                           className="vinyl-now-playing-playlist-badge"
                           title={`Loaded from playlist: ${activePlayingPlaylist.title}`}
                         >
@@ -1978,7 +1987,7 @@ export default function VinylScene({
                   </div>
 
                   {/* Like / Heart Counter Pill */}
-                  <button 
+                  <button
                     id="vinyl-btn-like"
                     className={`vinyl-like-pill-btn ${isCurrentFavorite ? 'is-liked' : ''}`}
                     onClick={() => onToggleFavorite?.(currentTrack?.id)}
@@ -2002,7 +2011,7 @@ export default function VinylScene({
                     {formatSeconds(currentTime)}
                   </span>
 
-                  <div 
+                  <div
                     className={`vinyl-waveform-track ${isPlaying ? 'is-playing' : ''} ${isDraggingWaveform ? 'is-dragging' : ''}`}
                     ref={waveformTrackRef}
                     onPointerDown={handleWaveformPointerDown}
@@ -2021,7 +2030,7 @@ export default function VinylScene({
                       const barCenterRatio = (idx + 0.5) / waveformBars.length;
                       const isPlayed = barCenterRatio <= currentRatio;
                       const isHovered = (isHoveringWaveform || isDraggingWaveform) && hoverSeekRatio !== null;
-                      
+
                       let barClass = 'vinyl-waveform-bar';
                       if (isPlayed) {
                         barClass += ' is-played';
@@ -2035,8 +2044,8 @@ export default function VinylScene({
                       }
 
                       return (
-                        <div 
-                          key={bar.id} 
+                        <div
+                          key={bar.id}
                           className={barClass}
                           style={{
                             height: `${bar.heightPercent}%`,
@@ -2048,7 +2057,7 @@ export default function VinylScene({
 
                     {/* Floating timestamp tooltip during hover or drag */}
                     {(isHoveringWaveform || isDraggingWaveform) && hoverSeekRatio !== null && (
-                      <div 
+                      <div
                         className="vinyl-waveform-hover-tooltip"
                         style={{ left: `${Math.min(96, Math.max(4, hoverSeekRatio * 100))}%` }}
                         aria-hidden="true"
@@ -2067,9 +2076,9 @@ export default function VinylScene({
                 <div className="vinyl-controls-bar">
                   <div className="vinyl-ctrl-cluster">
                     {/* Scene Exit / Back */}
-                    <button 
+                    <button
                       id="vinyl-btn-close-scene"
-                      className="vinyl-ctrl-btn" 
+                      className="vinyl-ctrl-btn"
                       onClick={onClose}
                       title="Return to standard room"
                     >
@@ -2077,7 +2086,7 @@ export default function VinylScene({
                     </button>
 
                     {/* Shuffle */}
-                    <button 
+                    <button
                       id="vinyl-btn-shuffle"
                       className={`vinyl-ctrl-btn ${isShuffle ? 'is-active' : ''}`}
                       onClick={onToggleShuffle}
@@ -2087,9 +2096,9 @@ export default function VinylScene({
                     </button>
 
                     {/* Skip Previous */}
-                    <button 
+                    <button
                       id="vinyl-btn-prev"
-                      className="vinyl-ctrl-btn" 
+                      className="vinyl-ctrl-btn"
                       onClick={onPrevTrack}
                       title="Previous song"
                     >
@@ -2098,7 +2107,7 @@ export default function VinylScene({
                   </div>
 
                   {/* Large Central Play / Pause Button */}
-                  <button 
+                  <button
                     id="vinyl-btn-play-pause"
                     className="vinyl-play-pause-btn"
                     onClick={onTogglePlay}
@@ -2114,9 +2123,9 @@ export default function VinylScene({
 
                   <div className="vinyl-ctrl-cluster">
                     {/* Skip Next */}
-                    <button 
+                    <button
                       id="vinyl-btn-next"
-                      className="vinyl-ctrl-btn" 
+                      className="vinyl-ctrl-btn"
                       onClick={onNextTrack}
                       title="Next song"
                     >
@@ -2124,7 +2133,7 @@ export default function VinylScene({
                     </button>
 
                     {/* Repeat Mode */}
-                    <button 
+                    <button
                       id="vinyl-btn-repeat"
                       className={`vinyl-ctrl-btn ${repeatMode !== 'off' ? 'is-active' : ''}`}
                       onClick={onToggleRepeat}
@@ -2134,9 +2143,9 @@ export default function VinylScene({
                     </button>
 
                     {/* Fullscreen Toggle */}
-                    <button 
+                    <button
                       id="vinyl-btn-fullscreen"
-                      className="vinyl-ctrl-btn" 
+                      className="vinyl-ctrl-btn"
                       onClick={toggleFullscreen}
                       title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Scene"}
                     >
@@ -2144,9 +2153,9 @@ export default function VinylScene({
                     </button>
 
                     {/* Library Drawer Open */}
-                    <button 
+                    <button
                       id="vinyl-btn-drawer"
-                      className="vinyl-ctrl-btn" 
+                      className="vinyl-ctrl-btn"
                       onClick={onOpenPlaylistDrawer}
                       title="Open full music catalog & playlist drawer"
                     >
@@ -2156,8 +2165,8 @@ export default function VinylScene({
 
                   {/* Volume Cluster */}
                   <div className="vinyl-volume-cluster">
-                    <button 
-                      className="vinyl-ctrl-btn" 
+                    <button
+                      className="vinyl-ctrl-btn"
                       onClick={handleToggleMute}
                       title={isMuted || volume === 0 ? "Unmute" : "Mute"}
                       style={{ padding: '6px' }}
@@ -2170,7 +2179,7 @@ export default function VinylScene({
                         <Volume2 size={17} />
                       )}
                     </button>
-                    <input 
+                    <input
                       type="range"
                       min="0"
                       max="1"
@@ -2191,9 +2200,9 @@ export default function VinylScene({
                RIGHT COLUMN: MUSIC CATEGORIES & FAVORITE PLAYLISTS
                ========================================================================== */}
             <section className="vinyl-content-column" aria-label="Music Discovery and Playlists">
-              
+
               {/* Up Next Playback Queue & Categories Section */}
-              <div className="vinyl-categories-section">
+              <div ref={setCategoriesSectionRef} className="vinyl-categories-section">
                 <div className="vinyl-section-header">
                   <div className="vinyl-section-title-wrap">
                     <h2 className="vinyl-section-title">
@@ -2296,7 +2305,7 @@ export default function VinylScene({
                         })}
                       </div>
 
-                      <button 
+                      <button
                         className="vinyl-section-link"
                         onClick={onOpenPlaylistDrawer}
                         style={{ background: 'none', border: 'none', padding: 0 }}
@@ -2325,15 +2334,15 @@ export default function VinylScene({
                 )}
 
                 {/* Carousel: Queue Mode (Drag-and-Drop) vs Categories Browse Mode */}
-                <div 
-                  ref={carouselRef}
+                <div
+                  ref={setCarouselRef}
                   className={`vinyl-cards-carousel ${carouselViewMode === 'queue' ? 'vinyl-queue-carousel' : ''}`}
                 >
                   {carouselViewMode === 'queue' ? (
                     upcomingQueue.length === 0 ? (
                       <div className="vinyl-cards-empty">
                         <span>No upcoming tracks in queue.</span>
-                        <button 
+                        <button
                           type="button"
                           className="vinyl-category-pill"
                           onClick={() => {
@@ -2352,7 +2361,7 @@ export default function VinylScene({
                         const isDropTarget = dropTargetIndex === index;
 
                         return (
-                          <div 
+                          <div
                             key={track.id}
                             className={`vinyl-track-card vinyl-queue-card ${isDragging ? 'is-dragging' : ''} ${isDropTarget ? 'is-drop-target' : ''}`}
                             draggable={true}
@@ -2404,10 +2413,10 @@ export default function VinylScene({
                             title={`#${index + 1} in queue: "${track.title}" by ${track.artist}. Drag to reorder, click to play.`}
                           >
                             <div className="vinyl-card-art-box">
-                              <img 
-                                src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'} 
-                                alt={track.title} 
-                                className="vinyl-card-img" 
+                              <img
+                                src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'}
+                                alt={track.title}
+                                className="vinyl-card-img"
                                 loading="lazy"
                                 draggable={false}
                               />
@@ -2477,7 +2486,7 @@ export default function VinylScene({
                     filteredCategoryTracks.length === 0 ? (
                       <div className="vinyl-cards-empty">
                         <span>No tracks found in this category & language.</span>
-                        <button 
+                        <button
                           type="button"
                           className="vinyl-category-pill"
                           onClick={() => {
@@ -2494,17 +2503,17 @@ export default function VinylScene({
                         const isCurrent = currentTrack?.id === track.id;
 
                         return (
-                          <div 
+                          <div
                             key={track.id}
                             className="vinyl-track-card"
                             onClick={() => onSelectTrack?.(track, true)}
                             title={`Play "${track.title}" by ${track.artist}`}
                           >
                             <div className="vinyl-card-art-box">
-                              <img 
-                                src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'} 
-                                alt={track.title} 
-                                className="vinyl-card-img" 
+                              <img
+                                src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'}
+                                alt={track.title}
+                                className="vinyl-card-img"
                                 loading="lazy"
                               />
 
@@ -2592,7 +2601,7 @@ export default function VinylScene({
 
                 {/* Playlist Source Chooser: Visual Cards for Musicly vs User's Own Playlist */}
                 <div className="vinyl-playlist-source-selector" role="radiogroup" aria-label="Choose playlist source to play">
-                  <div 
+                  <div
                     className={`vinyl-source-card ${playlistSourceMode === 'musicly' ? 'is-active' : ''}`}
                     onClick={() => {
                       setPlaylistSourceMode(prev => prev === 'musicly' ? 'all' : 'musicly');
@@ -2617,7 +2626,7 @@ export default function VinylScene({
                     )}
                   </div>
 
-                  <div 
+                  <div
                     className={`vinyl-source-card ${playlistSourceMode === 'custom' ? 'is-active' : ''}`}
                     onClick={() => {
                       setPlaylistSourceMode(prev => prev === 'custom' ? 'all' : 'custom');
@@ -2754,8 +2763,8 @@ export default function VinylScene({
         {/* ================= 1. CREATE NEW PLAYLIST MODAL ================= */}
         {isCreatePlaylistOpen && (
           <div className="vinyl-playlist-modal-backdrop" onClick={() => setIsCreatePlaylistOpen(false)}>
-            <div 
-              className="vinyl-playlist-modal" 
+            <div
+              className="vinyl-playlist-modal"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-label="Create New Playlist"
@@ -2824,7 +2833,7 @@ export default function VinylScene({
                         key={track.id}
                         className={`vinyl-playlist-song-item ${isSelected ? 'is-selected' : ''}`}
                         onClick={() => {
-                          setSelectedTrackIdsForNew(prev => 
+                          setSelectedTrackIdsForNew(prev =>
                             prev.includes(track.id) ? prev.filter(id => id !== track.id) : [...prev, track.id]
                           );
                           playClickSound('light');
@@ -2871,17 +2880,17 @@ export default function VinylScene({
         {/* ================= 2. CUSTOM PLAYLIST DETAILS & MANAGER MODAL ================= */}
         {selectedCustomPlaylist && (
           <div className="vinyl-playlist-modal-backdrop" onClick={() => setSelectedCustomPlaylist(null)}>
-            <div 
-              className="vinyl-playlist-modal" 
+            <div
+              className="vinyl-playlist-modal"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-label="Playlist Details"
             >
               <div className="vinyl-playlist-detail-header">
-                <img 
-                  src={selectedCustomPlaylist.image} 
-                  alt={selectedCustomPlaylist.title} 
-                  className="vinyl-playlist-detail-cover" 
+                <img
+                  src={selectedCustomPlaylist.image}
+                  alt={selectedCustomPlaylist.title}
+                  className="vinyl-playlist-detail-cover"
                 />
                 <div className="vinyl-playlist-detail-info">
                   {isEditingPlaylistTitle ? (
@@ -3075,8 +3084,8 @@ export default function VinylScene({
         {/* ================= 3. ADD SONGS TO EXISTING PLAYLIST MODAL ================= */}
         {isAddSongsToExistingOpen && selectedCustomPlaylist && (
           <div className="vinyl-playlist-modal-backdrop" onClick={() => setIsAddSongsToExistingOpen(false)}>
-            <div 
-              className="vinyl-playlist-modal" 
+            <div
+              className="vinyl-playlist-modal"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-label="Add Songs to Playlist"
@@ -3148,8 +3157,8 @@ export default function VinylScene({
         {/* ================= 4. ADD SONG TO CUSTOM PLAYLIST MODAL ================= */}
         {songForPlaylistModal && (
           <div className="vinyl-playlist-modal-backdrop" onClick={() => setSongForPlaylistModal(null)}>
-            <div 
-              className="vinyl-playlist-modal vinyl-add-song-modal" 
+            <div
+              className="vinyl-playlist-modal vinyl-add-song-modal"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-label="Add Track to Playlist"
@@ -3169,10 +3178,10 @@ export default function VinylScene({
               <div className="vinyl-playlist-modal-body">
                 {/* Track Preview Header */}
                 <div className="vinyl-song-to-add-card">
-                  <img 
-                    src={songForPlaylistModal.cover} 
-                    alt={songForPlaylistModal.title} 
-                    className="vinyl-song-to-add-thumb" 
+                  <img
+                    src={songForPlaylistModal.cover}
+                    alt={songForPlaylistModal.title}
+                    className="vinyl-song-to-add-thumb"
                   />
                   <div className="vinyl-song-to-add-info">
                     <span className="vinyl-song-to-add-title">{songForPlaylistModal.title}</span>
@@ -3184,7 +3193,7 @@ export default function VinylScene({
                 <div className="vinyl-quick-create-box">
                   <span className="vinyl-quick-create-label">CREATE NEW PLAYLIST WITH THIS SONG</span>
                   <div className="vinyl-quick-create-row">
-                    <input 
+                    <input
                       type="text"
                       className="vinyl-quick-create-input"
                       placeholder="e.g. Midnight Vibes, Favorites..."
@@ -3220,7 +3229,7 @@ export default function VinylScene({
                       {customPlaylists.map(pl => {
                         const isAdded = (pl.trackIds || []).includes(songForPlaylistModal.id);
                         return (
-                          <div 
+                          <div
                             key={pl.id}
                             className={`vinyl-add-to-item ${isAdded ? 'is-added' : ''}`}
                             onClick={() => handleToggleSongInCustomPlaylist(pl.id, songForPlaylistModal.id)}
