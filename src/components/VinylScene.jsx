@@ -566,8 +566,10 @@ export default function VinylScene({
   }, []);
 
   const handleModernLcdSeek = useCallback((e) => {
-    if (!modernLcdRef.current || !safeDuration) return;
-    const rect = modernLcdRef.current.getBoundingClientRect();
+    e.stopPropagation();
+    const waveformEl = e.currentTarget;
+    if (!waveformEl || !safeDuration) return;
+    const rect = waveformEl.getBoundingClientRect();
     if (rect.width <= 0) return;
     const clickX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
     const ratio = clickX / rect.width;
@@ -586,7 +588,9 @@ export default function VinylScene({
     let isCancelled = false;
     setIsLyricsLoading(true);
 
-    fetchLyrics(currentTrack)
+    const targetDur = (duration && duration > 0) ? duration : (currentTrack.duration || 0);
+
+    fetchLyrics(currentTrack, targetDur)
       .then((data) => {
         if (!isCancelled) {
           setLyricsData(data);
@@ -604,14 +608,16 @@ export default function VinylScene({
     return () => {
       isCancelled = true;
     };
-  }, [isLyricsViewOpen, currentTrack]);
+  }, [isLyricsViewOpen, currentTrack, duration]);
 
-  // Track active line index in synced lyrics
+  // Track active line index in synced lyrics with vocal anticipation
   const activeLineIndex = useMemo(() => {
     if (!lyricsData?.isSynced || !lyricsData.lines || lyricsData.lines.length === 0) return -1;
+    // 150ms anticipation allows highlight to lock in synchronously with vocal onset
+    const playbackTime = (currentTime || 0) + 0.15;
     let idx = -1;
     for (let i = 0; i < lyricsData.lines.length; i++) {
-      if (lyricsData.lines[i].time <= currentTime) {
+      if (lyricsData.lines[i].time <= playbackTime) {
         idx = i;
       } else {
         break;
@@ -621,25 +627,23 @@ export default function VinylScene({
   }, [lyricsData, currentTime]);
 
   // Handle user manual scroll with auto-scroll resume timer
-  const handleLyricsScroll = useCallback(() => {
+  const handleLyricsManualScroll = useCallback(() => {
     isUserScrollingRef.current = true;
     if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
     userScrollTimeoutRef.current = setTimeout(() => {
       isUserScrollingRef.current = false;
-    }, 2400);
+    }, 2800);
   }, []);
 
   // Smooth auto-scroll following the active synced line
   useEffect(() => {
     if (!isLyricsViewOpen || activeLineIndex === -1 || isUserScrollingRef.current) return;
-    const container = lyricsContainerRef.current;
     const activeEl = activeLineRef.current;
-    if (container && activeEl) {
-      const containerHeight = container.clientHeight;
-      const targetScroll = activeEl.offsetTop - (containerHeight / 2) + (activeEl.clientHeight / 2);
-      container.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth'
+    if (activeEl) {
+      activeEl.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+        inline: 'nearest'
       });
     }
   }, [activeLineIndex, isLyricsViewOpen]);
@@ -1897,16 +1901,13 @@ export default function VinylScene({
                         <div
                           className={`modern-digital-display-card ${isLyricsViewOpen ? 'is-lyrics-mode' : ''}`}
                           ref={modernLcdRef}
-                          onClick={(e) => {
-                            if (!isLyricsViewOpen) {
-                              handleModernLcdSeek(e);
-                            }
-                          }}
-                          title={isLyricsViewOpen ? '' : 'Click to seek track position'}
                         >
                           {isLyricsViewOpen ? (
                             /* Lyrics Mode Viewport */
-                            <div className="modern-lcd-lyrics-viewport">
+                            <div
+                              className="modern-lcd-lyrics-viewport"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {isLyricsLoading ? (
                                 <div className="modern-lcd-lyrics-status">
                                   <Mic2 size={16} className="modern-lcd-status-icon pulse-icon" />
@@ -1923,7 +1924,9 @@ export default function VinylScene({
                                 <div
                                   className="modern-lcd-lyrics-container"
                                   ref={lyricsContainerRef}
-                                  onScroll={handleLyricsScroll}
+                                  onWheel={handleLyricsManualScroll}
+                                  onTouchStart={handleLyricsManualScroll}
+                                  onPointerDown={handleLyricsManualScroll}
                                 >
                                   {lyricsData.lines.map((line, idx) => {
                                     const isActive = lyricsData.isSynced && idx === activeLineIndex;
@@ -1955,7 +1958,11 @@ export default function VinylScene({
                             </div>
                           ) : (
                             /* Equalizer Barcode / Waveform Spectrogram Blocks */
-                            <div className="modern-barcode-waveform">
+                            <div
+                              className="modern-barcode-waveform"
+                              onClick={handleModernLcdSeek}
+                              title="Click waveform to seek playback"
+                            >
                               {modernWaveformBars.map((bar) => {
                                 const barRatio = bar.id / modernWaveformBars.length;
                                 const isPassed = currentRatio >= barRatio;
@@ -1995,7 +2002,10 @@ export default function VinylScene({
                           )}
 
                           {/* Display Footer: LYRICS Toggle Button & Digital Time Clocks */}
-                          <div className="modern-display-footer">
+                          <div
+                            className="modern-display-footer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <button
                               type="button"
                               className={`modern-lyrics-toggle-btn ${isLyricsViewOpen ? 'is-active' : ''}`}
