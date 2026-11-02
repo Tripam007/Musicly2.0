@@ -1586,13 +1586,180 @@
   justify-content: space-between;
 }
 
-.modern-track-code {
+.modern-track-code,
+.modern-lyrics-toggle-btn {
   font-family: var(--vinyl-font-sans, sans-serif);
   font-size: 1.45rem;
   font-weight: 700;
   letter-spacing: -0.04em;
   color: #1a1a1e;
   line-height: 1;
+}
+
+.modern-lyrics-toggle-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: transform 0.15s ease, color 0.15s ease;
+  user-select: none;
+}
+
+.modern-lyrics-toggle-btn:hover {
+  color: #000;
+  transform: translateY(-1px);
+}
+
+.modern-lyrics-toggle-btn:active {
+  transform: translateY(1px);
+}
+
+.modern-lyrics-toggle-btn.is-active {
+  color: #0b0b0e;
+}
+
+.modern-lyrics-active-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #111115;
+  display: inline-block;
+  animation: modernDotPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes modernDotPulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Modern LCD Lyrics Viewport & Container */
+.modern-digital-display-card.is-lyrics-mode {
+  cursor: default;
+}
+
+.modern-digital-display-card.is-lyrics-mode:hover {
+  background: #ceced2;
+}
+
+.modern-lcd-lyrics-viewport {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 82px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  margin-top: 2px;
+  margin-bottom: 4px;
+}
+
+.modern-lcd-lyrics-container {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  scroll-behavior: smooth;
+  padding: 24px 2px 24px 2px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+}
+
+.modern-lcd-lyrics-container::-webkit-scrollbar {
+  width: 3px;
+}
+
+.modern-lcd-lyrics-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modern-lcd-lyrics-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}
+
+.modern-lcd-lyric-line {
+  font-family: var(--vinyl-font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: 0.84rem;
+  line-height: 1.4;
+  color: #5d5d67;
+  font-weight: 500;
+  text-align: left;
+  padding: 3px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.2, 0.9, 0.3, 1);
+  user-select: none;
+  word-break: break-word;
+}
+
+.modern-lcd-lyric-line:hover {
+  color: #111116;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.modern-lcd-lyric-line.is-active {
+  color: #0b0b0e;
+  font-weight: 750;
+  font-size: 0.92rem;
+  letter-spacing: -0.01em;
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.modern-lcd-lyric-line.is-passed {
+  color: #888894;
+  opacity: 0.75;
+}
+
+.modern-lcd-lyrics-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+  padding: 8px 4px;
+}
+
+.modern-lcd-status-icon {
+  color: #383840;
+}
+
+.modern-lcd-status-icon.pulse-icon {
+  animation: modernPulse 1.4s infinite ease-in-out;
+}
+
+.modern-lcd-status-title {
+  font-family: var(--vinyl-font-mono, monospace);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #222228;
+}
+
+.modern-lcd-status-sub {
+  font-family: var(--vinyl-font-sans, sans-serif);
+  font-size: 0.72rem;
+  color: #686872;
+  max-width: 190px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@keyframes modernPulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.96); }
+  50% { opacity: 1; transform: scale(1.04); }
 }
 
 .modern-time-readouts {
@@ -2980,7 +3147,8 @@
   .modern-digital-display-card {
     padding: 10px 12px;
   }
-  .modern-track-code {
+  .modern-track-code,
+  .modern-lyrics-toggle-btn {
     font-size: 1.25rem;
   }
   .modern-conical-knob {

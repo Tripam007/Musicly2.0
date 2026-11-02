@@ -34,10 +34,12 @@ import {
   ListPlus,
   ArrowUpDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Mic2
 } from 'lucide-react';
 import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
 import { LANGUAGES, LANGUAGE_LABELS } from '../data/tracks';
+import { fetchLyrics } from '../utils/lyricsService';
 import PixelCat from './PixelCat';
 import '../styles/vinylScene.css';
 
@@ -107,6 +109,15 @@ export default function VinylScene({
   const [carouselViewMode, setCarouselViewMode] = useState('queue');
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
+
+  // Modern Clay Turntable Lyrics Mode States
+  const [isLyricsViewOpen, setIsLyricsViewOpen] = useState(false);
+  const [lyricsData, setLyricsData] = useState(null);
+  const [isLyricsLoading, setIsLyricsLoading] = useState(false);
+  const lyricsContainerRef = useRef(null);
+  const activeLineRef = useRef(null);
+  const isUserScrollingRef = useRef(false);
+  const userScrollTimeoutRef = useRef(null);
 
   // Derived upcoming queue: shows only the next 4 upcoming songs at a time,
   // automatically reloading as songs finish playing
@@ -555,14 +566,94 @@ export default function VinylScene({
   }, []);
 
   const handleModernLcdSeek = useCallback((e) => {
-    if (!modernLcdRef.current || !safeDuration || !audioElement) return;
+    if (!modernLcdRef.current || !safeDuration) return;
     const rect = modernLcdRef.current.getBoundingClientRect();
     if (rect.width <= 0) return;
     const clickX = Math.max(0, Math.min(rect.width, e.clientX - rect.left));
     const ratio = clickX / rect.width;
-    audioElement.currentTime = ratio * safeDuration;
+    const targetSec = ratio * safeDuration;
+    if (onSeek) {
+      onSeek(targetSec);
+    } else if (audioElement) {
+      audioElement.currentTime = targetSec;
+    }
     playClickSound('light');
-  }, [safeDuration, audioElement]);
+  }, [safeDuration, audioElement, onSeek]);
+
+  // Load lyrics when lyrics mode is opened or active song changes
+  useEffect(() => {
+    if (!isLyricsViewOpen || !currentTrack) return;
+    let isCancelled = false;
+    setIsLyricsLoading(true);
+
+    fetchLyrics(currentTrack)
+      .then((data) => {
+        if (!isCancelled) {
+          setLyricsData(data);
+          setIsLyricsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!isCancelled) {
+          console.warn('[VinylScene] Failed to load lyrics:', err);
+          setLyricsData({ notFound: true, title: currentTrack.title, artist: currentTrack.artist });
+          setIsLyricsLoading(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isLyricsViewOpen, currentTrack]);
+
+  // Track active line index in synced lyrics
+  const activeLineIndex = useMemo(() => {
+    if (!lyricsData?.isSynced || !lyricsData.lines || lyricsData.lines.length === 0) return -1;
+    let idx = -1;
+    for (let i = 0; i < lyricsData.lines.length; i++) {
+      if (lyricsData.lines[i].time <= currentTime) {
+        idx = i;
+      } else {
+        break;
+      }
+    }
+    return idx;
+  }, [lyricsData, currentTime]);
+
+  // Handle user manual scroll with auto-scroll resume timer
+  const handleLyricsScroll = useCallback(() => {
+    isUserScrollingRef.current = true;
+    if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
+    userScrollTimeoutRef.current = setTimeout(() => {
+      isUserScrollingRef.current = false;
+    }, 2400);
+  }, []);
+
+  // Smooth auto-scroll following the active synced line
+  useEffect(() => {
+    if (!isLyricsViewOpen || activeLineIndex === -1 || isUserScrollingRef.current) return;
+    const container = lyricsContainerRef.current;
+    const activeEl = activeLineRef.current;
+    if (container && activeEl) {
+      const containerHeight = container.clientHeight;
+      const targetScroll = activeEl.offsetTop - (containerHeight / 2) + (activeEl.clientHeight / 2);
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
+      });
+    }
+  }, [activeLineIndex, isLyricsViewOpen]);
+
+  // Seeking directly when tapping/clicking a lyric line
+  const handleLyricLineClick = useCallback((timeSec) => {
+    if (timeSec === undefined || isNaN(timeSec)) return;
+    if (onSeek) {
+      onSeek(timeSec);
+    } else if (audioElement) {
+      audioElement.currentTime = timeSec;
+    }
+    playClickSound('light');
+  }, [onSeek, audioElement]);
 
   // Skin switcher callback
   const handleSkinChange = useCallback((skin) => {
@@ -1802,57 +1893,122 @@ export default function VinylScene({
 
                       {/* Bottom Row: Recessed Frosted LCD Display Card + Elevated Clay Rotary Controls */}
                       <div className="modern-deck-bottom-row">
-                        {/* Left: Recessed Frosted LCD Display Card */}
+                        {/* Left: Recessed Frosted LCD Display Card (Waveform vs Lyrics View) */}
                         <div
-                          className="modern-digital-display-card"
+                          className={`modern-digital-display-card ${isLyricsViewOpen ? 'is-lyrics-mode' : ''}`}
                           ref={modernLcdRef}
-                          onClick={handleModernLcdSeek}
-                          title="Click to seek track position"
+                          onClick={(e) => {
+                            if (!isLyricsViewOpen) {
+                              handleModernLcdSeek(e);
+                            }
+                          }}
+                          title={isLyricsViewOpen ? '' : 'Click to seek track position'}
                         >
-                          {/* Equalizer Barcode / Waveform Spectrogram Blocks */}
-                          <div className="modern-barcode-waveform">
-                            {modernWaveformBars.map((bar) => {
-                              const barRatio = bar.id / modernWaveformBars.length;
-                              const isPassed = currentRatio >= barRatio;
-                              return (
-                                <div
-                                  key={bar.id}
-                                  className={`modern-barcode-column ${isPlaying ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
-                                >
-                                  <div
-                                    className="modern-barcode-bar top-bar"
-                                    style={{
-                                      height: `${bar.height}%`,
-                                      opacity: bar.opacity
-                                    }}
-                                  />
-                                  <div
-                                    className="modern-barcode-bar bottom-bar"
-                                    style={{
-                                      height: `${Math.round(bar.height * 0.72)}%`,
-                                      opacity: Math.max(0.35, bar.opacity * 0.8)
-                                    }}
-                                  />
+                          {isLyricsViewOpen ? (
+                            /* Lyrics Mode Viewport */
+                            <div className="modern-lcd-lyrics-viewport">
+                              {isLyricsLoading ? (
+                                <div className="modern-lcd-lyrics-status">
+                                  <Mic2 size={16} className="modern-lcd-status-icon pulse-icon" />
+                                  <span className="modern-lcd-status-title">FETCHING LYRICS...</span>
+                                  <span className="modern-lcd-status-sub">{currentTrack?.title}</span>
                                 </div>
-                              );
-                            })}
-
-                            {/* Tracking Cursor Needle */}
-                            <div
-                              className="modern-tracking-needle"
-                              style={{ left: `${Math.max(2, Math.min(98, currentRatio * 100))}%` }}
-                            >
-                              <div className="needle-head-top" />
-                              <div className="needle-stem" />
-                              <div className="needle-head-bottom" />
+                              ) : lyricsData?.instrumental ? (
+                                <div className="modern-lcd-lyrics-status">
+                                  <Music size={16} className="modern-lcd-status-icon" />
+                                  <span className="modern-lcd-status-title">INSTRUMENTAL TRACK</span>
+                                  <span className="modern-lcd-status-sub">No lyrics for this piece</span>
+                                </div>
+                              ) : lyricsData?.lines && lyricsData.lines.length > 0 ? (
+                                <div
+                                  className="modern-lcd-lyrics-container"
+                                  ref={lyricsContainerRef}
+                                  onScroll={handleLyricsScroll}
+                                >
+                                  {lyricsData.lines.map((line, idx) => {
+                                    const isActive = lyricsData.isSynced && idx === activeLineIndex;
+                                    const isPassed = lyricsData.isSynced && idx < activeLineIndex;
+                                    return (
+                                      <div
+                                        key={`${idx}-${line.time ?? ''}`}
+                                        ref={isActive ? activeLineRef : null}
+                                        className={`modern-lcd-lyric-line ${isActive ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (line.time !== undefined) {
+                                            handleLyricLineClick(line.time);
+                                          }
+                                        }}
+                                        title={line.time !== undefined ? `Jump to ${formatModernTime(line.time)}` : undefined}
+                                      >
+                                        {line.text}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="modern-lcd-lyrics-status">
+                                  <span className="modern-lcd-status-title">LYRICS UNAVAILABLE</span>
+                                  <span className="modern-lcd-status-sub">{currentTrack?.title || 'Unknown Track'}</span>
+                                </div>
+                              )}
                             </div>
-                          </div>
+                          ) : (
+                            /* Equalizer Barcode / Waveform Spectrogram Blocks */
+                            <div className="modern-barcode-waveform">
+                              {modernWaveformBars.map((bar) => {
+                                const barRatio = bar.id / modernWaveformBars.length;
+                                const isPassed = currentRatio >= barRatio;
+                                return (
+                                  <div
+                                    key={bar.id}
+                                    className={`modern-barcode-column ${isPlaying ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
+                                  >
+                                    <div
+                                      className="modern-barcode-bar top-bar"
+                                      style={{
+                                        height: `${bar.height}%`,
+                                        opacity: bar.opacity
+                                      }}
+                                    />
+                                    <div
+                                      className="modern-barcode-bar bottom-bar"
+                                      style={{
+                                        height: `${Math.round(bar.height * 0.72)}%`,
+                                        opacity: Math.max(0.35, bar.opacity * 0.8)
+                                      }}
+                                    />
+                                  </div>
+                                );
+                              })}
 
-                          {/* Display Footer: Track Code & Digital Time Clocks */}
+                              {/* Tracking Cursor Needle */}
+                              <div
+                                className="modern-tracking-needle"
+                                style={{ left: `${Math.max(2, Math.min(98, currentRatio * 100))}%` }}
+                              >
+                                <div className="needle-head-top" />
+                                <div className="needle-stem" />
+                                <div className="needle-head-bottom" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Display Footer: LYRICS Toggle Button & Digital Time Clocks */}
                           <div className="modern-display-footer">
-                            <div className="modern-track-code">
-                              T.{modernTrackNumber}
-                            </div>
+                            <button
+                              type="button"
+                              className={`modern-lyrics-toggle-btn ${isLyricsViewOpen ? 'is-active' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setIsLyricsViewOpen(prev => !prev);
+                                playClickSound('toggle');
+                              }}
+                              title={isLyricsViewOpen ? 'Switch back to waveform display' : 'Show song lyrics'}
+                            >
+                              LYRICS
+                              {isLyricsViewOpen && <span className="modern-lyrics-active-dot" />}
+                            </button>
                             <div className="modern-time-readouts">
                               <div className="modern-time-elapsed">
                                 {formatModernTime(currentTime)}
