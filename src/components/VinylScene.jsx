@@ -2509,12 +2509,6 @@ export default function VinylScene({
                     <h2 className="vinyl-section-title">
                       PLAYLISTS ({displayedPlaylists.length})
                     </h2>
-                    {activePlayingPlaylist && (
-                      <span className="vinyl-active-playlist-pill" title={`Active on Turntable: ${activePlayingPlaylist.title}`}>
-                        <span className="vinyl-pulse-dot" />
-                        Playing: {activePlayingPlaylist.title}
-                      </span>
-                    )}
                   </div>
 
                   <button
