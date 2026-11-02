@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
 import { LANGUAGES, LANGUAGE_LABELS } from '../data/tracks';
+import PixelCat from './PixelCat';
 import '../styles/vinylScene.css';
 
 // Curated Category Filters inspired by the reference image
@@ -2708,6 +2709,9 @@ export default function VinylScene({
                   )}
                 </div>
               </div>
+
+              {/* Pixel Cat Interactive Lounge */}
+              <PixelCat isPlaying={isPlaying} />
 
             </section>
 
