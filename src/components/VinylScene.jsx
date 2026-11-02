@@ -1543,23 +1543,6 @@ export default function VinylScene({
                           <div className="modern-center-spindle-disc">
                             <div className="modern-center-spindle-hole" />
                           </div>
-
-                          {/* 3D Liquid Chrome Metal Spheres Cluster (Rests on vinyl disc, rotating in orbit) */}
-                          <div className="modern-chrome-spheres-cluster" aria-hidden="true">
-                            <div className="chrome-sphere sphere-main" />
-                            <div className="chrome-sphere sphere-sub-1" />
-                            <div className="chrome-sphere sphere-sub-2" />
-                            <div className="chrome-sphere sphere-sub-3" />
-                            <div className="chrome-sphere sphere-sub-4" />
-                            <div className="chrome-sphere sphere-sub-5" />
-                          </div>
-
-                          {/* Secondary Mini Droplet Cluster near spindle */}
-                          <div className="modern-chrome-micro-cluster" aria-hidden="true">
-                            <div className="chrome-sphere micro-1" />
-                            <div className="chrome-sphere micro-2" />
-                            <div className="chrome-sphere micro-3" />
-                          </div>
                         </div>
                       </div>
 
