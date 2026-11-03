@@ -363,12 +363,13 @@ export default function App() {
       setSelectedLanguages(langOrLangs.filter(l => l && l !== 'Hinglish' && LANGUAGES.includes(l)));
       return;
     }
-    // Single language toggle
+    // Single language toggle: tapping an active single language resets to All,
+    // selecting another language switches exclusively to that language
     setSelectedLanguages(prev => {
-      if (prev.includes(langOrLangs)) {
-        return prev.filter(l => l !== langOrLangs);
+      if (prev.length === 1 && prev[0].toLowerCase() === langOrLangs.toLowerCase()) {
+        return [];
       }
-      return [...prev, langOrLangs];
+      return [langOrLangs];
     });
   };
 
@@ -482,6 +483,12 @@ export default function App() {
       if (langFiltered.length > 0) {
         return langFiltered;
       }
+      // Strict fallback: when a language is selected, never return tracks from other languages
+      const allLangFiltered = allTracks.filter(track => {
+        const trackLang = (track.language || 'English').toLowerCase();
+        return lowerSelected.includes(trackLang);
+      });
+      return allLangFiltered;
     }
 
     return filtered.length > 0 ? filtered : allTracks;
@@ -650,6 +657,36 @@ export default function App() {
       playedShuffleTrackIdsRef.current.add(currentTrackId);
     }
   }, [currentTrackId]);
+
+  // When active language(s) change, verify current track and queue strictly match selected language
+  useEffect(() => {
+    if (!selectedLanguages || selectedLanguages.length === 0) return;
+    const lowerSelected = selectedLanguages.map(l => l.toLowerCase());
+
+    // Clean out queue items that do not match the selected language
+    setCustomQueue(prev => {
+      if (!prev || prev.length === 0) return prev;
+      return prev.filter(t => lowerSelected.includes((t.language || 'English').toLowerCase()));
+    });
+
+    // Check if current playing track matches the selected language
+    const curr = currentTrackRef.current;
+    if (curr) {
+      const currLang = (curr.language || 'English').toLowerCase();
+      if (!lowerSelected.includes(currLang)) {
+        const match = (activePlaylistRef.current || []).find(t => lowerSelected.includes((t.language || 'English').toLowerCase()))
+          || allTracks.find(t => lowerSelected.includes((t.language || 'English').toLowerCase()));
+        if (match) {
+          setCurrentTrackId(match.id);
+          setCurrentTime(0);
+          currentTimeRef.current = 0;
+          if (isPlayingRef.current) {
+            audioEngine.playTrack(match, 0);
+          }
+        }
+      }
+    }
+  }, [selectedLanguages, allTracks]);
 
   // Reset or initialize shuffle pool when shuffle mode toggles
   useEffect(() => {
@@ -902,15 +939,25 @@ export default function App() {
   const handleNextTrack = () => {
     // 1. Prioritize user's customized playback queue if present
     if (customQueueRef.current && customQueueRef.current.length > 0) {
-      const [nextQueuedTrack, ...remainingQueue] = customQueueRef.current;
-      setCustomQueue(remainingQueue);
-      customQueueRef.current = remainingQueue;
-      if (nextQueuedTrack) {
-        setCurrentTime(0);
-        currentTimeRef.current = 0;
-        setCurrentTrackId(nextQueuedTrack.id);
-        setIsPlaying(true);
-        return;
+      let filteredQueue = customQueueRef.current;
+      if (selectedLanguages && selectedLanguages.length > 0) {
+        const lowerSelected = selectedLanguages.map(l => l.toLowerCase());
+        filteredQueue = filteredQueue.filter(t => lowerSelected.includes((t.language || 'English').toLowerCase()));
+      }
+      if (filteredQueue.length > 0) {
+        const [nextQueuedTrack, ...remainingQueue] = filteredQueue;
+        setCustomQueue(remainingQueue);
+        customQueueRef.current = remainingQueue;
+        if (nextQueuedTrack) {
+          setCurrentTime(0);
+          currentTimeRef.current = 0;
+          setCurrentTrackId(nextQueuedTrack.id);
+          setIsPlaying(true);
+          return;
+        }
+      } else {
+        setCustomQueue([]);
+        customQueueRef.current = [];
       }
     }
 

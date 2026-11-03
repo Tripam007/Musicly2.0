@@ -105,6 +105,41 @@ export default function VinylScene({
   const [localLanguages, setLocalLanguages] = useState([]);
   const [isLikedPanelOpen, setIsLikedPanelOpen] = useState(false);
 
+  // Active languages resolution (supporting global props or local fallback)
+  const activeLanguages = useMemo(() => {
+    if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
+      return selectedLanguages;
+    }
+    if (selectedLanguage && selectedLanguage !== 'All') {
+      return [selectedLanguage];
+    }
+    return localLanguages;
+  }, [selectedLanguages, selectedLanguage, localLanguages]);
+
+  // Strict language filtering helper
+  const filterTracksByLang = useCallback((trackList) => {
+    if (!trackList || trackList.length === 0) return [];
+    if (!activeLanguages || activeLanguages.length === 0) return trackList;
+    const lowerSelected = activeLanguages.map(l => l.toLowerCase());
+    return trackList.filter(track => {
+      const trackLang = (track.language || 'English').toLowerCase();
+      return lowerSelected.includes(trackLang);
+    });
+  }, [activeLanguages]);
+
+  // Language selection toggle
+  const handleLanguageToggle = useCallback((lang) => {
+    if (onSelectLanguage) {
+      onSelectLanguage(lang);
+    } else {
+      setLocalLanguages(prev => {
+        if (!lang || lang === 'All') return [];
+        if (prev.length === 1 && prev[0].toLowerCase() === lang.toLowerCase()) return [];
+        return [lang];
+      });
+    }
+  }, [onSelectLanguage]);
+
   // Playback Queue & Drag-and-Drop States
   const [carouselViewMode, setCarouselViewMode] = useState('queue');
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
@@ -120,31 +155,35 @@ export default function VinylScene({
   const userScrollTimeoutRef = useRef(null);
 
   // Derived upcoming queue: shows only the next 4 upcoming songs at a time,
-  // automatically reloading as songs finish playing
+  // strictly filtered by the selected language and automatically reloading as songs finish playing
   const upcomingQueue = useMemo(() => {
     if (!allTracks || allTracks.length === 0) return [];
 
+    const pool = filterTracksByLang(allTracks);
+    if (pool.length === 0) return [];
+
     // Prioritize user's customized playback queue if present
-    if (customQueue && customQueue.length > 0) {
-      if (customQueue.length >= 4) {
-        return customQueue.slice(0, 4);
+    const filteredCustom = filterTracksByLang(customQueue || []);
+    if (filteredCustom && filteredCustom.length > 0) {
+      if (filteredCustom.length >= 4) {
+        return filteredCustom.slice(0, 4);
       }
-      const currentIdx = allTracks.findIndex(t => t.id === currentTrack?.id);
-      const customIds = new Set(customQueue.map(t => t.id));
-      const after = allTracks.slice(currentIdx + 1).filter(t => !customIds.has(t.id) && t.id !== currentTrack?.id);
-      const before = allTracks.slice(0, Math.max(0, currentIdx)).filter(t => !customIds.has(t.id) && t.id !== currentTrack?.id);
+      const currentIdx = pool.findIndex(t => t.id === currentTrack?.id);
+      const customIds = new Set(filteredCustom.map(t => t.id));
+      const after = pool.slice(currentIdx + 1).filter(t => !customIds.has(t.id) && t.id !== currentTrack?.id);
+      const before = pool.slice(0, Math.max(0, currentIdx)).filter(t => !customIds.has(t.id) && t.id !== currentTrack?.id);
       const remaining = [...after, ...before];
-      return [...customQueue, ...remaining].slice(0, 4);
+      return [...filteredCustom, ...remaining].slice(0, 4);
     }
 
-    const currentIdx = allTracks.findIndex(t => t.id === currentTrack?.id);
+    const currentIdx = pool.findIndex(t => t.id === currentTrack?.id);
     if (currentIdx === -1) {
-      return allTracks.slice(0, 4);
+      return pool.slice(0, 4);
     }
-    const after = allTracks.slice(currentIdx + 1);
-    const before = allTracks.slice(0, currentIdx);
+    const after = pool.slice(currentIdx + 1);
+    const before = pool.slice(0, currentIdx);
     return [...after, ...before].slice(0, 4);
-  }, [customQueue, allTracks, currentTrack]);
+  }, [customQueue, allTracks, currentTrack, filterTracksByLang]);
 
   // Queue reorder drag and drop handler
   const handleQueueReorder = useCallback((fromIndex, toIndex) => {
@@ -172,6 +211,12 @@ export default function VinylScene({
   const handleAddToQueue = useCallback((track, e) => {
     e?.stopPropagation?.();
     if (!track) return;
+    if (activeLanguages && activeLanguages.length > 0) {
+      const lower = activeLanguages.map(l => l.toLowerCase());
+      if (!lower.includes((track.language || 'English').toLowerCase())) {
+        return;
+      }
+    }
     const alreadyIn = upcomingQueue.some(t => t.id === track.id);
     const updated = alreadyIn
       ? [...upcomingQueue.filter(t => t.id !== track.id), track]
@@ -180,7 +225,7 @@ export default function VinylScene({
       onSetCustomQueue(updated);
     }
     playPeacefulLikeSound();
-  }, [upcomingQueue, onSetCustomQueue]);
+  }, [upcomingQueue, onSetCustomQueue, activeLanguages]);
 
   // User Custom Playlists Persistence
   const [customPlaylists, setCustomPlaylists] = useState(() => {
@@ -293,7 +338,7 @@ export default function VinylScene({
     saveCustomPlaylists(updated);
     if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
       const newTrackIds = (selectedCustomPlaylist.trackIds || []).filter(id => id !== trackId);
-      const newTracks = allTracks.filter(t => newTrackIds.includes(t.id));
+      const newTracks = filterTracksByLang(allTracks.filter(t => newTrackIds.includes(t.id)));
       setSelectedCustomPlaylist(prev => ({
         ...prev,
         trackIds: newTrackIds,
@@ -323,7 +368,7 @@ export default function VinylScene({
     setCustomPlaylists(updated);
     saveCustomPlaylists(updated);
     if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
-      const newTracks = allTracks.filter(t => newIds.includes(t.id));
+      const newTracks = filterTracksByLang(allTracks.filter(t => newIds.includes(t.id)));
       setSelectedCustomPlaylist(prev => ({
         ...prev,
         trackIds: newIds,
@@ -382,8 +427,8 @@ export default function VinylScene({
 
   // Filtered liked tracks for the favorites flyout panel
   const likedTracks = useMemo(() => {
-    return allTracks.filter(t => favorites.includes(t.id));
-  }, [allTracks, favorites]);
+    return filterTracksByLang(allTracks.filter(t => favorites.includes(t.id)));
+  }, [allTracks, favorites, filterTracksByLang]);
 
   // Close favorites panel on Escape key
   useEffect(() => {
@@ -396,30 +441,6 @@ export default function VinylScene({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isLikedPanelOpen]);
-
-  // Active languages resolution (supporting global props or local fallback)
-  const activeLanguages = useMemo(() => {
-    if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
-      return selectedLanguages;
-    }
-    if (selectedLanguage && selectedLanguage !== 'All') {
-      return [selectedLanguage];
-    }
-    return localLanguages;
-  }, [selectedLanguages, selectedLanguage, localLanguages]);
-
-  // Language selection toggle
-  const handleLanguageToggle = useCallback((lang) => {
-    if (onSelectLanguage) {
-      onSelectLanguage(lang);
-    } else {
-      setLocalLanguages(prev => {
-        if (!lang || lang === 'All') return [];
-        if (prev.includes(lang)) return prev.filter(l => l !== lang);
-        return [...prev, lang];
-      });
-    }
-  }, [onSelectLanguage]);
 
   // Dynamic category pills:
   // English -> adds COUNTRY
@@ -811,52 +832,53 @@ export default function VinylScene({
     return list.slice(0, 12);
   }, [allTracks, activeCategory, activeLanguages, searchQuery]);
 
-  // Curated Favorite Playlists Section data
+  // Curated Favorite Playlists Section data (strictly filtered by activeLanguages)
   const favoritePlaylists = useMemo(() => {
     const playlists = [];
 
     // 1. Liked Songs Playlist
-    const likedTracks = allTracks.filter(t => favorites.includes(t.id));
+    const liked = filterTracksByLang(allTracks.filter(t => favorites.includes(t.id)));
     playlists.push({
       id: 'liked_songs',
       title: 'Liked Songs',
-      subtitle: `${likedTracks.length} song${likedTracks.length === 1 ? '' : 's'} in this list`,
-      count: likedTracks.length,
-      tracks: likedTracks.length > 0 ? likedTracks : allTracks.slice(0, 5),
-      image: likedTracks[0]?.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'
+      subtitle: `${liked.length} song${liked.length === 1 ? '' : 's'} in this list`,
+      count: liked.length,
+      tracks: liked,
+      image: liked[0]?.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'
     });
 
     // 2. Vintage Vinyl & 80s Classics
-    const retroTracks = allTracks.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro'))));
+    const retroTracks = filterTracksByLang(allTracks.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro')))));
     playlists.push({
       id: 'vintage_retro',
       title: 'Vintage Hi-Fi & 80s',
       subtitle: `${retroTracks.length} song${retroTracks.length === 1 ? '' : 's'} in this list`,
       count: retroTracks.length,
-      tracks: retroTracks.length > 0 ? retroTracks : allTracks,
+      tracks: retroTracks,
       image: retroTracks[0]?.cover || '/assets/images/retro_scene.jpg'
     });
 
     // 3. Late Night Lo-Fi
-    const lofiTracks = allTracks.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi'))));
+    const lofiTracks = filterTracksByLang(allTracks.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi')))));
     playlists.push({
       id: 'latenight_lofi',
       title: 'Late Night Lo-Fi',
       subtitle: `${lofiTracks.length} song${lofiTracks.length === 1 ? '' : 's'} in this list`,
       count: lofiTracks.length,
-      tracks: lofiTracks.length > 0 ? lofiTracks : allTracks,
+      tracks: lofiTracks,
       image: lofiTracks[0]?.cover || '/assets/images/lofi_scene.jpg'
     });
 
-    // Language-Specific Featured Playlists (English -> Country, Hindi -> Ghazals, All -> neither)
+    // Language-Specific Featured Playlists
     const isEnglishOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'english';
     const isHindiOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'hindi';
+    const isBengaliOnly = activeLanguages.length === 1 && (activeLanguages[0].toLowerCase() === 'bengali' || activeLanguages[0].toLowerCase() === 'bangla');
 
-    if (isEnglishOnly) {
-      const countryTracks = allTracks.filter(t =>
+    if (isEnglishOnly || activeLanguages.length === 0) {
+      const countryTracks = filterTracksByLang(allTracks.filter(t =>
         (t.genre || '').toLowerCase().includes('country') ||
         (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country')))
-      );
+      ));
       if (countryTracks.length > 0) {
         playlists.push({
           id: 'country_roots',
@@ -869,11 +891,11 @@ export default function VinylScene({
       }
     }
 
-    if (isHindiOnly) {
-      const ghazalTracks = allTracks.filter(t =>
+    if (isHindiOnly || activeLanguages.length === 0) {
+      const ghazalTracks = filterTracksByLang(allTracks.filter(t =>
         (t.genre || '').toLowerCase().includes('ghazal') ||
         (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal')))
-      );
+      ));
       if (ghazalTracks.length > 0) {
         playlists.push({
           id: 'timeless_ghazals',
@@ -886,21 +908,39 @@ export default function VinylScene({
       }
     }
 
+    if (isBengaliOnly) {
+      const bengaliClassics = filterTracksByLang(allTracks.filter(t =>
+        (t.genre || '').toLowerCase().includes('rabindra') ||
+        (t.title || '').toLowerCase().includes('majhe') ||
+        (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('rabindra')))
+      ));
+      if (bengaliClassics.length > 0) {
+        playlists.push({
+          id: 'bengali_classics',
+          title: 'Rabindra Sangeet & Folk',
+          subtitle: `${bengaliClassics.length} song${bengaliClassics.length === 1 ? '' : 's'} in this list`,
+          count: bengaliClassics.length,
+          tracks: bengaliClassics,
+          image: bengaliClassics[0]?.cover || 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg'
+        });
+      }
+    }
+
     // 4. Indie Warmth & Acoustic
-    const indieTracks = allTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie'))));
+    const indieTracks = filterTracksByLang(allTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie')))));
     playlists.push({
       id: 'indie_warmth',
       title: 'Indie Acoustic Sessions',
       subtitle: `${indieTracks.length} song${indieTracks.length === 1 ? '' : 's'} in this list`,
       count: indieTracks.length,
-      tracks: indieTracks.length > 0 ? indieTracks : allTracks,
+      tracks: indieTracks,
       image: indieTracks[0]?.cover || 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80'
     });
 
     // 5. User Custom Playlists
     if (Array.isArray(customPlaylists)) {
       customPlaylists.forEach(cp => {
-        const cpTracks = allTracks.filter(t => (cp.trackIds || []).includes(t.id));
+        const cpTracks = filterTracksByLang(allTracks.filter(t => (cp.trackIds || []).includes(t.id)));
         playlists.push({
           id: cp.id,
           title: cp.title,
@@ -915,7 +955,7 @@ export default function VinylScene({
     }
 
     return playlists;
-  }, [allTracks, favorites, activeLanguages, customPlaylists]);
+  }, [allTracks, favorites, activeLanguages, customPlaylists, filterTracksByLang]);
 
   // Playlist Source Choice: 'musicly' (default) | 'custom' | 'all'
   const [playlistSourceMode, setPlaylistSourceMode] = useState('musicly');
@@ -968,22 +1008,35 @@ export default function VinylScene({
     return favoritePlaylists.find(p => p.id === activePlayingPlaylistId) || null;
   }, [activePlayingPlaylistId, favoritePlaylists]);
 
+  // Keep selected playlist detail in sync when language filter changes
+  useEffect(() => {
+    if (selectedCustomPlaylist) {
+      const updated = favoritePlaylists.find(p => p.id === selectedCustomPlaylist.id);
+      if (updated) {
+        setSelectedCustomPlaylist(updated);
+      }
+    }
+  }, [favoritePlaylists]);
+
   // Handle Play Complete Playlist on Turntable & Load remaining tracks into Upcoming Queue
   const handlePlayPlaylist = useCallback((playlist, e) => {
     e?.stopPropagation?.();
     if (!playlist || !playlist.tracks || playlist.tracks.length === 0) return;
 
+    const tracksToPlay = filterTracksByLang(playlist.tracks);
+    if (tracksToPlay.length === 0) return;
+
     setActivePlayingPlaylistId(playlist.id);
 
-    let tracksToPlay = [...playlist.tracks];
+    let finalTracks = [...tracksToPlay];
     if (isShuffle) {
-      for (let i = tracksToPlay.length - 1; i > 0; i--) {
+      for (let i = finalTracks.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [tracksToPlay[i], tracksToPlay[j]] = [tracksToPlay[j], tracksToPlay[i]];
+        [finalTracks[i], finalTracks[j]] = [finalTracks[j], finalTracks[i]];
       }
     }
 
-    const [firstSong, ...remainingSongs] = tracksToPlay;
+    const [firstSong, ...remainingSongs] = finalTracks;
     if (firstSong) {
       onSelectTrack?.(firstSong, true, true);
     }
@@ -991,7 +1044,7 @@ export default function VinylScene({
       onSetCustomQueue(remainingSongs);
     }
     playPeacefulLikeSound();
-  }, [isShuffle, onSelectTrack, onSetCustomQueue, setActivePlayingPlaylistId]);
+  }, [filterTracksByLang, isShuffle, onSelectTrack, onSetCustomQueue, playPeacefulLikeSound, setActivePlayingPlaylistId]);
 
   // Click on turntable record directly to toggle playback
   const handleRecordClick = (e) => {
@@ -3106,7 +3159,7 @@ export default function VinylScene({
                           className={`vinyl-playlist-track-row ${isCurrentPlaying ? 'is-active' : ''}`}
                           onClick={() => {
                             setActivePlayingPlaylistId(selectedCustomPlaylist.id);
-                            const remaining = selectedCustomPlaylist.tracks.slice(idx + 1);
+                            const remaining = filterTracksByLang(selectedCustomPlaylist.tracks.slice(idx + 1));
                             onSelectTrack?.(track, true, true);
                             if (onSetCustomQueue) {
                               onSetCustomQueue(remaining);
