@@ -137,45 +137,29 @@ export default function AdminDashboardModal({
     };
   }, [isLiveAgentActive, searchQuery]);
 
-  // One-click Add recommended live stream track directly to Musicly Public Library
-  const handleAddLiveStreamToLibrary = async (streamTrack) => {
+  // Open edit modal for live stream track before adding to Musicly Public Library
+  const handleStartAddStreamTrack = (streamTrack) => {
     if (addedTrackIds.has(streamTrack.id)) return;
-    setAddingTrackId(streamTrack.id);
 
-    try {
-      const chosenSections = Array.isArray(streamTrack.genres) && streamTrack.genres.length > 0 
-        ? streamTrack.genres 
-        : [streamTrack.genre || 'Lo-Fi'];
+    const chosenSections = Array.isArray(streamTrack.genres) && streamTrack.genres.length > 0 
+      ? streamTrack.genres 
+      : (streamTrack.genre ? [streamTrack.genre] : ['Lo-Fi']);
 
-      const trackPayload = {
-        id: `public-${Date.now()}`,
-        title: streamTrack.title,
-        artist: streamTrack.artist || 'YouTube Artist',
-        genre: chosenSections.join(', '),
-        genres: chosenSections,
-        language: streamTrack.language || 'English',
-        duration: streamTrack.duration || 240,
-        cover: streamTrack.cover || `https://img.youtube.com/vi/${streamTrack.youtubeId}/hqdefault.jpg`,
-        audioUrl: streamTrack.audioUrl || `https://www.youtube.com/watch?v=${streamTrack.youtubeId}`,
-        isYouTube: true,
-        youtubeId: streamTrack.youtubeId,
-        isPublic: true,
-        requestedBy: 'Live Stream AI Agent'
-      };
-
-      await onPublishTrack(trackPayload, null);
-      playTingSound();
-      setAddedTrackIds(prev => new Set(prev).add(streamTrack.id));
-      setAgentToast(`Added "${streamTrack.title}" to Musicly Public Library!`);
-      setTimeout(() => setAgentToast(''), 4500);
-    } catch (err) {
-      console.error("Error adding live stream track to library:", err);
-      setAgentToast(`Failed to add: ${err.message || 'Unknown error'}`);
-      setTimeout(() => setAgentToast(''), 4500);
-    } finally {
-      setAddingTrackId(null);
-    }
+    setEditingTrack({
+      ...streamTrack,
+      isNewStreamTrack: true,
+      originalStreamItem: streamTrack
+    });
+    setEditTitle(streamTrack.title || '');
+    setEditArtist(streamTrack.artist || 'YouTube Artist');
+    setEditSections(chosenSections);
+    setEditLanguage(streamTrack.language || 'English');
+    setEditAudioUrl(streamTrack.audioUrl || (streamTrack.youtubeId ? `https://www.youtube.com/watch?v=${streamTrack.youtubeId}` : ''));
+    setEditFileObject(null);
+    setEditFileError('');
   };
+
+  const handleAddLiveStreamToLibrary = handleStartAddStreamTrack;
 
   // Play audio only of live recommendation stream
   const handlePlayLiveStreamAudio = (streamTrack) => {
@@ -221,6 +205,7 @@ export default function AdminDashboardModal({
   const [editAudioUrl, setEditAudioUrl] = useState('');
   const [editFileObject, setEditFileObject] = useState(null);
   const [editFileError, setEditFileError] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const editFileInputRef = useRef(null);
 
   // Scene addition state
@@ -836,13 +821,14 @@ export default function AdminDashboardModal({
   };
 
   const handleSaveEdit = async () => {
-    if (!editingTrack) return;
+    if (!editingTrack || isSavingEdit) return;
+    setIsSavingEdit(true);
     try {
       const chosen = editSections.length > 0 ? editSections : ['Lo-Fi'];
       const rawUrl = (editAudioUrl || '').trim();
       let finalAudioUrl = editingTrack.audioUrl;
       let finalBlob = editingTrack.blob || null;
-      let isYt = editingTrack.isYouTube;
+      let isYt = editingTrack.isYouTube !== undefined ? editingTrack.isYouTube : true;
       let ytId = editingTrack.youtubeId;
       let finalCover = editingTrack.cover;
 
@@ -866,6 +852,35 @@ export default function AdminDashboardModal({
         }
       }
 
+      if (editingTrack.isNewStreamTrack) {
+        const streamItem = editingTrack.originalStreamItem || editingTrack;
+        setAddingTrackId(streamItem.id);
+        const trackPayload = {
+          id: `public-${Date.now()}`,
+          title: editTitle.trim() || streamItem.title,
+          artist: editArtist.trim() || streamItem.artist || 'YouTube Artist',
+          genre: chosen.join(', '),
+          genres: chosen,
+          language: editLanguage || 'English',
+          duration: streamItem.duration || 240,
+          cover: finalCover || streamItem.cover || (ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : ''),
+          audioUrl: finalAudioUrl || streamItem.audioUrl || (ytId ? `https://www.youtube.com/watch?v=${ytId}` : ''),
+          isYouTube: isYt,
+          youtubeId: ytId || streamItem.youtubeId,
+          isPublic: true,
+          requestedBy: 'Live Stream AI Agent'
+        };
+
+        await onPublishTrack(trackPayload, finalBlob);
+        playTingSound();
+        setAddedTrackIds(prev => new Set(prev).add(streamItem.id));
+        setAgentToast(`Added "${trackPayload.title}" to Musicly Public Library!`);
+        setTimeout(() => setAgentToast(''), 4500);
+        setEditingTrack(null);
+        setAddingTrackId(null);
+        return;
+      }
+
       await onUpdateTrack(editingTrack.id, {
         title: editTitle.trim() || editingTrack.title,
         artist: editArtist.trim() || editingTrack.artist,
@@ -882,6 +897,8 @@ export default function AdminDashboardModal({
       setEditingTrack(null);
     } catch (err) {
       alert(err.message || "Failed to update track");
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -1185,9 +1202,20 @@ export default function AdminDashboardModal({
                               <button 
                                 type="button" 
                                 className={`admin-stream-add-btn ${isAdded ? 'is-added' : ''}`}
-                                disabled={isAdded || isAdding}
-                                onClick={() => handleAddLiveStreamToLibrary(item)}
-                                title={isAdded ? "Already published in Musicly Public Library" : "Import and publish to Musicly Public Library"}
+                                disabled={isAdding}
+                                onClick={() => {
+                                  if (isAdded) {
+                                    const existing = publicTracks.find(pt => pt.youtubeId === item.youtubeId || pt.id === item.id);
+                                    if (existing) {
+                                      startEditTrack(existing);
+                                    } else {
+                                      handleAddLiveStreamToLibrary(item);
+                                    }
+                                  } else {
+                                    handleAddLiveStreamToLibrary(item);
+                                  }
+                                }}
+                                title={isAdded ? "Already in library — click to edit metadata & genres" : "Edit metadata and add to Musicly Public Library"}
                               >
                                 {isAdded ? (
                                   <>
@@ -1206,6 +1234,24 @@ export default function AdminDashboardModal({
                                   </>
                                 )}
                               </button>
+                              {isAdded && (
+                                <button
+                                  type="button"
+                                  className="admin-action-icon-btn edit"
+                                  style={{ marginLeft: 6 }}
+                                  onClick={() => {
+                                    const existing = publicTracks.find(pt => pt.youtubeId === item.youtubeId || pt.id === item.id);
+                                    if (existing) {
+                                      startEditTrack(existing);
+                                    } else {
+                                      handleAddLiveStreamToLibrary(item);
+                                    }
+                                  }}
+                                  title="Edit genres & track details"
+                                >
+                                  <Edit3 size={14} />
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -2627,8 +2673,17 @@ export default function AdminDashboardModal({
                 </div>
               </div>
               <div className="submodal-footer">
-                <button className="admin-cancel-btn" onClick={() => setEditingTrack(null)}>Cancel</button>
-                <button className="admin-publish-action-btn" onClick={handleSaveEdit}>Save Changes</button>
+                <button className="admin-cancel-btn" onClick={() => setEditingTrack(null)} disabled={isSavingEdit}>Cancel</button>
+                <button className="admin-publish-action-btn" onClick={handleSaveEdit} disabled={isSavingEdit}>
+                  {isSavingEdit ? (
+                    <>
+                      <RefreshCw size={13} className="spin-slow" style={{ marginRight: 6 }} />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
               </div>
             </div>
           </div>
