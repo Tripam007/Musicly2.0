@@ -772,15 +772,17 @@ export default function VinylScene({
     }, 2800);
   }, []);
 
-  // Smooth auto-scroll following the active synced line
+  // Smooth auto-scroll following the active synced line INSIDE the lyrics container ONLY
+  // (Never calls scrollIntoView on elements, preventing page scroll hijacking)
   useEffect(() => {
     if (!isLyricsViewOpen || activeLineIndex === -1 || isUserScrollingRef.current) return;
     const activeEl = activeLineRef.current;
-    if (activeEl) {
-      activeEl.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-        inline: 'nearest'
+    const container = lyricsContainerRef.current;
+    if (activeEl && container) {
+      const targetScroll = activeEl.offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
       });
     }
   }, [activeLineIndex, isLyricsViewOpen]);
@@ -2707,6 +2709,12 @@ export default function VinylScene({
                                 className="vinyl-card-img"
                                 loading="lazy"
                                 draggable={false}
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = track.youtubeId
+                                    ? `https://img.youtube.com/vi/${track.youtubeId}/hqdefault.jpg`
+                                    : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80';
+                                }}
                               />
 
                               {/* Queue Position Badge */}
@@ -2803,6 +2811,12 @@ export default function VinylScene({
                                 alt={track.title}
                                 className="vinyl-card-img"
                                 loading="lazy"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = track.youtubeId
+                                    ? `https://img.youtube.com/vi/${track.youtubeId}/hqdefault.jpg`
+                                    : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80';
+                                }}
                               />
 
                               {/* Add to Queue Button */}

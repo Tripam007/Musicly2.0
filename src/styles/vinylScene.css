@@ -2414,15 +2414,16 @@
   border-radius: 14px !important;
 }
 
-/* Fixed 4-card horizontal row (No horizontal scrolling, no scrollbar) */
+/* Fixed 4-card horizontal row (Consistent 4-column grid layout across all categories and queue) */
 .vinyl-cards-carousel {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin-top: 14px;
   overflow: hidden;
   padding: 4px 2px 8px 2px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .vinyl-cards-carousel::-webkit-scrollbar {
@@ -2436,7 +2437,7 @@
   flex-direction: column;
   gap: 8px;
   cursor: pointer;
-  flex: 1 1 0;
+  width: 100%;
   min-width: 0;
   box-sizing: border-box;
 }
