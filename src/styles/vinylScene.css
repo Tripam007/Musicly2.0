@@ -3573,6 +3573,128 @@
   flex-shrink: 0;
 }
 
+.vinyl-playlist-custom-badge.vinyl-badge-private {
+  background: rgba(255, 209, 102, 0.14);
+  color: #ffd166;
+  border-color: rgba(255, 209, 102, 0.35);
+}
+
+.vinyl-playlist-custom-badge.vinyl-badge-public {
+  background: rgba(74, 222, 128, 0.14);
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.35);
+}
+
+.vinyl-admin-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  background: rgba(255, 209, 102, 0.16);
+  color: #ffd166;
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 4px;
+  font-family: var(--vinyl-font-pixel);
+  font-size: 0.65rem;
+  letter-spacing: 0.6px;
+  font-weight: 700;
+}
+
+/* Playlist Type & Visibility Selector (Admin) */
+.vinyl-playlist-type-selector-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 4px;
+}
+
+.vinyl-playlist-type-pills {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.vinyl-type-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a09a8f;
+  font-family: var(--vinyl-font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vinyl-type-pill:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: #f5f2eb;
+}
+
+.vinyl-type-pill.is-active.is-public {
+  background: rgba(74, 222, 128, 0.16);
+  border-color: rgba(74, 222, 128, 0.5);
+  color: #4ade80;
+  box-shadow: 0 2px 8px rgba(74, 222, 128, 0.15);
+}
+
+.vinyl-type-pill.is-active.is-private {
+  background: rgba(255, 209, 102, 0.16);
+  border-color: rgba(255, 209, 102, 0.5);
+  color: #ffd166;
+  box-shadow: 0 2px 8px rgba(255, 209, 102, 0.15);
+}
+
+.vinyl-type-description {
+  margin-top: 8px;
+  font-size: 0.74rem;
+  color: #8c8375;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+}
+
+/* User Private Notice Box (Regular Users) */
+.vinyl-private-notice-box {
+  background: rgba(255, 209, 102, 0.06);
+  border: 1px solid rgba(255, 209, 102, 0.2);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 4px;
+}
+
+.vinyl-private-notice-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.vinyl-private-lock-icon {
+  color: #ffd166;
+}
+
+.vinyl-private-notice-title {
+  font-family: var(--vinyl-font-pixel);
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
+  color: #ffd166;
+  font-weight: 700;
+}
+
+.vinyl-private-notice-desc {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #b5ada0;
+  line-height: 1.4;
+}
+
 .vinyl-playlist-item.is-custom {
   border-left: 3px solid #ffd166;
 }

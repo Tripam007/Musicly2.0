@@ -49,6 +49,7 @@ import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTr
 import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
 import { loadPublicScenes, publishPublicScene, deletePublicScene } from './utils/publicScenesDB';
+import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists } from './utils/publicPlaylistsDB';
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
 import { resolveOriginalTrack, resolveTrackAudioStreamAsync, isDirectPlayableAudio } from './utils/originalTrackResolver';
 import { deduplicateTracks, findDuplicateTrack } from './utils/trackDeduplicator';
@@ -214,6 +215,34 @@ export default function App() {
     }
     initPublicScenes();
     return () => { isMounted = false; };
+  }, []);
+
+  // Official Musicly Public Playlists (created exclusively by verified Admin, viewable/playable publicly)
+  const [publicPlaylists, setPublicPlaylists] = useState(getLocalPublicPlaylists());
+
+  useEffect(() => {
+    let isMounted = true;
+    async function initPublicPlaylists() {
+      try {
+        const loaded = await loadPublicPlaylists();
+        if (isMounted && loaded && loaded.length > 0) {
+          setPublicPlaylists(loaded);
+        }
+      } catch (e) {
+        console.warn("Public playlists load warning:", e);
+      }
+    }
+    initPublicPlaylists();
+
+    const handlePlaylistsChange = () => {
+      setPublicPlaylists(getLocalPublicPlaylists());
+    };
+    window.addEventListener('musicly_public_playlists_changed', handlePlaylistsChange);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener('musicly_public_playlists_changed', handlePlaylistsChange);
+    };
   }, []);
 
   // Favorites persistence tied to user account
@@ -2644,6 +2673,10 @@ export default function App() {
           selectedLanguage={selectedLanguage}
           selectedLanguages={selectedLanguages}
           onSelectLanguage={handleSelectLanguage}
+          publicPlaylists={publicPlaylists}
+          onPublishPublicPlaylist={(pl) => publishPublicPlaylist(pl, user)}
+          onUpdatePublicPlaylist={(id, upd) => updatePublicPlaylist(id, upd, user)}
+          onDeletePublicPlaylist={(id) => deletePublicPlaylist(id, user)}
           onOpenAboutUs={() => navigateTo('/about-us')}
         />
       )}

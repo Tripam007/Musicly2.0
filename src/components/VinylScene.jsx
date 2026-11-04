@@ -35,11 +35,15 @@ import {
   ArrowUpDown,
   ChevronLeft,
   ChevronRight,
-  Mic2
+  Mic2,
+  Lock,
+  Globe,
+  ShieldCheck
 } from 'lucide-react';
 import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
 import { LANGUAGES, LANGUAGE_LABELS } from '../data/tracks';
 import { fetchLyrics } from '../utils/lyricsService';
+import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
 import PixelCat from './PixelCat';
 import '../styles/vinylScene.css';
 
@@ -99,7 +103,11 @@ export default function VinylScene({
   customQueue = [],
   onSetCustomQueue = null,
   activePlayingPlaylistId: propActivePlayingPlaylistId = undefined,
-  onSetActivePlayingPlaylistId = null
+  onSetActivePlayingPlaylistId = null,
+  publicPlaylists = [],
+  onPublishPublicPlaylist = null,
+  onUpdatePublicPlaylist = null,
+  onDeletePublicPlaylist = null
 }) {
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [localLanguages, setLocalLanguages] = useState([]);
@@ -227,15 +235,26 @@ export default function VinylScene({
     playPeacefulLikeSound();
   }, [upcomingQueue, onSetCustomQueue, activeLanguages]);
 
-  // User Custom Playlists Persistence
-  const [customPlaylists, setCustomPlaylists] = useState(() => {
-    try {
-      const raw = localStorage.getItem('musicly_user_custom_playlists');
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
+  // User Custom Playlists Persistence (strictly isolated to the authenticated user account or guest session)
+  const [customPlaylists, setCustomPlaylists] = useState(() => getLocalUserPlaylists(user));
+
+  // Sync user private playlists whenever user changes or cloud sync completes
+  useEffect(() => {
+    let isMounted = true;
+    setCustomPlaylists(getLocalUserPlaylists(user));
+    async function syncUserData() {
+      try {
+        const loaded = await loadUserPlaylists(user);
+        if (isMounted && Array.isArray(loaded)) {
+          setCustomPlaylists(loaded);
+        }
+      } catch (err) {
+        console.warn("User playlists cloud sync warning:", err);
+      }
     }
-  });
+    syncUserData();
+    return () => { isMounted = false; };
+  }, [user?.uid]);
 
   // Modal & Management States
   const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
@@ -247,18 +266,17 @@ export default function VinylScene({
   const [newPlaylistNameFromSong, setNewPlaylistNameFromSong] = useState('');
 
   // Form states for creating new playlist
+  // Admin can choose between 'musicly' (Official Public Playlist) and 'user' (Personal Private Playlist)
+  const [newPlaylistTarget, setNewPlaylistTarget] = useState('user');
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
   const [selectedTrackIdsForNew, setSelectedTrackIdsForNew] = useState([]);
   const [songSearchQuery, setSongSearchQuery] = useState('');
 
-  // Save custom playlists to localStorage
+  // Save custom playlists to user-scoped storage & private Firestore
   const saveCustomPlaylists = useCallback((playlists) => {
-    try {
-      localStorage.setItem('musicly_user_custom_playlists', JSON.stringify(playlists));
-    } catch (e) {
-      console.error('Failed to save custom playlists:', e);
-    }
-  }, []);
+    setCustomPlaylists(playlists);
+    saveUserPlaylists(playlists, user);
+  }, [user]);
 
   // Filtered tracks for the song picker modal
   const filteredPickerTracks = useMemo(() => {
@@ -271,73 +289,129 @@ export default function VinylScene({
     );
   }, [allTracks, songSearchQuery]);
 
-  // Create Playlist Handler
-  const handleCreatePlaylist = (e) => {
+  // Create Playlist Handler (Public Official for Admin if chosen, or Private Personal)
+  const handleCreatePlaylist = async (e) => {
     e?.preventDefault?.();
     if (!newPlaylistTitle.trim()) return;
 
+    const coverImg = selectedTrackIdsForNew.length > 0
+      ? (allTracks.find(t => t.id === selectedTrackIdsForNew[0])?.cover || '/assets/images/lofi_scene.jpg')
+      : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80';
+
+    if (isAdmin && newPlaylistTarget === 'musicly') {
+      try {
+        if (onPublishPublicPlaylist) {
+          await onPublishPublicPlaylist({
+            title: newPlaylistTitle.trim(),
+            trackIds: selectedTrackIdsForNew,
+            image: coverImg
+          });
+        }
+        setIsCreatePlaylistOpen(false);
+        setNewPlaylistTitle('');
+        setSelectedTrackIdsForNew([]);
+        playPeacefulLikeSound();
+      } catch (err) {
+        alert(err.message || "Failed to create public playlist");
+      }
+      return;
+    }
+
+    // Personal Private Playlist
     const newPlaylist = {
       id: 'playlist_' + Date.now(),
       title: newPlaylistTitle.trim(),
       trackIds: selectedTrackIdsForNew,
-      image: selectedTrackIdsForNew.length > 0
-        ? (allTracks.find(t => t.id === selectedTrackIdsForNew[0])?.cover || '/assets/images/lofi_scene.jpg')
-        : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+      image: coverImg,
       createdAt: Date.now(),
-      isCustom: true
+      isCustom: true,
+      isMusiclyOfficial: false
     };
 
     const updated = [newPlaylist, ...customPlaylists];
-    setCustomPlaylists(updated);
     saveCustomPlaylists(updated);
     setIsCreatePlaylistOpen(false);
+    setNewPlaylistTitle('');
+    setSelectedTrackIdsForNew([]);
     playPeacefulLikeSound();
   };
 
-  // Delete Custom Playlist Handler
-  const handleDeleteCustomPlaylist = (playlistId) => {
-    if (window.confirm('Are you sure you want to delete this playlist?')) {
-      const updated = customPlaylists.filter(p => p.id !== playlistId);
-      setCustomPlaylists(updated);
-      saveCustomPlaylists(updated);
+  // Delete Playlist Handler
+  const handleDeleteCustomPlaylist = async (playlistId) => {
+    const isPublic = selectedCustomPlaylist?.isMusiclyOfficial;
+    const confirmMsg = isPublic
+      ? 'Are you sure you want to delete this official Musicly playlist? It will be removed for all users worldwide.'
+      : 'Are you sure you want to delete this private playlist?';
+
+    if (window.confirm(confirmMsg)) {
+      if (isPublic) {
+        if (!isAdmin) {
+          alert('Only verified admin can delete official Musicly playlists.');
+          return;
+        }
+        if (onDeletePublicPlaylist) {
+          await onDeletePublicPlaylist(playlistId);
+        }
+      } else {
+        const updated = customPlaylists.filter(p => p.id !== playlistId);
+        saveCustomPlaylists(updated);
+      }
       setSelectedCustomPlaylist(null);
       playClickSound('light');
     }
   };
 
-  // Save Renamed Custom Playlist Title
-  const handleSaveEditedTitle = (playlistId) => {
+  // Save Renamed Playlist Title
+  const handleSaveEditedTitle = async (playlistId) => {
     if (!editedPlaylistTitle.trim()) {
       setIsEditingPlaylistTitle(false);
       return;
     }
-    const updated = customPlaylists.map(p => {
-      if (p.id === playlistId) {
-        return { ...p, title: editedPlaylistTitle.trim() };
+    const newTitle = editedPlaylistTitle.trim();
+    const isPublic = selectedCustomPlaylist?.isMusiclyOfficial;
+
+    if (isPublic) {
+      if (!isAdmin) {
+        alert('Only verified admin can rename official Musicly playlists.');
+        setIsEditingPlaylistTitle(false);
+        return;
       }
-      return p;
-    });
-    setCustomPlaylists(updated);
-    saveCustomPlaylists(updated);
-    if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
-      setSelectedCustomPlaylist(prev => ({ ...prev, title: editedPlaylistTitle.trim() }));
+      if (onUpdatePublicPlaylist) {
+        await onUpdatePublicPlaylist(playlistId, { title: newTitle });
+      }
+      if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
+        setSelectedCustomPlaylist(prev => ({ ...prev, title: newTitle }));
+      }
+    } else {
+      const updated = customPlaylists.map(p => {
+        if (p.id === playlistId) {
+          return { ...p, title: newTitle };
+        }
+        return p;
+      });
+      saveCustomPlaylists(updated);
+      if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
+        setSelectedCustomPlaylist(prev => ({ ...prev, title: newTitle }));
+      }
     }
     setIsEditingPlaylistTitle(false);
     playClickSound('light');
   };
 
-  // Remove Song from Custom Playlist
-  const handleRemoveSongFromPlaylist = (playlistId, trackId) => {
-    const updated = customPlaylists.map(p => {
-      if (p.id === playlistId) {
-        return { ...p, trackIds: (p.trackIds || []).filter(id => id !== trackId) };
+  // Remove Song from Playlist
+  const handleRemoveSongFromPlaylist = async (playlistId, trackId) => {
+    const isPublic = selectedCustomPlaylist?.isMusiclyOfficial;
+
+    if (isPublic) {
+      if (!isAdmin) {
+        alert('Only verified admin can edit official Musicly playlists.');
+        return;
       }
-      return p;
-    });
-    setCustomPlaylists(updated);
-    saveCustomPlaylists(updated);
-    if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
-      const newTrackIds = (selectedCustomPlaylist.trackIds || []).filter(id => id !== trackId);
+      const curIds = selectedCustomPlaylist?.trackIds || [];
+      const newTrackIds = curIds.filter(id => id !== trackId);
+      if (onUpdatePublicPlaylist) {
+        await onUpdatePublicPlaylist(playlistId, { trackIds: newTrackIds });
+      }
       const newTracks = filterTracksByLang(allTracks.filter(t => newTrackIds.includes(t.id)));
       setSelectedCustomPlaylist(prev => ({
         ...prev,
@@ -346,28 +420,46 @@ export default function VinylScene({
         subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} in this list`,
         count: newTracks.length
       }));
+    } else {
+      const updated = customPlaylists.map(p => {
+        if (p.id === playlistId) {
+          return { ...p, trackIds: (p.trackIds || []).filter(id => id !== trackId) };
+        }
+        return p;
+      });
+      saveCustomPlaylists(updated);
+      if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
+        const newTrackIds = (selectedCustomPlaylist.trackIds || []).filter(id => id !== trackId);
+        const newTracks = filterTracksByLang(allTracks.filter(t => newTrackIds.includes(t.id)));
+        setSelectedCustomPlaylist(prev => ({
+          ...prev,
+          trackIds: newTrackIds,
+          tracks: newTracks,
+          subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} in this list`,
+          count: newTracks.length
+        }));
+      }
     }
     playClickSound('light');
   };
 
-  // Toggle Song in Existing Custom Playlist
-  const handleToggleSongInExistingPlaylist = (playlistId, trackId) => {
-    const target = customPlaylists.find(p => p.id === playlistId);
-    if (!target) return;
-    const curIds = target.trackIds || [];
-    const newIds = curIds.includes(trackId)
-      ? curIds.filter(id => id !== trackId)
-      : [...curIds, trackId];
+  // Toggle Song in Existing Playlist
+  const handleToggleSongInExistingPlaylist = async (playlistId, trackId) => {
+    const isPublic = selectedCustomPlaylist?.isMusiclyOfficial;
 
-    const updated = customPlaylists.map(p => {
-      if (p.id === playlistId) {
-        return { ...p, trackIds: newIds };
+    if (isPublic) {
+      if (!isAdmin) {
+        alert('Only verified admin can edit official Musicly playlists.');
+        return;
       }
-      return p;
-    });
-    setCustomPlaylists(updated);
-    saveCustomPlaylists(updated);
-    if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
+      const curIds = selectedCustomPlaylist?.trackIds || [];
+      const newIds = curIds.includes(trackId)
+        ? curIds.filter(id => id !== trackId)
+        : [...curIds, trackId];
+
+      if (onUpdatePublicPlaylist) {
+        await onUpdatePublicPlaylist(playlistId, { trackIds: newIds });
+      }
       const newTracks = filterTracksByLang(allTracks.filter(t => newIds.includes(t.id)));
       setSelectedCustomPlaylist(prev => ({
         ...prev,
@@ -376,6 +468,31 @@ export default function VinylScene({
         subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} in this list`,
         count: newTracks.length
       }));
+    } else {
+      const target = customPlaylists.find(p => p.id === playlistId);
+      if (!target) return;
+      const curIds = target.trackIds || [];
+      const newIds = curIds.includes(trackId)
+        ? curIds.filter(id => id !== trackId)
+        : [...curIds, trackId];
+
+      const updated = customPlaylists.map(p => {
+        if (p.id === playlistId) {
+          return { ...p, trackIds: newIds };
+        }
+        return p;
+      });
+      saveCustomPlaylists(updated);
+      if (selectedCustomPlaylist && selectedCustomPlaylist.id === playlistId) {
+        const newTracks = filterTracksByLang(allTracks.filter(t => newIds.includes(t.id)));
+        setSelectedCustomPlaylist(prev => ({
+          ...prev,
+          trackIds: newIds,
+          tracks: newTracks,
+          subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} in this list`,
+          count: newTracks.length
+        }));
+      }
     }
     playClickSound('light');
   };
@@ -400,7 +517,6 @@ export default function VinylScene({
       }
       return p;
     });
-    setCustomPlaylists(updated);
     saveCustomPlaylists(updated);
     playClickSound('light');
   }, [customPlaylists, saveCustomPlaylists]);
@@ -416,10 +532,10 @@ export default function VinylScene({
       trackIds: [track.id],
       image: track.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
       isCustom: true,
+      isMusiclyOfficial: false,
       createdAt: new Date().toISOString()
     };
     const updated = [newPlaylist, ...customPlaylists];
-    setCustomPlaylists(updated);
     saveCustomPlaylists(updated);
     setNewPlaylistNameFromSong('');
     playPeacefulLikeSound();
@@ -934,10 +1050,32 @@ export default function VinylScene({
       subtitle: `${indieTracks.length} song${indieTracks.length === 1 ? '' : 's'} in this list`,
       count: indieTracks.length,
       tracks: indieTracks,
-      image: indieTracks[0]?.cover || 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80'
+      image: indieTracks[0]?.cover || 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80',
+      isCustom: false,
+      isMusiclyOfficial: false
     });
 
-    // 5. User Custom Playlists
+    // 5. Official Public Musicly Playlists (Admin Created, Public Worldwide)
+    if (Array.isArray(publicPlaylists)) {
+      publicPlaylists.forEach(pp => {
+        const ppTracks = filterTracksByLang(allTracks.filter(t => (pp.trackIds || []).includes(t.id)));
+        playlists.push({
+          id: pp.id,
+          title: pp.title,
+          subtitle: `${ppTracks.length} song${ppTracks.length === 1 ? '' : 's'} in this list`,
+          count: ppTracks.length,
+          tracks: ppTracks,
+          trackIds: pp.trackIds || [],
+          image: pp.image || ppTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+          isCustom: false,
+          isMusiclyOfficial: true,
+          createdBy: pp.createdBy || 'Musicly Admin',
+          createdAt: pp.createdAt
+        });
+      });
+    }
+
+    // 6. User's Own Playlists (Strictly Private to the logged-in User's Account)
     if (Array.isArray(customPlaylists)) {
       customPlaylists.forEach(cp => {
         const cpTracks = filterTracksByLang(allTracks.filter(t => (cp.trackIds || []).includes(t.id)));
@@ -949,13 +1087,14 @@ export default function VinylScene({
           tracks: cpTracks,
           trackIds: cp.trackIds || [],
           image: cp.image || cpTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
-          isCustom: true
+          isCustom: true,
+          isMusiclyOfficial: false
         });
       });
     }
 
     return playlists;
-  }, [allTracks, favorites, activeLanguages, customPlaylists, filterTracksByLang]);
+  }, [allTracks, favorites, activeLanguages, customPlaylists, publicPlaylists, filterTracksByLang]);
 
   // Playlist Source Choice: 'musicly' (default) | 'custom' | 'all'
   const [playlistSourceMode, setPlaylistSourceMode] = useState('musicly');
@@ -1277,7 +1416,11 @@ export default function VinylScene({
             playClickSound('light');
           }
         }}
-        title={playlist.isCustom ? `Manage ${playlist.title}` : `Open ${playlist.title} to browse songs`}
+        title={
+          playlist.isCustom
+            ? `Private playlist: Click to open & manage "${playlist.title}"`
+            : (playlist.isMusiclyOfficial ? `Official Public playlist: Click to browse "${playlist.title}"` : `Browse "${playlist.title}"`)
+        }
       >
         <div className="vinyl-playlist-info-left">
           <img
@@ -1290,7 +1433,16 @@ export default function VinylScene({
             <div className="vinyl-playlist-name-row">
               <span className="vinyl-playlist-name">{playlist.title}</span>
               {playlist.isCustom && (
-                <span className="vinyl-playlist-custom-badge">YOUR PLAYLIST</span>
+                <span className="vinyl-playlist-custom-badge vinyl-badge-private" title="Private to your account only">
+                  <Lock size={9} style={{ marginRight: 3, verticalAlign: 'middle' }} />
+                  PRIVATE
+                </span>
+              )}
+              {playlist.isMusiclyOfficial && (
+                <span className="vinyl-playlist-custom-badge vinyl-badge-public" title="Official Musicly playlist curated by Admin (Public worldwide)">
+                  <Globe size={9} style={{ marginRight: 3, verticalAlign: 'middle' }} />
+                  PUBLIC
+                </span>
               )}
               {isPlaylistPlaying && (
                 <span className="vinyl-playlist-playing-badge" title="Playing on Turntable">
@@ -2725,10 +2877,11 @@ export default function VinylScene({
                       setNewPlaylistTitle('');
                       setSelectedTrackIdsForNew([]);
                       setSongSearchQuery('');
+                      setNewPlaylistTarget(isAdmin ? 'musicly' : 'user');
                       setIsCreatePlaylistOpen(true);
                       playClickSound('light');
                     }}
-                    title="Create your own playlist and add songs"
+                    title={isAdmin ? "Create official Musicly playlist or personal playlist" : "Create personal playlist (private to you)"}
                     aria-label="Create new playlist"
                   >
                     <Plus size={16} strokeWidth={2.8} />
@@ -2745,7 +2898,7 @@ export default function VinylScene({
                     }}
                     role="radio"
                     aria-checked={playlistSourceMode === 'musicly'}
-                    title="Browse and play Musicly's curated editorial playlists"
+                    title="Browse and play official Musicly public playlists"
                   >
                     <div className="vinyl-source-icon-wrap">
                       <Sparkles size={18} />
@@ -2770,7 +2923,7 @@ export default function VinylScene({
                     }}
                     role="radio"
                     aria-checked={playlistSourceMode === 'custom'}
-                    title="Browse and play your own custom playlists"
+                    title="Browse and play your own private playlists (only you can view or play)"
                   >
                     <div className="vinyl-source-icon-wrap">
                       <ListMusic size={18} />
@@ -2780,7 +2933,7 @@ export default function VinylScene({
                         <span className="vinyl-source-title">USER'S OWN PLAYLIST</span>
                         <span className="vinyl-source-count">{userPlaylists.length}</span>
                       </div>
-                      <span className="vinyl-source-desc">Custom mixes & tracklists built by you</span>
+                      <span className="vinyl-source-desc">Private mixes & tracklists built by you</span>
                     </div>
                     {activePlayingPlaylist && activePlayingPlaylist.isCustom && isPlaying && (
                       <span className="vinyl-source-active-dot" title="Your personal playlist is currently playing" />
@@ -2796,6 +2949,24 @@ export default function VinylScene({
                       {/* Section 1: Musicly Playlists */}
                       <div className="vinyl-playlist-section-label-row">
                         <span className="vinyl-playlist-section-label">MUSICLY PLAYLISTS ({musiclyPlaylists.length})</span>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            className="vinyl-playlist-section-btn"
+                            onClick={() => {
+                              setNewPlaylistTitle('');
+                              setSelectedTrackIdsForNew([]);
+                              setSongSearchQuery('');
+                              setNewPlaylistTarget('musicly');
+                              setIsCreatePlaylistOpen(true);
+                              playClickSound('light');
+                            }}
+                            title="Create official Musicly playlist (Public worldwide)"
+                          >
+                            <Plus size={13} />
+                            <span>New Musicly Playlist</span>
+                          </button>
+                        )}
                       </div>
                       {musiclyPlaylists.map(playlist => renderPlaylistItem(playlist))}
 
@@ -2809,12 +2980,14 @@ export default function VinylScene({
                             setNewPlaylistTitle('');
                             setSelectedTrackIdsForNew([]);
                             setSongSearchQuery('');
+                            setNewPlaylistTarget('user');
                             setIsCreatePlaylistOpen(true);
                             playClickSound('light');
                           }}
+                          title="Create personal playlist (private to your account)"
                         >
                           <Plus size={13} />
-                          <span>New Playlist</span>
+                          <span>New Private Playlist</span>
                         </button>
                       </div>
                       {userPlaylists.length === 0 ? (
@@ -2823,7 +2996,7 @@ export default function VinylScene({
                           <div className="vinyl-playlist-empty-text">
                             <span className="vinyl-playlist-empty-title">NO USER PLAYLISTS YET</span>
                             <span className="vinyl-playlist-empty-sub">
-                              Create your own custom playlists or click the + sign beside songs in Musicly playlists to add them here.
+                              Create your own private playlist or click the + sign beside songs in Musicly playlists to save them here.
                             </span>
                           </div>
                           <button
@@ -2833,6 +3006,7 @@ export default function VinylScene({
                               setNewPlaylistTitle('');
                               setSelectedTrackIdsForNew([]);
                               setSongSearchQuery('');
+                              setNewPlaylistTarget('user');
                               setIsCreatePlaylistOpen(true);
                               playClickSound('light');
                             }}
@@ -2850,6 +3024,27 @@ export default function VinylScene({
                   {/* Mode: MUSICLY ONLY */}
                   {playlistSourceMode === 'musicly' && (
                     <>
+                      {isAdmin && (
+                        <div className="vinyl-playlist-section-label-row" style={{ marginBottom: 10 }}>
+                          <span className="vinyl-playlist-section-label">OFFICIAL PLAYLISTS ({musiclyPlaylists.length})</span>
+                          <button
+                            type="button"
+                            className="vinyl-playlist-section-btn"
+                            onClick={() => {
+                              setNewPlaylistTitle('');
+                              setSelectedTrackIdsForNew([]);
+                              setSongSearchQuery('');
+                              setNewPlaylistTarget('musicly');
+                              setIsCreatePlaylistOpen(true);
+                              playClickSound('light');
+                            }}
+                            title="Create official Musicly playlist (Public worldwide)"
+                          >
+                            <Plus size={13} />
+                            <span>New Musicly Playlist</span>
+                          </button>
+                        </div>
+                      )}
                       {musiclyPlaylists.map(playlist => renderPlaylistItem(playlist))}
                     </>
                   )}
@@ -2857,13 +3052,32 @@ export default function VinylScene({
                   {/* Mode: USER CUSTOM ONLY */}
                   {playlistSourceMode === 'custom' && (
                     <>
+                      <div className="vinyl-playlist-section-label-row" style={{ marginBottom: 10 }}>
+                        <span className="vinyl-playlist-section-label">YOUR PRIVATE PLAYLISTS ({userPlaylists.length})</span>
+                        <button
+                          type="button"
+                          className="vinyl-playlist-section-btn"
+                          onClick={() => {
+                            setNewPlaylistTitle('');
+                            setSelectedTrackIdsForNew([]);
+                            setSongSearchQuery('');
+                            setNewPlaylistTarget('user');
+                            setIsCreatePlaylistOpen(true);
+                            playClickSound('light');
+                          }}
+                          title="Create personal playlist (private to your account)"
+                        >
+                          <Plus size={13} />
+                          <span>New Private Playlist</span>
+                        </button>
+                      </div>
                       {userPlaylists.length === 0 ? (
                         <div className="vinyl-playlist-empty-card">
                           <ListMusic size={26} className="vinyl-empty-icon" />
                           <div className="vinyl-playlist-empty-text">
                             <span className="vinyl-playlist-empty-title">NO USER PLAYLISTS YET</span>
                             <span className="vinyl-playlist-empty-sub">
-                              Create your own custom playlists or click the + sign beside songs in Musicly playlists to add them here.
+                              Create your own private playlist or click the + sign beside songs in Musicly playlists to save them here.
                             </span>
                           </div>
                           <button
@@ -2873,6 +3087,7 @@ export default function VinylScene({
                               setNewPlaylistTitle('');
                               setSelectedTrackIdsForNew([]);
                               setSongSearchQuery('');
+                              setNewPlaylistTarget('user');
                               setIsCreatePlaylistOpen(true);
                               playClickSound('light');
                             }}
@@ -2906,7 +3121,15 @@ export default function VinylScene({
               aria-label="Create New Playlist"
             >
               <div className="vinyl-playlist-modal-header">
-                <h3 className="vinyl-playlist-modal-title">CREATE NEW PLAYLIST</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <h3 className="vinyl-playlist-modal-title">CREATE NEW PLAYLIST</h3>
+                  {isAdmin && (
+                    <span className="vinyl-admin-pill-badge" title="You have Admin privileges to curate public playlists">
+                      <ShieldCheck size={12} style={{ marginRight: 3, verticalAlign: 'middle' }} />
+                      ADMIN
+                    </span>
+                  )}
+                </div>
                 <button
                   type="button"
                   className="vinyl-playlist-close-btn"
@@ -2919,12 +3142,70 @@ export default function VinylScene({
               </div>
 
               <form onSubmit={handleCreatePlaylist} className="vinyl-playlist-modal-body">
+                {/* Playlist Target & Privacy Chooser: Admin can publish Public Musicly or Private Personal; User gets Private */}
+                {isAdmin ? (
+                  <div className="vinyl-playlist-type-selector-box">
+                    <label className="vinyl-playlist-input-label">PLAYLIST TYPE & VISIBILITY</label>
+                    <div className="vinyl-playlist-type-pills">
+                      <button
+                        type="button"
+                        className={`vinyl-type-pill ${newPlaylistTarget === 'musicly' ? 'is-active is-public' : ''}`}
+                        onClick={() => {
+                          setNewPlaylistTarget('musicly');
+                          playClickSound('light');
+                        }}
+                      >
+                        <Globe size={14} />
+                        <span>Official Musicly Playlist (Public)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`vinyl-type-pill ${newPlaylistTarget === 'user' ? 'is-active is-private' : ''}`}
+                        onClick={() => {
+                          setNewPlaylistTarget('user');
+                          playClickSound('light');
+                        }}
+                      >
+                        <Lock size={14} />
+                        <span>Personal Playlist (Private)</span>
+                      </button>
+                    </div>
+                    <div className="vinyl-type-description">
+                      {newPlaylistTarget === 'musicly' ? (
+                        <span>
+                          <Sparkles size={13} style={{ verticalAlign: 'middle', marginRight: 5, color: '#ffd166' }} />
+                          Published publicly to all users worldwide under official Musicly Playlists.
+                        </span>
+                      ) : (
+                        <span>
+                          <Lock size={13} style={{ verticalAlign: 'middle', marginRight: 5, color: '#8c8375' }} />
+                          Private to your account only. Other users cannot view or play this playlist.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="vinyl-private-notice-box">
+                    <div className="vinyl-private-notice-header">
+                      <Lock size={14} className="vinyl-private-lock-icon" />
+                      <span className="vinyl-private-notice-title">PERSONAL PLAYLIST (PRIVATE)</span>
+                    </div>
+                    <p className="vinyl-private-notice-desc">
+                      This playlist is private and viewable/playable only by your account. Official Musicly playlists are curated exclusively by Admins.
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="vinyl-playlist-input-label">PLAYLIST NAME</label>
                   <input
                     type="text"
                     className="vinyl-playlist-text-input"
-                    placeholder="e.g. Midnight Lo-Fi, Rainy Coffee, Roadtrip..."
+                    placeholder={
+                      isAdmin && newPlaylistTarget === 'musicly'
+                        ? "e.g. Midnight Jazz, Synthwave Highway, Sunset Acoustic..."
+                        : "e.g. My Favorites, Study Mix, Night Vibes..."
+                    }
                     value={newPlaylistTitle}
                     onChange={(e) => setNewPlaylistTitle(e.target.value)}
                     autoFocus
@@ -3005,7 +3286,9 @@ export default function VinylScene({
                     disabled={!newPlaylistTitle.trim()}
                   >
                     <Plus size={16} strokeWidth={2.5} />
-                    <span>Create Playlist</span>
+                    <span>
+                      {isAdmin && newPlaylistTarget === 'musicly' ? 'Publish Public Playlist' : 'Create Private Playlist'}
+                    </span>
                   </button>
                 </div>
               </form>
@@ -3055,7 +3338,7 @@ export default function VinylScene({
                   ) : (
                     <div className="vinyl-playlist-detail-title-row">
                       <h3 className="vinyl-playlist-detail-title">{selectedCustomPlaylist.title}</h3>
-                      {selectedCustomPlaylist.isCustom && (
+                      {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
                         <button
                           type="button"
                           className="vinyl-playlist-edit-title-btn"
@@ -3073,7 +3356,10 @@ export default function VinylScene({
                   )}
 
                   <span className="vinyl-playlist-detail-sub">
-                    {selectedCustomPlaylist.tracks?.length || 0} track{selectedCustomPlaylist.tracks?.length === 1 ? '' : 's'} • {selectedCustomPlaylist.isCustom ? 'Personal Playlist' : selectedCustomPlaylist.subtitle}
+                    {selectedCustomPlaylist.tracks?.length || 0} track{selectedCustomPlaylist.tracks?.length === 1 ? '' : 's'} •{' '}
+                    {selectedCustomPlaylist.isCustom
+                      ? 'Personal Playlist (Private to you)'
+                      : (selectedCustomPlaylist.isMusiclyOfficial ? 'Official Musicly Playlist (Public)' : selectedCustomPlaylist.subtitle)}
                   </span>
 
                   <div className="vinyl-playlist-detail-actions">
@@ -3089,7 +3375,7 @@ export default function VinylScene({
                       <span>Play All</span>
                     </button>
 
-                    {selectedCustomPlaylist.isCustom && (
+                    {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
                       <>
                         <button
                           type="button"
@@ -3136,18 +3422,20 @@ export default function VinylScene({
                   <div style={{ textAlign: 'center', padding: '36px 16px', color: '#8c8375' }}>
                     <Music size={36} style={{ marginBottom: 10, opacity: 0.5 }} />
                     <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>No songs in this playlist yet.</p>
-                    <button
-                      type="button"
-                      className="vinyl-btn-primary"
-                      onClick={() => {
-                        setSongSearchQuery('');
-                        setIsAddSongsToExistingOpen(true);
-                        playClickSound('light');
-                      }}
-                    >
-                      <Plus size={15} />
-                      <span>Add Songs Now</span>
-                    </button>
+                    {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
+                      <button
+                        type="button"
+                        className="vinyl-btn-primary"
+                        onClick={() => {
+                          setSongSearchQuery('');
+                          setIsAddSongsToExistingOpen(true);
+                          playClickSound('light');
+                        }}
+                      >
+                        <Plus size={15} />
+                        <span>Add Songs Now</span>
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -3194,7 +3482,7 @@ export default function VinylScene({
                             <Plus size={16} strokeWidth={2.6} />
                           </button>
 
-                          {selectedCustomPlaylist.isCustom && (
+                          {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
                             <button
                               type="button"
                               className="vinyl-playlist-track-remove-btn"
@@ -3355,10 +3643,13 @@ export default function VinylScene({
 
                 {/* Existing Custom Playlists Section */}
                 <div className="vinyl-add-to-playlists-section">
-                  <span className="vinyl-add-to-playlists-title">YOUR PLAYLISTS</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <span className="vinyl-add-to-playlists-title">YOUR PRIVATE PLAYLISTS</span>
+                    <span style={{ fontSize: '0.72rem', color: '#8c8375' }}>Private to you</span>
+                  </div>
                   {customPlaylists.length === 0 ? (
                     <div className="vinyl-empty-custom-playlists-hint">
-                      You haven't created any custom playlists yet. Use the field above to start your first one!
+                      You haven't created any private playlists yet. Use the field above to start your first one!
                     </div>
                   ) : (
                     <div className="vinyl-add-to-playlists-stack">
@@ -3372,9 +3663,12 @@ export default function VinylScene({
                           >
                             <img src={pl.image} alt={pl.title} className="vinyl-add-to-thumb" />
                             <div className="vinyl-add-to-info">
-                              <span className="vinyl-add-to-name">{pl.title}</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span className="vinyl-add-to-name">{pl.title}</span>
+                                <Lock size={10} style={{ color: '#ffd166', opacity: 0.8 }} />
+                              </div>
                               <span className="vinyl-add-to-sub">
-                                {pl.trackIds?.length || 0} track{pl.trackIds?.length === 1 ? '' : 's'}
+                                {pl.trackIds?.length || 0} track{pl.trackIds?.length === 1 ? '' : 's'} • Private
                               </span>
                             </div>
                             <button
@@ -3397,6 +3691,67 @@ export default function VinylScene({
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+
+                  {/* If Admin: also allow adding/removing song to/from official Musicly playlists */}
+                  {isAdmin && publicPlaylists.length > 0 && (
+                    <div style={{ marginTop: 18 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <span className="vinyl-add-to-playlists-title" style={{ color: '#ffd166' }}>OFFICIAL MUSICLY PLAYLISTS</span>
+                        <span style={{ fontSize: '0.72rem', color: '#ffd166', background: 'rgba(255, 209, 102, 0.12)', padding: '1px 6px', borderRadius: 4 }}>
+                          Admin Curation (Public)
+                        </span>
+                      </div>
+                      <div className="vinyl-add-to-playlists-stack">
+                        {publicPlaylists.map(pl => {
+                          const isAdded = (pl.trackIds || []).includes(songForPlaylistModal.id);
+                          return (
+                            <div
+                              key={pl.id}
+                              className={`vinyl-add-to-item ${isAdded ? 'is-added' : ''}`}
+                              onClick={() => {
+                                const curIds = pl.trackIds || [];
+                                const newIds = curIds.includes(songForPlaylistModal.id)
+                                  ? curIds.filter(id => id !== songForPlaylistModal.id)
+                                  : [...curIds, songForPlaylistModal.id];
+                                if (onUpdatePublicPlaylist) {
+                                  onUpdatePublicPlaylist(pl.id, { trackIds: newIds });
+                                }
+                                playClickSound('light');
+                              }}
+                            >
+                              <img src={pl.image || '/assets/images/lofi_scene.jpg'} alt={pl.title} className="vinyl-add-to-thumb" />
+                              <div className="vinyl-add-to-info">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span className="vinyl-add-to-name">{pl.title}</span>
+                                  <Globe size={11} style={{ color: '#4ade80' }} />
+                                </div>
+                                <span className="vinyl-add-to-sub">
+                                  {pl.trackIds?.length || 0} track{pl.trackIds?.length === 1 ? '' : 's'} • Public Worldwide
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className={`vinyl-add-to-check-btn ${isAdded ? 'is-checked' : ''}`}
+                                title={isAdded ? 'Remove from official playlist' : 'Add to official playlist'}
+                              >
+                                {isAdded ? (
+                                  <>
+                                    <CheckSquare size={18} />
+                                    <span>Added</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus size={16} />
+                                    <span>Add</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
