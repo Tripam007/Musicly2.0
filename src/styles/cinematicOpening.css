@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=Unbounded:wght@700;800;900&display=swap');
+
 /* ==========================================================================
    MUSICLY 2.0 — CINEMATIC TRAIN JOURNEY INTRO
    Inspired by vintage-modern passenger train window aesthetic.
@@ -338,41 +340,184 @@
 }
 
 .train-hero-desc {
-  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
-  font-weight: 400;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.82);
+  font-family: 'Syne', 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.92);
   margin: 0;
-  font-style: italic;
-  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.7);
 }
 
-/* Pure Floating Cinematic Quotes (Chapters 2, 3, 4, 5 - No boxes from behind) */
+/* ==========================================================================
+   AESTHETIC DISPLAY EDITORIAL QUOTES (Inspired by Liquid Brutalism & Poster Typography)
+   ========================================================================== */
 .train-chapter-editorial {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: transparent;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
   will-change: opacity, transform;
   transition: opacity 0.4s ease-out, transform 0.4s ease-out;
   text-align: center;
+  width: 100%;
 }
 
-.train-chapter-quote {
-  font-family: 'Cabinet Grotesk', 'Plus Jakarta Sans', -apple-system, sans-serif;
-  font-size: clamp(1.6rem, 3.6vw, 2.7rem);
+/* Glassmorphic Aesthetic Floating Card */
+.train-chapter-glass-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  max-width: min(920px, 94vw);
+  padding: 36px 48px;
+  border-radius: 32px;
+  background: radial-gradient(130% 120% at 50% 0%, rgba(20, 24, 34, 0.48) 0%, rgba(8, 10, 16, 0.74) 100%);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 36px 90px rgba(0, 0, 0, 0.75),
+              0 10px 30px rgba(0, 0, 0, 0.5),
+              inset 0 1px 2px rgba(255, 255, 255, 0.35),
+              inset 0 -1px 2px rgba(0, 0, 0, 0.5);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease;
+  animation: trainCardFloat 7s ease-in-out infinite alternate;
+}
+
+.train-chapter-glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 5%, rgba(255, 255, 255, 0.6) 50%, transparent 95%);
+  pointer-events: none;
+}
+
+@keyframes trainCardFloat {
+  0% {
+    transform: translateY(0px);
+  }
+  100% {
+    transform: translateY(-8px);
+  }
+}
+
+/* Chapter Kicker Pill (Matches "COOL FONTS" tag from reference image) */
+.train-chapter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  margin-bottom: 22px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+.train-chapter-pill-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffd166;
+  box-shadow: 0 0 10px #ffd166, 0 0 20px rgba(255, 209, 102, 0.6);
+  animation: trainDotPulse 2.2s infinite ease-in-out;
+}
+
+@keyframes trainDotPulse {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+.train-chapter-pill-text {
+  font-family: 'JetBrains Mono', var(--vinyl-font-mono, monospace);
+  font-size: 0.74rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  color: #ffffff;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1;
+}
+
+/* The Cool Display Headline Typography (Like Reference Image) */
+.train-chapter-quote {
+  font-family: 'Syne', 'Unbounded', 'Outfit', -apple-system, sans-serif;
+  font-size: clamp(2rem, 4.4vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  line-height: 1.16;
+  text-transform: uppercase;
+  text-wrap: balance;
   margin: 0;
-  text-shadow: 0 3px 22px rgba(0, 0, 0, 0.8), 0 1px 4px rgba(0, 0, 0, 0.95);
+  
+  /* Metallic pearlescent specular gradient */
+  background: linear-gradient(180deg, #ffffff 10%, #f8fafc 42%, #e2e8f0 78%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  
+  /* Multi-stage 3D realistic optical depth & ambient radiance */
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.95))
+          drop-shadow(0 10px 24px rgba(0, 0, 0, 0.8))
+          drop-shadow(0 28px 56px rgba(0, 0, 0, 0.65));
+  
+  position: relative;
+  display: inline-block;
+  will-change: transform, opacity;
+}
+
+/* Vertical Rhythm Soundline Accent (Matches vertical bar motif from reference image) */
+.train-chapter-soundline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-top: 24px;
+  height: 20px;
+}
+
+.train-chapter-soundline .sound-bar {
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.25);
+  animation: trainSoundBarPulse 1.8s infinite ease-in-out alternate;
+}
+
+.sound-bar.b1 { height: 7px; animation-delay: 0s; }
+.sound-bar.b2 { height: 12px; animation-delay: 0.15s; }
+.sound-bar.b3 { height: 16px; animation-delay: 0.3s; }
+.sound-bar.b4 { height: 20px; animation-delay: 0.45s; }
+.sound-bar.b5 {
+  height: 22px;
+  animation-delay: 0.6s;
+  background: #ffd166;
+  box-shadow: 0 0 10px #ffd166;
+}
+
+@keyframes trainSoundBarPulse {
+  0% {
+    transform: scaleY(0.5);
+    opacity: 0.45;
+  }
+  100% {
+    transform: scaleY(1.15);
+    opacity: 1;
+  }
 }
 
 /* 7. Bottom Plain Downward Arrow Indicator */
@@ -436,8 +581,12 @@
     font-size: 0.95rem;
     letter-spacing: 0.14em;
   }
+  .train-chapter-glass-card {
+    padding: 30px 32px;
+    border-radius: 24px;
+  }
   .train-chapter-quote {
-    font-size: 1.5rem;
+    font-size: clamp(1.8rem, 4.5vw, 2.6rem);
   }
 }
 
@@ -458,8 +607,28 @@
     font-size: 0.85rem;
   }
 
+  .train-chapter-glass-card {
+    padding: 24px 20px;
+    border-radius: 20px;
+    max-width: 95vw;
+  }
+  .train-chapter-pill {
+    padding: 4px 10px;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .train-chapter-pill-text {
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+  }
   .train-chapter-quote {
-    font-size: 1.25rem;
+    font-size: clamp(1.4rem, 6.2vw, 1.95rem);
+    line-height: 1.2;
+  }
+  .train-chapter-soundline {
+    margin-top: 16px;
+    height: 16px;
+    gap: 4px;
   }
   .train-plain-arrow-btn {
     padding: 6px;

@@ -465,7 +465,7 @@ export default function CinematicOpeningScreen({
             </h2>
 
             <p className="train-hero-desc">
-              "Every song takes you somewhere."
+              Every song takes you somewhere.
             </p>
           </div>
         )}
@@ -479,9 +479,26 @@ export default function CinematicOpeningScreen({
               transform: `translate3d(0, ${(1 - ch2Opacity) * 20}px, 0)`
             }}
           >
-            <p className="train-chapter-quote">
-              "Somewhere between the noise and the silence."
-            </p>
+            <div className="train-chapter-glass-card">
+              <div className="train-chapter-pill">
+                <span className="train-chapter-pill-dot" />
+                <span className="train-chapter-pill-text">CHAPTER 02 • THE CITY</span>
+              </div>
+              <p className="train-chapter-quote">
+                Somewhere between the noise and the silence.
+              </p>
+              <div className="train-chapter-soundline">
+                <span className="sound-bar b1" />
+                <span className="sound-bar b2" />
+                <span className="sound-bar b3" />
+                <span className="sound-bar b4" />
+                <span className="sound-bar b5" />
+                <span className="sound-bar b4" />
+                <span className="sound-bar b3" />
+                <span className="sound-bar b2" />
+                <span className="sound-bar b1" />
+              </div>
+            </div>
           </div>
         )}
 
@@ -494,9 +511,26 @@ export default function CinematicOpeningScreen({
               transform: `translate3d(0, ${(1 - ch3Opacity) * 20}px, 0)`
             }}
           >
-            <p className="train-chapter-quote">
-              "Find your own rhythm."
-            </p>
+            <div className="train-chapter-glass-card">
+              <div className="train-chapter-pill">
+                <span className="train-chapter-pill-dot" />
+                <span className="train-chapter-pill-text">CHAPTER 03 • THE MOUNTAINS</span>
+              </div>
+              <p className="train-chapter-quote">
+                Find your own rhythm.
+              </p>
+              <div className="train-chapter-soundline">
+                <span className="sound-bar b1" />
+                <span className="sound-bar b2" />
+                <span className="sound-bar b3" />
+                <span className="sound-bar b4" />
+                <span className="sound-bar b5" />
+                <span className="sound-bar b4" />
+                <span className="sound-bar b3" />
+                <span className="sound-bar b2" />
+                <span className="sound-bar b1" />
+              </div>
+            </div>
           </div>
         )}
 
@@ -509,9 +543,26 @@ export default function CinematicOpeningScreen({
               transform: `translate3d(0, ${(1 - ch4Opacity) * 20}px, 0)`
             }}
           >
-            <p className="train-chapter-quote">
-              "Let the music take you further."
-            </p>
+            <div className="train-chapter-glass-card">
+              <div className="train-chapter-pill">
+                <span className="train-chapter-pill-dot" />
+                <span className="train-chapter-pill-text">CHAPTER 04 • THE NIGHT JOURNEY</span>
+              </div>
+              <p className="train-chapter-quote">
+                Let the music take you further.
+              </p>
+              <div className="train-chapter-soundline">
+                <span className="sound-bar b1" />
+                <span className="sound-bar b2" />
+                <span className="sound-bar b3" />
+                <span className="sound-bar b4" />
+                <span className="sound-bar b5" />
+                <span className="sound-bar b4" />
+                <span className="sound-bar b3" />
+                <span className="sound-bar b2" />
+                <span className="sound-bar b1" />
+              </div>
+            </div>
           </div>
         )}
 
@@ -524,9 +575,26 @@ export default function CinematicOpeningScreen({
               transform: `translate3d(0, ${(1 - ch5Opacity) * 20}px, 0)`
             }}
           >
-            <p className="train-chapter-quote">
-              "Arriving at Musicly."
-            </p>
+            <div className="train-chapter-glass-card">
+              <div className="train-chapter-pill">
+                <span className="train-chapter-pill-dot" />
+                <span className="train-chapter-pill-text">CHAPTER 05 • ARRIVAL</span>
+              </div>
+              <p className="train-chapter-quote">
+                Arriving at Musicly.
+              </p>
+              <div className="train-chapter-soundline">
+                <span className="sound-bar b1" />
+                <span className="sound-bar b2" />
+                <span className="sound-bar b3" />
+                <span className="sound-bar b4" />
+                <span className="sound-bar b5" />
+                <span className="sound-bar b4" />
+                <span className="sound-bar b3" />
+                <span className="sound-bar b2" />
+                <span className="sound-bar b1" />
+              </div>
+            </div>
           </div>
         )}
       </main>
