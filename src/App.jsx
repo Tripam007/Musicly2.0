@@ -2678,6 +2678,7 @@ export default function App() {
           onUpdatePublicPlaylist={(id, upd) => updatePublicPlaylist(id, upd, user)}
           onDeletePublicPlaylist={(id) => deletePublicPlaylist(id, user)}
           onOpenAboutUs={() => navigateTo('/about-us')}
+          isAnyModalOpen={isAnyModalOpen}
         />
       )}
 

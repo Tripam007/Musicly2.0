@@ -107,11 +107,32 @@ export default function VinylScene({
   publicPlaylists = [],
   onPublishPublicPlaylist = null,
   onUpdatePublicPlaylist = null,
-  onDeletePublicPlaylist = null
+  onDeletePublicPlaylist = null,
+  isAnyModalOpen = false
 }) {
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [localLanguages, setLocalLanguages] = useState([]);
   const [isLikedPanelOpen, setIsLikedPanelOpen] = useState(false);
+
+  // Modal & Management States
+  const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
+  const [selectedCustomPlaylist, setSelectedCustomPlaylist] = useState(null);
+  const [isAddSongsToExistingOpen, setIsAddSongsToExistingOpen] = useState(false);
+  const [isEditingPlaylistTitle, setIsEditingPlaylistTitle] = useState(false);
+  const [editedPlaylistTitle, setEditedPlaylistTitle] = useState('');
+  const [songForPlaylistModal, setSongForPlaylistModal] = useState(null);
+  const [newPlaylistNameFromSong, setNewPlaylistNameFromSong] = useState('');
+
+  // Master check: Any modal, dialog, drawer, or box is active (hides the top header bar)
+  const isAnyModalActive = Boolean(
+    isAnyModalOpen ||
+    isAdminDashboardOpen ||
+    isCreatePlaylistOpen ||
+    selectedCustomPlaylist ||
+    isAddSongsToExistingOpen ||
+    songForPlaylistModal ||
+    isLikedPanelOpen
+  );
 
   // Active languages resolution (supporting global props or local fallback)
   const activeLanguages = useMemo(() => {
@@ -256,14 +277,7 @@ export default function VinylScene({
     return () => { isMounted = false; };
   }, [user?.uid]);
 
-  // Modal & Management States
-  const [isCreatePlaylistOpen, setIsCreatePlaylistOpen] = useState(false);
-  const [selectedCustomPlaylist, setSelectedCustomPlaylist] = useState(null);
-  const [isAddSongsToExistingOpen, setIsAddSongsToExistingOpen] = useState(false);
-  const [isEditingPlaylistTitle, setIsEditingPlaylistTitle] = useState(false);
-  const [editedPlaylistTitle, setEditedPlaylistTitle] = useState('');
-  const [songForPlaylistModal, setSongForPlaylistModal] = useState(null);
-  const [newPlaylistNameFromSong, setNewPlaylistNameFromSong] = useState('');
+
 
   // Form states for creating new playlist
   // Admin can choose between 'musicly' (Official Public Playlist) and 'user' (Personal Private Playlist)
@@ -1477,12 +1491,12 @@ export default function VinylScene({
   };
 
   return (
-    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''}`}>
+    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''}`}>
       {/* Subtle Grain Overlay */}
       <div className="vinyl-grain-overlay" />
 
       {/* Top Header Bar */}
-      <header className="vinyl-top-header">
+      <header className={`vinyl-top-header ${isAnyModalActive ? 'is-hidden-by-modal' : ''}`}>
         {/* Brand / Logo */}
         <div
           className="vinyl-brand-group"
@@ -3125,7 +3139,9 @@ export default function VinylScene({
 
           </div>
         </main>
-        {/* ================= 1. CREATE NEW PLAYLIST MODAL ================= */}
+      </div>
+
+      {/* ================= 1. CREATE NEW PLAYLIST MODAL ================= */}
         {isCreatePlaylistOpen && (
           <div className="vinyl-playlist-modal-backdrop" onClick={() => setIsCreatePlaylistOpen(false)}>
             <div
@@ -3783,7 +3799,6 @@ export default function VinylScene({
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }
