@@ -333,6 +333,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 20px 36px 36px 36px;
+  scroll-padding-top: 28px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -2281,6 +2282,8 @@
   flex-direction: column;
   flex: 1;
   min-height: 0;
+  padding-top: 14px;
+  margin-top: 4px;
 }
 
 /* Section Header */
@@ -2290,20 +2293,27 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  padding: 4px 0 6px 0;
 }
 
 .vinyl-section-title-wrap {
   display: flex;
   align-items: center;
   gap: 12px;
+  padding: 2px 0;
+  overflow: visible;
 }
 
 .vinyl-section-title {
   font-family: var(--vinyl-font-pixel);
-  font-size: 1.55rem;
+  font-size: 1.48rem;
   font-weight: 700;
   color: var(--vinyl-text-primary);
   letter-spacing: -0.02em;
+  line-height: 1.4;
+  padding: 4px 0 2px 0;
+  margin: 0;
+  overflow: visible;
 }
 
 /* Language Selection Section Beside Music Categories */
@@ -4768,10 +4778,14 @@
 /* Surrounding Content (Up Next Queue & Playlists) blurred in background */
 .vinyl-scene-root.is-gym-mode-active .vinyl-content-column {
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 20px;
+  right: 28px;
   width: 380px;
-  max-height: 100%;
+  max-height: calc(100vh - 150px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px 18px 24px 18px;
+  border-radius: 18px;
   filter: blur(8px);
   opacity: 0.35;
   pointer-events: auto;
@@ -4781,11 +4795,10 @@
 
 .vinyl-scene-root.is-gym-mode-active .vinyl-content-column:hover {
   filter: blur(0px) !important;
-  opacity: 0.96 !important;
-  background: rgba(245, 243, 238, 0.94);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+  opacity: 0.98 !important;
+  background: rgba(245, 243, 238, 0.96);
+  border-radius: 18px;
+  box-shadow: 0 16px 44px rgba(0, 0, 0, 0.25);
   z-index: 60;
 }
 
@@ -4865,5 +4878,49 @@
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.85), inset 0 1px 2px rgba(255, 255, 255, 0.85);
   z-index: 25;
   pointer-events: none;
+}
+
+/* Smooth Calm Exit Transition from Gym Workout Mode */
+.vinyl-scene-root.is-smoothly-exiting {
+  opacity: 0 !important;
+  transform: scale(0.985);
+  filter: blur(14px) !important;
+  transition: opacity 1.4s cubic-bezier(0.4, 0, 0.2, 1), transform 1.4s cubic-bezier(0.4, 0, 0.2, 1), filter 1.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  pointer-events: none;
+}
+
+.vinyl-gym-calm-exit-toast {
+  position: fixed;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(18, 18, 22, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #f5f3ee;
+  padding: 12px 24px;
+  border-radius: 999px;
+  font-family: var(--vinyl-font-sans);
+  font-size: 0.88rem;
+  letter-spacing: 0.02em;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: vinylToastFadeIn 0.4s ease-out;
+  pointer-events: none;
+}
+
+@keyframes vinylToastFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 

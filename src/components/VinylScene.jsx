@@ -1348,10 +1348,8 @@ export default function VinylScene({
     return favoritePlaylists.find(p => p.id === activePlayingPlaylistId) || null;
   }, [activePlayingPlaylistId, favoritePlaylists]);
 
-  // Gym Workout Mode detection: triggers motion blur & sweat droplets when playing gym playlist/tracks
-  const isGymPlaylistActive = useMemo(() => {
-    if (!isPlaying) return false;
-
+  // Gym Workout Mode detection: detects if active playlist or track belongs to Gym
+  const isGymPlaylist = useMemo(() => {
     // 1. Direct active playing playlist check
     if (activePlayingPlaylist && (activePlayingPlaylist.title || '').toLowerCase().includes('gym')) {
       return true;
@@ -1362,7 +1360,7 @@ export default function VinylScene({
       return true;
     }
 
-    // 3. By selected custom playlist when currently playing
+    // 3. By selected custom playlist
     if (selectedCustomPlaylist && (selectedCustomPlaylist.title || '').toLowerCase().includes('gym')) {
       const isSongFromSelected = (selectedCustomPlaylist.tracks || []).some(t => t.id === currentTrack?.id);
       if (isSongFromSelected) return true;
@@ -1385,7 +1383,54 @@ export default function VinylScene({
     }
 
     return false;
-  }, [isPlaying, activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist, currentTrack, customPlaylists, publicPlaylists]);
+  }, [activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist, currentTrack, customPlaylists, publicPlaylists]);
+
+  // Persistent Gym Mode state: stays active even while paused until user idle wait completes
+  const [isGymModeActive, setIsGymModeActive] = useState(false);
+  const [isSmoothlyExitingScene, setIsSmoothlyExitingScene] = useState(false);
+  const [gymExitNotice, setGymExitNotice] = useState('');
+
+  // Handle Gym workout mode active lifecycle & calm idle exit timer
+  useEffect(() => {
+    if (!isGymPlaylist) {
+      setIsGymModeActive(false);
+      setIsSmoothlyExitingScene(false);
+      setGymExitNotice('');
+      return;
+    }
+
+    // If music is playing in gym playlist, keep gym mode active
+    if (isPlaying) {
+      setIsGymModeActive(true);
+      setIsSmoothlyExitingScene(false);
+      setGymExitNotice('');
+      return;
+    }
+
+    // While music is paused: wait for some time (6 seconds). If user doesn't resume, smoothly change scene!
+    if (isGymModeActive && !isPlaying) {
+      let exitTimeoutId = null;
+      const pauseWaitTimer = setTimeout(() => {
+        setGymExitNotice('Workout paused — gently relaxing back to Cozy Studio...');
+        setIsSmoothlyExitingScene(true);
+
+        exitTimeoutId = setTimeout(() => {
+          setIsGymModeActive(false);
+          setIsSmoothlyExitingScene(false);
+          setGymExitNotice('');
+          onSetActivePlayingPlaylistId?.(null);
+          if (onClose) {
+            onClose();
+          }
+        }, 1400);
+      }, 6000);
+
+      return () => {
+        clearTimeout(pauseWaitTimer);
+        if (exitTimeoutId) clearTimeout(exitTimeoutId);
+      };
+    }
+  }, [isGymPlaylist, isPlaying, isGymModeActive, onClose, onSetActivePlayingPlaylistId]);
 
   // Keep selected playlist detail in sync when language filter changes
   useEffect(() => {
@@ -1721,12 +1766,20 @@ export default function VinylScene({
   };
 
   return (
-    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymPlaylistActive ? 'is-gym-mode-active' : ''}`}>
+    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymModeActive ? 'is-gym-mode-active' : ''} ${isSmoothlyExitingScene ? 'is-smoothly-exiting' : ''}`}>
       {/* Subtle Grain Overlay */}
       <div className="vinyl-grain-overlay" />
 
       {/* Gym Workout Sweat Droplets & Motion Blur Overlay */}
-      <SweatDropletsOverlay isActive={isGymPlaylistActive} />
+      <SweatDropletsOverlay isActive={isGymModeActive} />
+
+      {/* Gentle Calm Scene Exit Notification */}
+      {gymExitNotice && (
+        <div className="vinyl-gym-calm-exit-toast" role="status" aria-live="polite">
+          <Sparkles size={16} className="text-amber-400 animate-spin" style={{ animationDuration: '3s' }} />
+          <span>{gymExitNotice}</span>
+        </div>
+      )}
 
       {/* Top Header Bar */}
       <header className={`vinyl-top-header ${isAnyModalActive ? 'is-hidden-by-modal' : ''}`}>
@@ -2192,7 +2245,7 @@ export default function VinylScene({
 
                         {/* Black Vinyl Disc */}
                         <div
-                          className={`vinyl-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'} ${isGymPlaylistActive ? 'is-gym-disc' : ''}`}
+                          className={`vinyl-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'} ${isGymModeActive ? 'is-gym-disc' : ''}`}
                           style={{ '--vinyl-spin-duration': `${rpmSpeed === 33 ? 6.5 : 4.2}s` }}
                         >
                           {/* Concentric Vinyl Grooves */}
@@ -2202,7 +2255,7 @@ export default function VinylScene({
                           <div className="vinyl-sheen-sweep" />
 
                           {/* Center Hub: sleek metallic spindle pin in gym mode so the muscular statue is visible! */}
-                          {isGymPlaylistActive ? (
+                          {isGymModeActive ? (
                             <div className="gym-center-spindle-pin" />
                           ) : (
                             /* Split Two-Tone Center Label */
@@ -2291,7 +2344,7 @@ export default function VinylScene({
 
                           {/* Modern Black Vinyl Disc */}
                           <div
-                            className={`modern-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'} ${isGymPlaylistActive ? 'is-gym-disc' : ''}`}
+                            className={`modern-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'} ${isGymModeActive ? 'is-gym-disc' : ''}`}
                             style={{ '--vinyl-spin-duration': `${rpmSpeed === 33 ? 6.5 : 4.2}s` }}
                           >
                             {/* Fine Concentric Vinyl Grooves */}
@@ -2301,7 +2354,7 @@ export default function VinylScene({
                             <div className="modern-record-sheen" />
 
                             {/* Center Minimalist Spindle Hub */}
-                            {isGymPlaylistActive ? (
+                            {isGymModeActive ? (
                               <div className="gym-center-spindle-pin" />
                             ) : (
                               <div className="modern-center-spindle-disc">
