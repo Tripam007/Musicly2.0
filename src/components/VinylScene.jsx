@@ -1364,7 +1364,7 @@ export default function VinylScene({
     return favoritePlaylists.find(p => p.id === activePlayingPlaylistId) || null;
   }, [activePlayingPlaylistId, favoritePlaylists]);
 
-  // Gym Workout Mode detection: detects if active playlist or track belongs to Gym
+  // Gym Workout Mode detection: strictly when ANY gym playlist is being played
   const isGymPlaylist = useMemo(() => {
     // 1. Direct active playing playlist check
     if (activePlayingPlaylist && (activePlayingPlaylist.title || '').toLowerCase().includes('gym')) {
@@ -1376,39 +1376,30 @@ export default function VinylScene({
       return true;
     }
 
-    // 3. By selected custom playlist
+    // 3. By selected custom playlist currently playing
     if (selectedCustomPlaylist && (selectedCustomPlaylist.title || '').toLowerCase().includes('gym')) {
-      const isSongFromSelected = (selectedCustomPlaylist.tracks || []).some(t => t.id === currentTrack?.id);
-      if (isSongFromSelected) return true;
-    }
-
-    // 4. By custom or public playlists with 'gym' in the title
-    const gymPlaylists = [
-      ...customPlaylists.filter(p => (p.title || '').toLowerCase().includes('gym')),
-      ...(Array.isArray(publicPlaylists) ? publicPlaylists.filter(p => (p.title || '').toLowerCase().includes('gym')) : [])
-    ];
-    if (gymPlaylists.some(p => (p.trackIds || []).includes(currentTrack?.id))) {
-      return true;
-    }
-
-    // 5. By track genre or title
-    const trackGenre = (currentTrack?.genre || '').toLowerCase();
-    const trackTitle = (currentTrack?.title || '').toLowerCase();
-    if (trackGenre.includes('gym') || trackGenre.includes('workout') || trackTitle.includes('gym')) {
-      return true;
+      if (activePlayingPlaylistId === selectedCustomPlaylist.id) {
+        return true;
+      }
     }
 
     return false;
-  }, [activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist, currentTrack, customPlaylists, publicPlaylists]);
+  }, [activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist]);
 
   // Persistent Gym Mode state: stays active even while paused until user idle wait completes
   const [isGymModeActive, setIsGymModeActive] = useState(false);
+  const [isGymModeDismissedByUser, setIsGymModeDismissedByUser] = useState(false);
   const [isSmoothlyExitingScene, setIsSmoothlyExitingScene] = useState(false);
   const [gymExitNotice, setGymExitNotice] = useState('');
 
+  // Reset user manual dismissal whenever playlist changes
+  useEffect(() => {
+    setIsGymModeDismissedByUser(false);
+  }, [activePlayingPlaylistId]);
+
   // Handle Gym workout mode active lifecycle & calm idle exit timer
   useEffect(() => {
-    if (!isGymPlaylist) {
+    if (!isGymPlaylist || isGymModeDismissedByUser) {
       setIsGymModeActive(false);
       setIsSmoothlyExitingScene(false);
       setGymExitNotice('');
@@ -1444,7 +1435,26 @@ export default function VinylScene({
         if (exitTimeoutId) clearTimeout(exitTimeoutId);
       };
     }
-  }, [isGymPlaylist, isPlaying, isGymModeActive, onSetActivePlayingPlaylistId]);
+  }, [isGymPlaylist, isPlaying, isGymModeActive, isGymModeDismissedByUser, onSetActivePlayingPlaylistId]);
+
+  // "while clicked anywhere twice make it back to normal again"
+  useEffect(() => {
+    if (!isGymModeActive) return;
+
+    const handleGlobalDblClick = () => {
+      setIsGymModeActive(false);
+      setIsGymModeDismissedByUser(true);
+      setIsSmoothlyExitingScene(false);
+      setGymExitNotice('');
+      playClickSound('toggle');
+    };
+
+    // Capture phase ensures double-clicks anywhere on screen return scene to normal immediately
+    window.addEventListener('dblclick', handleGlobalDblClick, true);
+    return () => {
+      window.removeEventListener('dblclick', handleGlobalDblClick, true);
+    };
+  }, [isGymModeActive]);
 
   // Keep selected playlist detail in sync when language filter changes
   useEffect(() => {
@@ -1477,6 +1487,7 @@ export default function VinylScene({
     if (tracksToPlay.length === 0) return;
 
     setActivePlayingPlaylistId(playlist.id);
+    setIsGymModeDismissedByUser(false);
 
     let finalTracks = [...tracksToPlay];
     if (isShuffle) {
