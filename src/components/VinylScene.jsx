@@ -1187,6 +1187,18 @@ export default function VinylScene({
     e?.stopPropagation?.();
     if (!playlist || !playlist.tracks || playlist.tracks.length === 0) return;
 
+    // If this playlist is currently playing and pressed again -> stop/pause playback!
+    if (activePlayingPlaylistId === playlist.id && isPlaying) {
+      onTogglePlay?.();
+      return;
+    }
+
+    // If this playlist is active but paused -> resume playback
+    if (activePlayingPlaylistId === playlist.id && !isPlaying && currentTrack) {
+      onTogglePlay?.();
+      return;
+    }
+
     const tracksToPlay = filterTracksByLang(playlist.tracks);
     if (tracksToPlay.length === 0) return;
 
@@ -1208,7 +1220,7 @@ export default function VinylScene({
       onSetCustomQueue(remainingSongs);
     }
     playPeacefulLikeSound();
-  }, [filterTracksByLang, isShuffle, onSelectTrack, onSetCustomQueue, playPeacefulLikeSound, setActivePlayingPlaylistId]);
+  }, [filterTracksByLang, isShuffle, onSelectTrack, onSetCustomQueue, playPeacefulLikeSound, setActivePlayingPlaylistId, activePlayingPlaylistId, isPlaying, onTogglePlay, currentTrack]);
 
   // Click on turntable record directly to toggle playback
   const handleRecordClick = (e) => {
@@ -1486,8 +1498,8 @@ export default function VinylScene({
         <button
           className={`vinyl-playlist-play-btn ${isPlaylistPlaying ? 'is-playing' : ''}`}
           onClick={(e) => handlePlayPlaylist(playlist, e)}
-          title={`Play "${playlist.title}" on turntable and queue all songs`}
-          aria-label={`Play ${playlist.title}`}
+          title={isPlaylistPlaying ? `Pause "${playlist.title}"` : `Play "${playlist.title}" on turntable and queue all songs`}
+          aria-label={isPlaylistPlaying ? `Pause ${playlist.title}` : `Play ${playlist.title}`}
         >
           {isPlaylistPlaying ? (
             <Pause size={16} fill="#0d0d0f" />
@@ -2597,6 +2609,10 @@ export default function VinylScene({
                               setDropTargetIndex(null);
                             }}
                             onClick={() => {
+                              if (currentTrack?.id === track.id) {
+                                onTogglePlay?.();
+                                return;
+                              }
                               onSelectTrack?.(track, true);
                               if (onSetCustomQueue) {
                                 onSetCustomQueue(upcomingQueue.filter(t => t.id !== track.id));
@@ -2704,8 +2720,14 @@ export default function VinylScene({
                           <div
                             key={track.id}
                             className="vinyl-track-card"
-                            onClick={() => onSelectTrack?.(track, true)}
-                            title={`Play "${track.title}" by ${track.artist}`}
+                            onClick={() => {
+                              if (currentTrack?.id === track.id) {
+                                onTogglePlay?.();
+                              } else {
+                                onSelectTrack?.(track, true);
+                              }
+                            }}
+                            title={isCardPlaying ? `Pause "${track.title}"` : `Play "${track.title}" by ${track.artist}`}
                           >
                             <div className="vinyl-card-art-box">
                               <img
@@ -3407,17 +3429,32 @@ export default function VinylScene({
                   </span>
 
                   <div className="vinyl-playlist-detail-actions">
-                    <button
-                      type="button"
-                      className="vinyl-btn-primary"
-                      onClick={() => {
-                        handlePlayPlaylist(selectedCustomPlaylist);
-                      }}
-                      disabled={!selectedCustomPlaylist.tracks || selectedCustomPlaylist.tracks.length === 0}
-                    >
-                      <Play size={15} fill="currentColor" />
-                      <span>Play All</span>
-                    </button>
+                    {(() => {
+                      const isModalPlaylistPlaying = activePlayingPlaylistId === selectedCustomPlaylist.id && isPlaying;
+                      return (
+                        <button
+                          type="button"
+                          className="vinyl-btn-primary"
+                          onClick={() => {
+                            handlePlayPlaylist(selectedCustomPlaylist);
+                          }}
+                          disabled={!selectedCustomPlaylist.tracks || selectedCustomPlaylist.tracks.length === 0}
+                          title={isModalPlaylistPlaying ? "Pause playlist playback" : "Play all tracks in playlist"}
+                        >
+                          {isModalPlaylistPlaying ? (
+                            <>
+                              <Pause size={15} fill="currentColor" />
+                              <span>Pause</span>
+                            </>
+                          ) : (
+                            <>
+                              <Play size={15} fill="currentColor" />
+                              <span>Play All</span>
+                            </>
+                          )}
+                        </button>
+                      );
+                    })()}
 
                     {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
                       <>
@@ -3490,6 +3527,10 @@ export default function VinylScene({
                           key={track.id}
                           className={`vinyl-playlist-track-row ${isCurrentPlaying ? 'is-active' : ''}`}
                           onClick={() => {
+                            if (currentTrack?.id === track.id) {
+                              onTogglePlay?.();
+                              return;
+                            }
                             setActivePlayingPlaylistId(selectedCustomPlaylist.id);
                             const remaining = filterTracksByLang(selectedCustomPlaylist.tracks.slice(idx + 1));
                             onSelectTrack?.(track, true, true);

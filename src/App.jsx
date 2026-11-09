@@ -2407,7 +2407,7 @@ export default function App() {
         }}
         onSelectTrack={(track) => {
           if (currentTrackId === track.id) {
-            setIsPlaying(prev => !prev);
+            togglePlay();
           } else {
             setCurrentTime(0);
             currentTimeRef.current = 0;
@@ -2919,7 +2919,7 @@ export default function App() {
             setCustomTracks(prev => [track, ...prev.filter(t => t.id !== track.id)]);
           }
           if (currentTrackId === track.id) {
-            setIsPlaying(prev => !prev);
+            togglePlay();
           } else {
             setCurrentTime(0);
             currentTimeRef.current = 0;
