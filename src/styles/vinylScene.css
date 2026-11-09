@@ -4767,7 +4767,8 @@
   transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* In Gym Mode: hide the bottom playback controls bar, the now-playing metadata/scrubber panel, and floating popovers */
+/* In Gym Mode: hide the deck skin switcher bar, the bottom playback controls bar, the now-playing metadata/scrubber panel, and floating popovers */
+.vinyl-scene-root.is-gym-mode-active .vinyl-deck-skin-bar,
 .vinyl-scene-root.is-gym-mode-active .vinyl-controls-bar,
 .vinyl-scene-root.is-gym-mode-active .vinyl-now-playing-panel,
 .vinyl-scene-root.is-gym-mode-active .vinyl-lyrics-floating-popover,
@@ -4837,13 +4838,6 @@
   box-shadow: 0 0 55px rgba(255, 75, 96, 0.3), 0 24px 70px rgba(0, 0, 0, 0.45) !important;
   transform: scale(1.015);
   transition: box-shadow 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-
-.vinyl-scene-root.is-gym-mode-active .vinyl-deck-skin-bar {
-  filter: none !important;
-  position: relative;
-  z-index: 100;
-  margin-bottom: 12px;
 }
 
 /* Custom Greek Muscular Statue Disc Background for Gym Playlist */
