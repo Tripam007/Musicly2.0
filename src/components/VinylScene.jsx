@@ -2192,7 +2192,7 @@ export default function VinylScene({
 
                         {/* Black Vinyl Disc */}
                         <div
-                          className={`vinyl-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'}`}
+                          className={`vinyl-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'} ${isGymPlaylistActive ? 'is-gym-disc' : ''}`}
                           style={{ '--vinyl-spin-duration': `${rpmSpeed === 33 ? 6.5 : 4.2}s` }}
                         >
                           {/* Concentric Vinyl Grooves */}
@@ -2201,33 +2201,40 @@ export default function VinylScene({
                           {/* Radial Light Reflection Sheen Sweeps */}
                           <div className="vinyl-sheen-sweep" />
 
-                          {/* Split Two-Tone Center Label */}
-                          <div
-                            className="vinyl-center-label"
-                            title={`${currentTrack?.title || 'No Track Selected'}${currentTrack?.artist ? ` — ${currentTrack.artist}` : ''}`}
-                          >
-                            {/* Top Cream Half: Micro Brand + Current Track Name */}
-                            <div className="vinyl-label-top-section">
-                              <span className="vinyl-label-sub-brand">MUSICLY • STEREO</span>
-                              <span className="vinyl-label-song-title">
-                                {currentTrack?.title || 'No Track Selected'}
-                              </span>
+                          {/* Center Hub: sleek metallic spindle hub in gym mode so the muscular statue is visible! */}
+                          {isGymPlaylistActive ? (
+                            <div className="modern-center-spindle-disc" style={{ position: 'relative', zIndex: 10 }}>
+                              <div className="modern-center-spindle-hole" />
                             </div>
+                          ) : (
+                            /* Split Two-Tone Center Label */
+                            <div
+                              className="vinyl-center-label"
+                              title={`${currentTrack?.title || 'No Track Selected'}${currentTrack?.artist ? ` — ${currentTrack.artist}` : ''}`}
+                            >
+                              {/* Top Cream Half: Micro Brand + Current Track Name */}
+                              <div className="vinyl-label-top-section">
+                                <span className="vinyl-label-sub-brand">MUSICLY • STEREO</span>
+                                <span className="vinyl-label-song-title">
+                                  {currentTrack?.title || 'No Track Selected'}
+                                </span>
+                              </div>
 
-                            {/* Center Spindle Core */}
-                            <div className="vinyl-label-center-core">
-                              {/* Spindle hole */}
-                              <div className="vinyl-center-spindle-hole" />
-                            </div>
+                              {/* Center Spindle Core */}
+                              <div className="vinyl-label-center-core">
+                                {/* Spindle hole */}
+                                <div className="vinyl-center-spindle-hole" />
+                              </div>
 
-                            {/* Bottom Black Half: Artist Name + RPM Speed */}
-                            <div className="vinyl-label-bottom-section">
-                              <span className="vinyl-label-song-artist">
-                                {currentTrack?.artist || 'Musicly Audio'}
-                              </span>
-                              <span className="vinyl-label-rpm-badge">{rpmSpeed === 33 ? '33⅓ RPM' : '45 RPM'}</span>
+                              {/* Bottom Black Half: Artist Name + RPM Speed */}
+                              <div className="vinyl-label-bottom-section">
+                                <span className="vinyl-label-song-artist">
+                                  {currentTrack?.artist || 'Musicly Audio'}
+                                </span>
+                                <span className="vinyl-label-rpm-badge">{rpmSpeed === 33 ? '33⅓ RPM' : '45 RPM'}</span>
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
 
@@ -2286,7 +2293,7 @@ export default function VinylScene({
 
                           {/* Modern Black Vinyl Disc */}
                           <div
-                            className={`modern-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'}`}
+                            className={`modern-record-disc ${isPlaying ? 'is-spinning' : 'is-paused'} ${isGymPlaylistActive ? 'is-gym-disc' : ''}`}
                             style={{ '--vinyl-spin-duration': `${rpmSpeed === 33 ? 6.5 : 4.2}s` }}
                           >
                             {/* Fine Concentric Vinyl Grooves */}

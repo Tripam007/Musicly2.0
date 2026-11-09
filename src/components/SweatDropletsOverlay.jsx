@@ -3,14 +3,13 @@ import React, { useEffect, useRef } from 'react';
 /**
  * SweatDropletsOverlay
  * 
- * Hyper-realistic animated sweat & condensation droplets running down the screen
- * during high-intensity workout / GYM mode.
- * Features:
- * - Procedural glass specular highlights and refraction on every bead
- * - Static condensation beads + animated trickling sweat streams with wet trails
- * - High-DPI Retina canvas scaling
- * - Micro-vibrations responsive to gym bass beats
- * - Zero pointer-events interference
+ * Hyper-realistic physical condensation & sweat droplets simulation.
+ * Pure water optics:
+ * - Transparent glass meniscus (no fake bubble rings or dark fills)
+ * - Directional specular reflections and bottom caustic light focusing
+ * - Natural stick-and-slip gravity sliding with glossy wet streak trails
+ * - High-density micro-condensation mist
+ * - Non-blocking pointer events
  */
 export default function SweatDropletsOverlay({ isActive = false }) {
   const canvasRef = useRef(null);
@@ -27,7 +26,7 @@ export default function SweatDropletsOverlay({ isActive = false }) {
 
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     const handleResize = () => {
       if (!canvas) return;
@@ -43,147 +42,205 @@ export default function SweatDropletsOverlay({ isActive = false }) {
     handleResize();
     window.addEventListener('resize', handleResize);
 
-    // Generate static condensation droplets (mist & small beads)
-    const staticDrops = [];
-    const numStatic = Math.min(100, Math.floor((width * height) / 12000));
-    for (let i = 0; i < numStatic; i++) {
-      staticDrops.push({
-        x: Math.random() * width,
-        y: Math.random() * height,
-        r: Math.random() < 0.7 ? 1.5 + Math.random() * 2.5 : 4 + Math.random() * 5,
-        alpha: 0.45 + Math.random() * 0.45,
-        wobbleOffset: Math.random() * Math.PI * 2
+    // 1. High-density micro-condensation mist (tiny 0.8px - 2px droplets clustered around edges)
+    const microMist = [];
+    const numMicro = Math.min(180, Math.floor((width * height) / 8000));
+    for (let i = 0; i < numMicro; i++) {
+      // Bias slightly towards perimeter/corners
+      const edgeBias = Math.random() < 0.6;
+      const x = edgeBias
+        ? (Math.random() < 0.5 ? Math.random() * (width * 0.28) : width - Math.random() * (width * 0.28))
+        : Math.random() * width;
+      const y = Math.random() * height;
+      microMist.push({
+        x,
+        y,
+        r: 0.8 + Math.random() * 1.6,
+        alpha: 0.35 + Math.random() * 0.45
       });
     }
 
-    // Generate active trickling sweat drips
-    const numDrips = Math.min(16, Math.max(8, Math.floor(width / 130)));
+    // 2. Medium static clinging sweat beads (3px - 8px)
+    const staticBeads = [];
+    const numStatic = Math.min(65, Math.floor((width * height) / 18000));
+    for (let i = 0; i < numStatic; i++) {
+      const rx = 2.5 + Math.random() * 4.5;
+      const ry = rx * (1.05 + Math.random() * 0.25); // slightly elongated by gravity
+      staticBeads.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        rx,
+        ry,
+        alpha: 0.6 + Math.random() * 0.35,
+        rotation: (Math.random() - 0.5) * 0.2
+      });
+    }
+
+    // 3. Active running / trickling sweat drips
+    const numDrips = Math.min(12, Math.max(6, Math.floor(width / 160)));
     const drips = [];
     for (let i = 0; i < numDrips; i++) {
       drips.push({
         x: Math.random() * width,
-        y: Math.random() * height * 0.7,
-        startY: Math.random() * height * 0.3,
-        r: 3.5 + Math.random() * 5.5,
-        speed: 0.6 + Math.random() * 1.6,
-        accel: 1.002 + Math.random() * 0.003,
-        wobble: Math.random() * Math.PI * 2,
-        wobbleSpeed: 0.03 + Math.random() * 0.04,
-        trail: []
+        y: Math.random() * height * 0.6,
+        rx: 3.5 + Math.random() * 4.5,
+        ry: 4.5 + Math.random() * 6.5,
+        velocity: 0.2 + Math.random() * 0.6,
+        targetVelocity: 0.5 + Math.random() * 1.8,
+        slipTimer: Math.random() * 60,
+        trail: [],
+        meanderAngle: Math.random() * Math.PI * 2,
+        alpha: 0.85
       });
     }
 
-    let time = 0;
-
-    // Render individual water / sweat droplet with refraction & highlights
-    const drawDroplet = (x, y, r, alpha = 0.8, isDrip = false) => {
+    // Draw realistic water drop with genuine optical refraction & highlights
+    const drawRealisticDrop = (x, y, rx, ry, alpha = 0.8, isTeardrop = false, rot = 0) => {
       ctx.save();
+      ctx.translate(x, y);
+      if (rot) ctx.rotate(rot);
 
-      // Outer soft refraction shadow
+      // A. Soft contact shadow cast on glass beneath drop (subtle blur)
       ctx.beginPath();
-      ctx.ellipse(x + r * 0.25, y + r * 0.3, r, r * 1.05, 0, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(0, 0, 0, ${0.18 * alpha})`;
+      ctx.ellipse(0.5, ry * 0.25, rx * 0.95, ry * 0.8, 0, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(30, 20, 15, ${0.12 * alpha})`;
       ctx.fill();
 
-      // Droplet base body (glossy water bead)
+      // B. Drop geometry path
       ctx.beginPath();
-      ctx.ellipse(x, y, r, r * 1.02, 0, 0, Math.PI * 2);
-      const grad = ctx.createRadialGradient(
-        x - r * 0.3, y - r * 0.3, r * 0.1,
-        x, y, r
-      );
-      grad.addColorStop(0, `rgba(255, 255, 255, ${0.7 * alpha})`);
-      grad.addColorStop(0.3, `rgba(240, 245, 255, ${0.15 * alpha})`);
-      grad.addColorStop(0.8, `rgba(80, 100, 120, ${0.12 * alpha})`);
-      grad.addColorStop(1, `rgba(20, 30, 40, ${0.35 * alpha})`);
-      ctx.fillStyle = grad;
+      if (isTeardrop) {
+        // Natural tapered teardrop for sliding sweat
+        ctx.moveTo(0, -ry * 1.3);
+        ctx.bezierCurveTo(rx * 0.9, -ry * 0.4, rx * 1.05, ry * 0.85, 0, ry * 0.95);
+        ctx.bezierCurveTo(-rx * 1.05, ry * 0.85, -rx * 0.9, -ry * 0.4, 0, -ry * 1.3);
+      } else {
+        ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      }
+
+      // C. Pure clear water body: mostly transparent glass with subtle light absorption
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.06 * alpha})`;
       ctx.fill();
 
-      // Inverted internal caustic rim reflection (bottom right)
+      // D. Thin refraction meniscus rim (outer edge where light bends)
+      ctx.strokeStyle = `rgba(40, 30, 20, ${0.25 * alpha})`;
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+
+      // E. Internal caustic light pool (light bends and focuses at the bottom inner edge)
       ctx.beginPath();
-      ctx.arc(x + r * 0.25, y + r * 0.25, r * 0.55, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * alpha})`;
+      ctx.ellipse(0, ry * 0.38, rx * 0.65, ry * 0.32, 0, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.45 * alpha})`;
       ctx.fill();
 
-      // Specular highlight glint (top left direct light)
+      // F. Razor-sharp specular highlight glint (top-left direct light source)
       ctx.beginPath();
-      ctx.ellipse(x - r * 0.35, y - r * 0.35, r * 0.32, r * 0.22, -Math.PI / 4, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.92 * alpha})`;
+      ctx.ellipse(-rx * 0.32, -ry * 0.35, rx * 0.3, ry * 0.18, -Math.PI / 4, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.96 * alpha})`;
       ctx.fill();
 
-      // Tiny secondary pin-point glint
-      ctx.beginPath();
-      ctx.arc(x - r * 0.1, y - r * 0.45, r * 0.12, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.75 * alpha})`;
-      ctx.fill();
+      // G. Tiny secondary specular reflection (opposite rim point)
+      if (rx > 3) {
+        ctx.beginPath();
+        ctx.arc(rx * 0.28, ry * 0.28, rx * 0.12, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.65 * alpha})`;
+        ctx.fill();
+      }
 
       ctx.restore();
     };
 
     const animate = () => {
       ctx.clearRect(0, 0, width, height);
-      time += 0.04;
 
-      // 1. Draw static condensation droplets with subtle breathing
-      for (let i = 0; i < staticDrops.length; i++) {
-        const d = staticDrops[i];
-        const microWobble = Math.sin(time + d.wobbleOffset) * 0.15;
-        drawDroplet(d.x, d.y, d.r + microWobble, d.alpha);
+      // 1. Draw micro-condensation mist beads
+      for (let i = 0; i < microMist.length; i++) {
+        const m = microMist[i];
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${m.alpha * 0.7})`;
+        ctx.fill();
+
+        ctx.strokeStyle = `rgba(30, 20, 10, ${m.alpha * 0.18})`;
+        ctx.lineWidth = 0.4;
+        ctx.stroke();
       }
 
-      // 2. Update and draw trickling sweat streams
+      // 2. Draw static clinging sweat beads
+      for (let i = 0; i < staticBeads.length; i++) {
+        const b = staticBeads[i];
+        drawRealisticDrop(b.x, b.y, b.rx, b.ry, b.alpha, false, b.rotation);
+      }
+
+      // 3. Update & render trickling sweat drips
       for (let i = 0; i < drips.length; i++) {
         const drip = drips[i];
 
-        // Store trail points
-        drip.trail.push({ x: drip.x, y: drip.y, r: drip.r * 0.4 });
-        if (drip.trail.length > 25) {
+        // Store trail
+        drip.trail.push({ x: drip.x, y: drip.y, rx: drip.rx * 0.35, alpha: 0.6 });
+        if (drip.trail.length > 28) {
           drip.trail.shift();
         }
 
-        // Draw faint wet trail streak
+        // Draw faint glossy wet streak trail left on glass
         if (drip.trail.length > 2) {
           ctx.save();
+          // Soft wet path outline
           ctx.beginPath();
           ctx.moveTo(drip.trail[0].x, drip.trail[0].y);
           for (let t = 1; t < drip.trail.length; t++) {
             ctx.lineTo(drip.trail[t].x, drip.trail[t].y);
           }
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-          ctx.lineWidth = drip.r * 0.55;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+          ctx.lineWidth = drip.rx * 0.55;
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           ctx.stroke();
 
-          // Thin glossy core inside the trail
+          // Thin glossy core highlight along the wet streak
           ctx.beginPath();
           ctx.moveTo(drip.trail[0].x, drip.trail[0].y);
           for (let t = 1; t < drip.trail.length; t++) {
             ctx.lineTo(drip.trail[t].x, drip.trail[t].y);
           }
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
-          ctx.lineWidth = drip.r * 0.2;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.lineWidth = drip.rx * 0.18;
           ctx.stroke();
           ctx.restore();
         }
 
-        // Physics: advance position with slight meandering wobble
-        drip.wobble += drip.wobbleSpeed;
-        drip.x += Math.sin(drip.wobble) * 0.45;
-        drip.y += drip.speed;
-        drip.speed *= drip.accel;
+        // Realistic "Stick-and-Slip" liquid physics
+        drip.slipTimer--;
+        if (drip.slipTimer <= 0) {
+          // Switch between sticking and slipping
+          if (Math.random() < 0.4) {
+            drip.targetVelocity = 0.15 + Math.random() * 0.3; // brief stick / slow down
+            drip.slipTimer = 20 + Math.random() * 40;
+          } else {
+            drip.targetVelocity = 0.9 + Math.random() * 2.2; // sudden slip downward
+            drip.slipTimer = 15 + Math.random() * 30;
+          }
+        }
 
-        // Draw head droplet (slightly teardrop elongated)
-        drawDroplet(drip.x, drip.y, drip.r, 0.9, true);
+        // Smooth velocity interpolation
+        drip.velocity += (drip.targetVelocity - drip.velocity) * 0.08;
+
+        // Meander slightly left and right as water rolls over glass
+        drip.meanderAngle += 0.04;
+        drip.x += Math.sin(drip.meanderAngle) * 0.35;
+        drip.y += drip.velocity;
+
+        // Draw head drip drop (elongated teardrop)
+        drawRealisticDrop(drip.x, drip.y, drip.rx, drip.ry, 0.92, true);
 
         // Reset if reached bottom of screen
-        if (drip.y > height + 30) {
+        if (drip.y > height + 40) {
           drip.x = Math.random() * width;
-          drip.y = -10 - Math.random() * 40;
-          drip.startY = drip.y;
-          drip.speed = 0.6 + Math.random() * 1.5;
-          drip.accel = 1.002 + Math.random() * 0.003;
-          drip.r = 3.5 + Math.random() * 5.5;
+          drip.y = -10 - Math.random() * 50;
+          drip.rx = 3.5 + Math.random() * 4.5;
+          drip.ry = drip.rx * (1.2 + Math.random() * 0.4);
+          drip.velocity = 0.3;
+          drip.targetVelocity = 0.8 + Math.random() * 1.5;
+          drip.slipTimer = 20 + Math.random() * 30;
           drip.trail = [];
         }
       }
@@ -203,7 +260,7 @@ export default function SweatDropletsOverlay({ isActive = false }) {
 
   return (
     <div className="vinyl-sweat-overlay-wrapper" aria-hidden="true">
-      {/* Dynamic Motion Blur Speed Vignette */}
+      {/* High-Octane Speed Vignette */}
       <div className="vinyl-gym-motion-blur-vignette" />
 
       {/* Realistic Procedural Sweat Droplets Canvas */}
@@ -211,12 +268,6 @@ export default function SweatDropletsOverlay({ isActive = false }) {
         ref={canvasRef}
         className="vinyl-sweat-droplets-canvas"
       />
-
-      {/* Workout Intensity HUD Indicator */}
-      <div className="vinyl-gym-hud-pill">
-        <span className="vinyl-gym-hud-pulse-dot" />
-        <span className="vinyl-gym-hud-text">WORKOUT MODE • MAXIMUM FOCUS</span>
-      </div>
     </div>
   );
 }

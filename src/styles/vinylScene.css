@@ -4718,11 +4718,11 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(circle at 34% 45%, rgba(0, 0, 0, 0) 24%, rgba(0, 0, 0, 0.28) 75%, rgba(255, 40, 40, 0.12) 100%);
-  backdrop-filter: blur(2.5px);
-  -webkit-backdrop-filter: blur(2.5px);
-  mask-image: radial-gradient(circle at 34% 45%, transparent 28%, black 65%);
-  -webkit-mask-image: radial-gradient(circle at 34% 45%, transparent 28%, black 65%);
+  background: radial-gradient(circle at center, rgba(0, 0, 0, 0) 32%, rgba(0, 0, 0, 0.28) 78%, rgba(255, 40, 40, 0.12) 100%);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  mask-image: radial-gradient(circle at center, transparent 32%, black 65%);
+  -webkit-mask-image: radial-gradient(circle at center, transparent 32%, black 65%);
   animation: gymVignetteThump 1.8s ease-in-out infinite alternate;
 }
 
@@ -4731,103 +4731,100 @@
   100% { opacity: 0.95; transform: scale(1.02); }
 }
 
-/* Workout HUD Badge Pill */
-.vinyl-gym-hud-pill {
-  position: fixed;
-  top: 18px;
-  right: 24px;
-  background: rgba(18, 18, 24, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 75, 96, 0.5);
-  box-shadow: 0 4px 18px rgba(255, 75, 96, 0.25);
-  padding: 6px 14px;
-  border-radius: 999px;
+/* Centered Vinyl Player Layout during Gym Mode */
+.vinyl-scene-root.is-gym-mode-active .vinyl-workspace-grid {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  z-index: 10000;
+  position: relative;
+  min-height: calc(100vh - 120px);
+}
+
+/* Vinyl Player centered as the hero focal point */
+.vinyl-scene-root.is-gym-mode-active .vinyl-hero-column {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  align-self: center;
+  position: relative;
+  z-index: 50;
+  filter: none !important;
+  transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.vinyl-scene-root.is-gym-mode-active .vinyl-controls-bar {
+  width: 100%;
+  max-width: 640px;
+  margin: 16px auto 0 auto;
+  align-self: center;
+  position: relative;
+  z-index: 50;
+  transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+  filter: blur(2.5px);
+  opacity: 0.85;
+}
+
+.vinyl-scene-root.is-gym-mode-active .vinyl-controls-bar:hover {
+  filter: blur(0px) !important;
+  opacity: 1 !important;
+}
+
+/* Surrounding Content (Up Next Queue & Playlists) blurred in background */
+.vinyl-scene-root.is-gym-mode-active .vinyl-content-column {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 380px;
+  max-height: 100%;
+  filter: blur(8px);
+  opacity: 0.35;
+  pointer-events: auto;
+  z-index: 10;
+  transition: all 0.5s ease;
+}
+
+.vinyl-scene-root.is-gym-mode-active .vinyl-content-column:hover {
+  filter: blur(0px) !important;
+  opacity: 0.96 !important;
+  background: rgba(245, 243, 238, 0.94);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.2);
+  z-index: 60;
+}
+
+.vinyl-scene-root.is-gym-mode-active .vinyl-pixel-cat-card {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 380px;
+  filter: blur(6px);
+  opacity: 0.35;
   pointer-events: none;
-  animation: gymHudGlow 2s ease-in-out infinite alternate;
+  z-index: 10;
 }
 
-.vinyl-gym-hud-pulse-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ff4b60;
-  box-shadow: 0 0 8px #ff4b60;
-  animation: gymDotPulse 0.9s ease-in-out infinite alternate;
-}
-
-.vinyl-gym-hud-text {
-  font-family: var(--vinyl-font-pixel, monospace);
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #ff9da8;
-  letter-spacing: 0.08em;
-}
-
-@keyframes gymDotPulse {
-  0% { transform: scale(0.8); opacity: 0.6; }
-  100% { transform: scale(1.3); opacity: 1; }
-}
-
-@keyframes gymHudGlow {
-  0% { border-color: rgba(255, 75, 96, 0.4); box-shadow: 0 4px 14px rgba(255, 75, 96, 0.2); }
-  100% { border-color: rgba(255, 75, 96, 0.85); box-shadow: 0 4px 24px rgba(255, 75, 96, 0.4); }
-}
-
-/* Motion Blur on non-turntable elements during Gym Mode */
+/* Motion Blur on Header during Gym Mode */
 .vinyl-scene-root.is-gym-mode-active .vinyl-top-header {
   filter: blur(3.5px);
   opacity: 0.7;
   transition: filter 0.6s ease, opacity 0.6s ease;
 }
 
-.vinyl-scene-root.is-gym-mode-active .vinyl-content-column {
-  filter: blur(4.5px);
-  opacity: 0.72;
-  transform: scale(0.995);
-  transition: filter 0.6s ease, opacity 0.6s ease, transform 0.6s ease;
-}
-
-.vinyl-scene-root.is-gym-mode-active .vinyl-controls-bar {
-  filter: blur(3px);
-  opacity: 0.8;
-  transition: filter 0.6s ease, opacity 0.6s ease;
-}
-
-.vinyl-scene-root.is-gym-mode-active .vinyl-pixel-cat-card {
-  filter: blur(3.5px);
-  opacity: 0.75;
-  transition: filter 0.6s ease, opacity 0.6s ease;
-}
-
-/* Hover over unblurs smoothly so user can interact anytime */
-.vinyl-scene-root.is-gym-mode-active .vinyl-top-header:hover,
-.vinyl-scene-root.is-gym-mode-active .vinyl-content-column:hover,
-.vinyl-scene-root.is-gym-mode-active .vinyl-controls-bar:hover,
-.vinyl-scene-root.is-gym-mode-active .vinyl-pixel-cat-card:hover {
+.vinyl-scene-root.is-gym-mode-active .vinyl-top-header:hover {
   filter: blur(0px) !important;
   opacity: 1 !important;
 }
 
 /* Turntable Deck (Vintage Hi-Fi & Modern Clay): CRYSTAL CLEAR FOCUS */
-.vinyl-scene-root.is-gym-mode-active .vinyl-hero-column {
-  filter: none !important;
-  position: relative;
-  z-index: 100;
-}
-
 .vinyl-scene-root.is-gym-mode-active .vinyl-deck-container,
 .vinyl-scene-root.is-gym-mode-active .vintage-turntable-deck,
 .vinyl-scene-root.is-gym-mode-active .modern-clay-turntable-deck {
   filter: none !important;
   position: relative;
   z-index: 100;
-  box-shadow: 0 0 50px rgba(255, 75, 96, 0.25), 0 24px 70px rgba(0, 0, 0, 0.4) !important;
-  transform: scale(1.012);
+  box-shadow: 0 0 55px rgba(255, 75, 96, 0.3), 0 24px 70px rgba(0, 0, 0, 0.45) !important;
+  transform: scale(1.015);
   transition: box-shadow 0.6s ease, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -4835,5 +4832,25 @@
   filter: none !important;
   position: relative;
   z-index: 100;
+}
+
+/* Custom Greek Muscular Statue Disc Background for Gym Playlist */
+.vinyl-record-disc.is-gym-disc,
+.modern-record-disc.is-gym-disc {
+  background-image: 
+    radial-gradient(circle at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.35) 75%, #050507 100%),
+    url('/assets/images/gym_statue_disc.jpg') !important;
+  background-position: center center !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 40px rgba(255, 75, 96, 0.4),
+    0 14px 40px rgba(0, 0, 0, 0.7) !important;
+}
+
+.vinyl-record-disc.is-gym-disc .vinyl-grooves-layer,
+.modern-record-disc.is-gym-disc .modern-record-grooves {
+  opacity: 0.32;
 }
 
