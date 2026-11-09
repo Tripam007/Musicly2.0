@@ -332,7 +332,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 28px 36px 36px 36px;
+  padding: 20px 36px 36px 36px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -362,7 +362,7 @@
     "deck content"
     "controls cat";
   gap: 16px 40px;
-  align-items: end;
+  align-items: start;
 }
 
 /* ==========================================================================
@@ -375,6 +375,7 @@
   flex-direction: column;
   gap: 16px;
   min-height: 0;
+  align-self: start;
 }
 
 /* Turntable Skin Header Pill Bar */
@@ -2144,6 +2145,7 @@
   min-height: 82px;
   max-height: 82px;
   box-sizing: border-box;
+  align-self: end;
 }
 
 .vinyl-pixel-cat-card {
@@ -2156,6 +2158,7 @@
   max-height: 82px;
   box-sizing: border-box;
   margin: 0;
+  align-self: end;
 }
 
 .vinyl-ctrl-cluster {
@@ -2267,7 +2270,16 @@
   grid-area: content;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
+  min-height: 0;
+  height: 100%;
+  align-self: start;
+}
+
+.vinyl-playlists-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   min-height: 0;
 }
 
@@ -2721,7 +2733,9 @@
   flex-direction: column;
   gap: 10px;
   margin-top: 10px;
-  max-height: 275px;
+  flex: 1;
+  min-height: 220px;
+  max-height: 480px;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 2px 8px 6px 2px;
