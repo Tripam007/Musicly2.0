@@ -1407,11 +1407,11 @@ export default function VinylScene({
       return;
     }
 
-    // While music is paused: wait for some time (6 seconds). If user doesn't resume, smoothly change scene!
+    // While music is paused: wait for some time (6 seconds). If user doesn't resume, smoothly change scene back to standard Vinyl page!
     if (isGymModeActive && !isPlaying) {
       let exitTimeoutId = null;
       const pauseWaitTimer = setTimeout(() => {
-        setGymExitNotice('Workout paused — gently relaxing back to Cozy Studio...');
+        setGymExitNotice('Workout paused — returning to Vinyl Studio...');
         setIsSmoothlyExitingScene(true);
 
         exitTimeoutId = setTimeout(() => {
@@ -1419,10 +1419,8 @@ export default function VinylScene({
           setIsSmoothlyExitingScene(false);
           setGymExitNotice('');
           onSetActivePlayingPlaylistId?.(null);
-          if (onClose) {
-            onClose();
-          }
-        }, 1400);
+          // Return to the standard Vinyl Scene page (do not call onClose/home page)
+        }, 1200);
       }, 6000);
 
       return () => {
@@ -1430,7 +1428,7 @@ export default function VinylScene({
         if (exitTimeoutId) clearTimeout(exitTimeoutId);
       };
     }
-  }, [isGymPlaylist, isPlaying, isGymModeActive, onClose, onSetActivePlayingPlaylistId]);
+  }, [isGymPlaylist, isPlaying, isGymModeActive, onSetActivePlayingPlaylistId]);
 
   // Keep selected playlist detail in sync when language filter changes
   useEffect(() => {
