@@ -4146,7 +4146,30 @@
   align-items: center;
   gap: 10px;
   margin-top: 6px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+}
+
+.vinyl-btn-delete-icon-only {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 107, 107, 0.4);
+  background: rgba(255, 107, 107, 0.08);
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+
+.vinyl-btn-delete-icon-only:hover {
+  background: rgba(255, 107, 107, 0.22);
+  border-color: rgba(255, 107, 107, 0.65);
+  color: #ff5252;
+  transform: translateY(-1px);
 }
 
 .vinyl-playlist-track-row {

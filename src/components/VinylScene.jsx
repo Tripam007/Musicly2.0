@@ -1589,12 +1589,6 @@ export default function VinylScene({
                   PRIVATE
                 </span>
               )}
-              {playlist.isMusiclyOfficial && (
-                <span className="vinyl-playlist-custom-badge vinyl-badge-public" title="Official Musicly playlist curated by Admin (Public worldwide)">
-                  <Globe size={9} style={{ marginRight: 3, verticalAlign: 'middle' }} />
-                  PUBLIC
-                </span>
-              )}
               {isPlaylistPlaying && (
                 <span className="vinyl-playlist-playing-badge" title="Playing on Turntable">
                   <span className="mini-equalizer-bar bar-1" />
@@ -2856,34 +2850,6 @@ export default function VinylScene({
                             </div>
                           );
                         })}
-
-                        {/* Dedicated Drop Card to append to queue */}
-                        <div
-                          className="vinyl-track-card vinyl-queue-drop-card"
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = 'copy';
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            if (draggedTrackData) {
-                              handleAddToQueue(draggedTrackData, e);
-                              playClickSound('toggle');
-                            }
-                            setDraggedTrackData(null);
-                            setDraggedCardIndex(null);
-                          }}
-                          onClick={() => {
-                            setCarouselViewMode('categories');
-                            playClickSound('light');
-                          }}
-                          title="Drag & drop songs from categories or playlists here to add to queue"
-                        >
-                          <div className="vinyl-queue-drop-card-inner">
-                            <Plus size={26} color="#ffd166" />
-                            <span className="vinyl-queue-drop-card-text">Drag songs here to add to queue</span>
-                          </div>
-                        </div>
                       </>
                     )
                   ) : (
@@ -3625,8 +3591,8 @@ export default function VinylScene({
                   <span className="vinyl-playlist-detail-sub">
                     {selectedCustomPlaylist.tracks?.length || 0} track{selectedCustomPlaylist.tracks?.length === 1 ? '' : 's'} •{' '}
                     {selectedCustomPlaylist.isCustom
-                      ? 'Personal Playlist (Private to you)'
-                      : (selectedCustomPlaylist.isMusiclyOfficial ? 'Official Musicly Playlist (Public)' : selectedCustomPlaylist.subtitle)}
+                      ? 'Personal Playlist'
+                      : (selectedCustomPlaylist.subtitle || 'Editorial Selection')}
                   </span>
 
                   <div className="vinyl-playlist-detail-actions">
@@ -3675,13 +3641,12 @@ export default function VinylScene({
 
                         <button
                           type="button"
-                          className="vinyl-btn-secondary vinyl-btn-delete-playlist"
-                          style={{ color: '#ff6b6b', borderColor: 'rgba(255, 107, 107, 0.4)', background: 'rgba(255, 107, 107, 0.08)' }}
+                          className="vinyl-btn-delete-icon-only"
                           onClick={() => handleDeleteCustomPlaylist(selectedCustomPlaylist.id)}
                           title="Delete this entire playlist"
+                          aria-label="Delete playlist"
                         >
-                          <Trash2 size={15} />
-                          <span>Delete Playlist</span>
+                          <Trash2 size={16} />
                         </button>
                       </>
                     )}
@@ -3701,30 +3666,6 @@ export default function VinylScene({
 
               {/* Tracks in Playlist */}
               <div className="vinyl-playlist-modal-body">
-                {/* Drop banner to add any dragged song to Up Next queue */}
-                <div
-                  className={`vinyl-playlist-modal-queue-drop-banner ${isModalQueueDropOver ? 'is-active-over' : ''}`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'copy';
-                    if (!isModalQueueDropOver) setIsModalQueueDropOver(true);
-                  }}
-                  onDragLeave={() => setIsModalQueueDropOver(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setIsModalQueueDropOver(false);
-                    if (draggedTrackData) {
-                      handleAddToQueue(draggedTrackData, e);
-                      playClickSound('toggle');
-                    }
-                    setDraggedTrackData(null);
-                    setDraggedModalTrackIndex(null);
-                  }}
-                  title="Drag and drop any song here to add to your Up Next Queue"
-                >
-                  <ListPlus size={16} style={{ marginRight: 6 }} />
-                  <span>Drag any song here to add to your Up Next Queue</span>
-                </div>
 
                 {(!selectedCustomPlaylist.tracks || selectedCustomPlaylist.tracks.length === 0) ? (
                   <div style={{ textAlign: 'center', padding: '36px 16px', color: '#8c8375' }}>
