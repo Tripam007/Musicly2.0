@@ -228,10 +228,13 @@ export default function VinylScene({
 
   // Modern Clay Turntable Lyrics Mode States
   const [isLyricsViewOpen, setIsLyricsViewOpen] = useState(false);
+  const [isMinimalLyricsOpen, setIsMinimalLyricsOpen] = useState(false);
   const [lyricsData, setLyricsData] = useState(null);
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   const lyricsContainerRef = useRef(null);
   const activeLineRef = useRef(null);
+  const minimalLyricsContainerRef = useRef(null);
+  const minimalActiveLineRef = useRef(null);
   const isUserScrollingRef = useRef(false);
   const userScrollTimeoutRef = useRef(null);
 
@@ -876,7 +879,7 @@ export default function VinylScene({
 
   // Load lyrics when lyrics mode is opened or active song changes
   useEffect(() => {
-    if (!isLyricsViewOpen || !currentTrack) return;
+    if ((!isLyricsViewOpen && !isMinimalLyricsOpen) || !currentTrack) return;
     let isCancelled = false;
     setIsLyricsLoading(true);
 
@@ -900,7 +903,7 @@ export default function VinylScene({
     return () => {
       isCancelled = true;
     };
-  }, [isLyricsViewOpen, currentTrack, duration]);
+  }, [isLyricsViewOpen, isMinimalLyricsOpen, currentTrack, duration]);
 
   // Track active line index in synced lyrics with vocal anticipation
   const activeLineIndex = useMemo(() => {
@@ -927,8 +930,7 @@ export default function VinylScene({
     }, 2800);
   }, []);
 
-  // Smooth auto-scroll following the active synced line INSIDE the lyrics container ONLY
-  // (Never calls scrollIntoView on elements, preventing page scroll hijacking)
+  // Smooth auto-scroll following the active synced line INSIDE the Modern Clay LCD lyrics container
   useEffect(() => {
     if (!isLyricsViewOpen || activeLineIndex === -1 || isUserScrollingRef.current) return;
     const activeEl = activeLineRef.current;
@@ -941,6 +943,20 @@ export default function VinylScene({
       });
     }
   }, [activeLineIndex, isLyricsViewOpen]);
+
+  // Smooth auto-scroll following the active synced line INSIDE the Minimalist Lyrics container
+  useEffect(() => {
+    if (!isMinimalLyricsOpen || activeLineIndex === -1 || isUserScrollingRef.current) return;
+    const activeEl = minimalActiveLineRef.current;
+    const container = minimalLyricsContainerRef.current;
+    if (activeEl && container) {
+      const targetScroll = activeEl.offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
+      container.scrollTo({
+        top: Math.max(0, targetScroll),
+        behavior: 'smooth'
+      });
+    }
+  }, [activeLineIndex, isMinimalLyricsOpen]);
 
   // Seeking directly when tapping/clicking a lyric line
   const handleLyricLineClick = useCallback((timeSec) => {
@@ -2702,6 +2718,62 @@ export default function VinylScene({
                   <span className="vinyl-time-label" style={{ textAlign: 'right' }}>
                     {formatSeconds(safeDuration)}
                   </span>
+                </div>
+
+                {/* Minimalist Floating Lyrics Section (Not in any box) */}
+                <div className="vinyl-minimal-lyrics-section">
+                  <button
+                    type="button"
+                    className={`vinyl-minimal-lyrics-btn ${isMinimalLyricsOpen ? 'is-active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsMinimalLyricsOpen(prev => !prev);
+                      playClickSound('toggle');
+                    }}
+                    title={isMinimalLyricsOpen ? "Hide lyrics" : "Show song lyrics"}
+                    aria-expanded={isMinimalLyricsOpen}
+                  >
+                    <span>LYRICS</span>
+                    {isMinimalLyricsOpen && <span className="modern-lyrics-active-dot" />}
+                  </button>
+
+                  {isMinimalLyricsOpen && (
+                    <div
+                      className="vinyl-minimal-lyrics-flow"
+                      ref={minimalLyricsContainerRef}
+                      onScroll={handleLyricsManualScroll}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {isLyricsLoading ? (
+                        <div className="vinyl-minimal-lyrics-status">Loading lyrics...</div>
+                      ) : lyricsData?.lines && lyricsData.lines.length > 0 ? (
+                        lyricsData.lines.map((line, idx) => {
+                          const isActive = idx === activeLineIndex;
+                          const isPassed = activeLineIndex !== -1 && idx < activeLineIndex;
+                          return (
+                            <div
+                              key={idx}
+                              ref={isActive ? minimalActiveLineRef : null}
+                              className={`vinyl-minimal-lyric-line ${isActive ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (line.time !== undefined) {
+                                  handleLyricLineClick(line.time);
+                                }
+                              }}
+                              title={line.time !== undefined ? `Jump to ${formatModernTime(line.time)}` : undefined}
+                            >
+                              {line.text}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="vinyl-minimal-lyrics-status">
+                          {lyricsData?.notFound ? 'Lyrics unavailable for this track' : 'No lyrics available'}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
