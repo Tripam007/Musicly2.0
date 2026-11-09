@@ -16,7 +16,7 @@ const ARABIC_URDU_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50
 const METADATA_NOISE_REGEX = /\b(official|music|video|audio|mv|hd|4k|uhd|hq|lyric|lyrics|lyrical|visualizer|full song|full video|extended|remastered|remaster|version|album|original|soundtrack|ost|slowed|reverb|reverbed|bass boosted|8d audio|3d audio|lofi|lo-fi|remix|mix|mashup|cover|acoustic cover|unplugged|reprised|live|session|performance|raw|acoustic|teaser|trailer|clip|shorts?|edit|deluxe|t-series|tseries|zee music|sony music|speed records|yrf|tips official|saregama|svf|times music|coke studio|feat|ft|prod by|produced by|directed by|composer|singer|full|track|song|record|records)\b/gi;
 
 // Prominent Bengali artists & bands
-const BENGALI_ARTISTS = [
+export const BENGALI_ARTISTS = [
   'anupam roy', 'anupam', 'hemanta mukherjee', 'hemanta', 'sandhya mukherjee', 'sandhya',
   'rupankar bagchi', 'rupankar', 'nachiketa chakraborty', 'nachiketa', 'somlata acharyya', 
   'somlata', 'chandrabindoo', 'fossils', 'rupam islam', 'cactus', 'shironamhin', 
@@ -26,8 +26,8 @@ const BENGALI_ARTISTS = [
   'subhamita', 'kabir suman', 'salil chowdhury', 'satyaki banerjee', 'bhoomi', 'monali thakur'
 ];
 
-// Prominent Hindi / Bollywood / Classical / Hindi Pop / Indian Indie artists
-const HINDI_ARTISTS = [
+// Prominent Hindi / Bollywood / Classical / Hindi Pop / Indian Indie & Hip-Hop artists
+export const HINDI_ARTISTS = [
   'arijit singh', 'arijit', 'neha kakkar', 'jubin nautiyal', 'jubin', 'darshan raval', 
   'atif aslam', 'atif', 'rahat fateh ali khan', 'rahat fateh', 'pritam', 'sonu nigam', 
   'shreya ghoshal', 'lata mangeshkar', 'kishore kumar', 'mohammed rafi', 'mohd rafi', 
@@ -37,21 +37,50 @@ const HINDI_ARTISTS = [
   'adnan sami', 'himesh reshammiya', 'vishal dadlani', 'shekhar ravjiani', 'vishal-shekhar', 
   'shankar ehsaan loy', 'shankar mahadevan', 'sunidhi chauhan', 'amit trivedi', 'sachin-jigar', 
   'mithoon', 'rochak kohli', 'jasleen royal', 'b praak', 'b-praak', 'ammy virk', 'jassie gill', 
-  'aditya rikhari', 'vilen', 'dream note', 'the local train', 'twin strings', 'taba chake', 
+  'aditya rikhari', 'vilen', 'dream note', 'the local train', 'local train', 'twin strings', 'taba chake', 
   'osho jain', 'raghav meattle', 'sanam', 'falak shabir', 'anuradha paudwal', 'sadhana sargam', 
   'kavita krishnamurthy', 'amit kumar', 'suzonn', 'mitraz', 'chaar diwaari', 'the yellow diary', 
   'yellow diary', 'aditya a', 'ujwal', 'abdul hannan', 'hasan raheem', 'ali sethi', 'bayaan', 
   'kaavish', 'kavish', 'ronit vinta', 'shantanu pandey', 'ankur tewari', 'alif', 'faheem abdullah', 
   'bipul chettri', 'pawandeep rajan', 'arunita kanjilal', 'salman ali', 'kshitij tarey', 'kushagra',
   'badshah', 'yo yo honey singh', 'honey singh', 'ap dhillon', 'shubh', 'king', 'divine', 
+  'farak', 'parwaaz', 'karan aujla', 'sidhu moosewala', 'diljit dosanjh', 'diljit', 
+  'talha anjum', 'young stunners', 'talhah yunus', 'umair', 'gully gang',
   'raftaar', 'kr$na', 'krsna', 'seedhe maut', 'emiway bantai', 'emiway', 'mc stan', 'stan', 
   'hard kaur', 'ikka', 'lil golu', 'mika singh', 'guru randhawa', 'harrdy sandhu', 'sukh-e', 
   'the doorbeen', 'dino james', 'paradox', 'fotty seven', 'bali', 'mc square', 'gd 47', 
   'srushti tawade', 'karun', 'yungsta', 'chani nattan', 'sharn'
 ];
 
+// Indian Record Labels & Publishers
+const INDIAN_RECORD_LABELS = [
+  't-series', 'tseries', 'zee music', 'sony music india', 'yrf', 'speed records', 
+  'tips official', 'tips music', 'saregama', 'gully gang', 'mass appeal india', 
+  'desimusicfactory', 'desi music', 'white hill music', 'geet mp3', 'jjust music', 
+  'times music', 'svf', 'coke studio', 'coke studio pakistan', 'coke studio india', 'coke studio bharat',
+  'bhangra', 'punjabi', 'bollywood', 'desi', 'dhh'
+];
+
+function matchesArtist(text, artistList) {
+  if (!text) return false;
+  const t = text.toLowerCase();
+  for (const art of artistList) {
+    const a = art.toLowerCase().trim();
+    if (!a) continue;
+    if (a.includes(' ') || a.length > 4) {
+      if (t.includes(a)) return true;
+    } else {
+      const rx = new RegExp(`(?:^|[^a-z0-9])${a}(?:[^a-z0-9]|$)`, 'i');
+      if (rx.test(t)) return true;
+    }
+  }
+  return false;
+}
+
 // Prominent English / Western artists
-const ENGLISH_ARTISTS = [
+export const ENGLISH_ARTISTS = [
+  'audioslave', 'soundgarden', 'chris cornell', 'nirvana', 'pearl jam', 'linkin park', 'green day',
+  'foo fighters', 'red hot chili peppers', 'rhcp', 'metallica', 'guns n roses', 'gigi perez',
   'coldplay', 'ed sheeran', 'taylor swift', 'the weeknd', 'billie eilish', 'post malone', 
   'dua lipa', 'bruno mars', 'adele', 'justin bieber', 'maroon 5', 'imagine dragons', 
   'queen', 'the beatles', 'beatles', 'michael jackson', 'billy joel', 'oasis', 'radiohead', 
@@ -74,8 +103,8 @@ const ENGLISH_ARTISTS = [
 // Distinctive Bengali transliterated vocabulary
 const BENGALI_KEYWORDS = [
   'rabindra', 'sangeet', 'tagore', 'bengali', 'bangla', 'bangladesh', 'kolkata', 'calcutta',
-  'tumi', 'tomar', 'tomake', 'amar', 'amake', 'amader', 'ami', 'tui', 'bhalobashi', 'bhalobasa', 
-  'valobasa', 'valobasi', 'bhalobashar', 'bristi', 'brishti', 'ghat', 'majhe', 'tobo', 
+  'tumi', 'tomar', 'tomake', 'tomare', 'amar', 'amaro', 'amake', 'amader', 'ami', 'tui', 'chini', 'ami chini',
+  'bhalobashi', 'bhalobasa', 'valobasa', 'valobasi', 'bhalobashar', 'bristi', 'brishti', 'ghat', 'majhe', 'tobo', 
   'ekla', 'cholo', 'bondhu', 'bondhure', 'kotha', 'kothay', 'gaan', 'gan', 'moner', 
   'shona', 'priyo', 'bheja', 'shondha', 'akashe', 'megh', 'megher', 'poth', 'hridoy', 
   'chena', 'ojana', 'khub', 'onek', 'golpo', 'chokh', 'chokhe', 'mukhe', 'mukh', 'alo', 
@@ -94,26 +123,34 @@ const HINDI_KEYWORDS = [
   'aaj', 'dhadkan', 'aankhon', 'aankhein', 'khuda', 'tujhe', 'mujhe', 'apna', 'apni', 'apne', 
   'yaad', 'yaadein', 'baarish', 'sanam', 'chale', 'aao', 'jiyo', 'chura', 'sukoon', 'baatein', 
   'baat', 'khwabon', 'khwab', 'rooh', 'musafir', 'safarnama', 'jaana', 'bekhayali', 'shayari', 
-  'aashiqui', 'kahani', 'hawayein', 'duniya', 'raataan', 'kesariya', 'shayad', 'qaafirana', 
-  'mann', 'kehne', 'laga', 'humsafar', 'humnava', 'saajna', 'yaari', 'kasoor', 'choo', 
+  'aashiqui', 'kahani', 'kahaani', 'hawayein', 'duniya', 'raataan', 'kesariya', 'shayad', 'qaafirana', 
+  'mann', 'kehne', 'laga', 'humsafar', 'humnava', 'saajna', 'yaari', 'kasoor', 'choo', 'chhoo',
   'aaoge', 'kabhi', 'alvida', 'aadat', 'jeena', 'chahein', 'chahne', 'thodi', 'jagah', 
   'mastani', 'deewani', 'jawaani', 'bewafa', 'pachtaoge', 'channa', 'mereya', 'bulleya', 
   'zaalima', 'ranjha', 'besharam', 'rang', 'jhoome', 'pathaan', 'jawan', 'dunki', 'chaleya', 
   'satranga', 'kamleya', 'heeriye', 'baarishon', 'baarishein', 'aasman', 'mishri', 'faasle', 
   'samjho', 'dhunde', 'iraaday', 'bikhra', 'masakali', 'rehna', 'iktara', 'labon', 'beete', 
   'lamhein', 'sach', 'mitwa', 'suraj', 'maddham', 'chudiyan', 'chaiyya', 'jiya', 'satrangi', 
-  'nazneen', 'suhana', 'safar', 'mausam', 'chand', 'sitare', 'roshni', 'parwana', 'shama', 
-  'mehfil', 'dard', 'tanhai', 'intezaar', 'khamoshi', 'awaz', 'sargam', 'geet', 'nagme', 
-  'afsaana', 'fitoor', 'junoon', 'ibadat', 'rabba', 'duaa', 'marjaavaan', 'dhun', 'kudi', 
-  'munda', 'sohne', 'sohna', 'nakhre', 'ankhiyan', 'tere bina', 'tum hi', 'kuch kuch', 
+  'nazneen', 'suhana', 'safar', 'mausam', 'chand', 'sitare', 'sitara', 'roshni', 'parwana', 'shama', 
+  'mehfil', 'dard', 'tanhai', 'intezaar', 'khamoshi', 'awaz', 'awaaz', 'sargam', 'geet', 'nagme', 
+  'afsaana', 'afsanay', 'fitoor', 'junoon', 'ibadat', 'rabba', 'duaa', 'marjaavaan', 'dhun', 'kudi', 
+  'munda', 'sohne', 'sohna', 'nakhre', 'ankhiyan', 'akhiyan', 'naina', 'naino', 'tere bina', 'tum hi', 'kuch kuch', 
   'tumhare', 'hamare', 'waqt', 'kabira', 'subhanallah', 'matargashti', 'namo namo', 'ghungroo', 
   'besharam', 'lutt putt', 'bedardeya', 'filhall', 'qismat', 'jannat', 'dholna', 'shona',
   'tu', 'jo', 'paas', 'tu jo paas', 'tu jo', 'paas aao', 'dekh', 'dekha', 'dekho', 'sun', 
   'suno', 'sunona', 'bol', 'bolo', 'jaane', 'jaan', 'meri jaan', 'jaaneman', 'khudaya', 
-  'rab', 'piya', 'o re piya', 'saiyan', 'saiyaan', 'naino', 'naina', 'akhiyan', 'subah', 
-  'shaam', 'raat', 'chaand', 'sitara', 'aashiq', 'nazar', 'nazrein', 'door', 'dooriyaan', 
-  'dooriyan', 'tasveer', 'bhula', 'bhulado', 'sapna', 'sapne', 'neend', 'chain', 'bepanah', 
-  'saans', 'saansein', 'badal', 'zameen', 'falak'
+  'rab', 'piya', 'o re piya', 'saiyan', 'saiyaan', 'subah', 'shaam', 'raat', 'chaand', 
+  'aashiq', 'nazar', 'nazrein', 'door', 'dooriyaan', 'dooriyan', 'tasveer', 'bhula', 'bhulado', 
+  'sapna', 'sapne', 'neend', 'chain', 'bepanah', 'saans', 'saansein', 'badal', 'zameen', 'falak',
+  'taare', 'taarey', 'parwaaz', 'farak', 'kora', 'panna', 'kagaz', 'gully', 'asli', 'machayenge',
+  'bantai', 'raftaar', 'bholenath', 'bhole', 'mahiya', 'sohniya', 'jatti', 'jatt', 'karan',
+  'sidhu', 'moosewala', 'cheques', 'baller', 'gumaan', 'open letter', 'agency', 'sajni',
+  'choo lo', 'chhoo lo', 'khada hu aaj bhi wahi', 'kasoor', 'alhad', 'rangi saari', 'rihaee',
+  'chaar diwaari', 'mitraz', 'gulaab', 'laapata', 'kho gaye', 'chale aana', 'phir se', 'koshish',
+  'shuruat', 'khatam', 'dost', 'dosti', 'yaar', 'yaara', 'gham', 'aansu', 'hasi', 'muskurana',
+  'judaa', 'judaai', 'khoya', 'khoye', 'khona', 'milna', 'mulaqat', 'pal', 'lamha', 'zara',
+  'kaho', 'na kaho', 'tumse', 'mujhse', 'humse', 'humari', 'tumhari', 'yeh', 'woh', 'kahan',
+  'kaise', 'kyun', 'kya', 'batao', 'chupke', 'pehla', 'pehli', 'nasha', 'ishqbaazi', 'sukoon'
 ];
 
 // True English language title and lyrical keywords (avoiding generic metadata words)
@@ -136,7 +173,7 @@ const TRUE_ENGLISH_KEYWORDS = [
 
 /**
  * Detect language based on song title, artist, and optional metadata context.
- * Returns: 'Bengali' | 'Hindi' | 'English'
+ * Returns: 'Bengali' | 'Hindi' | 'English' | 'Other'
  */
 export function detectSongLanguage(title = '', artist = '', extraContext = '') {
   const rawCombined = `${title} ${artist} ${extraContext}`.trim();
@@ -165,34 +202,18 @@ export function detectSongLanguage(title = '', artist = '', extraContext = '') {
   if (/\b(bengali|bangla|rabindrasangeet|rabindra sangeet)\b/i.test(cleanForTags)) {
     return 'Bengali';
   }
-  if (/\b(hindi song|bollywood song|hindi lyrical|hindi audio)\b/i.test(cleanForTags)) {
+  if (/\b(hindi song|bollywood song|hindi lyrical|hindi audio|punjabi song|urdu song|bhangra|desi hip hop|dhh)\b/i.test(cleanForTags)) {
     return 'Hindi';
   }
   if (/\b(spanish|japanese|korean|french|italian|german|portuguese|latin|anime|city pop|russian|other language)\b/i.test(cleanForTags)) {
     return 'Other';
   }
 
-  // 3. Artist Matching (Strong confidence)
-  const artistLower = (artist || '').toLowerCase().trim();
-  const rawCombinedLower = cleanForTags;
-
-  // Check Bengali Artists
-  for (const bArt of BENGALI_ARTISTS) {
-    if (artistLower.includes(bArt) || rawCombinedLower.includes(bArt)) {
-      return 'Bengali';
-    }
-  }
-
-  // Check English Artists
-  for (const eArt of ENGLISH_ARTISTS) {
-    if (artistLower.includes(eArt) || rawCombinedLower.includes(eArt)) {
-      return 'English';
-    }
-  }
-
-  // Check Hindi Artists
-  for (const hArt of HINDI_ARTISTS) {
-    if (artistLower.includes(hArt) || rawCombinedLower.includes(hArt)) {
+  // 3. Indian Record Labels & Publishers Check
+  for (const label of INDIAN_RECORD_LABELS) {
+    if (cleanForTags.includes(label)) {
+      // If it's a Bengali-specific record label
+      if (label === 'svf') return 'Bengali';
       return 'Hindi';
     }
   }
@@ -221,14 +242,40 @@ export function detectSongLanguage(title = '', artist = '', extraContext = '') {
     if (k.includes(' ') && cleanCombined.includes(k)) hindiScore += 3;
   }
 
-  // Bengali evaluation
+  // If title has decisive Bengali words, it's Bengali regardless of whether artist also sings Hindi
   if (bengaliScore > 0 && bengaliScore >= hindiScore && bengaliScore >= englishScore) {
     return 'Bengali';
   }
 
-  // Hindi vs English
+  // 5. Artist Matching (Using safe boundary-checked matching)
+  if (matchesArtist(cleanForTags, BENGALI_ARTISTS)) {
+    return 'Bengali';
+  }
+  if (matchesArtist(cleanForTags, HINDI_ARTISTS)) {
+    return 'Hindi';
+  }
+  if (matchesArtist(cleanForTags, ENGLISH_ARTISTS)) {
+    return 'English';
+  }
+
+  // Hindi vs English scoring evaluation
   if (hindiScore > 0 && hindiScore >= englishScore) {
     return 'Hindi';
+  }
+
+  if (englishScore > 0 && englishScore > hindiScore) {
+    return 'English';
+  }
+
+  // Contextual fallback checks
+  if (/\b(hindi|punjabi|bollywood|bhangra|desi|urdu|dhh|ghazal)\b/i.test(cleanForTags)) {
+    return 'Hindi';
+  }
+  if (/\b(bangla|bengali|rabindra)\b/i.test(cleanForTags)) {
+    return 'Bengali';
+  }
+  if (/\b(spanish|japanese|korean|french|latin|anime|city pop)\b/i.test(cleanForTags)) {
+    return 'Other';
   }
 
   return 'English';
@@ -241,12 +288,19 @@ const SECTION_KEYWORDS = {
     'sd burman', 'kishore kumar', 'kishore', 'mohd rafi', 'mohammed rafi', 'rafi', 'lata mangeshkar', 'lata', 'mukesh', 
     'asha bhosle', 'asha', 'bappi lahiri', 'bappi', 'queen', 'beatles', 'the beatles', 'abba', 
     'elvis', 'michael jackson', 'madonna', 'synth-pop', 'classic rock', 'golden era', 
-    'purane gaane', 'purane', 'purana', 'evergreen', 'ghazal', 'jagjit singh', 'pankaj udhas',
-    'kumar sanu', 'alka yagnik', 'udit narayan', 'anuradha paudwal', 'old bollywood', 'retro vibes'
+    'purane gaane', 'purane', 'purana', 'evergreen', 'kumar sanu', 'alka yagnik', 'udit narayan', 
+    'anuradha paudwal', 'old bollywood', 'retro vibes', 'audioslave', 'soundgarden', 'chris cornell', 
+    'nirvana', 'pearl jam', 'linkin park', 'green day', 'foo fighters', 'red hot chili peppers', 'rhcp', 
+    'metallica', 'guns n roses', 'led zeppelin', 'pink floyd', 'lynyrd skynyrd', 'free bird', 'like a stone',
+    'black hole sun', 'smells like teen spirit', 'californication', 'in the end', 'numb'
   ],
   'Indie': [
     'indie', 'acoustic', 'unplugged', 'guitar', 'folk', 'singer-songwriter', 'singer', 'songwriter',
     'indie rock', 'indie pop', 'indie folk', 'alternative', 'alt rock', 'romantic', 'love', 'ballad',
+    'hiphop', 'hip hop', 'hip-hop', 'rap', 'rapper', 'trap', 'drill', 'r&b', 'pop', 'punjabi',
+    'desi hip hop', 'dhh', 'gully gang', 'divine', 'farak', 'taare', 'parwaaz', 'kora panna', 'kora', 'panna',
+    'seedhe maut', 'krsna', 'emiway', 'badshah', 'honey singh', 'shubh', 'karan aujla', 'sidhu moosewala', 
+    'diljit', 'mc stan', 'raftaar', 'hustle', 'mtv hustle', 'kaanphod', 'mashooriya', 'gigi perez', 'sailor song',
     'mann', 'kehne', 'laga', 'dil', 'ishq', 'pyar', 'pyaar', 'mohabbat', 'humsafar', 'humnava', 'tere',
     'meri', 'deewana', 'saajna', 'khuda', 'yaari', 'coke studio', 'session', 'unplug', 'cover', 'reprised',
     't-series', 'tseries', 'zee music', 'sony music', 'speed records', 'arijit singh', 'arijit', 
@@ -283,7 +337,7 @@ const SECTION_KEYWORDS = {
     'lofi', 'lo-fi', 'lo fi', 'chillhop', 'jazzhop', 'boom bap', 'lofi girl', 'chilledcow', 
     'lofi hip hop', 'lofi beats', 'lofi remix', 'lofi study', 'sleepy fish', 'potsu', 
     'jinsang', 'kupla', 'idealism', 'slowed', 'reverb', 'slowed reverb', 'reverbed', 
-    'coffee beats', 'chill beats', 'bedroom pop', 'aesthetic'
+    'coffee beats', 'chill beats'
   ],
   'Country': [
     'country', 'country music', 'nashville', 'bluegrass', 'americana', 'western', 'cowboy', 'banjo',
@@ -345,10 +399,10 @@ export function detectSongSections(title = '', artist = '', currentGenre = 'All'
   }
 
   // If in a specific genre category other than 'All', default to it
-  if (currentGenre && currentGenre !== 'All' && ['Retro', 'Indie', 'Lo-Fi', 'Synthwave', 'Peace', 'Chill/Sleep'].includes(currentGenre)) {
+  if (currentGenre && currentGenre !== 'All' && ['Retro', 'Indie', 'Lo-Fi', 'Synthwave', 'Peace', 'Chill/Sleep', 'Country', 'Ghazal', 'Rabindra Sangeet'].includes(currentGenre)) {
     return [currentGenre];
   }
 
-  // Universal cozy fallback
-  return ['Lo-Fi'];
+  // Universal neutral fallback (Indie fits standard contemporary music and vocals, reserving Lo-Fi for true beats)
+  return ['Indie'];
 }

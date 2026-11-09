@@ -141,9 +141,17 @@ export default function AdminDashboardModal({
   const handleStartAddStreamTrack = (streamTrack) => {
     if (addedTrackIds.has(streamTrack.id)) return;
 
-    const chosenSections = Array.isArray(streamTrack.genres) && streamTrack.genres.length > 0 
+    const detectedLang = (streamTrack.language && streamTrack.language !== 'English')
+      ? streamTrack.language
+      : detectSongLanguage(streamTrack.title, streamTrack.artist, `${streamTrack.rawTitle || ''} ${streamTrack.channelName || ''}`);
+
+    let chosenSections = Array.isArray(streamTrack.genres) && streamTrack.genres.length > 0 
       ? streamTrack.genres 
-      : (streamTrack.genre ? [streamTrack.genre] : ['Lo-Fi']);
+      : (streamTrack.genre ? [streamTrack.genre] : []);
+
+    if (chosenSections.length === 0 || (chosenSections.length === 1 && chosenSections[0] === 'Lo-Fi' && !/\blofi\b|\blo-fi\b/i.test(`${streamTrack.title} ${streamTrack.artist}`))) {
+      chosenSections = detectSongSections(streamTrack.title, streamTrack.artist, 'All');
+    }
 
     setEditingTrack({
       ...streamTrack,
@@ -152,8 +160,8 @@ export default function AdminDashboardModal({
     });
     setEditTitle(streamTrack.title || '');
     setEditArtist(streamTrack.artist || 'YouTube Artist');
-    setEditSections(chosenSections);
-    setEditLanguage(streamTrack.language || 'English');
+    setEditSections(chosenSections.length > 0 ? chosenSections : ['Indie']);
+    setEditLanguage(detectedLang || 'English');
     setEditAudioUrl(streamTrack.audioUrl || (streamTrack.youtubeId ? `https://www.youtube.com/watch?v=${streamTrack.youtubeId}` : ''));
     setEditFileObject(null);
     setEditFileError('');
@@ -813,8 +821,19 @@ export default function AdminDashboardModal({
     setEditingTrack(track);
     setEditTitle(track.title || '');
     setEditArtist(track.artist || '');
-    setEditSections(Array.isArray(track.genres) && track.genres.length > 0 ? track.genres : [track.genre || 'Lo-Fi']);
-    setEditLanguage(track.language || 'English');
+
+    const detectedLang = (track.language && track.language !== 'English')
+      ? track.language
+      : detectSongLanguage(track.title, track.artist, `${track.rawTitle || ''}`);
+
+    let sections = Array.isArray(track.genres) && track.genres.length > 0 ? track.genres : [track.genre || ''];
+    sections = sections.filter(Boolean);
+    if (sections.length === 0 || (sections.length === 1 && sections[0] === 'Lo-Fi' && !/\blofi\b|\blo-fi\b/i.test(`${track.title} ${track.artist}`))) {
+      sections = detectSongSections(track.title, track.artist, 'All');
+    }
+
+    setEditSections(sections.length > 0 ? sections : ['Indie']);
+    setEditLanguage(detectedLang || 'English');
     setEditAudioUrl(track.audioUrl || (track.youtubeId ? `https://www.youtube.com/watch?v=${track.youtubeId}` : ''));
     setEditFileObject(null);
     setEditFileError('');

@@ -53,6 +53,7 @@ import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, delet
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
 import { resolveOriginalTrack, resolveTrackAudioStreamAsync, isDirectPlayableAudio } from './utils/originalTrackResolver';
 import { deduplicateTracks, findDuplicateTrack } from './utils/trackDeduplicator';
+import { detectSongLanguage, detectSongSections } from './utils/languageDetector';
 import { auth, functions, onAuthStateChanged, signOut } from './firebase';
 import { 
   purgeLegacyAudioSettings, 
@@ -467,18 +468,18 @@ export default function App() {
       if (cleanGenres.length === 0 && t.genre && t.genre.toLowerCase() !== 'custom') {
         cleanGenres = t.genre.split(',').map(s => s.trim()).filter(g => g && g.toLowerCase() !== 'custom');
       }
-      if (cleanGenres.length === 0) {
-        const combined = `${t.title || ''} ${t.artist || ''}`.toLowerCase();
-        if (combined.includes('piano man') || combined.includes('american pie') || combined.includes('billy joel') || combined.includes('mclean') || combined.includes('queen') || combined.includes('beatles')) {
-          cleanGenres = ['Retro'];
-        } else {
-          cleanGenres = ['Lo-Fi'];
-        }
+      if (cleanGenres.length === 0 || (cleanGenres.length === 1 && cleanGenres[0] === 'Lo-Fi' && !/\blofi\b|\blo-fi\b/i.test(`${t.title} ${t.artist}`))) {
+        cleanGenres = detectSongSections(t.title, t.artist, 'All');
       }
+
+      const finalLang = (t.language && t.language !== 'English') 
+        ? t.language 
+        : detectSongLanguage(t.title, t.artist);
+
       return {
         ...t,
         isCustom: true,
-        language: t.language || 'English',
+        language: finalLang || 'English',
         genres: cleanGenres,
         genre: cleanGenres.join(', ')
       };
@@ -1992,11 +1993,18 @@ export default function App() {
     if (cleanGenres.length === 0 && newTrack.genre && newTrack.genre.toLowerCase() !== 'custom') {
       cleanGenres = newTrack.genre.split(',').map(s => s.trim()).filter(g => g && g.toLowerCase() !== 'custom');
     }
-    if (cleanGenres.length === 0) cleanGenres = ['Lo-Fi'];
+    if (cleanGenres.length === 0 || (cleanGenres.length === 1 && cleanGenres[0] === 'Lo-Fi' && !/\blofi\b|\blo-fi\b/i.test(`${newTrack.title} ${newTrack.artist}`))) {
+      cleanGenres = detectSongSections(newTrack.title, newTrack.artist, 'All');
+    }
     const cleanGenre = cleanGenres.join(', ');
+
+    const detectedLang = (newTrack.language && newTrack.language !== 'English')
+      ? newTrack.language
+      : detectSongLanguage(newTrack.title, newTrack.artist);
 
     const userTrack = {
       ...newTrack,
+      language: detectedLang || 'English',
       genres: cleanGenres,
       genre: cleanGenre,
       userId: (user && !user.isAnonymous) ? user.uid : 'guest',

@@ -1,6 +1,64 @@
 // Vercel Serverless Function: /api/youtube-search
 // High-performance YouTube Audio Stream & Search Recommendations Engine
 
+const KNOWN_ARTISTS = new Set([
+  'divine', 'farak', 'arijit singh', 'arijit', 'neha kakkar', 'jubin nautiyal', 'jubin', 'darshan raval', 
+  'atif aslam', 'atif', 'sonu nigam', 'shreya ghoshal', 'lata mangeshkar', 'kishore kumar', 'mohammed rafi', 
+  'prateek kuhad', 'anuv jain', 'zaeden', 'jagjit singh', 'pankaj udhas', 'nusrat fateh ali khan', 'kk', 
+  'lucky ali', 'badshah', 'honey singh', 'ap dhillon', 'shubh', 'king', 'karan aujla', 'sidhu moosewala', 
+  'diljit dosanjh', 'diljit', 'talha anjum', 'young stunners', 'raftaar', 'krsna', 'kr$na', 'seedhe maut', 
+  'emiway bantai', 'emiway', 'mc stan', 'guru randhawa', 'coldplay', 'ed sheeran', 'taylor swift', 
+  'the weeknd', 'billie eilish', 'post malone', 'dua lipa', 'bruno mars', 'adele', 'justin bieber', 
+  'maroon 5', 'imagine dragons', 'queen', 'beatles', 'the beatles', 'michael jackson', 'radiohead', 
+  'oasis', 'arctic monkeys', 'nirvana', 'linkin park', 'audioslave', 'soundgarden', 'chris cornell', 
+  'foo fighters', 'green day', 'red hot chili peppers', 'rhcp', 'metallica', 'guns n roses', 'led zeppelin', 
+  'pink floyd', 'lynyrd skynyrd', 'frank sinatra', 'gigi perez', 'john denver', 'luke combs', 'johnny cash',
+  'lofi girl', 'chillhop music', 'soothing relaxation', 'cafe music bgm'
+]);
+
+function disambiguateTitleAndArtist(part1, part2, channelName = '') {
+  const p1 = part1.trim();
+  const p2 = part2.trim();
+  const p1Low = p1.toLowerCase();
+  const p2Low = p2.toLowerCase();
+  const chanClean = channelName.toLowerCase().replace(/vevo|official|channel|records|music|media|- topic/g, '').trim();
+
+  // 1. Explicit collaboration tags in one of the parts
+  if (/\b(feat\.?|ft\.?|featuring|prod\.?|with)\b/i.test(p2) && !/\b(feat\.?|ft\.?|featuring)\b/i.test(p1)) {
+    return { artist: p2, title: p1 };
+  }
+  if (/\b(feat\.?|ft\.?|featuring|prod\.?|with)\b/i.test(p1) && !/\b(feat\.?|ft\.?|featuring)\b/i.test(p2)) {
+    return { artist: p1, title: p2 };
+  }
+
+  // 2. Channel match
+  if (chanClean) {
+    const chanMatch1 = chanClean.includes(p1Low) || p1Low.includes(chanClean);
+    const chanMatch2 = chanClean.includes(p2Low) || p2Low.includes(chanClean);
+    if (chanMatch2 && !chanMatch1) {
+      return { artist: p2, title: p1 };
+    }
+    if (chanMatch1 && !chanMatch2) {
+      return { artist: p1, title: p2 };
+    }
+  }
+
+  // 3. Known artist match
+  const isP1Artist = KNOWN_ARTISTS.has(p1Low) || Array.from(KNOWN_ARTISTS).some(a => a.length > 3 && p1Low === a);
+  const isP2Artist = KNOWN_ARTISTS.has(p2Low) || Array.from(KNOWN_ARTISTS).some(a => a.length > 3 && p2Low === a);
+
+  // If part2 is divine, audioslave, coldplay etc and part1 is a track name like farak, like a stone
+  if (isP2Artist && !isP1Artist) {
+    return { artist: p2, title: p1 };
+  }
+  if (isP1Artist && !isP2Artist) {
+    return { artist: p1, title: p2 };
+  }
+
+  // Default: Artist - Title
+  return { artist: p1, title: p2 };
+}
+
 export default async function handler(req, res) {
   // Enable CORS for all incoming requests
   res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -131,8 +189,9 @@ async function handleSearch(searchQuery, userRawQuery, res) {
         let cleanArtist = channelName.replace(/\s*-\s*Topic$/i, '').trim() || 'YouTube Artist';
         const sepMatch = cleanTitle.match(/^(.+?)\s*(?:[-–—:~]|(?:\s+by\s+))\s*(.+)$/i);
         if (sepMatch) {
-          cleanArtist = sepMatch[1].trim();
-          cleanTitle = sepMatch[2].trim();
+          const disambiguated = disambiguateTitleAndArtist(sepMatch[1], sepMatch[2], channelName);
+          cleanArtist = disambiguated.artist;
+          cleanTitle = disambiguated.title;
         }
 
         const candidateTitle = cleanTitle || rawTitle;
@@ -191,6 +250,7 @@ async function handleSearch(searchQuery, userRawQuery, res) {
           youtubeId: v.videoId,
           title: candidateTitle,
           rawTitle,
+          channelName,
           artist: cleanArtist,
           duration: durationSec,
           durationText,

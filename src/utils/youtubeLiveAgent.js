@@ -4,8 +4,9 @@
  * and enables audio-only playback and 1-click importing to Musicly Public Library.
  */
 
-import { parseYouTubeTitle } from './trackParser';
-import { extractYouTubeId } from './youtubePlayer';
+import { parseYouTubeTitle } from './trackParser.js';
+import { extractYouTubeId } from './youtubePlayer.js';
+import { detectSongLanguage, detectSongSections } from './languageDetector.js';
 
 // Curated high-fidelity 24/7 Live Stream fallbacks & presets
 export const LIVE_STREAM_PRESETS = [
@@ -108,53 +109,27 @@ export const LIVE_STREAM_PRESETS = [
 ];
 
 /**
- * Infer Genre and Language tags from track title and artist
+ * Infer Genre and Language tags accurately from track title, artist, and rich YouTube metadata
  */
-export function inferTrackMetadata(title = '', artist = '') {
-  const text = `${title} ${artist}`.toLowerCase();
-  
-  let genre = 'Lo-Fi';
-  let genres = ['Lo-Fi'];
-  let language = 'English';
+export function inferTrackMetadata(title = '', artist = '', extraContext = '') {
+  const combinedContext = `${extraContext || ''} ${title || ''} ${artist || ''}`;
+  const language = detectSongLanguage(title, artist, combinedContext);
+  const detectedSections = detectSongSections(title, artist, 'All');
 
-  if (text.includes('ghazal')) {
-    genre = 'Ghazal';
-    genres = ['Ghazal', 'Retro'];
-    language = 'Hindi';
-  } else if (text.includes('rabindra') || text.includes('sangeet') || text.includes('tagore')) {
-    genre = 'Rabindra Sangeet';
-    genres = ['Rabindra Sangeet', 'Peace'];
-    language = 'Bengali';
-  } else if (text.includes('country') || text.includes('nashville') || text.includes('bluegrass')) {
-    genre = 'Country';
-    genres = ['Country', 'Indie'];
-    language = 'English';
-  } else if (text.includes('sleep') || text.includes('relax') || text.includes('meditation') || text.includes('rain') || text.includes('deep sleep')) {
-    genre = 'Chill/Sleep';
-    genres = ['Chill/Sleep', 'Peace'];
-  } else if (text.includes('synth') || text.includes('retro') || text.includes('80s') || text.includes('vaporwave') || text.includes('cyberpunk')) {
-    genre = 'Retro';
-    genres = ['Retro', 'Synthwave'];
-  } else if (text.includes('piano') || text.includes('acoustic') || text.includes('instrumental') || text.includes('guitar')) {
-    genre = 'Peace';
-    genres = ['Peace', 'Indie'];
-  } else if (text.includes('rock') || text.includes('live concert') || text.includes('band') || text.includes('coldplay')) {
-    genre = 'Retro';
-    genres = ['Retro', 'Indie'];
-  } else if (text.includes('indie') || text.includes('folk')) {
-    genre = 'Indie';
-    genres = ['Indie', 'Lo-Fi'];
+  let genres = (Array.isArray(detectedSections) && detectedSections.length > 0)
+    ? detectedSections
+    : (language === 'Hindi' || language === 'Bengali' ? ['Indie'] : ['Retro']);
+
+  const cLow = combinedContext.toLowerCase();
+  if (language === 'Hindi' && /ghazal/i.test(cLow) && !genres.includes('Ghazal')) {
+    genres = ['Ghazal', ...genres.filter(g => g !== 'Ghazal')];
+  } else if (language === 'Bengali' && /rabindra|tagore/i.test(cLow) && !genres.includes('Rabindra Sangeet')) {
+    genres = ['Rabindra Sangeet', ...genres.filter(g => g !== 'Rabindra Sangeet')];
+  } else if (language === 'English' && /country|nashville|bluegrass/i.test(cLow) && !genres.includes('Country')) {
+    genres = ['Country', ...genres.filter(g => g !== 'Country')];
   }
 
-  // Language inference
-  if (text.includes('hindi') || text.includes('bollywood') || text.includes('arijit') || text.includes('shreya') || text.includes('ghazal')) {
-    language = 'Hindi';
-  } else if (text.includes('bengali') || text.includes('bangla') || text.includes('rabindra')) {
-    language = 'Bengali';
-  } else if (text.includes('instrumental') || text.includes('piano') || text.includes('ambient') || text.includes('bgm')) {
-    language = 'Instrumental';
-  }
-
+  const genre = genres[0] || (language === 'Hindi' || language === 'Bengali' ? 'Indie' : 'Retro');
   return { genre, genres, language };
 }
 
@@ -167,7 +142,7 @@ export async function fetchLiveStreamRecommendations(query = '') {
   // If a direct YouTube link is provided, parse the ID directly
   const directYtId = extractYouTubeId(cleanQ);
   if (directYtId) {
-    const { genre, genres, language } = inferTrackMetadata(cleanQ, 'YouTube Artist');
+    const { genre, genres, language } = inferTrackMetadata(cleanQ, 'YouTube Artist', cleanQ);
     return [
       {
         id: `yt-${directYtId}`,
@@ -206,7 +181,8 @@ export async function fetchLiveStreamRecommendations(query = '') {
     const data = await res.json();
     if (Array.isArray(data.results) && data.results.length > 0) {
       return data.results.map(item => {
-        const { genre, genres, language } = inferTrackMetadata(item.title, item.artist);
+        const extraContext = `${item.rawTitle || ''} ${item.channelName || ''} ${cleanQ}`.trim();
+        const { genre, genres, language } = inferTrackMetadata(item.title, item.artist, extraContext);
         return {
           ...item,
           genre,

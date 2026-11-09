@@ -3,6 +3,55 @@
  * Cleans titles, extracts artist names, and fetches YouTube oEmbed metadata.
  */
 
+import { HINDI_ARTISTS, ENGLISH_ARTISTS, BENGALI_ARTISTS } from './languageDetector.js';
+
+const KNOWN_ARTISTS_SET = new Set([
+  ...HINDI_ARTISTS,
+  ...ENGLISH_ARTISTS,
+  ...BENGALI_ARTISTS
+]);
+
+export function disambiguateTitleAndArtist(part1, part2, channelName = '') {
+  const p1 = (part1 || '').trim();
+  const p2 = (part2 || '').trim();
+  const p1Low = p1.toLowerCase();
+  const p2Low = p2.toLowerCase();
+  const chanClean = (channelName || '').toLowerCase().replace(/vevo|official|channel|records|music|media|- topic/g, '').trim();
+
+  // 1. Explicit collaboration tags
+  if (/\b(feat\.?|ft\.?|featuring|prod\.?|with)\b/i.test(p2) && !/\b(feat\.?|ft\.?|featuring)\b/i.test(p1)) {
+    return { artist: p2, title: p1 };
+  }
+  if (/\b(feat\.?|ft\.?|featuring|prod\.?|with)\b/i.test(p1) && !/\b(feat\.?|ft\.?|featuring)\b/i.test(p2)) {
+    return { artist: p1, title: p2 };
+  }
+
+  // 2. Channel match
+  if (chanClean) {
+    const chanMatch1 = chanClean.includes(p1Low) || p1Low.includes(chanClean);
+    const chanMatch2 = chanClean.includes(p2Low) || p2Low.includes(chanClean);
+    if (chanMatch2 && !chanMatch1) {
+      return { artist: p2, title: p1 };
+    }
+    if (chanMatch1 && !chanMatch2) {
+      return { artist: p1, title: p2 };
+    }
+  }
+
+  // 3. Known artist match
+  const isP1Artist = KNOWN_ARTISTS_SET.has(p1Low) || Array.from(KNOWN_ARTISTS_SET).some(a => a.length > 3 && p1Low === a);
+  const isP2Artist = KNOWN_ARTISTS_SET.has(p2Low) || Array.from(KNOWN_ARTISTS_SET).some(a => a.length > 3 && p2Low === a);
+
+  if (isP2Artist && !isP1Artist) {
+    return { artist: p2, title: p1 };
+  }
+  if (isP1Artist && !isP2Artist) {
+    return { artist: p1, title: p2 };
+  }
+
+  return { artist: p1, title: p2 };
+}
+
 export function parseAudioFilename(filename) {
   if (!filename) return { title: '', artist: 'Musicly Artist' };
 
@@ -20,8 +69,9 @@ export function parseAudioFilename(filename) {
   const separatorMatch = clean.match(/^(.+?)\s*(?:[-–—:~]|(?:\s+by\s+))\s*(.+)$/i);
 
   if (separatorMatch) {
-    detectedArtist = separatorMatch[1].trim();
-    detectedTitle = separatorMatch[2].trim();
+    const disambiguated = disambiguateTitleAndArtist(separatorMatch[1], separatorMatch[2]);
+    detectedArtist = disambiguated.artist;
+    detectedTitle = disambiguated.title;
   }
 
   return {
@@ -46,9 +96,10 @@ export function parseYouTubeTitle(rawTitle, channelName) {
   const sepMatch = clean.match(/^(.+?)\s*(?:[-–—:~]|(?:\s+by\s+))\s*(.+)$/i);
 
   if (sepMatch) {
+    const disambiguated = disambiguateTitleAndArtist(sepMatch[1], sepMatch[2], channelName);
     return {
-      artist: sepMatch[1].trim(),
-      title: sepMatch[2].trim()
+      artist: disambiguated.artist,
+      title: disambiguated.title
     };
   }
 
