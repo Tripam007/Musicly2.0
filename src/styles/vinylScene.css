@@ -4813,14 +4813,16 @@
   z-index: 10;
 }
 
-/* Motion Blur on Header during Gym Mode */
-.vinyl-scene-root.is-gym-mode-active .vinyl-top-header {
-  filter: blur(3.5px);
-  opacity: 0.7;
+/* Motion Blur on Header & Left Navigation Rail during Gym Mode */
+.vinyl-scene-root.is-gym-mode-active .vinyl-top-header,
+.vinyl-scene-root.is-gym-mode-active .vinyl-nav-rail {
+  filter: blur(4px);
+  opacity: 0.65;
   transition: filter 0.6s ease, opacity 0.6s ease;
 }
 
-.vinyl-scene-root.is-gym-mode-active .vinyl-top-header:hover {
+.vinyl-scene-root.is-gym-mode-active .vinyl-top-header:hover,
+.vinyl-scene-root.is-gym-mode-active .vinyl-nav-rail:hover {
   filter: blur(0px) !important;
   opacity: 1 !important;
 }
@@ -4887,7 +4889,8 @@
 }
 
 .vinyl-scene-root.is-smoothly-exiting .vinyl-top-header,
-.vinyl-scene-root.is-smoothly-exiting .vinyl-content-column {
+.vinyl-scene-root.is-smoothly-exiting .vinyl-content-column,
+.vinyl-scene-root.is-smoothly-exiting .vinyl-nav-rail {
   filter: blur(0px) !important;
   opacity: 1 !important;
   transition: filter 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
