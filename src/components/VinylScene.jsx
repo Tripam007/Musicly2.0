@@ -188,6 +188,29 @@ export default function VinylScene({
     }
   });
 
+  // Persistent tracking for custom reordered sequence of tracks in any playlist (editorial or user)
+  const [playlistTrackOrders, setPlaylistTrackOrders] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('musicly_playlist_track_orders') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  // Reorder helper that applies saved custom track sequences to any playlist
+  const sortTracksByCustomOrder = useCallback((playlistId, tracks) => {
+    if (!tracks || tracks.length <= 1) return tracks;
+    const customOrder = playlistTrackOrders[playlistId];
+    if (!Array.isArray(customOrder) || customOrder.length === 0) return tracks;
+    const orderMap = new Map();
+    customOrder.forEach((id, idx) => orderMap.set(id, idx));
+    return [...tracks].sort((a, b) => {
+      const aOrder = orderMap.has(a.id) ? orderMap.get(a.id) : 999999;
+      const bOrder = orderMap.has(b.id) ? orderMap.get(b.id) : 999999;
+      return aOrder - bOrder;
+    });
+  }, [playlistTrackOrders]);
+
   // Cross-component Drag and Drop States for Queue & Playlists
   const [draggedTrackData, setDraggedTrackData] = useState(null);
   const [isQueueTabDragOver, setIsQueueTabDragOver] = useState(false);
@@ -417,17 +440,31 @@ export default function VinylScene({
   // Reorder Songs inside Playlist Modal via Drag and Drop
   const handlePlaylistTracksReorder = useCallback((fromIndex, toIndex) => {
     if (!selectedCustomPlaylist || fromIndex === toIndex || fromIndex === null || toIndex === null) return;
-    const reorderedTracks = [...(selectedCustomPlaylist.tracks || [])];
+    const currentTracks = selectedCustomPlaylist.tracks || [];
+    if (fromIndex < 0 || fromIndex >= currentTracks.length || toIndex < 0 || toIndex >= currentTracks.length) return;
+
+    const reorderedTracks = [...currentTracks];
     const [movedTrack] = reorderedTracks.splice(fromIndex, 1);
     reorderedTracks.splice(toIndex, 0, movedTrack);
     const newTrackIds = reorderedTracks.map(t => t.id);
 
+    // 1. Immediately update open modal playlist view
     setSelectedCustomPlaylist(prev => ({
       ...prev,
       tracks: reorderedTracks,
       trackIds: newTrackIds
     }));
 
+    // 2. Persist custom sequence across restarts and tab switches
+    setPlaylistTrackOrders(prev => {
+      const next = { ...prev, [selectedCustomPlaylist.id]: newTrackIds };
+      try {
+        localStorage.setItem('musicly_playlist_track_orders', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
+    // 3. Sync with user playlists or public playlists
     if (selectedCustomPlaylist.isCustom) {
       const updated = customPlaylists.map(p => {
         if (p.id === selectedCustomPlaylist.id) {
@@ -537,6 +574,16 @@ export default function VinylScene({
         }));
       }
     }
+
+    setPlaylistTrackOrders(prev => {
+      if (!prev[playlistId]) return prev;
+      const next = { ...prev, [playlistId]: (prev[playlistId] || []).filter(id => id !== trackId) };
+      try {
+        localStorage.setItem('musicly_playlist_track_orders', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
     playClickSound('light');
   };
 
@@ -591,6 +638,16 @@ export default function VinylScene({
         }));
       }
     }
+
+    setPlaylistTrackOrders(prev => {
+      if (!prev[playlistId]) return prev;
+      const next = { ...prev, [playlistId]: (prev[playlistId] || []).filter(id => id !== trackId) };
+      try {
+        localStorage.setItem('musicly_playlist_track_orders', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+
     playClickSound('light');
   };
 
@@ -1049,11 +1106,13 @@ export default function VinylScene({
 
     const getFilteredPlaylistTracks = (playlistId, rawTracks) => {
       const excluded = excludedTrackIdsByPlaylist[playlistId] || [];
-      return filterTracksByLang(rawTracks.filter(t => !excluded.includes(t.id)));
+      const filtered = filterTracksByLang(rawTracks.filter(t => !excluded.includes(t.id)));
+      return sortTracksByCustomOrder(playlistId, filtered);
     };
 
     // 1. Liked Songs Playlist
-    const liked = filterTracksByLang(allTracks.filter(t => favorites.includes(t.id)));
+    const likedRaw = filterTracksByLang(allTracks.filter(t => favorites.includes(t.id)));
+    const liked = sortTracksByCustomOrder('liked_songs', likedRaw);
     playlists.push({
       id: 'liked_songs',
       title: 'Liked Songs',
@@ -1217,7 +1276,9 @@ export default function VinylScene({
     // 6. User's Own Playlists (Strictly Private to the logged-in User's Account)
     if (Array.isArray(customPlaylists)) {
       customPlaylists.forEach(cp => {
-        const cpTracks = filterTracksByLang(allTracks.filter(t => (cp.trackIds || []).includes(t.id)));
+        const trackMap = new Map(allTracks.map(t => [t.id, t]));
+        const orderedFromIds = (cp.trackIds || []).map(id => trackMap.get(id)).filter(Boolean);
+        const cpTracks = sortTracksByCustomOrder(cp.id, filterTracksByLang(orderedFromIds));
         playlists.push({
           id: cp.id,
           title: cp.title,
@@ -1233,7 +1294,7 @@ export default function VinylScene({
     }
 
     return playlists.filter(p => !deletedPlaylistIds.includes(p.id));
-  }, [allTracks, favorites, activeLanguages, customPlaylists, publicPlaylists, filterTracksByLang, deletedPlaylistIds, excludedTrackIdsByPlaylist]);
+  }, [allTracks, favorites, activeLanguages, customPlaylists, publicPlaylists, filterTracksByLang, deletedPlaylistIds, excludedTrackIdsByPlaylist, playlistTrackOrders, sortTracksByCustomOrder]);
 
   // Playlist Source Choice: 'musicly' (default) | 'custom' | 'all'
   const [playlistSourceMode, setPlaylistSourceMode] = useState('musicly');
@@ -2555,12 +2616,6 @@ export default function VinylScene({
                     <h2 className="vinyl-section-title">
                       {carouselViewMode === 'queue' ? 'UP NEXT QUEUE' : 'MUSIC CATEGORIES'}
                     </h2>
-                    {carouselViewMode === 'queue' && (
-                      <span className="vinyl-queue-drag-hint-pill" title="Drag cards horizontally to reorder playback queue">
-                        <GripVertical size={13} />
-                        Drag to reorder
-                      </span>
-                    )}
                   </div>
 
                   {/* Section Mode Switcher Tabs */}
@@ -2696,7 +2751,7 @@ export default function VinylScene({
                       >
                         <span>No upcoming tracks in queue.</span>
                         <p style={{ margin: '4px 0 10px 0', fontSize: '0.85rem', color: '#a09a8f' }}>
-                          Drag any song card here or click below to browse.
+                          Click below to browse songs.
                         </p>
                         <button
                           type="button"
@@ -3689,15 +3744,17 @@ export default function VinylScene({
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {selectedCustomPlaylist.tracks.map((track, idx) => {
-                      const isCurrentPlaying = currentTrack?.id === track.id && isPlaying;
+                      const isCurrent = currentTrack?.id === track.id;
+                      const isTrackPlaying = isCurrent && isPlaying;
                       return (
                         <div
                           key={track.id}
-                          className={`vinyl-playlist-track-row ${isCurrentPlaying ? 'is-active' : ''} ${draggedModalTrackIndex === idx ? 'is-dragging' : ''} ${modalTrackDropTargetIndex === idx ? 'is-drop-target' : ''}`}
+                          className={`vinyl-playlist-track-row ${isCurrent ? 'is-current' : ''} ${isTrackPlaying ? 'is-playing' : ''} ${draggedModalTrackIndex === idx ? 'is-dragging' : ''} ${modalTrackDropTargetIndex === idx ? 'is-drop-target' : ''}`}
                           draggable={true}
                           onDragStart={(e) => {
+                            e.dataTransfer.setData('text/plain', String(idx));
                             e.dataTransfer.setData('application/json', JSON.stringify({ type: 'musicly_track', track, index: idx }));
-                            e.dataTransfer.effectAllowed = 'copyMove';
+                            e.dataTransfer.effectAllowed = 'move';
                             setDraggedTrackData(track);
                             setDraggedModalTrackIndex(idx);
                             playClickSound('light');
@@ -3705,16 +3762,17 @@ export default function VinylScene({
                           onDragOver={(e) => {
                             e.preventDefault();
                             e.dataTransfer.dropEffect = 'move';
+                            if (modalTrackDropTargetIndex !== idx) {
+                              setModalTrackDropTargetIndex(idx);
+                            }
                           }}
                           onDragEnter={(e) => {
                             e.preventDefault();
                             setModalTrackDropTargetIndex(idx);
                           }}
-                          onDragLeave={() => {
-                            if (modalTrackDropTargetIndex === idx) setModalTrackDropTargetIndex(null);
-                          }}
                           onDrop={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             if (draggedModalTrackIndex !== null && draggedModalTrackIndex !== idx) {
                               handlePlaylistTracksReorder(draggedModalTrackIndex, idx);
                             }
@@ -3726,7 +3784,6 @@ export default function VinylScene({
                             setDraggedModalTrackIndex(null);
                             setModalTrackDropTargetIndex(null);
                             setDraggedTrackData(null);
-                            setIsModalQueueDropOver(false);
                           }}
                           onClick={() => {
                             if (currentTrack?.id === track.id) {
@@ -3741,12 +3798,25 @@ export default function VinylScene({
                             }
                           }}
                           style={{ cursor: 'pointer' }}
-                          title={`#${idx + 1}: "${track.title}" by ${track.artist}. Drag to reorder, or drag to queue.`}
+                          title={`#${idx + 1}: "${track.title}" by ${track.artist}`}
                         >
-                          <span style={{ fontSize: '0.82rem', color: '#8c8375', width: 20, textAlign: 'center' }}>
-                            {idx + 1}
-                          </span>
-                          <img src={track.cover} alt={track.title} className="vinyl-song-thumb" />
+                          <div className="vinyl-playlist-row-leading">
+                            <GripVertical size={13} className="vinyl-playlist-row-grip" />
+                            {isTrackPlaying ? (
+                              <span className="vinyl-playlist-mini-eq" title="Now Playing">
+                                <span className="mini-eq-bar bar-1" />
+                                <span className="mini-eq-bar bar-2" />
+                                <span className="mini-eq-bar bar-3" />
+                              </span>
+                            ) : isCurrent ? (
+                              <span className="vinyl-playlist-current-indicator" title="Current song (Paused)">
+                                <Pause size={12} fill="#ffd166" color="#ffd166" />
+                              </span>
+                            ) : (
+                              <span className="vinyl-playlist-track-num">{idx + 1}</span>
+                            )}
+                          </div>
+                          <img src={track.cover} alt={track.title} className="vinyl-song-thumb" draggable={false} />
                           <div className="vinyl-song-meta">
                             <span className="vinyl-song-title">{track.title}</span>
                             <span className="vinyl-song-artist">{track.artist}</span>
