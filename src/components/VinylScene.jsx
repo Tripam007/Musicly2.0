@@ -2419,127 +2419,6 @@ export default function VinylScene({
                     {formatSeconds(safeDuration)}
                   </span>
                 </div>
-
-                {/* Dedicated Vinyl Player Controls Bar */}
-                <div className="vinyl-controls-bar">
-                  <div className="vinyl-ctrl-cluster">
-                    {/* Scene Exit / Back */}
-                    <button
-                      id="vinyl-btn-close-scene"
-                      className="vinyl-ctrl-btn"
-                      onClick={onClose}
-                      title="Return to standard room"
-                    >
-                      <X size={18} />
-                    </button>
-
-                    {/* Shuffle */}
-                    <button
-                      id="vinyl-btn-shuffle"
-                      className={`vinyl-ctrl-btn ${isShuffle ? 'is-active' : ''}`}
-                      onClick={onToggleShuffle}
-                      title={isShuffle ? "Shuffle enabled" : "Shuffle disabled"}
-                    >
-                      <Shuffle size={18} />
-                    </button>
-
-                    {/* Skip Previous */}
-                    <button
-                      id="vinyl-btn-prev"
-                      className="vinyl-ctrl-btn"
-                      onClick={onPrevTrack}
-                      title="Previous song"
-                    >
-                      <SkipBack size={20} />
-                    </button>
-                  </div>
-
-                  {/* Large Central Play / Pause Button */}
-                  <button
-                    id="vinyl-btn-play-pause"
-                    className="vinyl-play-pause-btn"
-                    onClick={onTogglePlay}
-                    title={isPlaying ? "Pause music" : "Play music"}
-                    aria-label={isPlaying ? "Pause" : "Play"}
-                  >
-                    {isPlaying ? (
-                      <Pause size={24} fill="#ffffff" />
-                    ) : (
-                      <Play size={24} fill="#ffffff" style={{ marginLeft: '3px' }} />
-                    )}
-                  </button>
-
-                  <div className="vinyl-ctrl-cluster">
-                    {/* Skip Next */}
-                    <button
-                      id="vinyl-btn-next"
-                      className="vinyl-ctrl-btn"
-                      onClick={onNextTrack}
-                      title="Next song"
-                    >
-                      <SkipForward size={20} />
-                    </button>
-
-                    {/* Repeat Mode */}
-                    <button
-                      id="vinyl-btn-repeat"
-                      className={`vinyl-ctrl-btn ${repeatMode !== 'off' ? 'is-active' : ''}`}
-                      onClick={onToggleRepeat}
-                      title={`Repeat mode: ${repeatMode}`}
-                    >
-                      {repeatMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
-                    </button>
-
-                    {/* Fullscreen Toggle */}
-                    <button
-                      id="vinyl-btn-fullscreen"
-                      className="vinyl-ctrl-btn"
-                      onClick={toggleFullscreen}
-                      title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Scene"}
-                    >
-                      {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-                    </button>
-
-                    {/* Library Drawer Open */}
-                    <button
-                      id="vinyl-btn-drawer"
-                      className="vinyl-ctrl-btn"
-                      onClick={onOpenPlaylistDrawer}
-                      title="Open full music catalog & playlist drawer"
-                    >
-                      <ListMusic size={19} />
-                    </button>
-                  </div>
-
-                  {/* Volume Cluster */}
-                  <div className="vinyl-volume-cluster">
-                    <button
-                      className="vinyl-ctrl-btn"
-                      onClick={handleToggleMute}
-                      title={isMuted || volume === 0 ? "Unmute" : "Mute"}
-                      style={{ padding: '6px' }}
-                    >
-                      {isMuted || volume === 0 ? (
-                        <VolumeX size={17} />
-                      ) : volume < 0.5 ? (
-                        <Volume1 size={17} />
-                      ) : (
-                        <Volume2 size={17} />
-                      )}
-                    </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.01"
-                      value={isMuted ? 0 : volume}
-                      onChange={handleVolumeSliderChange}
-                      className="vinyl-volume-slider"
-                      title={`Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
-                    />
-                  </div>
-                </div>
-
               </div>
 
             </section>
@@ -3141,10 +3020,136 @@ export default function VinylScene({
                 </div>
               </div>
 
-              {/* Pixel Cat Interactive Lounge */}
-              <PixelCat isPlaying={isPlaying} />
-
             </section>
+
+            {/* ==========================================================================
+               ROW 2 - LEFT: DEDICATED VINYL PLAYER CONTROLS BAR (ANCHORED)
+               ========================================================================== */}
+            <div className="vinyl-controls-bar">
+              <div className="vinyl-ctrl-cluster">
+                {/* Scene Exit / Back */}
+                <button
+                  id="vinyl-btn-close-scene"
+                  className="vinyl-ctrl-btn"
+                  onClick={onClose}
+                  title="Return to standard room"
+                >
+                  <X size={18} />
+                </button>
+
+                {/* Shuffle */}
+                <button
+                  id="vinyl-btn-shuffle"
+                  className={`vinyl-ctrl-btn ${isShuffle ? 'is-active' : ''}`}
+                  onClick={onToggleShuffle}
+                  title={isShuffle ? "Shuffle enabled" : "Shuffle disabled"}
+                >
+                  <Shuffle size={18} />
+                </button>
+
+                {/* Skip Previous */}
+                <button
+                  id="vinyl-btn-prev"
+                  className="vinyl-ctrl-btn"
+                  onClick={onPrevTrack}
+                  title="Previous song"
+                >
+                  <SkipBack size={20} />
+                </button>
+              </div>
+
+              {/* Large Central Play / Pause Button */}
+              <button
+                id="vinyl-btn-play-pause"
+                className="vinyl-play-pause-btn"
+                onClick={onTogglePlay}
+                title={isPlaying ? "Pause music" : "Play music"}
+                aria-label={isPlaying ? "Pause" : "Play"}
+              >
+                {isPlaying ? (
+                  <Pause size={24} fill="#ffffff" />
+                ) : (
+                  <Play size={24} fill="#ffffff" style={{ marginLeft: '3px' }} />
+                )}
+              </button>
+
+              <div className="vinyl-ctrl-cluster">
+                {/* Skip Next */}
+                <button
+                  id="vinyl-btn-next"
+                  className="vinyl-ctrl-btn"
+                  onClick={onNextTrack}
+                  title="Next song"
+                >
+                  <SkipForward size={20} />
+                </button>
+
+                {/* Repeat Mode */}
+                <button
+                  id="vinyl-btn-repeat"
+                  className={`vinyl-ctrl-btn ${repeatMode !== 'off' ? 'is-active' : ''}`}
+                  onClick={onToggleRepeat}
+                  title={`Repeat mode: ${repeatMode}`}
+                >
+                  {repeatMode === 'one' ? <Repeat1 size={18} /> : <Repeat size={18} />}
+                </button>
+
+                {/* Fullscreen Toggle */}
+                <button
+                  id="vinyl-btn-fullscreen"
+                  className="vinyl-ctrl-btn"
+                  onClick={toggleFullscreen}
+                  title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Scene"}
+                >
+                  {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+                </button>
+
+                {/* Library Drawer Open */}
+                <button
+                  id="vinyl-btn-drawer"
+                  className="vinyl-ctrl-btn"
+                  onClick={onOpenPlaylistDrawer}
+                  title="Open full music catalog & playlist drawer"
+                >
+                  <ListMusic size={19} />
+                </button>
+              </div>
+
+              {/* Volume Cluster */}
+              <div className="vinyl-volume-cluster">
+                <button
+                  className="vinyl-ctrl-btn"
+                  onClick={handleToggleMute}
+                  title={isMuted || volume === 0 ? "Unmute" : "Mute"}
+                  style={{ padding: '6px' }}
+                >
+                  {isMuted || volume === 0 ? (
+                    <VolumeX size={17} />
+                  ) : volume < 0.5 ? (
+                    <Volume1 size={17} />
+                  ) : (
+                    <Volume2 size={17} />
+                  )}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={isMuted ? 0 : volume}
+                  onChange={handleVolumeSliderChange}
+                  className="vinyl-volume-slider"
+                  title={`Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
+                />
+              </div>
+            </div>
+
+            {/* ==========================================================================
+               ROW 2 - RIGHT: PIXEL CAT LOUNGE (EXACT SAME LEVEL AS PLAYBAR)
+               ========================================================================== */}
+            <div className="vinyl-pixel-cat-card">
+              <PixelCat isPlaying={isPlaying} />
+            </div>
 
           </div>
         </main>

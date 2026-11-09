@@ -4,29 +4,31 @@
 
 .vinyl-pixel-cat-section {
   position: relative;
-  background: rgba(255, 255, 255, 0.55);
+  background: #ffffff;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--vinyl-border, #d4d2cb);
-  border-radius: 16px;
-  padding: 4px 10px;
-  box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.025),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.85);
-  margin-top: 14px;
-  margin-bottom: 24px;
+  border-radius: 20px;
+  padding: 2px 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  margin: 0;
   cursor: pointer;
   overflow: hidden;
   user-select: none;
+  height: 82px;
+  min-height: 82px;
+  max-height: 82px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
   animation: vinylCatFadeIn 0.25s ease-out;
 }
 
 .vinyl-pixel-cat-section:hover {
-  border-color: rgba(17, 17, 17, 0.25);
-  box-shadow: 
-    0 6px 20px rgba(0, 0, 0, 0.04),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.95);
+  border-color: #0d0d0f;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
 @keyframes vinylCatFadeIn {
