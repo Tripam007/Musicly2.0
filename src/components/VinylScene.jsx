@@ -170,6 +170,38 @@ export default function VinylScene({
   const [draggedCardIndex, setDraggedCardIndex] = useState(null);
   const [dropTargetIndex, setDropTargetIndex] = useState(null);
 
+  // Persistent tracking for admin-deleted system playlists
+  const [deletedPlaylistIds, setDeletedPlaylistIds] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('musicly_deleted_playlist_ids') || '[]');
+    } catch {
+      return [];
+    }
+  });
+
+  // Persistent tracking for admin-removed tracks from system playlists
+  const [excludedTrackIdsByPlaylist, setExcludedTrackIdsByPlaylist] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('musicly_excluded_tracks') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  // Cross-component Drag and Drop States for Queue & Playlists
+  const [draggedTrackData, setDraggedTrackData] = useState(null);
+  const [isQueueTabDragOver, setIsQueueTabDragOver] = useState(false);
+  const [isModalQueueDropOver, setIsModalQueueDropOver] = useState(false);
+  const [draggedModalTrackIndex, setDraggedModalTrackIndex] = useState(null);
+  const [modalTrackDropTargetIndex, setModalTrackDropTargetIndex] = useState(null);
+
+  // Effective Admin verification
+  const effectiveIsAdmin = Boolean(
+    isAdmin ||
+    (user?.email && user.email.toLowerCase() === 'tripambiswas007@gmail.com') ||
+    (typeof window !== 'undefined' && localStorage.getItem('musicly_user_role') === 'admin')
+  );
+
   // Modern Clay Turntable Lyrics Mode States
   const [isLyricsViewOpen, setIsLyricsViewOpen] = useState(false);
   const [lyricsData, setLyricsData] = useState(null);
@@ -307,7 +339,7 @@ export default function VinylScene({
       ? (allTracks.find(t => t.id === selectedTrackIdsForNew[0])?.cover || '/assets/images/lofi_scene.jpg')
       : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80';
 
-    if (isAdmin && newPlaylistTarget === 'musicly') {
+    if (effectiveIsAdmin && newPlaylistTarget === 'musicly') {
       try {
         if (onPublishPublicPlaylist) {
           await onPublishPublicPlaylist({
@@ -347,20 +379,32 @@ export default function VinylScene({
 
   // Delete Playlist Handler
   const handleDeleteCustomPlaylist = async (playlistId) => {
-    const isPublic = selectedCustomPlaylist?.isMusiclyOfficial;
+    const isPublic = !selectedCustomPlaylist?.isCustom;
     const confirmMsg = isPublic
-      ? 'Are you sure you want to delete this official Musicly playlist? It will be removed for all users worldwide.'
-      : 'Are you sure you want to delete this private playlist?';
+      ? 'Do you really want to delete this official Musicly playlist? This will permanently remove the entire playlist.'
+      : 'Do you really want to delete this private playlist?';
 
     if (window.confirm(confirmMsg)) {
       if (isPublic) {
-        if (!isAdmin) {
+        if (!effectiveIsAdmin) {
           alert('Only verified admin can delete official Musicly playlists.');
           return;
         }
         if (onDeletePublicPlaylist) {
-          await onDeletePublicPlaylist(playlistId);
+          try {
+            await onDeletePublicPlaylist(playlistId);
+          } catch (e) {
+            console.warn('[Musicly] Delete public playlist error:', e);
+          }
         }
+        // Also persist in deletedPlaylistIds so built-in playlists stay deleted
+        setDeletedPlaylistIds(prev => {
+          const next = [...prev.filter(id => id !== playlistId), playlistId];
+          try {
+            localStorage.setItem('musicly_deleted_playlist_ids', JSON.stringify(next));
+          } catch {}
+          return next;
+        });
       } else {
         const updated = customPlaylists.filter(p => p.id !== playlistId);
         saveCustomPlaylists(updated);
@@ -369,6 +413,34 @@ export default function VinylScene({
       playClickSound('light');
     }
   };
+
+  // Reorder Songs inside Playlist Modal via Drag and Drop
+  const handlePlaylistTracksReorder = useCallback((fromIndex, toIndex) => {
+    if (!selectedCustomPlaylist || fromIndex === toIndex || fromIndex === null || toIndex === null) return;
+    const reorderedTracks = [...(selectedCustomPlaylist.tracks || [])];
+    const [movedTrack] = reorderedTracks.splice(fromIndex, 1);
+    reorderedTracks.splice(toIndex, 0, movedTrack);
+    const newTrackIds = reorderedTracks.map(t => t.id);
+
+    setSelectedCustomPlaylist(prev => ({
+      ...prev,
+      tracks: reorderedTracks,
+      trackIds: newTrackIds
+    }));
+
+    if (selectedCustomPlaylist.isCustom) {
+      const updated = customPlaylists.map(p => {
+        if (p.id === selectedCustomPlaylist.id) {
+          return { ...p, trackIds: newTrackIds };
+        }
+        return p;
+      });
+      saveCustomPlaylists(updated);
+    } else if (onUpdatePublicPlaylist) {
+      onUpdatePublicPlaylist(selectedCustomPlaylist.id, { trackIds: newTrackIds });
+    }
+    playClickSound('toggle');
+  }, [selectedCustomPlaylist, customPlaylists, saveCustomPlaylists, onUpdatePublicPlaylist]);
 
   // Save Renamed Playlist Title
   const handleSaveEditedTitle = async (playlistId) => {
@@ -380,7 +452,7 @@ export default function VinylScene({
     const isPublic = selectedCustomPlaylist?.isMusiclyOfficial;
 
     if (isPublic) {
-      if (!isAdmin) {
+      if (!effectiveIsAdmin) {
         alert('Only verified admin can rename official Musicly playlists.');
         setIsEditingPlaylistTitle(false);
         return;
@@ -409,26 +481,42 @@ export default function VinylScene({
 
   // Remove Song from Playlist
   const handleRemoveSongFromPlaylist = async (playlistId, trackId) => {
-    const isPublic = selectedCustomPlaylist?.isMusiclyOfficial;
+    const isPublic = !selectedCustomPlaylist?.isCustom;
 
     if (isPublic) {
-      if (!isAdmin) {
+      if (!effectiveIsAdmin) {
         alert('Only verified admin can edit official Musicly playlists.');
         return;
       }
-      const curIds = selectedCustomPlaylist?.trackIds || [];
+      const curIds = selectedCustomPlaylist?.trackIds || selectedCustomPlaylist?.tracks?.map(t => t.id) || [];
       const newTrackIds = curIds.filter(id => id !== trackId);
-      if (onUpdatePublicPlaylist) {
+
+      // Check if it's a Firestore/Firebase public playlist
+      const isCustomPublic = Array.isArray(publicPlaylists) && publicPlaylists.some(p => p.id === playlistId);
+      if (isCustomPublic && onUpdatePublicPlaylist) {
         await onUpdatePublicPlaylist(playlistId, { trackIds: newTrackIds });
       }
-      const newTracks = filterTracksByLang(allTracks.filter(t => newTrackIds.includes(t.id)));
-      setSelectedCustomPlaylist(prev => ({
-        ...prev,
-        trackIds: newTrackIds,
-        tracks: newTracks,
-        subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} in this list`,
-        count: newTracks.length
-      }));
+
+      // Persist in excludedTrackIdsByPlaylist map so system playlists remember removed tracks
+      setExcludedTrackIdsByPlaylist(prev => {
+        const next = { ...prev, [playlistId]: [...(prev[playlistId] || []), trackId] };
+        try {
+          localStorage.setItem('musicly_excluded_tracks', JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+
+      setSelectedCustomPlaylist(prev => {
+        if (!prev) return null;
+        const newTracks = (prev.tracks || []).filter(t => t.id !== trackId);
+        return {
+          ...prev,
+          trackIds: newTrackIds,
+          tracks: newTracks,
+          subtitle: `${newTracks.length} song${newTracks.length === 1 ? '' : 's'} in this list`,
+          count: newTracks.length
+        };
+      });
     } else {
       const updated = customPlaylists.map(p => {
         if (p.id === playlistId) {
@@ -457,7 +545,7 @@ export default function VinylScene({
     const isPublic = selectedCustomPlaylist?.isMusiclyOfficial;
 
     if (isPublic) {
-      if (!isAdmin) {
+      if (!effectiveIsAdmin) {
         alert('Only verified admin can edit official Musicly playlists.');
         return;
       }
@@ -959,6 +1047,11 @@ export default function VinylScene({
   const favoritePlaylists = useMemo(() => {
     const playlists = [];
 
+    const getFilteredPlaylistTracks = (playlistId, rawTracks) => {
+      const excluded = excludedTrackIdsByPlaylist[playlistId] || [];
+      return filterTracksByLang(rawTracks.filter(t => !excluded.includes(t.id)));
+    };
+
     // 1. Liked Songs Playlist
     const liked = filterTracksByLang(allTracks.filter(t => favorites.includes(t.id)));
     playlists.push({
@@ -967,29 +1060,36 @@ export default function VinylScene({
       subtitle: `${liked.length} song${liked.length === 1 ? '' : 's'} in this list`,
       count: liked.length,
       tracks: liked,
+      trackIds: liked.map(t => t.id),
       image: liked[0]?.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'
     });
 
     // 2. Vintage Vinyl & 80s Classics
-    const retroTracks = filterTracksByLang(allTracks.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro')))));
+    const retroTracks = getFilteredPlaylistTracks('vintage_retro', allTracks.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro')))));
     playlists.push({
       id: 'vintage_retro',
       title: 'Vintage Hi-Fi & 80s',
       subtitle: `${retroTracks.length} song${retroTracks.length === 1 ? '' : 's'} in this list`,
       count: retroTracks.length,
       tracks: retroTracks,
-      image: retroTracks[0]?.cover || '/assets/images/retro_scene.jpg'
+      trackIds: retroTracks.map(t => t.id),
+      image: retroTracks[0]?.cover || '/assets/images/retro_scene.jpg',
+      isCustom: false,
+      isMusiclyOfficial: true
     });
 
     // 3. Late Night Lo-Fi
-    const lofiTracks = filterTracksByLang(allTracks.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi')))));
+    const lofiTracks = getFilteredPlaylistTracks('latenight_lofi', allTracks.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi')))));
     playlists.push({
       id: 'latenight_lofi',
       title: 'Late Night Lo-Fi',
       subtitle: `${lofiTracks.length} song${lofiTracks.length === 1 ? '' : 's'} in this list`,
       count: lofiTracks.length,
       tracks: lofiTracks,
-      image: lofiTracks[0]?.cover || '/assets/images/lofi_scene.jpg'
+      trackIds: lofiTracks.map(t => t.id),
+      image: lofiTracks[0]?.cover || '/assets/images/lofi_scene.jpg',
+      isCustom: false,
+      isMusiclyOfficial: true
     });
 
     // Language-Specific Featured Playlists
@@ -999,7 +1099,7 @@ export default function VinylScene({
     const isOtherOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'other';
 
     if (isOtherOnly || activeLanguages.length === 0) {
-      const otherTracks = filterTracksByLang(allTracks.filter(t => {
+      const otherTracks = getFilteredPlaylistTracks('global_other_melodies', allTracks.filter(t => {
         const lang = (t.language || '').toLowerCase();
         return lang === 'other' || (!['english', 'hindi', 'bengali'].includes(lang) && Boolean(t.language));
       }));
@@ -1010,13 +1110,16 @@ export default function VinylScene({
           subtitle: `${otherTracks.length} song${otherTracks.length === 1 ? '' : 's'} in this list`,
           count: otherTracks.length,
           tracks: otherTracks,
-          image: otherTracks[0]?.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'
+          trackIds: otherTracks.map(t => t.id),
+          image: otherTracks[0]?.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80',
+          isCustom: false,
+          isMusiclyOfficial: true
         });
       }
     }
 
     if (isEnglishOnly || activeLanguages.length === 0) {
-      const countryTracks = filterTracksByLang(allTracks.filter(t =>
+      const countryTracks = getFilteredPlaylistTracks('country_roots', allTracks.filter(t =>
         (t.genre || '').toLowerCase().includes('country') ||
         (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country')))
       ));
@@ -1027,13 +1130,16 @@ export default function VinylScene({
           subtitle: `${countryTracks.length} song${countryTracks.length === 1 ? '' : 's'} in this list`,
           count: countryTracks.length,
           tracks: countryTracks,
-          image: countryTracks[0]?.cover || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=300&auto=format&fit=crop&q=80'
+          trackIds: countryTracks.map(t => t.id),
+          image: countryTracks[0]?.cover || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=300&auto=format&fit=crop&q=80',
+          isCustom: false,
+          isMusiclyOfficial: true
         });
       }
     }
 
     if (isHindiOnly || activeLanguages.length === 0) {
-      const ghazalTracks = filterTracksByLang(allTracks.filter(t =>
+      const ghazalTracks = getFilteredPlaylistTracks('timeless_ghazals', allTracks.filter(t =>
         (t.genre || '').toLowerCase().includes('ghazal') ||
         (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal')))
       ));
@@ -1044,13 +1150,16 @@ export default function VinylScene({
           subtitle: `${ghazalTracks.length} song${ghazalTracks.length === 1 ? '' : 's'} in this list`,
           count: ghazalTracks.length,
           tracks: ghazalTracks,
-          image: ghazalTracks[0]?.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'
+          trackIds: ghazalTracks.map(t => t.id),
+          image: ghazalTracks[0]?.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80',
+          isCustom: false,
+          isMusiclyOfficial: true
         });
       }
     }
 
     if (isBengaliOnly) {
-      const bengaliClassics = filterTracksByLang(allTracks.filter(t =>
+      const bengaliClassics = getFilteredPlaylistTracks('bengali_classics', allTracks.filter(t =>
         (t.genre || '').toLowerCase().includes('rabindra') ||
         (t.title || '').toLowerCase().includes('majhe') ||
         (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('rabindra')))
@@ -1062,28 +1171,33 @@ export default function VinylScene({
           subtitle: `${bengaliClassics.length} song${bengaliClassics.length === 1 ? '' : 's'} in this list`,
           count: bengaliClassics.length,
           tracks: bengaliClassics,
-          image: bengaliClassics[0]?.cover || 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg'
+          trackIds: bengaliClassics.map(t => t.id),
+          image: bengaliClassics[0]?.cover || 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg',
+          isCustom: false,
+          isMusiclyOfficial: true
         });
       }
     }
 
-    // 4. Indie Warmth & Acoustic
-    const indieTracks = filterTracksByLang(allTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie')))));
+    // 4. Indie Warmth & Acoustic ("Indie Acoustic Sessions")
+    const indieTracks = getFilteredPlaylistTracks('indie_warmth', allTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie')))));
     playlists.push({
       id: 'indie_warmth',
       title: 'Indie Acoustic Sessions',
       subtitle: `${indieTracks.length} song${indieTracks.length === 1 ? '' : 's'} in this list`,
       count: indieTracks.length,
       tracks: indieTracks,
+      trackIds: indieTracks.map(t => t.id),
       image: indieTracks[0]?.cover || 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80',
       isCustom: false,
-      isMusiclyOfficial: false
+      isMusiclyOfficial: true
     });
 
     // 5. Official Public Musicly Playlists (Admin Created, Public Worldwide)
     if (Array.isArray(publicPlaylists)) {
       publicPlaylists.forEach(pp => {
-        const ppTracks = filterTracksByLang(allTracks.filter(t => (pp.trackIds || []).includes(t.id)));
+        const rawTracks = allTracks.filter(t => (pp.trackIds || []).includes(t.id));
+        const ppTracks = getFilteredPlaylistTracks(pp.id, rawTracks);
         playlists.push({
           id: pp.id,
           title: pp.title,
@@ -1118,8 +1232,8 @@ export default function VinylScene({
       });
     }
 
-    return playlists;
-  }, [allTracks, favorites, activeLanguages, customPlaylists, publicPlaylists, filterTracksByLang]);
+    return playlists.filter(p => !deletedPlaylistIds.includes(p.id));
+  }, [allTracks, favorites, activeLanguages, customPlaylists, publicPlaylists, filterTracksByLang, deletedPlaylistIds, excludedTrackIdsByPlaylist]);
 
   // Playlist Source Choice: 'musicly' (default) | 'custom' | 'all'
   const [playlistSourceMode, setPlaylistSourceMode] = useState('musicly');
@@ -2461,12 +2575,29 @@ export default function VinylScene({
                       type="button"
                       role="tab"
                       aria-selected={carouselViewMode === 'queue'}
-                      className={`vinyl-category-pill vinyl-mode-pill ${carouselViewMode === 'queue' ? 'is-active' : ''}`}
+                      className={`vinyl-category-pill vinyl-mode-pill ${carouselViewMode === 'queue' ? 'is-active' : ''} ${isQueueTabDragOver ? 'is-drag-target-pulse' : ''}`}
                       onClick={() => {
                         setCarouselViewMode('queue');
                         playClickSound('light');
                       }}
-                      title="View and reorder upcoming playback queue"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'copy';
+                        if (!isQueueTabDragOver) setIsQueueTabDragOver(true);
+                      }}
+                      onDragLeave={() => setIsQueueTabDragOver(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsQueueTabDragOver(false);
+                        if (draggedTrackData) {
+                          handleAddToQueue(draggedTrackData, e);
+                          setCarouselViewMode('queue');
+                          playClickSound('toggle');
+                        }
+                        setDraggedTrackData(null);
+                        setDraggedCardIndex(null);
+                      }}
+                      title="View and reorder upcoming playback queue (or drag & drop songs here to add)"
                     >
                       UP NEXT ({upcomingQueue.length})
                     </button>
@@ -2554,8 +2685,25 @@ export default function VinylScene({
                 >
                   {carouselViewMode === 'queue' ? (
                     upcomingQueue.length === 0 ? (
-                      <div className="vinyl-cards-empty">
+                      <div
+                        className="vinyl-cards-empty vinyl-queue-empty-drop"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'copy';
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          if (draggedTrackData) {
+                            handleAddToQueue(draggedTrackData, e);
+                            playClickSound('toggle');
+                          }
+                          setDraggedTrackData(null);
+                        }}
+                      >
                         <span>No upcoming tracks in queue.</span>
+                        <p style={{ margin: '4px 0 10px 0', fontSize: '0.85rem', color: '#a09a8f' }}>
+                          Drag any song card here or click below to browse.
+                        </p>
                         <button
                           type="button"
                           className="vinyl-category-pill"
@@ -2568,133 +2716,175 @@ export default function VinylScene({
                         </button>
                       </div>
                     ) : (
-                      upcomingQueue.map((track, index) => {
-                        const isCardPlaying = currentTrack?.id === track.id && isPlaying;
-                        const isCurrent = currentTrack?.id === track.id;
-                        const isDragging = draggedCardIndex === index;
-                        const isDropTarget = dropTargetIndex === index;
+                      <>
+                        {upcomingQueue.map((track, index) => {
+                          const isCardPlaying = currentTrack?.id === track.id && isPlaying;
+                          const isCurrent = currentTrack?.id === track.id;
+                          const isDragging = draggedCardIndex === index;
+                          const isDropTarget = dropTargetIndex === index;
 
-                        return (
-                          <div
-                            key={track.id}
-                            className={`vinyl-track-card vinyl-queue-card ${isDragging ? 'is-dragging' : ''} ${isDropTarget ? 'is-drop-target' : ''}`}
-                            draggable={true}
-                            onDragStart={(e) => {
-                              e.dataTransfer.setData('text/plain', String(index));
-                              e.dataTransfer.effectAllowed = 'move';
-                              setDraggedCardIndex(index);
-                              playClickSound('light');
-                            }}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = 'move';
-                            }}
-                            onDragEnter={(e) => {
-                              e.preventDefault();
-                              setDropTargetIndex(index);
-                            }}
-                            onDragLeave={() => {
-                              if (dropTargetIndex === index) setDropTargetIndex(null);
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              if (draggedCardIndex !== null && draggedCardIndex !== index) {
-                                handleQueueReorder(draggedCardIndex, index);
-                              }
-                              setDraggedCardIndex(null);
-                              setDropTargetIndex(null);
-                            }}
-                            onDragEnd={() => {
-                              setDraggedCardIndex(null);
-                              setDropTargetIndex(null);
-                            }}
-                            onClick={() => {
-                              if (currentTrack?.id === track.id) {
-                                onTogglePlay?.();
-                                return;
-                              }
-                              onSelectTrack?.(track, true);
-                              if (onSetCustomQueue) {
-                                onSetCustomQueue(upcomingQueue.filter(t => t.id !== track.id));
-                              }
-                            }}
-                            title={`#${index + 1} in queue: "${track.title}" by ${track.artist}. Drag to reorder, click to play.`}
-                          >
-                            <div className="vinyl-card-art-box">
-                              <img
-                                src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'}
-                                alt={track.title}
-                                className="vinyl-card-img"
-                                loading="lazy"
-                                draggable={false}
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src = track.youtubeId
-                                    ? `https://img.youtube.com/vi/${track.youtubeId}/hqdefault.jpg`
-                                    : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80';
-                                }}
-                              />
+                          return (
+                            <div
+                              key={track.id}
+                              className={`vinyl-track-card vinyl-queue-card ${isDragging ? 'is-dragging' : ''} ${isDropTarget ? 'is-drop-target' : ''}`}
+                              draggable={true}
+                              onDragStart={(e) => {
+                                e.dataTransfer.setData('text/plain', String(index));
+                                e.dataTransfer.effectAllowed = 'move';
+                                setDraggedCardIndex(index);
+                                setDraggedTrackData(track);
+                                playClickSound('light');
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                              }}
+                              onDragEnter={(e) => {
+                                e.preventDefault();
+                                setDropTargetIndex(index);
+                              }}
+                              onDragLeave={() => {
+                                if (dropTargetIndex === index) setDropTargetIndex(null);
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                if (draggedCardIndex !== null && draggedCardIndex !== index) {
+                                  handleQueueReorder(draggedCardIndex, index);
+                                } else if (draggedTrackData) {
+                                  const isAlready = upcomingQueue.some(t => t.id === draggedTrackData.id);
+                                  const base = isAlready ? upcomingQueue.filter(t => t.id !== draggedTrackData.id) : [...upcomingQueue];
+                                  const insertIdx = Math.min(index, base.length);
+                                  base.splice(insertIdx, 0, draggedTrackData);
+                                  if (onSetCustomQueue) {
+                                    onSetCustomQueue(base);
+                                  }
+                                  playClickSound('toggle');
+                                }
+                                setDraggedCardIndex(null);
+                                setDropTargetIndex(null);
+                                setDraggedTrackData(null);
+                              }}
+                              onDragEnd={() => {
+                                setDraggedCardIndex(null);
+                                setDropTargetIndex(null);
+                                setDraggedTrackData(null);
+                              }}
+                              onClick={() => {
+                                if (currentTrack?.id === track.id) {
+                                  onTogglePlay?.();
+                                  return;
+                                }
+                                onSelectTrack?.(track, true);
+                                if (onSetCustomQueue) {
+                                  onSetCustomQueue(upcomingQueue.filter(t => t.id !== track.id));
+                                }
+                              }}
+                              title={`#${index + 1} in queue: "${track.title}" by ${track.artist}. Drag to reorder, click to play.`}
+                            >
+                              <div className="vinyl-card-art-box">
+                                <img
+                                  src={track.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'}
+                                  alt={track.title}
+                                  className="vinyl-card-img"
+                                  loading="lazy"
+                                  draggable={false}
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = track.youtubeId
+                                      ? `https://img.youtube.com/vi/${track.youtubeId}/hqdefault.jpg`
+                                      : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80';
+                                  }}
+                                />
 
-                              {/* Queue Position Badge */}
-                              <div className="vinyl-queue-order-badge">
-                                {index === 0 ? 'UP NEXT' : `#${index + 1}`}
-                              </div>
-
-                              {/* Drag Handle Indicator */}
-                              <div className="vinyl-queue-drag-handle" title="Drag to reorder position in queue">
-                                <GripVertical size={14} />
-                              </div>
-
-                              {/* Remove from queue quick action */}
-                              <button
-                                type="button"
-                                className="vinyl-queue-remove-btn"
-                                onClick={(e) => handleRemoveFromQueue(track.id, e)}
-                                title="Remove from queue"
-                                aria-label="Remove from queue"
-                              >
-                                <X size={12} />
-                              </button>
-
-                              {/* Add to my own playlist button */}
-                              <button
-                                type="button"
-                                className="vinyl-queue-add-playlist-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSongForPlaylistModal(track);
-                                  playClickSound('light');
-                                }}
-                                title={`Add "${track.title}" to your playlist`}
-                                aria-label="Add to playlist"
-                              >
-                                <Plus size={13} strokeWidth={2.8} />
-                              </button>
-
-                              <div className="vinyl-card-play-overlay">
-                                <div className="vinyl-card-play-circle">
-                                  {isCardPlaying ? (
-                                    <Pause size={18} fill="#0d0d0f" />
-                                  ) : (
-                                    <Play size={18} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
-                                  )}
+                                {/* Queue Position Badge */}
+                                <div className="vinyl-queue-order-badge">
+                                  {index === 0 ? 'UP NEXT' : `#${index + 1}`}
                                 </div>
+
+                                {/* Drag Handle Indicator */}
+                                <div className="vinyl-queue-drag-handle" title="Drag to reorder position in queue">
+                                  <GripVertical size={14} />
+                                </div>
+
+                                {/* Remove from queue quick action */}
+                                <button
+                                  type="button"
+                                  className="vinyl-queue-remove-btn"
+                                  onClick={(e) => handleRemoveFromQueue(track.id, e)}
+                                  title="Remove from queue"
+                                  aria-label="Remove from queue"
+                                >
+                                  <X size={12} />
+                                </button>
+
+                                {/* Add to my own playlist button */}
+                                <button
+                                  type="button"
+                                  className="vinyl-queue-add-playlist-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSongForPlaylistModal(track);
+                                    playClickSound('light');
+                                  }}
+                                  title={`Add "${track.title}" to your playlist`}
+                                  aria-label="Add to playlist"
+                                >
+                                  <Plus size={13} strokeWidth={2.8} />
+                                </button>
+
+                                <div className="vinyl-card-play-overlay">
+                                  <div className="vinyl-card-play-circle">
+                                    {isCardPlaying ? (
+                                      <Pause size={18} fill="#0d0d0f" />
+                                    ) : (
+                                      <Play size={18} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
+                                    )}
+                                  </div>
+                                </div>
+
+                                {isCurrent && (
+                                  <div className="vinyl-card-active-indicator">
+                                    {isPlaying ? 'PLAYING' : 'ACTIVE'}
+                                  </div>
+                                )}
                               </div>
 
-                              {isCurrent && (
-                                <div className="vinyl-card-active-indicator">
-                                  {isPlaying ? 'PLAYING' : 'ACTIVE'}
-                                </div>
-                              )}
+                              <div className="vinyl-card-meta">
+                                <span className="vinyl-card-title">{track.title}</span>
+                                <span className="vinyl-card-artist">by {track.artist}</span>
+                              </div>
                             </div>
+                          );
+                        })}
 
-                            <div className="vinyl-card-meta">
-                              <span className="vinyl-card-title">{track.title}</span>
-                              <span className="vinyl-card-artist">by {track.artist}</span>
-                            </div>
+                        {/* Dedicated Drop Card to append to queue */}
+                        <div
+                          className="vinyl-track-card vinyl-queue-drop-card"
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'copy';
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (draggedTrackData) {
+                              handleAddToQueue(draggedTrackData, e);
+                              playClickSound('toggle');
+                            }
+                            setDraggedTrackData(null);
+                            setDraggedCardIndex(null);
+                          }}
+                          onClick={() => {
+                            setCarouselViewMode('categories');
+                            playClickSound('light');
+                          }}
+                          title="Drag & drop songs from categories or playlists here to add to queue"
+                        >
+                          <div className="vinyl-queue-drop-card-inner">
+                            <Plus size={26} color="#ffd166" />
+                            <span className="vinyl-queue-drop-card-text">Drag songs here to add to queue</span>
                           </div>
-                        );
-                      })
+                        </div>
+                      </>
                     )
                   ) : (
                     filteredCategoryTracks.length === 0 ? (
@@ -2720,6 +2910,17 @@ export default function VinylScene({
                           <div
                             key={track.id}
                             className="vinyl-track-card"
+                            draggable={true}
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('application/json', JSON.stringify({ type: 'musicly_track', track }));
+                              e.dataTransfer.effectAllowed = 'copy';
+                              setDraggedTrackData(track);
+                              playClickSound('light');
+                            }}
+                            onDragEnd={() => {
+                              setDraggedTrackData(null);
+                              setIsQueueTabDragOver(false);
+                            }}
                             onClick={() => {
                               if (currentTrack?.id === track.id) {
                                 onTogglePlay?.();
@@ -2727,7 +2928,7 @@ export default function VinylScene({
                                 onSelectTrack?.(track, true);
                               }
                             }}
-                            title={isCardPlaying ? `Pause "${track.title}"` : `Play "${track.title}" by ${track.artist}`}
+                            title={isCardPlaying ? `Pause "${track.title}"` : `Play "${track.title}" by ${track.artist}. Drag to add to queue.`}
                           >
                             <div className="vinyl-card-art-box">
                               <img
@@ -2815,11 +3016,11 @@ export default function VinylScene({
                       setNewPlaylistTitle('');
                       setSelectedTrackIdsForNew([]);
                       setSongSearchQuery('');
-                      setNewPlaylistTarget(isAdmin ? 'musicly' : 'user');
+                      setNewPlaylistTarget(effectiveIsAdmin ? 'musicly' : 'user');
                       setIsCreatePlaylistOpen(true);
                       playClickSound('light');
                     }}
-                    title={isAdmin ? "Create official Musicly playlist or personal playlist" : "Create personal playlist (private to you)"}
+                    title={effectiveIsAdmin ? "Create official Musicly playlist or personal playlist" : "Create personal playlist (private to you)"}
                     aria-label="Create new playlist"
                   >
                     <Plus size={16} strokeWidth={2.8} />
@@ -2887,7 +3088,7 @@ export default function VinylScene({
                       {/* Section 1: Musicly Playlists */}
                       <div className="vinyl-playlist-section-label-row">
                         <span className="vinyl-playlist-section-label">MUSICLY PLAYLISTS ({musiclyPlaylists.length})</span>
-                        {isAdmin && (
+                        {effectiveIsAdmin && (
                           <button
                             type="button"
                             className="vinyl-playlist-section-btn"
@@ -2962,7 +3163,7 @@ export default function VinylScene({
                   {/* Mode: MUSICLY ONLY */}
                   {playlistSourceMode === 'musicly' && (
                     <>
-                      {isAdmin && (
+                      {effectiveIsAdmin && (
                         <div className="vinyl-playlist-section-label-row" style={{ marginBottom: 10 }}>
                           <span className="vinyl-playlist-section-label">OFFICIAL PLAYLISTS ({musiclyPlaylists.length})</span>
                           <button
@@ -3189,7 +3390,7 @@ export default function VinylScene({
               <div className="vinyl-playlist-modal-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <h3 className="vinyl-playlist-modal-title">CREATE NEW PLAYLIST</h3>
-                  {isAdmin && (
+                  {effectiveIsAdmin && (
                     <span className="vinyl-admin-pill-badge" title="You have Admin privileges to curate public playlists">
                       <ShieldCheck size={12} style={{ marginRight: 3, verticalAlign: 'middle' }} />
                       ADMIN
@@ -3209,7 +3410,7 @@ export default function VinylScene({
 
               <form onSubmit={handleCreatePlaylist} className="vinyl-playlist-modal-body">
                 {/* Playlist Target & Privacy Chooser: Admin can publish Public Musicly or Private Personal; User gets Private */}
-                {isAdmin ? (
+                {effectiveIsAdmin ? (
                   <div className="vinyl-playlist-type-selector-box">
                     <label className="vinyl-playlist-input-label">PLAYLIST TYPE & VISIBILITY</label>
                     <div className="vinyl-playlist-type-pills">
@@ -3268,7 +3469,7 @@ export default function VinylScene({
                     type="text"
                     className="vinyl-playlist-text-input"
                     placeholder={
-                      isAdmin && newPlaylistTarget === 'musicly'
+                      effectiveIsAdmin && newPlaylistTarget === 'musicly'
                         ? "e.g. Midnight Jazz, Synthwave Highway, Sunset Acoustic..."
                         : "e.g. My Favorites, Study Mix, Night Vibes..."
                     }
@@ -3353,7 +3554,7 @@ export default function VinylScene({
                   >
                     <Plus size={16} strokeWidth={2.5} />
                     <span>
-                      {isAdmin && newPlaylistTarget === 'musicly' ? 'Publish Public Playlist' : 'Create Private Playlist'}
+                      {effectiveIsAdmin && newPlaylistTarget === 'musicly' ? 'Publish Public Playlist' : 'Create Private Playlist'}
                     </span>
                   </button>
                 </div>
@@ -3404,7 +3605,7 @@ export default function VinylScene({
                   ) : (
                     <div className="vinyl-playlist-detail-title-row">
                       <h3 className="vinyl-playlist-detail-title">{selectedCustomPlaylist.title}</h3>
-                      {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
+                      {(selectedCustomPlaylist.isCustom || effectiveIsAdmin) && (
                         <button
                           type="button"
                           className="vinyl-playlist-edit-title-btn"
@@ -3456,7 +3657,7 @@ export default function VinylScene({
                       );
                     })()}
 
-                    {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
+                    {(selectedCustomPlaylist.isCustom || effectiveIsAdmin) && (
                       <>
                         <button
                           type="button"
@@ -3466,6 +3667,7 @@ export default function VinylScene({
                             setIsAddSongsToExistingOpen(true);
                             playClickSound('light');
                           }}
+                          title="Add songs to this playlist"
                         >
                           <Plus size={15} />
                           <span>Add Songs</span>
@@ -3473,13 +3675,13 @@ export default function VinylScene({
 
                         <button
                           type="button"
-                          className="vinyl-btn-secondary"
-                          style={{ color: '#ff6b6b', borderColor: 'rgba(255, 107, 107, 0.3)' }}
+                          className="vinyl-btn-secondary vinyl-btn-delete-playlist"
+                          style={{ color: '#ff6b6b', borderColor: 'rgba(255, 107, 107, 0.4)', background: 'rgba(255, 107, 107, 0.08)' }}
                           onClick={() => handleDeleteCustomPlaylist(selectedCustomPlaylist.id)}
-                          title="Delete this playlist"
+                          title="Delete this entire playlist"
                         >
                           <Trash2 size={15} />
-                          <span>Delete</span>
+                          <span>Delete Playlist</span>
                         </button>
                       </>
                     )}
@@ -3499,11 +3701,36 @@ export default function VinylScene({
 
               {/* Tracks in Playlist */}
               <div className="vinyl-playlist-modal-body">
+                {/* Drop banner to add any dragged song to Up Next queue */}
+                <div
+                  className={`vinyl-playlist-modal-queue-drop-banner ${isModalQueueDropOver ? 'is-active-over' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                    if (!isModalQueueDropOver) setIsModalQueueDropOver(true);
+                  }}
+                  onDragLeave={() => setIsModalQueueDropOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsModalQueueDropOver(false);
+                    if (draggedTrackData) {
+                      handleAddToQueue(draggedTrackData, e);
+                      playClickSound('toggle');
+                    }
+                    setDraggedTrackData(null);
+                    setDraggedModalTrackIndex(null);
+                  }}
+                  title="Drag and drop any song here to add to your Up Next Queue"
+                >
+                  <ListPlus size={16} style={{ marginRight: 6 }} />
+                  <span>Drag any song here to add to your Up Next Queue</span>
+                </div>
+
                 {(!selectedCustomPlaylist.tracks || selectedCustomPlaylist.tracks.length === 0) ? (
                   <div style={{ textAlign: 'center', padding: '36px 16px', color: '#8c8375' }}>
                     <Music size={36} style={{ marginBottom: 10, opacity: 0.5 }} />
                     <p style={{ margin: '0 0 12px 0', fontSize: '0.95rem' }}>No songs in this playlist yet.</p>
-                    {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
+                    {(selectedCustomPlaylist.isCustom || effectiveIsAdmin) && (
                       <button
                         type="button"
                         className="vinyl-btn-primary"
@@ -3525,7 +3752,41 @@ export default function VinylScene({
                       return (
                         <div
                           key={track.id}
-                          className={`vinyl-playlist-track-row ${isCurrentPlaying ? 'is-active' : ''}`}
+                          className={`vinyl-playlist-track-row ${isCurrentPlaying ? 'is-active' : ''} ${draggedModalTrackIndex === idx ? 'is-dragging' : ''} ${modalTrackDropTargetIndex === idx ? 'is-drop-target' : ''}`}
+                          draggable={true}
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('application/json', JSON.stringify({ type: 'musicly_track', track, index: idx }));
+                            e.dataTransfer.effectAllowed = 'copyMove';
+                            setDraggedTrackData(track);
+                            setDraggedModalTrackIndex(idx);
+                            playClickSound('light');
+                          }}
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = 'move';
+                          }}
+                          onDragEnter={(e) => {
+                            e.preventDefault();
+                            setModalTrackDropTargetIndex(idx);
+                          }}
+                          onDragLeave={() => {
+                            if (modalTrackDropTargetIndex === idx) setModalTrackDropTargetIndex(null);
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (draggedModalTrackIndex !== null && draggedModalTrackIndex !== idx) {
+                              handlePlaylistTracksReorder(draggedModalTrackIndex, idx);
+                            }
+                            setDraggedModalTrackIndex(null);
+                            setModalTrackDropTargetIndex(null);
+                            setDraggedTrackData(null);
+                          }}
+                          onDragEnd={() => {
+                            setDraggedModalTrackIndex(null);
+                            setModalTrackDropTargetIndex(null);
+                            setDraggedTrackData(null);
+                            setIsModalQueueDropOver(false);
+                          }}
                           onClick={() => {
                             if (currentTrack?.id === track.id) {
                               onTogglePlay?.();
@@ -3539,6 +3800,7 @@ export default function VinylScene({
                             }
                           }}
                           style={{ cursor: 'pointer' }}
+                          title={`#${idx + 1}: "${track.title}" by ${track.artist}. Drag to reorder, or drag to queue.`}
                         >
                           <span style={{ fontSize: '0.82rem', color: '#8c8375', width: 20, textAlign: 'center' }}>
                             {idx + 1}
@@ -3551,6 +3813,20 @@ export default function VinylScene({
                           {track.genre && (
                             <span className="vinyl-song-genre-tag">{track.genre}</span>
                           )}
+
+                          {/* Quick Add to Up Next Queue */}
+                          <button
+                            type="button"
+                            className="vinyl-playlist-add-to-queue-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddToQueue(track, e);
+                            }}
+                            title={`Add "${track.title}" to Up Next queue`}
+                            aria-label="Add to queue"
+                          >
+                            <ListPlus size={16} />
+                          </button>
 
                           {/* + Add to my own custom playlist */}
                           <button
@@ -3567,17 +3843,21 @@ export default function VinylScene({
                             <Plus size={16} strokeWidth={2.6} />
                           </button>
 
-                          {(selectedCustomPlaylist.isCustom || (selectedCustomPlaylist.isMusiclyOfficial && isAdmin)) && (
+                          {/* Delete song individually beside each song */}
+                          {(selectedCustomPlaylist.isCustom || effectiveIsAdmin) && (
                             <button
                               type="button"
-                              className="vinyl-playlist-track-remove-btn"
+                              className="vinyl-playlist-track-delete-btn"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleRemoveSongFromPlaylist(selectedCustomPlaylist.id, track.id);
+                                if (window.confirm(`Do you really want to remove "${track.title}" from this playlist?`)) {
+                                  handleRemoveSongFromPlaylist(selectedCustomPlaylist.id, track.id);
+                                }
                               }}
-                              title="Remove from playlist"
+                              title={`Delete "${track.title}" from this playlist`}
+                              aria-label={`Delete ${track.title} from playlist`}
                             >
-                              <X size={16} />
+                              <Trash2 size={15} />
                             </button>
                           )}
                         </div>
@@ -3780,7 +4060,7 @@ export default function VinylScene({
                   )}
 
                   {/* If Admin: also allow adding/removing song to/from official Musicly playlists */}
-                  {isAdmin && publicPlaylists.length > 0 && (
+                  {effectiveIsAdmin && publicPlaylists.length > 0 && (
                     <div style={{ marginTop: 18 }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                         <span className="vinyl-add-to-playlists-title" style={{ color: '#ffd166' }}>OFFICIAL MUSICLY PLAYLISTS</span>
