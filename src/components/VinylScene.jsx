@@ -45,6 +45,7 @@ import { LANGUAGES, LANGUAGE_LABELS, isTrackInLanguages } from '../data/tracks';
 import { fetchLyrics } from '../utils/lyricsService';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
 import PixelCat from './PixelCat';
+import SweatDropletsOverlay from './SweatDropletsOverlay';
 import '../styles/vinylScene.css';
 
 // Curated Category Filters inspired by the reference image
@@ -1347,6 +1348,45 @@ export default function VinylScene({
     return favoritePlaylists.find(p => p.id === activePlayingPlaylistId) || null;
   }, [activePlayingPlaylistId, favoritePlaylists]);
 
+  // Gym Workout Mode detection: triggers motion blur & sweat droplets when playing gym playlist/tracks
+  const isGymPlaylistActive = useMemo(() => {
+    if (!isPlaying) return false;
+
+    // 1. Direct active playing playlist check
+    if (activePlayingPlaylist && (activePlayingPlaylist.title || '').toLowerCase().includes('gym')) {
+      return true;
+    }
+
+    // 2. By active playlist ID
+    if (activePlayingPlaylistId && String(activePlayingPlaylistId).toLowerCase().includes('gym')) {
+      return true;
+    }
+
+    // 3. By selected custom playlist when currently playing
+    if (selectedCustomPlaylist && (selectedCustomPlaylist.title || '').toLowerCase().includes('gym')) {
+      const isSongFromSelected = (selectedCustomPlaylist.tracks || []).some(t => t.id === currentTrack?.id);
+      if (isSongFromSelected) return true;
+    }
+
+    // 4. By custom or public playlists with 'gym' in the title
+    const gymPlaylists = [
+      ...customPlaylists.filter(p => (p.title || '').toLowerCase().includes('gym')),
+      ...(Array.isArray(publicPlaylists) ? publicPlaylists.filter(p => (p.title || '').toLowerCase().includes('gym')) : [])
+    ];
+    if (gymPlaylists.some(p => (p.trackIds || []).includes(currentTrack?.id))) {
+      return true;
+    }
+
+    // 5. By track genre or title
+    const trackGenre = (currentTrack?.genre || '').toLowerCase();
+    const trackTitle = (currentTrack?.title || '').toLowerCase();
+    if (trackGenre.includes('gym') || trackGenre.includes('workout') || trackTitle.includes('gym')) {
+      return true;
+    }
+
+    return false;
+  }, [isPlaying, activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist, currentTrack, customPlaylists, publicPlaylists]);
+
   // Keep selected playlist detail in sync when language filter changes
   useEffect(() => {
     if (selectedCustomPlaylist) {
@@ -1681,9 +1721,12 @@ export default function VinylScene({
   };
 
   return (
-    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''}`}>
+    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymPlaylistActive ? 'is-gym-mode-active' : ''}`}>
       {/* Subtle Grain Overlay */}
       <div className="vinyl-grain-overlay" />
+
+      {/* Gym Workout Sweat Droplets & Motion Blur Overlay */}
+      <SweatDropletsOverlay isActive={isGymPlaylistActive} />
 
       {/* Top Header Bar */}
       <header className={`vinyl-top-header ${isAnyModalActive ? 'is-hidden-by-modal' : ''}`}>
