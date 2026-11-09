@@ -4736,37 +4736,33 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   position: relative;
   min-height: calc(100vh - 120px);
+  padding-top: 24px;
 }
 
 /* Vinyl Player centered as the hero focal point */
 .vinyl-scene-root.is-gym-mode-active .vinyl-hero-column {
   width: 100%;
-  max-width: 640px;
+  max-width: 620px;
   margin: 0 auto;
-  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   position: relative;
   z-index: 50;
   filter: none !important;
   transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.vinyl-scene-root.is-gym-mode-active .vinyl-controls-bar {
-  width: 100%;
-  max-width: 640px;
-  margin: 16px auto 0 auto;
-  align-self: center;
-  position: relative;
-  z-index: 50;
-  transition: all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
-  filter: blur(2.5px);
-  opacity: 0.85;
-}
-
-.vinyl-scene-root.is-gym-mode-active .vinyl-controls-bar:hover {
-  filter: blur(0px) !important;
-  opacity: 1 !important;
+/* In Gym Mode: hide the bottom playback controls bar, the now-playing metadata/scrubber panel, and floating popovers */
+.vinyl-scene-root.is-gym-mode-active .vinyl-controls-bar,
+.vinyl-scene-root.is-gym-mode-active .vinyl-now-playing-panel,
+.vinyl-scene-root.is-gym-mode-active .vinyl-lyrics-floating-popover,
+.vinyl-scene-root.is-gym-mode-active .vinyl-liked-popover-panel {
+  display: none !important;
 }
 
 /* Surrounding Content (Up Next Queue & Playlists) blurred in background */
@@ -4832,25 +4828,42 @@
   filter: none !important;
   position: relative;
   z-index: 100;
+  margin-bottom: 12px;
 }
 
 /* Custom Greek Muscular Statue Disc Background for Gym Playlist */
 .vinyl-record-disc.is-gym-disc,
 .modern-record-disc.is-gym-disc {
   background-image: 
-    radial-gradient(circle at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.35) 75%, #050507 100%),
-    url('/assets/images/gym_statue_disc.jpg') !important;
+    radial-gradient(circle at center, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.22) 80%, #050507 100%),
+    url('/assets/images/gym_statue_disc_clean.png') !important;
   background-position: center center !important;
   background-size: cover !important;
   background-repeat: no-repeat !important;
   box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.18),
-    0 0 40px rgba(255, 75, 96, 0.4),
-    0 14px 40px rgba(0, 0, 0, 0.7) !important;
+    0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 0 45px rgba(255, 75, 96, 0.45),
+    0 14px 40px rgba(0, 0, 0, 0.75) !important;
 }
 
 .vinyl-record-disc.is-gym-disc .vinyl-grooves-layer,
 .modern-record-disc.is-gym-disc .modern-record-grooves {
   opacity: 0.32;
+}
+
+/* Gleaming Metallic Turntable Spindle Pin in Gym Mode */
+.gym-center-spindle-pin {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #c4c8d0 35%, #4a4f56 80%, #151618 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.85), inset 0 1px 2px rgba(255, 255, 255, 0.85);
+  z-index: 25;
+  pointer-events: none;
 }
 

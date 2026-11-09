@@ -2201,11 +2201,9 @@ export default function VinylScene({
                           {/* Radial Light Reflection Sheen Sweeps */}
                           <div className="vinyl-sheen-sweep" />
 
-                          {/* Center Hub: sleek metallic spindle hub in gym mode so the muscular statue is visible! */}
+                          {/* Center Hub: sleek metallic spindle pin in gym mode so the muscular statue is visible! */}
                           {isGymPlaylistActive ? (
-                            <div className="modern-center-spindle-disc" style={{ position: 'relative', zIndex: 10 }}>
-                              <div className="modern-center-spindle-hole" />
-                            </div>
+                            <div className="gym-center-spindle-pin" />
                           ) : (
                             /* Split Two-Tone Center Label */
                             <div
@@ -2303,9 +2301,13 @@ export default function VinylScene({
                             <div className="modern-record-sheen" />
 
                             {/* Center Minimalist Spindle Hub */}
-                            <div className="modern-center-spindle-disc">
-                              <div className="modern-center-spindle-hole" />
-                            </div>
+                            {isGymPlaylistActive ? (
+                              <div className="gym-center-spindle-pin" />
+                            ) : (
+                              <div className="modern-center-spindle-disc">
+                                <div className="modern-center-spindle-hole" />
+                              </div>
+                            )}
                           </div>
                         </div>
 
