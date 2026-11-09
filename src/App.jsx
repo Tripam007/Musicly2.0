@@ -843,7 +843,7 @@ export default function App() {
       } else if (event.type === 'TIME_UPDATE') {
         const time = event.currentTime;
         currentTimeRef.current = time;
-        if (Math.abs(time - lastUiUpdateRef.current) >= 0.25) {
+        if (Math.abs(time - lastUiUpdateRef.current) >= 0.1) {
           lastUiUpdateRef.current = time;
           setCurrentTime(time);
         }

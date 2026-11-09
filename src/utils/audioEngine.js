@@ -569,3 +569,4 @@ class AudioEngine {
 
 // Export singleton instance
 export const audioEngine = new AudioEngine();
+export default audioEngine;

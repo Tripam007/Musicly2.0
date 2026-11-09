@@ -35,11 +35,8 @@ export function parseLRC(lrcString) {
     for (const match of matches) {
       const min = parseInt(match[1], 10);
       const sec = parseInt(match[2], 10);
-      let ms = 0;
-      if (match[3]) {
-        ms = match[3].length === 2 ? parseInt(match[3], 10) * 10 : parseInt(match[3], 10);
-      }
-      const rawTime = min * 60 + sec + ms / 1000;
+      const fraction = match[3] ? parseFloat(`0.${match[3]}`) : 0;
+      const rawTime = min * 60 + sec + fraction;
       // Apply offset calibration
       const time = Math.max(0, rawTime + offsetSec);
       result.push({ time, text: text || '♪' });

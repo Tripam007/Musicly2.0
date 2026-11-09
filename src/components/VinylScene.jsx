@@ -43,6 +43,7 @@ import {
 import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
 import { LANGUAGES, LANGUAGE_LABELS, isTrackInLanguages } from '../data/tracks';
 import { fetchLyrics } from '../utils/lyricsService';
+import { audioEngine } from '../utils/audioEngine';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
 import PixelCat from './PixelCat';
 import SweatDropletsOverlay from './SweatDropletsOverlay';
@@ -905,21 +906,51 @@ export default function VinylScene({
     };
   }, [isLyricsViewOpen, isMinimalLyricsOpen, currentTrack, duration]);
 
-  // Track active line index in synced lyrics with vocal anticipation
+  // High-precision live playback time tracking for exact millisecond lyrics synchronization
+  const [livePlayTime, setLivePlayTime] = useState(currentTime || 0);
+
+  useEffect(() => {
+    setLivePlayTime(currentTime || 0);
+  }, [currentTime]);
+
+  useEffect(() => {
+    if (!isPlaying || (!isMinimalLyricsOpen && !isLyricsViewOpen)) return;
+
+    let animId;
+    const pollLiveTime = () => {
+      let t = currentTime;
+      if (audioEngine.playbackMode === 'native' && audioEngine.audio && !isNaN(audioEngine.audio.currentTime)) {
+        t = audioEngine.audio.currentTime;
+      } else if (audioEngine.currentTime !== undefined && !isNaN(audioEngine.currentTime)) {
+        t = audioEngine.currentTime;
+      }
+      setLivePlayTime(t);
+      animId = requestAnimationFrame(pollLiveTime);
+    };
+
+    animId = requestAnimationFrame(pollLiveTime);
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [isPlaying, isMinimalLyricsOpen, isLyricsViewOpen, currentTime]);
+
+  // Track active line index in synced lyrics with calibrated vocal anticipation
   const activeLineIndex = useMemo(() => {
     if (!lyricsData?.isSynced || !lyricsData.lines || lyricsData.lines.length === 0) return -1;
-    // 150ms anticipation allows highlight to lock in synchronously with vocal onset
-    const playbackTime = (currentTime || 0) + 0.15;
+    // 80ms vocal anticipation locks in synchronously on vocal onset
+    const effectiveTime = livePlayTime !== null && livePlayTime !== undefined ? livePlayTime : (currentTime || 0);
+    const playbackTime = effectiveTime + 0.08;
     let idx = -1;
     for (let i = 0; i < lyricsData.lines.length; i++) {
-      if (lyricsData.lines[i].time <= playbackTime) {
+      const lineTime = lyricsData.lines[i].time;
+      if (lineTime !== undefined && lineTime <= playbackTime) {
         idx = i;
-      } else {
+      } else if (lineTime !== undefined && lineTime > playbackTime) {
         break;
       }
     }
     return idx;
-  }, [lyricsData, currentTime]);
+  }, [lyricsData, livePlayTime, currentTime]);
 
   // Handle user manual scroll with auto-scroll resume timer
   const handleLyricsManualScroll = useCallback(() => {
@@ -936,7 +967,10 @@ export default function VinylScene({
     const activeEl = activeLineRef.current;
     const container = lyricsContainerRef.current;
     if (activeEl && container) {
-      const targetScroll = activeEl.offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = activeEl.getBoundingClientRect();
+      const relativeTop = activeRect.top - containerRect.top + container.scrollTop;
+      const targetScroll = relativeTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
       container.scrollTo({
         top: Math.max(0, targetScroll),
         behavior: 'smooth'
@@ -950,7 +984,10 @@ export default function VinylScene({
     const activeEl = minimalActiveLineRef.current;
     const container = minimalLyricsContainerRef.current;
     if (activeEl && container) {
-      const targetScroll = activeEl.offsetTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = activeEl.getBoundingClientRect();
+      const relativeTop = activeRect.top - containerRect.top + container.scrollTop;
+      const targetScroll = relativeTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
       container.scrollTo({
         top: Math.max(0, targetScroll),
         behavior: 'smooth'
@@ -2750,7 +2787,7 @@ export default function VinylScene({
 
                   {isMinimalLyricsOpen && (
                     <div
-                      className="vinyl-minimal-lyrics-flow"
+                      className={`vinyl-minimal-lyrics-flow ${lyricsData?.isSynced ? 'is-synced' : 'is-plain'}`}
                       ref={minimalLyricsContainerRef}
                       onScroll={handleLyricsManualScroll}
                       onClick={(e) => e.stopPropagation()}
@@ -2759,8 +2796,8 @@ export default function VinylScene({
                         <div className="vinyl-minimal-lyrics-status">Loading lyrics...</div>
                       ) : lyricsData?.lines && lyricsData.lines.length > 0 ? (
                         lyricsData.lines.map((line, idx) => {
-                          const isActive = idx === activeLineIndex;
-                          const isPassed = activeLineIndex !== -1 && idx < activeLineIndex;
+                          const isActive = lyricsData.isSynced && idx === activeLineIndex;
+                          const isPassed = lyricsData.isSynced && activeLineIndex !== -1 && idx < activeLineIndex;
                           return (
                             <div
                               key={idx}
