@@ -41,7 +41,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
-import { LANGUAGES, LANGUAGE_LABELS } from '../data/tracks';
+import { LANGUAGES, LANGUAGE_LABELS, isTrackInLanguages } from '../data/tracks';
 import { fetchLyrics } from '../utils/lyricsService';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
 import PixelCat from './PixelCat';
@@ -149,11 +149,7 @@ export default function VinylScene({
   const filterTracksByLang = useCallback((trackList) => {
     if (!trackList || trackList.length === 0) return [];
     if (!activeLanguages || activeLanguages.length === 0) return trackList;
-    const lowerSelected = activeLanguages.map(l => l.toLowerCase());
-    return trackList.filter(track => {
-      const trackLang = (track.language || 'English').toLowerCase();
-      return lowerSelected.includes(trackLang);
-    });
+    return trackList.filter(track => isTrackInLanguages(track.language, activeLanguages));
   }, [activeLanguages]);
 
   // Language selection toggle
@@ -241,8 +237,7 @@ export default function VinylScene({
     e?.stopPropagation?.();
     if (!track) return;
     if (activeLanguages && activeLanguages.length > 0) {
-      const lower = activeLanguages.map(l => l.toLowerCase());
-      if (!lower.includes((track.language || 'English').toLowerCase())) {
+      if (!isTrackInLanguages(track.language, activeLanguages)) {
         return;
       }
     }
@@ -905,11 +900,7 @@ export default function VinylScene({
 
     // 1. Language Filter
     if (activeLanguages && activeLanguages.length > 0) {
-      const lowerSelected = activeLanguages.map(l => l.toLowerCase());
-      list = list.filter(track => {
-        const trackLang = (track.language || 'English').toLowerCase();
-        return lowerSelected.includes(trackLang);
-      });
+      list = list.filter(track => isTrackInLanguages(track.language, activeLanguages));
     }
 
     // 2. Category mapping logic to Musicly's real genres and metadata
@@ -1005,6 +996,24 @@ export default function VinylScene({
     const isEnglishOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'english';
     const isHindiOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'hindi';
     const isBengaliOnly = activeLanguages.length === 1 && (activeLanguages[0].toLowerCase() === 'bengali' || activeLanguages[0].toLowerCase() === 'bangla');
+    const isOtherOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'other';
+
+    if (isOtherOnly || activeLanguages.length === 0) {
+      const otherTracks = filterTracksByLang(allTracks.filter(t => {
+        const lang = (t.language || '').toLowerCase();
+        return lang === 'other' || (!['english', 'hindi', 'bengali'].includes(lang) && Boolean(t.language));
+      }));
+      if (otherTracks.length > 0) {
+        playlists.push({
+          id: 'global_other_melodies',
+          title: 'Global & Other Melodies',
+          subtitle: `${otherTracks.length} song${otherTracks.length === 1 ? '' : 's'} in this list`,
+          count: otherTracks.length,
+          tracks: otherTracks,
+          image: otherTracks[0]?.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'
+        });
+      }
+    }
 
     if (isEnglishOnly || activeLanguages.length === 0) {
       const countryTracks = filterTracksByLang(allTracks.filter(t =>

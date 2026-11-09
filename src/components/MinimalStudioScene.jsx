@@ -31,7 +31,7 @@ import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
 import StudioNotificationsDropdown from './StudioNotificationsDropdown';
 import { STUDIO_THEMES, getSavedStudioTheme, saveStudioTheme, getIsAutoThemeEnabled, setIsAutoThemeEnabled } from '../data/studioThemes';
-import { LANGUAGES, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
+import { LANGUAGES, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, isTrackInLanguages } from '../data/tracks';
 import { extractThemeFromImage, generateThemeFromHex } from '../utils/themeExtractor';
 import { getStudioBackgrounds, saveStudioBackgrounds, DEFAULT_STUDIO_PHOTOS, process4KImageFile } from '../utils/studioBackgroundsDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
@@ -626,12 +626,7 @@ export default function MinimalStudioScene({
   // Check if track matches a language filter (null/empty plays all languages)
   const isTrackMatchingLang = useCallback((track, filterLangs) => {
     if (!track) return false;
-    if (!filterLangs || (Array.isArray(filterLangs) && filterLangs.length === 0) || filterLangs === 'All') return true;
-    const trackLang = (track.language || 'English').toLowerCase();
-    if (Array.isArray(filterLangs)) {
-      return filterLangs.some(l => l.toLowerCase() === trackLang);
-    }
-    return trackLang === String(filterLangs).toLowerCase();
+    return isTrackInLanguages(track.language, filterLangs);
   }, []);
 
   // Song language selection handler (toggles language in/out of selection)

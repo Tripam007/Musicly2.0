@@ -18,7 +18,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { playPeacefulLikeSound } from '../utils/audioSynth';
-import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections } from '../data/tracks';
+import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections, isTrackInLanguages } from '../data/tracks';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
 
 const AVAILABLE_SECTIONS = GENRES.filter(g => g !== 'All');
@@ -160,9 +160,7 @@ export default function PlaylistDrawer({
       track.genre.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (activeLangs.length > 0) {
-      const trackLang = (track.language || 'English').toLowerCase();
-      const matchesAny = activeLangs.some(l => l.toLowerCase() === trackLang);
-      if (!matchesAny) return false;
+      if (!isTrackInLanguages(track.language, activeLangs)) return false;
     }
 
     if (activeTab === 'public') {

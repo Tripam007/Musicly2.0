@@ -90,12 +90,30 @@ export const GENRE_BACKDROPS = {
   'Chill/Sleep': '/assets/images/chill_sleep_scene.jpg'
 };
 
-export const LANGUAGES = ['English', 'Hindi', 'Bengali'];
+export const LANGUAGES = ['English', 'Hindi', 'Bengali', 'Other'];
 
 export const LANGUAGE_LABELS = {
   English: 'English',
   Hindi: 'हिन्दी',
-  Bengali: 'বাংলা'
+  Bengali: 'বাংলা',
+  Other: 'Other'
+};
+
+export const isTrackInLanguages = (trackLang, selectedLangs) => {
+  if (!selectedLangs || selectedLangs.length === 0) return true;
+  const tLang = (trackLang || 'English').toLowerCase();
+  const lowerSelected = Array.isArray(selectedLangs)
+    ? selectedLangs.map(l => String(l).toLowerCase())
+    : [String(selectedLangs).toLowerCase()];
+
+  if (lowerSelected.length === 0 || lowerSelected.includes('all')) return true;
+
+  return lowerSelected.some(sel => {
+    if (sel === 'other') {
+      return tLang === 'other' || !['english', 'hindi', 'bengali'].includes(tLang);
+    }
+    return sel === tLang;
+  });
 };
 
 export const TRACKS = [
@@ -1006,6 +1024,48 @@ export const TRACKS = [
     cover: 'https://img.youtube.com/vi/u1V8YRJnr48/hqdefault.jpg',
     audioUrl: 'https://www.youtube.com/watch?v=u1V8YRJnr48',
     youtubeId: 'u1V8YRJnr48',
+    isYouTube: true,
+    isOriginalAudio: false
+  },
+  {
+    id: 'stay-with-me-miki-matsubara',
+    title: 'Stay With Me',
+    artist: 'Miki Matsubara',
+    genre: 'Retro',
+    genres: ['Retro', 'Lo-Fi', 'Synthwave'],
+    language: 'Other',
+    duration: 298,
+    cover: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&auto=format&fit=crop&q=80',
+    audioUrl: 'https://www.youtube.com/watch?v=9GxIS4o0y1Q',
+    youtubeId: '9GxIS4o0y1Q',
+    isYouTube: true,
+    isOriginalAudio: false
+  },
+  {
+    id: 'besame-mucho-consuelo-velazquez',
+    title: 'Bésame Mucho',
+    artist: 'Consuelo Velázquez',
+    genre: 'Retro',
+    genres: ['Retro', 'Peace', 'Indie'],
+    language: 'Other',
+    duration: 240,
+    cover: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=600&auto=format&fit=crop&q=80',
+    audioUrl: 'https://www.youtube.com/watch?v=kY7wVd-xN3E',
+    youtubeId: 'kY7wVd-xN3E',
+    isYouTube: true,
+    isOriginalAudio: false
+  },
+  {
+    id: 'la-vie-en-rose-edith-piaf',
+    title: 'La Vie En Rose',
+    artist: 'Édith Piaf',
+    genre: 'Retro',
+    genres: ['Retro', 'Peace'],
+    language: 'Other',
+    duration: 185,
+    cover: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80',
+    audioUrl: 'https://www.youtube.com/watch?v=kFzViYkZAz4',
+    youtubeId: 'kFzViYkZAz4',
     isYouTube: true,
     isOriginalAudio: false
   }

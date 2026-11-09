@@ -40,7 +40,7 @@ import './styles/airControls.css';
 import { VoiceControlManager, MUSICLY_ACTIONS } from './voice';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useButtonTactileFeedback } from './hooks/useButtonTactileFeedback';
-import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage, isCountryLanguage } from './data/tracks';
+import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage, isCountryLanguage, LANGUAGES, isTrackInLanguages } from './data/tracks';
 import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/audioSynth';
 import { audioEngine } from './utils/audioEngine';
 import { ytEngine, extractYouTubeId } from './utils/youtubePlayer';
@@ -504,19 +504,12 @@ export default function App() {
 
     // 2. Filter by language if any languages are actively selected; otherwise all songs play freely
     if (selectedLanguages && selectedLanguages.length > 0) {
-      const lowerSelected = selectedLanguages.map(l => l.toLowerCase());
-      const langFiltered = filtered.filter(track => {
-        const trackLang = (track.language || 'English').toLowerCase();
-        return lowerSelected.includes(trackLang);
-      });
+      const langFiltered = filtered.filter(track => isTrackInLanguages(track.language, selectedLanguages));
       if (langFiltered.length > 0) {
         return langFiltered;
       }
       // Strict fallback: when a language is selected, never return tracks from other languages
-      const allLangFiltered = allTracks.filter(track => {
-        const trackLang = (track.language || 'English').toLowerCase();
-        return lowerSelected.includes(trackLang);
-      });
+      const allLangFiltered = allTracks.filter(track => isTrackInLanguages(track.language, selectedLanguages));
       return allLangFiltered;
     }
 
@@ -690,21 +683,19 @@ export default function App() {
   // When active language(s) change, verify current track and queue strictly match selected language
   useEffect(() => {
     if (!selectedLanguages || selectedLanguages.length === 0) return;
-    const lowerSelected = selectedLanguages.map(l => l.toLowerCase());
 
     // Clean out queue items that do not match the selected language
     setCustomQueue(prev => {
       if (!prev || prev.length === 0) return prev;
-      return prev.filter(t => lowerSelected.includes((t.language || 'English').toLowerCase()));
+      return prev.filter(t => isTrackInLanguages(t.language, selectedLanguages));
     });
 
     // Check if current playing track matches the selected language
     const curr = currentTrackRef.current;
     if (curr) {
-      const currLang = (curr.language || 'English').toLowerCase();
-      if (!lowerSelected.includes(currLang)) {
-        const match = (activePlaylistRef.current || []).find(t => lowerSelected.includes((t.language || 'English').toLowerCase()))
-          || allTracks.find(t => lowerSelected.includes((t.language || 'English').toLowerCase()));
+      if (!isTrackInLanguages(curr.language, selectedLanguages)) {
+        const match = (activePlaylistRef.current || []).find(t => isTrackInLanguages(t.language, selectedLanguages))
+          || allTracks.find(t => isTrackInLanguages(t.language, selectedLanguages));
         if (match) {
           setCurrentTrackId(match.id);
           setCurrentTime(0);
@@ -970,8 +961,7 @@ export default function App() {
     if (customQueueRef.current && customQueueRef.current.length > 0) {
       let filteredQueue = customQueueRef.current;
       if (selectedLanguages && selectedLanguages.length > 0) {
-        const lowerSelected = selectedLanguages.map(l => l.toLowerCase());
-        filteredQueue = filteredQueue.filter(t => lowerSelected.includes((t.language || 'English').toLowerCase()));
+        filteredQueue = filteredQueue.filter(t => isTrackInLanguages(t.language, selectedLanguages));
       }
       if (filteredQueue.length > 0) {
         const [nextQueuedTrack, ...remainingQueue] = filteredQueue;
@@ -2388,17 +2378,12 @@ export default function App() {
         selectedLanguages={selectedLanguages}
         onSelectLanguage={handleSelectLanguage}
         onPlayTrackForGenre={(genre) => {
-          const lowerSelected = (selectedLanguages && selectedLanguages.length > 0)
-            ? selectedLanguages.map(l => l.toLowerCase())
-            : null;
           const match = allTracks.find(t => {
             const matchesGenre = Array.isArray(t.genres)
               ? t.genres.some(g => g.toLowerCase() === genre.toLowerCase())
               : (t.genre || '').toLowerCase().includes(genre.toLowerCase());
             if (!matchesGenre) return false;
-            if (!lowerSelected) return true;
-            const tLang = (t.language || 'English').toLowerCase();
-            return lowerSelected.includes(tLang);
+            return isTrackInLanguages(t.language, selectedLanguages);
           }) || allTracks.find(t => {
             if (Array.isArray(t.genres)) {
               return t.genres.some(g => g.toLowerCase() === genre.toLowerCase());

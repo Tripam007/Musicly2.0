@@ -31,11 +31,13 @@ import {
   Lock
 } from 'lucide-react';
 import FloatingWaveformScrubber from './FloatingWaveformScrubber';
+import { isTrackInLanguages } from '../data/tracks';
 
 const LANGUAGE_OPTIONS = [
   { id: 'English', label: 'English', native: null, icon: null },
   { id: 'Hindi', label: 'Hindi', native: 'हिंदी', icon: null },
-  { id: 'Bengali', label: 'Bengali', native: 'বাংলা', icon: null }
+  { id: 'Bengali', label: 'Bengali', native: 'বাংলা', icon: null },
+  { id: 'Other', label: 'Other', native: 'Other', icon: null }
 ];
 
 const formatDuration = (seconds) => {
@@ -294,11 +296,7 @@ function ChooseYourVibeScene({
     }
     // Language filtering: prefer songs matching chosen language(s)
     if (activeLangs.length > 0) {
-      const lower = activeLangs.map(l => l.toLowerCase());
-      const langMatches = filtered.filter(t => {
-        const tLang = (t.language || 'English').toLowerCase();
-        return lower.includes(tLang);
-      });
+      const langMatches = filtered.filter(t => isTrackInLanguages(t.language, activeLangs));
       if (langMatches.length > 0) {
         filtered = langMatches;
       }

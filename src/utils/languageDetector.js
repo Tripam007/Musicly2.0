@@ -155,6 +155,10 @@ export function detectSongLanguage(title = '', artist = '', extraContext = '') {
   if (ARABIC_URDU_SCRIPT_REGEX.test(rawCombined)) {
     return 'Hindi';
   }
+  // Japanese, Korean, Chinese, Cyrillic, or other global scripts
+  if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\uAC00-\uD7AF\u0400-\u04FF]/.test(rawCombined)) {
+    return 'Other';
+  }
 
   // 2. Explicit Language Tags in text
   const cleanForTags = rawCombined.toLowerCase();
@@ -163,6 +167,9 @@ export function detectSongLanguage(title = '', artist = '', extraContext = '') {
   }
   if (/\b(hindi song|bollywood song|hindi lyrical|hindi audio)\b/i.test(cleanForTags)) {
     return 'Hindi';
+  }
+  if (/\b(spanish|japanese|korean|french|italian|german|portuguese|latin|anime|city pop|russian|other language)\b/i.test(cleanForTags)) {
+    return 'Other';
   }
 
   // 3. Artist Matching (Strong confidence)
