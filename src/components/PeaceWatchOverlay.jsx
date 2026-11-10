@@ -23,10 +23,27 @@ export default function PeaceWatchOverlay({
   const [currentSecondsDot, setCurrentSecondsDot] = useState(2);
   const [is24Hour, setIs24Hour] = useState(false);
   const [breathingPhase, setBreathingPhase] = useState('INHALE'); // INHALE, HOLD, EXHALE
+  const [hudMessage, setHudMessage] = useState(null); // On-screen tactile HUD feedback { title, detail }
+  const [activeButtonKey, setActiveButtonKey] = useState(null); // For visible button click animation
 
-  // Gesture dragging tracking
+  const hudTimerRef = useRef(null);
   const dragStartYRef = useRef(null);
   const isDraggingRef = useRef(false);
+
+  // Trigger on-screen HUD flash notification whenever any hardware or touch button is used
+  const showHud = useCallback((title, detail = '') => {
+    if (hudTimerRef.current) clearTimeout(hudTimerRef.current);
+    setHudMessage({ title, detail });
+    hudTimerRef.current = setTimeout(() => {
+      setHudMessage(null);
+    }, 1400);
+  }, []);
+
+  // Visual button depression trigger
+  const flashButton = (key) => {
+    setActiveButtonKey(key);
+    setTimeout(() => setActiveButtonKey(null), 220);
+  };
 
   // 1. Live Real-Time Clock
   useEffect(() => {
@@ -96,17 +113,27 @@ export default function PeaceWatchOverlay({
     const deltaY = e.clientY - dragStartYRef.current;
 
     // Dragged Upwards: advance screen (Clock -> Track Info -> Breathing)
-    if (deltaY < -26) {
+    if (deltaY < -24) {
       isDraggingRef.current = false;
       dragStartYRef.current = null;
-      setCurrentSlide((prev) => (prev < 2 ? prev + 1 : 0));
+      setCurrentSlide((prev) => {
+        const next = prev < 2 ? prev + 1 : 0;
+        const labels = ['CLOCK MODE', 'AUDIO PLAYBACK', 'ZEN BREATHING'];
+        showHud(labels[next]);
+        return next;
+      });
       playTactileClickSound();
     }
     // Dragged Downwards: return screen (Breathing -> Track Info -> Clock)
-    else if (deltaY > 26) {
+    else if (deltaY > 24) {
       isDraggingRef.current = false;
       dragStartYRef.current = null;
-      setCurrentSlide((prev) => (prev > 0 ? prev - 1 : 2));
+      setCurrentSlide((prev) => {
+        const next = prev > 0 ? prev - 1 : 2;
+        const labels = ['CLOCK MODE', 'AUDIO PLAYBACK', 'ZEN BREATHING'];
+        showHud(labels[next]);
+        return next;
+      });
       playTactileClickSound();
     }
   };
@@ -116,49 +143,70 @@ export default function PeaceWatchOverlay({
     dragStartYRef.current = null;
   };
 
-  // 5. Hardware Button Action Handlers
+  // 5. Hardware Button Action Handlers with Visual HUD & Audio Response
   const handleCrownClick = () => {
+    flashButton('crown');
     playClickSound('normal');
     onTogglePlay?.();
+    showHud(isPlaying ? '⏸ PAUSED' : '▶ PLAYING', currentTrack?.title || 'Peace Audio');
   };
 
   const handleVolumeUp = () => {
+    flashButton('vol-up');
     playClickSound('high');
-    if (onVolumeChange) {
-      onVolumeChange(Math.min(1, Math.round((volume + 0.08) * 100) / 100));
-    }
+    const newVol = Math.min(1, Math.round((volume + 0.08) * 100) / 100);
+    onVolumeChange?.(newVol);
+    showHud(`VOL ▲ ${Math.round(newVol * 100)}%`, `${newVol >= 1 ? 'MAX' : ''}`);
   };
 
   const handleVolumeDown = () => {
+    flashButton('vol-down');
     playClickSound('normal');
-    if (onVolumeChange) {
-      onVolumeChange(Math.max(0, Math.round((volume - 0.08) * 100) / 100));
-    }
+    const newVol = Math.max(0, Math.round((volume - 0.08) * 100) / 100);
+    onVolumeChange?.(newVol);
+    showHud(`VOL ▼ ${Math.round(newVol * 100)}%`, `${newVol === 0 ? 'MUTED' : ''}`);
   };
 
   const handlePrev = () => {
+    flashButton('prev');
     playClickSound('light');
     onPrevTrack?.();
+    showHud('◀ PREV SONG', 'Skipping back');
   };
 
   const handleNext = () => {
+    flashButton('next');
     playClickSound('light');
     onNextTrack?.();
+    showHud('NEXT SONG ▶', 'Skipping forward');
   };
 
   const handleTousenClick = () => {
+    flashButton('tousen');
     playClickSound('normal');
-    setCurrentSlide((prev) => (prev + 1) % 3);
+    setCurrentSlide((prev) => {
+      const next = (prev + 1) % 3;
+      const labels = ['CLOCK MODE', 'AUDIO PLAYBACK', 'ZEN BREATHING'];
+      showHud(`TOUSEN: ${labels[next]}`);
+      return next;
+    });
   };
 
   const handleConcaveButton = () => {
+    flashButton('concave');
     playPeacefulLikeSound();
     onToggleFavorite?.();
+    showHud(isFavorite ? '🤍 UNFAVORITED' : '♥ ZEN FAVORITE', 'Peace Bell Chime');
   };
 
   const handleToggleTimeFormat = () => {
+    flashButton('modes');
     playClickSound('light');
-    setIs24Hour((prev) => !prev);
+    setIs24Hour((prev) => {
+      const next = !prev;
+      showHud(next ? 'FORMAT: 24-HOUR' : 'FORMAT: 12-HOUR');
+      return next;
+    });
   };
 
   if (!isOpen) return null;
@@ -188,7 +236,7 @@ export default function PeaceWatchOverlay({
         title="Exit Peace Watch (or press Esc)"
         aria-label="Exit Peace Watch"
       >
-        <X size={22} strokeWidth={2.2} />
+        <X size={20} strokeWidth={2.4} />
       </button>
 
       {/* Center Watch Device Wrapper */}
@@ -200,7 +248,7 @@ export default function PeaceWatchOverlay({
         />
 
         {/* ------------------------------------------------------------------
-            Circular Interactive Screen (Center)
+            Circular Recessed E-Ink Screen (Center)
            ------------------------------------------------------------------ */}
         <div
           className="peace-watch-screen"
@@ -210,28 +258,88 @@ export default function PeaceWatchOverlay({
           onPointerCancel={handlePointerUp}
           title="Drag UP / DOWN or tap TOUSEN button to switch screen"
         >
+          {/* Subtle Top Rim Micro-Stamp matching original hardware */}
+          <div className="peace-rim-stamp-top">S / P</div>
+
+          {/* Transient E-Ink HUD Feedback Banner */}
+          {hudMessage && (
+            <div className="peace-screen-hud-toast" role="status" aria-live="polite">
+              <div className="peace-screen-hud-title">{hudMessage.title}</div>
+              {hudMessage.detail && (
+                <div className="peace-screen-hud-detail">{hudMessage.detail}</div>
+              )}
+            </div>
+          )}
+
           <div
             className="peace-screen-slides-container"
             style={{ transform: `translateY(-${currentSlide * 100}%)` }}
           >
             {/* SLIDE 0: Zen Clock Face (Faithful to Image 2) */}
-            <div className="peace-screen-slide">
-              <div className="peace-glyph-top">µ</div>
+            <div className="peace-screen-slide peace-clock-slide">
+              {/* Authentic Stencil µ Glyph */}
+              <div className="peace-glyph-top-box">
+                <svg
+                  className="peace-stencil-mu-svg"
+                  viewBox="0 0 32 38"
+                  width="26"
+                  height="30"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M 8 5 L 8 26 C 8 29.5 11 32 15 32 C 19 32 22 29.5 22 26 L 22 5"
+                    stroke="#111113"
+                    strokeWidth="3.6"
+                    strokeLinecap="square"
+                  />
+                  <path
+                    d="M 8 16 L 2 16"
+                    stroke="#111113"
+                    strokeWidth="3.6"
+                    strokeLinecap="square"
+                  />
+                  <path
+                    d="M 22 14 L 30 14 L 30 5"
+                    stroke="#111113"
+                    strokeWidth="3.6"
+                    strokeLinecap="square"
+                  />
+                </svg>
+              </div>
 
+              {/* Bold Precision Technical Divider Bar */}
               <div className="peace-center-gauge-row">
                 <div className={`peace-gauge-line ${isPlaying ? 'is-pulse' : ''}`} />
               </div>
 
+              {/* Bottom Technical Indicators & Minimalist Time */}
               <div className="peace-time-bottom">
-                <div className="peace-time-dots">
-                  <span>·</span>
-                  <span>{currentSecondsDot > 1 ? '●' : '·'}</span>
+                <div className="peace-technical-meta-row">
+                  <span className="peace-indicator-bracket">[:2</span>
+                  <div className="peace-time-dots">
+                    <span className="peace-dot-left">·</span>
+                    <span className="peace-dot-right">{currentSecondsDot > 1 ? '●' : '·'}</span>
+                  </div>
+                  <span className="peace-indicator-angle">o/</span>
                 </div>
+
                 <div className="peace-time-numeric">{currentTimeStr}</div>
-                <div className="peace-drag-hint-up">
-                  <ChevronUp size={10} />
-                  <span>DRAG UP</span>
-                </div>
+
+                <button
+                  type="button"
+                  className="peace-drag-hint-pill"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentSlide(1);
+                    playTactileClickSound();
+                    showHud('AUDIO PLAYBACK');
+                  }}
+                  title="View Peace Audio Controls"
+                >
+                  <ChevronUp size={10} strokeWidth={3} />
+                  <span>AUDIO</span>
+                </button>
               </div>
             </div>
 
@@ -240,7 +348,7 @@ export default function PeaceWatchOverlay({
               <div className="peace-slide-header-tag">PEACE AUDIO</div>
 
               <div className="peace-track-info-box">
-                <div className="peace-track-title">
+                <div className="peace-track-title" title={currentTrack?.title || 'Peace Meditation'}>
                   {currentTrack?.title || 'Peace Meditation'}
                 </div>
                 <div className="peace-track-artist">
@@ -257,22 +365,24 @@ export default function PeaceWatchOverlay({
                     handlePrev();
                   }}
                   title="Previous Track"
+                  aria-label="Previous Track"
                 >
                   <SkipBack size={13} fill="currentColor" />
                 </button>
                 <button
                   type="button"
-                  className="peace-screen-control-btn"
+                  className="peace-screen-control-btn peace-play-btn"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleCrownClick();
                   }}
                   title={isPlaying ? 'Pause' : 'Play'}
+                  aria-label={isPlaying ? 'Pause' : 'Play'}
                 >
                   {isPlaying ? (
-                    <Pause size={15} fill="currentColor" />
+                    <Pause size={14} fill="currentColor" />
                   ) : (
-                    <Play size={15} fill="currentColor" style={{ marginLeft: 1 }} />
+                    <Play size={14} fill="currentColor" style={{ marginLeft: 1.5 }} />
                   )}
                 </button>
                 <button
@@ -283,6 +393,7 @@ export default function PeaceWatchOverlay({
                     handleNext();
                   }}
                   title="Next Track"
+                  aria-label="Next Track"
                 >
                   <SkipForward size={13} fill="currentColor" />
                 </button>
@@ -295,9 +406,24 @@ export default function PeaceWatchOverlay({
                 />
               </div>
 
-              <div className="peace-drag-hint-down">
-                <ChevronDown size={10} />
-                <span>{formatTime(currentTime)} / {formatTime(duration)}</span>
+              <div className="peace-music-bottom-row">
+                <span className="peace-time-display-micro">
+                  {formatTime(currentTime)} / {formatTime(duration)}
+                </span>
+                <button
+                  type="button"
+                  className="peace-return-clock-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentSlide(0);
+                    playTactileClickSound();
+                    showHud('CLOCK MODE');
+                  }}
+                  title="Return to Clock"
+                >
+                  <ChevronDown size={10} strokeWidth={3} />
+                  <span>CLOCK</span>
+                </button>
               </div>
             </div>
 
@@ -306,96 +432,106 @@ export default function PeaceWatchOverlay({
               <div className="peace-slide-header-tag">ZEN HARMONY</div>
 
               <div className="peace-breathing-circle-wrap">
-                <div className="peace-breathing-circle" />
+                <div className={`peace-breathing-circle phase-${breathingPhase.toLowerCase()}`} />
+                <div className="peace-breathing-center-dot" />
               </div>
 
               <div className="peace-breathing-label">{breathingPhase}</div>
 
-              <div className="peace-drag-hint-down">
-                <ChevronDown size={10} />
+              <button
+                type="button"
+                className="peace-return-clock-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentSlide(0);
+                  playTactileClickSound();
+                  showHud('CLOCK MODE');
+                }}
+                title="Return to Clock"
+              >
+                <ChevronDown size={10} strokeWidth={3} />
                 <span>CLOCK</span>
-              </div>
+              </button>
             </div>
           </div>
         </div>
 
         {/* ------------------------------------------------------------------
-            Physical Hardware Button Hotspots (Overlayed over watch chassis)
+            Physical Hardware Button Hotspots (Mapped seamlessly over watch chassis)
            ------------------------------------------------------------------ */}
 
         {/* 1. Top-Left Rotary Dial (Volume Up) */}
         <button
           type="button"
-          className="peace-hotspot peace-btn-top-left-dial"
+          className={`peace-hotspot peace-btn-top-left-dial ${activeButtonKey === 'vol-up' ? 'is-active' : ''}`}
           onClick={handleVolumeUp}
-          title={`Volume Up (${Math.round(volume * 100)}%)`}
+          title={`Top Dial: Volume Up (${Math.round(volume * 100)}%)`}
           aria-label="Volume Up"
         />
 
         {/* 2. Bottom-Left Rotary Dial (Volume Down) */}
         <button
           type="button"
-          className="peace-hotspot peace-btn-bottom-left-dial"
+          className={`peace-hotspot peace-btn-bottom-left-dial ${activeButtonKey === 'vol-down' ? 'is-active' : ''}`}
           onClick={handleVolumeDown}
-          title={`Volume Down (${Math.round(volume * 100)}%)`}
+          title={`Bottom Dial: Volume Down (${Math.round(volume * 100)}%)`}
           aria-label="Volume Down"
         />
 
         {/* 3. Right Crown Knob with Red Stripe (Play / Pause) */}
         <button
           type="button"
-          className="peace-hotspot peace-btn-right-crown"
+          className={`peace-hotspot peace-btn-right-crown ${activeButtonKey === 'crown' ? 'is-active' : ''}`}
           onClick={handleCrownClick}
-          title={isPlaying ? 'Pause Playback (Main Crown)' : 'Play Playback (Main Crown)'}
+          title={isPlaying ? 'Main Crown Knob: Pause (Click)' : 'Main Crown Knob: Play (Click)'}
           aria-label="Play or Pause Playback"
         />
 
         {/* 4. Top-Left Red Push Button (Previous Song) */}
         <button
           type="button"
-          className="peace-hotspot peace-btn-top-red"
+          className={`peace-hotspot peace-btn-top-red ${activeButtonKey === 'prev' ? 'is-active' : ''}`}
           onClick={handlePrev}
-          title="Previous Track"
+          title="Red Button (Top): Previous Track"
           aria-label="Previous Track"
         />
 
         {/* 5. Bottom-Left Red Push Button (Next Song) */}
         <button
           type="button"
-          className="peace-hotspot peace-btn-bottom-red"
+          className={`peace-hotspot peace-btn-bottom-red ${activeButtonKey === 'next' ? 'is-active' : ''}`}
           onClick={handleNext}
-          title="Next Track"
+          title="Red Button (Bottom): Next Track"
           aria-label="Next Track"
         />
 
         {/* 6. TOUSEN Black Tactile Button (Switch Screen Mode) */}
         <button
           type="button"
-          className="peace-hotspot peace-btn-tousen"
+          className={`peace-hotspot peace-btn-tousen ${activeButtonKey === 'tousen' ? 'is-active' : ''}`}
           onClick={handleTousenClick}
-          title="TOUSEN: Switch Screen (Clock / Track / Breathing)"
+          title="TOUSEN Button: Switch Mode (Clock / Audio / Zen)"
           aria-label="Switch Screen Mode"
         />
 
-        {/* 7. Bottom-Right Concave Button (Zen Bell Chime & Like) */}
+        {/* 7. Bottom-Right Concave Button (Zen Bell Chime & Favorite) */}
         <button
           type="button"
-          className="peace-hotspot peace-btn-bottom-right-circle"
+          className={`peace-hotspot peace-btn-bottom-right-circle ${activeButtonKey === 'concave' ? 'is-active' : ''}`}
           onClick={handleConcaveButton}
-          title="Peaceful Bell Chime & Favorite"
+          title="Concave Button: Zen Chime & Favorite"
           aria-label="Peaceful Bell Chime & Favorite"
         />
 
         {/* 8. Top-Right Mode Buttons (PSIT / EEFTI - 12h/24h Format) */}
         <button
           type="button"
-          className="peace-hotspot peace-btn-top-right-modes"
+          className={`peace-hotspot peace-btn-top-right-modes ${activeButtonKey === 'modes' ? 'is-active' : ''}`}
           onClick={handleToggleTimeFormat}
-          title="Toggle 12h / 24h Time Format"
+          title="PSIT / EEFTI: Toggle 12h / 24h Time Format"
           aria-label="Toggle Time Format"
         />
       </div>
     </div>
   );
 }
-

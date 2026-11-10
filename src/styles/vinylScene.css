@@ -5099,3 +5099,18 @@
   }
 }
 
+/* ==========================================================================
+   PEACE PLAYLIST SPECIAL WATCH EXPERIENCE: DEEP AMBIENT BACKGROUND BLUR
+   ========================================================================== */
+.vinyl-scene-root.is-peace-blur-active .vinyl-top-header,
+.vinyl-scene-root.is-peace-blur-active .vinyl-main-workspace,
+.vinyl-scene-root.is-peace-blur-active .vinyl-left-rail,
+.vinyl-scene-root.is-peace-blur-active .vinyl-playlists-stack,
+.vinyl-scene-root.is-peace-blur-active .vinyl-bottom-controls-bar {
+  filter: blur(40px) saturate(65%) brightness(0.92) !important;
+  opacity: 0.08 !important;
+  pointer-events: none !important;
+  transition: filter 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+

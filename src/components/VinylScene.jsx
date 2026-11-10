@@ -1880,7 +1880,7 @@ export default function VinylScene({
   };
 
   return (
-    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymModeActive ? 'is-gym-mode-active' : ''} ${isSmoothlyExitingScene ? 'is-smoothly-exiting' : ''}`}>
+    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymModeActive ? 'is-gym-mode-active' : ''} ${isSmoothlyExitingScene ? 'is-smoothly-exiting' : ''} ${isPeacePlaylist && isPlaying && !isPeaceWatchDismissed ? 'is-peace-blur-active' : ''}`}>
       {/* Subtle Grain Overlay */}
       <div className="vinyl-grain-overlay" />
 

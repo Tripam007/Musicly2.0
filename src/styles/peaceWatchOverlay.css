@@ -2,6 +2,7 @@
    MINIMALIST INDUSTRIAL CYBER WATCH OVERLAY (PEACE PLAYLIST SPECIAL EXPERIENCE)
    ========================================================================== */
 
+/* Fullscreen Ambient Backdrop with Studio Blur */
 .peace-watch-backdrop {
   position: fixed;
   inset: 0;
@@ -9,9 +10,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(228, 226, 219, 0.88);
-  backdrop-filter: blur(60px) brightness(0.97) saturate(135%);
-  -webkit-backdrop-filter: blur(60px) brightness(0.97) saturate(135%);
+  background: rgba(235, 233, 227, 0.85);
+  backdrop-filter: blur(50px) brightness(0.96) saturate(110%);
+  -webkit-backdrop-filter: blur(50px) brightness(0.96) saturate(110%);
   animation: peaceBackdropFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
   cursor: default;
@@ -25,25 +26,25 @@
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(60px);
-    -webkit-backdrop-filter: blur(60px);
+    backdrop-filter: blur(50px);
+    -webkit-backdrop-filter: blur(50px);
   }
 }
 
-/* Exit Button at Top Right */
+/* Minimalist Frosted Exit Button at Top Right */
 .peace-watch-exit-btn {
   position: fixed;
   top: 32px;
   right: 36px;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
-  color: #1a1a1a;
+  background: rgba(255, 255, 255, 0.90);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.14);
+  color: #1a1a1c;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -56,30 +57,30 @@
   background: #ffffff;
   color: #000000;
   transform: scale(1.08) rotate(90deg);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.20);
 }
 
 .peace-watch-exit-btn:active {
-  transform: scale(0.96) rotate(90deg);
+  transform: scale(0.95) rotate(90deg);
 }
 
-/* Watch Container */
+/* Center Watch Device Housing */
 .peace-watch-device-wrapper {
   position: relative;
-  width: 390px;
+  width: 395px;
   max-width: 88vw;
   aspect-ratio: 435 / 552;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: peaceWatchPopIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.30)) drop-shadow(0 10px 22px rgba(0, 0, 0, 0.16));
+  animation: peaceWatchPopIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 35px 70px rgba(0, 0, 0, 0.32)) drop-shadow(0 12px 25px rgba(0, 0, 0, 0.18));
 }
 
 @keyframes peaceWatchPopIn {
   from {
     opacity: 0;
-    transform: translateY(24px) scale(0.94);
+    transform: translateY(24px) scale(0.95);
   }
   to {
     opacity: 1;
@@ -96,7 +97,7 @@
 }
 
 /* --------------------------------------------------------------------------
-   Interactive Circular Screen (Fitted directly over the watch bezel)
+   Interactive Circular Recessed E-Ink Screen (Center Bezel)
    -------------------------------------------------------------------------- */
 
 .peace-watch-screen {
@@ -107,16 +108,109 @@
   width: 50.5%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  background: #ededef;
+  background: radial-gradient(circle at 48% 46%, #f7f6f2 0%, #ebe7df 65%, #dbd6c8 100%);
+  box-shadow: 
+    inset 0 3px 10px rgba(0, 0, 0, 0.42),
+    inset 0 0 0 1.5px rgba(0, 0, 0, 0.30),
+    inset 0 -2px 5px rgba(255, 255, 255, 0.8),
+    0 0 0 1px rgba(0, 0, 0, 0.12);
   overflow: hidden;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.20), inset 0 -1px 2px rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(0, 0, 0, 0.1);
   cursor: grab;
   touch-action: none;
+  z-index: 5;
 }
 
 .peace-watch-screen:active {
   cursor: grabbing;
+}
+
+/* Watch Crystal Anti-Reflective Optical Glass Sheen */
+.peace-watch-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.38) 0%,
+    rgba(255, 255, 255, 0.12) 30%,
+    rgba(255, 255, 255, 0) 52%,
+    rgba(0, 0, 0, 0.04) 80%,
+    rgba(0, 0, 0, 0.12) 100%
+  );
+  pointer-events: none;
+  z-index: 12;
+}
+
+/* Authentic Top Rim Micro-Stamp (S / P) */
+.peace-rim-stamp-top {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: rgba(20, 20, 24, 0.45);
+  pointer-events: none;
+  z-index: 8;
+}
+
+/* Transient Tactile E-Ink HUD Flash Banner */
+.peace-screen-hud-toast {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(18, 18, 22, 0.92);
+  color: #f7f6f2;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 8px;
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  z-index: 25;
+  pointer-events: none;
+  animation: peaceHudPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  max-width: 82%;
+  text-align: center;
+}
+
+@keyframes peaceHudPop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.peace-screen-hud-title {
+  font-family: 'Space Grotesk', 'Courier New', monospace;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffffff;
+}
+
+.peace-screen-hud-detail {
+  font-size: 0.62rem;
+  color: #b0b0b8;
+  letter-spacing: 0.02em;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Screen Slide Carousel */
@@ -136,224 +230,326 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 14px;
+  padding: 22px 14px 14px 14px;
   box-sizing: border-box;
-  text-align: center;
-  color: #111111;
-  font-family: var(--vinyl-font-mono, monospace);
+  position: relative;
 }
 
-/* Slide 1: Clock & Zen Pulse Face (Faithful to Image 2) */
-.peace-glyph-top {
-  font-size: 1.35rem;
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  color: #111111;
-  line-height: 1;
-  margin-top: 4px;
-}
+/* --------------------------------------------------------------------------
+   SLIDE 0: Zen Clock Face (Faithful to Real Device)
+   -------------------------------------------------------------------------- */
 
-.peace-center-gauge-row {
+.peace-glyph-top-box {
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-top: 2px;
+}
+
+.peace-stencil-mu-svg {
+  display: block;
+}
+
+/* Bold Technical Divider Bar */
+.peace-center-gauge-row {
   width: 100%;
-  margin: 6px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
 }
 
 .peace-gauge-line {
   width: 68px;
   height: 3.5px;
-  background: #111111;
-  border-radius: 2px;
-  transition: transform 0.2s ease, width 0.2s ease;
+  background: #111113;
+  border-radius: 1px;
 }
 
 .peace-gauge-line.is-pulse {
-  animation: peaceBarPulse 1.8s ease-in-out infinite alternate;
+  animation: peaceLinePulse 3.5s ease-in-out infinite;
 }
 
-@keyframes peaceBarPulse {
-  0% {
-    transform: scaleX(0.85);
+@keyframes peaceLinePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scaleX(1);
   }
-  100% {
-    transform: scaleX(1.15);
+  50% {
+    opacity: 0.85;
+    transform: scaleX(0.92);
   }
 }
 
+/* Technical Meta Row & Digital Time */
 .peace-time-bottom {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 3px;
   margin-bottom: 2px;
+}
+
+.peace-technical-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: 'Space Grotesk', 'Courier New', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #111113;
+  letter-spacing: 0.05em;
+}
+
+.peace-indicator-bracket {
+  letter-spacing: -0.05em;
 }
 
 .peace-time-dots {
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #111111;
+  gap: 3px;
+}
+
+.peace-dot-left {
+  font-size: 0.9rem;
+  line-height: 1;
+  color: #111113;
+}
+
+.peace-dot-right {
+  font-size: 0.52rem;
+  line-height: 1;
+  color: #111113;
+}
+
+.peace-indicator-angle {
+  letter-spacing: -0.05em;
 }
 
 .peace-time-numeric {
-  font-size: 1.05rem;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
+  font-size: 1.14rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #111113;
+  line-height: 1;
+}
+
+/* Sleek Micro Action Pill */
+.peace-drag-hint-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 4px;
+  background: rgba(17, 17, 19, 0.08);
+  border: 1px solid rgba(17, 17, 19, 0.15);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 0.54rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  color: #111111;
+  color: #111113;
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.peace-drag-hint-up {
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  color: #777777;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  margin-top: 2px;
+.peace-drag-hint-pill:hover {
+  background: rgba(17, 17, 19, 0.18);
+  transform: translateY(-1px);
 }
 
-/* Slide 2: "Other Stuffs" (Track Info, Ambient, Progress) */
-.peace-music-slide {
-  background: #ededef;
+.peace-drag-hint-pill:active {
+  transform: translateY(0);
 }
+
+/* --------------------------------------------------------------------------
+   SLIDE 1: Peace Audio Controls ("Other Stuffs")
+   -------------------------------------------------------------------------- */
 
 .peace-slide-header-tag {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: #888888;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, monospace;
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #55555a;
   text-transform: uppercase;
 }
 
 .peace-track-info-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 100%;
-  max-width: 150px;
+  text-align: center;
+  max-width: 90%;
+  margin: 2px 0;
 }
 
 .peace-track-title {
-  font-size: 0.86rem;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.78rem;
   font-weight: 800;
-  color: #111111;
+  color: #111113;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 135px;
 }
 
 .peace-track-artist {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #666666;
+  font-size: 0.62rem;
+  color: #5a5a60;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 130px;
+  max-width: 135px;
 }
 
+/* Playback Control Buttons */
 .peace-music-playback-row {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: 4px 0;
 }
 
 .peace-screen-control-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid #111113;
   background: transparent;
-  border: none;
-  color: #111111;
-  cursor: pointer;
+  color: #111113;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  border-radius: 50%;
-  transition: transform 0.12s ease;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
 }
 
 .peace-screen-control-btn:hover {
-  transform: scale(1.15);
+  background: #111113;
+  color: #f7f6f2;
+  transform: scale(1.08);
 }
 
 .peace-screen-control-btn:active {
   transform: scale(0.92);
 }
 
+.peace-screen-control-btn.peace-play-btn {
+  width: 34px;
+  height: 34px;
+  background: #111113;
+  color: #f7f6f2;
+}
+
+.peace-screen-control-btn.peace-play-btn:hover {
+  background: #2a2a30;
+}
+
+/* Progress Bar */
 .peace-track-progress-bar-wrap {
-  width: 80%;
-  height: 3px;
-  background: rgba(0, 0, 0, 0.1);
+  width: 78%;
+  height: 3.5px;
+  background: rgba(17, 17, 19, 0.16);
   border-radius: 2px;
   overflow: hidden;
-  margin-bottom: 3px;
+  margin: 3px 0;
 }
 
 .peace-track-progress-fill {
   height: 100%;
-  background: #111111;
+  background: #111113;
   transition: width 0.3s linear;
 }
 
-.peace-drag-hint-down {
-  font-size: 0.62rem;
-  letter-spacing: 0.1em;
-  color: #777777;
+.peace-music-bottom-row {
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: space-between;
+  width: 82%;
+  margin-bottom: 2px;
 }
 
-/* Slide 3: Zen Breathing Rhythm */
-.peace-breathing-slide {
-  background: #ededef;
+.peace-time-display-micro {
+  font-family: 'Space Grotesk', 'Courier New', monospace;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #55555a;
 }
+
+.peace-return-clock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: transparent;
+  border: none;
+  font-size: 0.54rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #111113;
+  cursor: pointer;
+  padding: 0;
+}
+
+.peace-return-clock-btn:hover {
+  opacity: 0.75;
+}
+
+/* --------------------------------------------------------------------------
+   SLIDE 2: Zen Rhythm Breathing Guide
+   -------------------------------------------------------------------------- */
 
 .peace-breathing-circle-wrap {
   position: relative;
-  width: 62px;
-  height: 62px;
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
   justify-content: center;
+  margin: 4px 0;
 }
 
 .peace-breathing-circle {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  border: 2px solid #111111;
-  animation: peaceBreathePulse 12s ease-in-out infinite;
+  border: 2px solid #111113;
+  transition: all 4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes peaceBreathePulse {
-  0%, 100% {
-    transform: scale(0.7);
-    opacity: 0.45;
-  }
-  33% {
-    transform: scale(1.18);
-    opacity: 0.95;
-  }
-  66% {
-    transform: scale(1.18);
-    opacity: 0.75;
-  }
+.peace-breathing-circle.phase-inhale {
+  transform: scale(1.2);
+  border-width: 3px;
+  opacity: 1;
+}
+
+.peace-breathing-circle.phase-hold {
+  transform: scale(1.2);
+  border-width: 2.5px;
+  opacity: 0.85;
+}
+
+.peace-breathing-circle.phase-exhale {
+  transform: scale(0.7);
+  border-width: 1.5px;
+  opacity: 0.45;
+}
+
+.peace-breathing-center-dot {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #111113;
 }
 
 .peace-breathing-label {
-  font-size: 0.78rem;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, monospace;
+  font-size: 0.74rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
-  color: #111111;
+  letter-spacing: 0.12em;
+  color: #111113;
 }
 
 /* --------------------------------------------------------------------------
@@ -365,88 +561,110 @@
   background: transparent;
   border: none;
   cursor: pointer;
-  z-index: 10;
-  border-radius: 6px;
-  transition: background-color 0.15s ease, transform 0.1s ease;
+  z-index: 20;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
 }
 
-.peace-hotspot:hover {
+/* Interactive feedback on hover & active */
+.peace-hotspot::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border: 1.5px solid transparent;
+  background: transparent;
+  transition: all 0.18s ease;
+  pointer-events: none;
+}
+
+.peace-hotspot:hover::before {
+  border-color: rgba(255, 100, 50, 0.45);
   background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 10px rgba(255, 120, 50, 0.25);
 }
 
-.peace-hotspot:active {
-  transform: scale(0.92);
+.peace-hotspot:active,
+.peace-hotspot.is-active {
+  transform: scale(0.91);
+}
+
+.peace-hotspot:active::before,
+.peace-hotspot.is-active::before {
+  border-color: rgba(255, 80, 30, 0.85);
+  background: rgba(255, 100, 50, 0.35);
 }
 
 /* 1. Top-Left Dial (Volume Up) */
 .peace-btn-top-left-dial {
   left: 0%;
-  top: 28%;
-  width: 9.5%;
-  height: 12%;
+  top: 26%;
+  width: 10.5%;
+  height: 14%;
   border-radius: 8px 0 0 8px;
 }
 
 /* 2. Bottom-Left Dial (Volume Down) */
 .peace-btn-bottom-left-dial {
   left: 0%;
-  top: 61%;
-  width: 9.5%;
-  height: 12%;
+  top: 59%;
+  width: 10.5%;
+  height: 14%;
   border-radius: 8px 0 0 8px;
 }
 
 /* 3. Right Crown Knob with Red Stripe (Play / Pause) */
 .peace-btn-right-crown {
   right: 0%;
-  top: 25.5%;
-  width: 10.5%;
-  height: 13.5%;
+  top: 24.5%;
+  width: 11.5%;
+  height: 14.5%;
   border-radius: 0 8px 8px 0;
 }
 
 /* 4. Top-Left Red Push Button (Previous Song) */
 .peace-btn-top-red {
-  left: 21%;
-  top: 15.5%;
-  width: 7.5%;
-  height: 4.5%;
+  left: 19.5%;
+  top: 14.5%;
+  width: 9%;
+  height: 5.5%;
   border-radius: 4px;
 }
 
 /* 5. Bottom-Left Red Push Button (Next Song) */
 .peace-btn-bottom-red {
-  left: 21%;
-  top: 79.5%;
-  width: 7.5%;
-  height: 4.5%;
+  left: 19.5%;
+  top: 79%;
+  width: 9%;
+  height: 5.5%;
   border-radius: 4px;
 }
 
 /* 6. TOUSEN Black Tactile Button (Switch Screen Mode) */
 .peace-btn-tousen {
-  left: 17%;
-  top: 66.5%;
+  left: 16%;
+  top: 65.5%;
   width: 12%;
-  height: 9.5%;
+  height: 10%;
   border-radius: 50%;
 }
 
 /* 7. Bottom-Right Concave Button (Zen Bell Chime / Like) */
 .peace-btn-bottom-right-circle {
-  left: 69%;
-  top: 66.5%;
+  left: 68%;
+  top: 65.5%;
   width: 12.5%;
   height: 10%;
   border-radius: 50%;
 }
 
-/* 8. Top-Right Mode Buttons (PSIT / EEFTI - Shuffle / Repeat) */
+/* 8. Top-Right Mode Buttons (PSIT / EEFTI - 12h/24h Format) */
 .peace-btn-top-right-modes {
-  left: 67%;
-  top: 24%;
-  width: 17%;
-  height: 5.5%;
+  left: 65.5%;
+  top: 23%;
+  width: 18%;
+  height: 6%;
   border-radius: 4px;
 }
 
@@ -455,11 +673,4 @@
   .peace-watch-device-wrapper {
     width: 330px;
   }
-  .peace-glyph-top {
-    font-size: 1.1rem;
-  }
-  .peace-time-numeric {
-    font-size: 0.95rem;
-  }
 }
-
