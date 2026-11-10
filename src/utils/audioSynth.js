@@ -1406,6 +1406,25 @@ export async function playCatSound(catIndex = 0) {
   } catch (_e) {}
 }
 
+// 🐾 Meow Sound (Cycles through natural and sweet meows)
+let meowVariationIdx = 0;
+export function playMeowSound() {
+  const meowVariations = [1, 3, 4, 2];
+  const idx = meowVariations[meowVariationIdx % meowVariations.length];
+  meowVariationIdx++;
+  playCatSound(idx);
+}
+
+// 🐾 Purr Sound (Velvety rhythmic cat purr with laryngeal flutter)
+let lastPurrCallTime = 0;
+export function playPurrSound() {
+  const now = Date.now();
+  // Throttle purr restarts so the soothing breathing waves blend continuously
+  if (now - lastPurrCallTime < 900) return;
+  lastPurrCallTime = now;
+  playCatSound(0);
+}
+
 // Iconic Pop Cat Meme Sound ("POP!" / Hollow Mouth Pop)
 export function playPopCatSound() {
   try {

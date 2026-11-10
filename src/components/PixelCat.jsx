@@ -1,31 +1,29 @@
-import React, { useEffect, useRef, useCallback } from 'react';
-import { playPopCatSound } from '../utils/audioSynth';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { playMeowSound, playPurrSound } from '../utils/audioSynth';
 import '../styles/pixelCat.css';
 
 // -----------------------------------------------------------------------------
-// Pure Black & White Realistic Pixel Cat with 4-Legged Walk & Fitted Pop Cat Face
+// Pure Black & White Realistic Pixel Cat with 4-Legged Walk, Meow/Purr & Draggable Toy
 //
-// 1. Sitting Figure (21 x 21):
-//    Faithful recreation of the user's sitting cat pixel art (Image 1)
-//    pointed ears, cute face, body with legs, and upright curved tail.
+// 1. Directional Alignment:
+//    The pixel art cat naturally faces left in its base sprite (head on left, tail on right).
+//    When heading right, it is flipped horizontally (scaleX(-1)) so its head points right.
+//    When heading left, it is rendered unflipped so its head points left.
+//    When idle, it watches the toy and turns its head toward wherever the toy is placed.
 //
-// 2. 4-Legged Walking Figure (26 x 21):
-//    Natural quadruped feline walk cycle with all 4 distinct legs and paws.
+// 2. Interactive Toy:
+//    The pixel toy ball/mouse can be dragged anywhere and placed accordingly.
+//    The kitty tracks the toy with its head while being dragged, and curiously
+//    walks over to inspect it once placed.
 //
-// 3. Pop Cat Mouth Open (Fitted seamlessly onto the kitty's figure):
-//    When tapped, the kitty's own face tilts up with happy squinted eyes
-//    and opens into the iconic Pop Cat circular "O" mouth, retaining its
-//    exact ears, chest, body, 4 legs, and tail with zero mismatch.
-//
-// Legend:
-// . = transparent
-// 1 = pure black (#111111)
-// 2 = pure white (#ffffff)
-// - = closed eye line (#111111)
+// 3. Meow & Purr Sound System:
+//    - Single click on kitty: authentic charming cat Meow sound with mouth open.
+//    - Continuous clicks (rapid successive taps): soothing rhythmic velvety Purr
+//      with happy squinting eyes and chest vibration.
 // -----------------------------------------------------------------------------
 
 const SPRITES = {
-  // Sitting kitty (21 x 21)
+  // Sitting kitty (21 x 21) - Head on left (col 1-7), tail on right (col 14-20)
   sit: [
     '...1......1..........',
     '..121....121.........',
@@ -50,7 +48,7 @@ const SPRITES = {
     '.....1111111111......'
   ],
 
-  // Sitting kitty blinking (21 x 21)
+  // Sitting kitty blinking / purring happy squint (21 x 21)
   sitBlink: [
     '...1......1..........',
     '..121....121.........',
@@ -75,7 +73,7 @@ const SPRITES = {
     '.....1111111111......'
   ],
 
-  // Pop Cat mouth open fitted directly onto sitting kitty figure (21 x 21)
+  // Meow mouth open fitted onto sitting kitty (21 x 21)
   pop: [
     '...1......1..........',
     '..121....121.........',
@@ -125,7 +123,7 @@ const SPRITES = {
     '.1111...1111..1111...1111.'
   ],
 
-  // 4-Legged Walk: Step 2 (Passing pose, all 4 legs vertical) (26 x 21)
+  // 4-Legged Walk: Step 2 (Passing pose, vertical paws) (26 x 21)
   walk2: [
     '..1......1................',
     '.121....121...............',
@@ -175,7 +173,7 @@ const SPRITES = {
     '...1111.1111...1111.1111..'
   ],
 
-  // Pop Cat mouth open fitted directly onto 4-legged walking figure (26 x 21)
+  // Meow mouth open while walking (26 x 21)
   popWalk: [
     '..1......1................',
     '.121....121...............',
@@ -204,22 +202,29 @@ const SPRITES = {
 export default function PixelCat() {
   const containerRef = useRef(null);
   const canvasRef = useRef(null);
-  const isPointerDownRef = useRef(false);
-  const popTimeoutRef = useRef(null);
+
+  // Interaction tracking refs
+  const isDraggingToyRef = useRef(false);
+  const dragOffsetRef = useRef({ x: 0, y: 0 });
+  const clickTimestampsRef = useRef([]);
+  const meowTimeoutRef = useRef(null);
+  const purrTimeoutRef = useRef(null);
+  const [cursorStyle, setCursorStyle] = useState('default');
 
   // Simulation physics & positions
   const simRef = useRef({
-    x: 60,
-    targetX: 60,
-    speed: 1.1,
-    facing: 1, // 1 = right, -1 = left
+    x: 170,
+    targetX: 170,
+    speed: 1.15,
+    facing: -1, // 1 = right, -1 = left (sprite naturally faces left)
     frameIndex: 0,
     tick: 0,
     blinkTick: 0,
     catAction: 'idle', // 'idle' | 'walking'
-    isPopped: false,
+    isMeowing: false,
+    isPurring: false,
     yarn: {
-      x: 220,
+      x: 48,
       y: 64,
       vx: 0,
       targetX: null
@@ -227,68 +232,176 @@ export default function PixelCat() {
     particles: []
   });
 
-  // Action: Trigger Pop Cat Open Mouth & Meme Sound
-  const handlePop = useCallback((targetSpotX = null) => {
+  // Action: Trigger Meow Sound & Mouth Open
+  const handleMeow = useCallback(() => {
     const sim = simRef.current;
-    sim.isPopped = true;
-    playPopCatSound();
+    sim.isMeowing = true;
+    playMeowSound();
 
-    // Spawn floating "POP!" particle
+    const meowPhrases = ['Meow~', 'Mrow~', 'Nya~', 'Meoow!'];
+    const phrase = meowPhrases[Math.floor(Math.random() * meowPhrases.length)];
+
     sim.particles.push({
-      x: sim.x + (sim.facing === 1 ? 16 : 4),
-      y: 20,
-      text: 'POP!',
+      x: sim.x + (sim.facing === 1 ? 26 : 8),
+      y: 22,
+      text: phrase,
       life: 38,
       maxLife: 38,
-      vy: -0.95
+      vy: -0.92
     });
 
-    // If user clicked the floor away from the cat, also roll the toy ball
-    if (targetSpotX !== null) {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const destX = Math.max(25, Math.min(canvas.width - 40, targetSpotX));
-        sim.yarn.vx = (destX - sim.yarn.x) * 0.085;
-        sim.yarn.targetX = destX;
-        sim.targetX = destX + (sim.x < destX ? -35 : 35);
-        sim.catAction = 'walking';
-      }
-    }
-
-    // Keep popped for at least 220ms on quick taps
-    if (popTimeoutRef.current) {
-      clearTimeout(popTimeoutRef.current);
-    }
-    popTimeoutRef.current = setTimeout(() => {
-      if (!isPointerDownRef.current) {
-        sim.isPopped = false;
-      }
-    }, 220);
+    if (meowTimeoutRef.current) clearTimeout(meowTimeoutRef.current);
+    meowTimeoutRef.current = setTimeout(() => {
+      sim.isMeowing = false;
+    }, 380);
   }, []);
 
-  // Pointer Down (Tap / Click start)
+  // Action: Trigger Purr Sound & Velvety Flutter
+  const handlePurr = useCallback(() => {
+    const sim = simRef.current;
+    sim.isPurring = true;
+    sim.isMeowing = false;
+    playPurrSound();
+
+    const purrPhrases = ['~purr~ 💕', 'purrrrr~', '♥ purr ♥', 'purr ♪'];
+    const phrase = purrPhrases[Math.floor(Math.random() * purrPhrases.length)];
+
+    sim.particles.push({
+      x: sim.x + (sim.facing === 1 ? 28 : 10),
+      y: 18,
+      text: phrase,
+      life: 52,
+      maxLife: 52,
+      vy: -0.72
+    });
+
+    if (purrTimeoutRef.current) clearTimeout(purrTimeoutRef.current);
+    purrTimeoutRef.current = setTimeout(() => {
+      sim.isPurring = false;
+    }, 1800);
+  }, []);
+
+  // Pointer Down (Handle dragging toy or clicking kitty)
   const handlePointerDown = (e) => {
-    isPointerDownRef.current = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
 
-    handlePop(clickY > 44 ? clickX : null);
-  };
+    const sim = simRef.current;
 
-  // Pointer Up (Tap / Click release)
-  const handlePointerUp = () => {
-    isPointerDownRef.current = false;
-    setTimeout(() => {
-      if (!isPointerDownRef.current) {
-        simRef.current.isPopped = false;
+    // 1. Check if clicking on the Toy (Hit radius: ~22px)
+    const distToToy = Math.hypot(clickX - sim.yarn.x, clickY - sim.yarn.y);
+    if (distToToy <= 22) {
+      isDraggingToyRef.current = true;
+      dragOffsetRef.current = {
+        x: clickX - sim.yarn.x,
+        y: clickY - sim.yarn.y
+      };
+      sim.yarn.vx = 0;
+      sim.yarn.targetX = null;
+      try {
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      } catch (_) {}
+      setCursorStyle('grabbing');
+      return;
+    }
+
+    // 2. Check if clicking on the Kitty (Cat box: x to x+62, y 15 to 70)
+    const isCatHit = clickX >= sim.x - 12 && clickX <= sim.x + 64 && clickY >= 14 && clickY <= 72;
+    if (isCatHit) {
+      const now = Date.now();
+      // Keep click timestamps within the last 1500ms
+      clickTimestampsRef.current = clickTimestampsRef.current.filter(t => now - t < 1500);
+      clickTimestampsRef.current.push(now);
+      const clickCount = clickTimestampsRef.current.length;
+
+      if (clickCount >= 3) {
+        // Continuous clicking detected -> Purr!
+        handlePurr();
+      } else {
+        // Single tap or start of tapping -> Meow!
+        handleMeow();
       }
-    }, 100);
+      return;
+    }
+
+    // 3. Clicked floor area: Cat looks and steps toward clicked location
+    if (clickY > 40) {
+      const destX = Math.max(35, Math.min(canvas.width - 60, clickX));
+      sim.targetX = destX;
+      sim.catAction = 'walking';
+      sim.facing = destX >= sim.x ? 1 : -1;
+    }
   };
 
-  // Main Canvas Render Loop
+  // Pointer Move (Drag toy & update cursor)
+  const handlePointerMove = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
+
+    const sim = simRef.current;
+
+    if (isDraggingToyRef.current) {
+      // Place toy accordingly clamped inside canvas bounds
+      const newX = Math.max(16, Math.min(canvas.width - 20, mouseX - dragOffsetRef.current.x));
+      const newY = Math.max(20, Math.min(64, mouseY - dragOffsetRef.current.y));
+      sim.yarn.x = newX;
+      sim.yarn.y = newY;
+      sim.yarn.vx = 0;
+
+      // Kitty's head turns to watch the toy while it is being dragged
+      sim.facing = sim.yarn.x >= sim.x ? 1 : -1;
+      return;
+    }
+
+    // Hover detection for responsive cursor feedback
+    const distToToy = Math.hypot(mouseX - sim.yarn.x, mouseY - sim.yarn.y);
+    if (distToToy <= 20) {
+      setCursorStyle('grab');
+    } else if (mouseX >= sim.x - 12 && mouseX <= sim.x + 64 && mouseY >= 14 && mouseY <= 72) {
+      setCursorStyle('pointer');
+    } else {
+      setCursorStyle('default');
+    }
+  };
+
+  // Pointer Up / Release (Finish dragging and settle toy)
+  const handlePointerUp = (e) => {
+    if (isDraggingToyRef.current) {
+      isDraggingToyRef.current = false;
+      try {
+        e.currentTarget.releasePointerCapture?.(e.pointerId);
+      } catch (_) {}
+      setCursorStyle('grab');
+
+      const sim = simRef.current;
+      // Toy rests cleanly on the floor at the user-chosen spot
+      sim.yarn.y = 64;
+      sim.yarn.vx = 0;
+      sim.yarn.targetX = null;
+
+      // Kitty notices the placed toy! Head turns to look at it
+      sim.facing = sim.yarn.x >= sim.x ? 1 : -1;
+
+      // If placed more than 35px away, walk over to play with it
+      const dist = Math.abs(sim.yarn.x - sim.x);
+      if (dist > 35) {
+        sim.targetX = sim.yarn.x + (sim.x < sim.yarn.x ? -35 : 35);
+        sim.catAction = 'walking';
+      }
+    }
+  };
+
+  // Main Canvas Animation & Render Loop
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -304,7 +417,9 @@ export default function PixelCat() {
       canvas.width = Math.max(300, width);
       canvas.height = 76;
       ctx.imageSmoothingEnabled = false;
-      sim.yarn.y = 64;
+      if (!isDraggingToyRef.current) {
+        sim.yarn.y = 64;
+      }
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -317,32 +432,37 @@ export default function PixelCat() {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
       ctx.fillRect(0, 68, canvas.width, 1);
 
-      // 2. Behavioral AI decision loop (when not popped)
-      if (!sim.isPopped && sim.tick % 180 === 0 && !sim.yarn.targetX) {
+      // 2. Behavioral AI decision loop (when idle and not dragging)
+      if (!sim.isMeowing && !sim.isPurring && !isDraggingToyRef.current && sim.tick % 190 === 0 && !sim.yarn.targetX) {
         const rand = Math.random();
-        if (rand < 0.5) {
-          // Wander across the floor on 4 legs
-          const wanderX = 35 + Math.random() * (canvas.width - 90);
+        if (rand < 0.45) {
+          // Wander across the room
+          const wanderX = 35 + Math.random() * (canvas.width - 95);
           sim.targetX = wanderX;
           sim.catAction = 'walking';
-        } else if (rand < 0.85) {
-          // Sit & look around
+        } else if (rand < 0.8) {
+          // Sit & look toward toy
           sim.catAction = 'idle';
+          sim.facing = sim.yarn.x >= sim.x ? 1 : -1;
         } else {
-          // Playfully roll the toy ball
+          // Playfully nudge the toy ball
           const destX = sim.x > canvas.width / 2 ? 40 + Math.random() * 50 : canvas.width - 80 - Math.random() * 50;
-          sim.yarn.vx = (destX - sim.yarn.x) * 0.08;
+          sim.yarn.vx = (destX - sim.yarn.x) * 0.07;
           sim.yarn.targetX = destX;
           sim.targetX = destX + (sim.x < destX ? -35 : 35);
           sim.catAction = 'walking';
         }
       }
 
-      // 3. Movement Physics (Walking on 4 legs)
+      // 3. Movement Physics & Head Direction Flip
       const distToTarget = sim.targetX - sim.x;
-      if (!sim.isPopped && Math.abs(distToTarget) > 3 && (sim.catAction === 'walking' || sim.yarn.targetX)) {
+      if (!sim.isMeowing && Math.abs(distToTarget) > 3 && (sim.catAction === 'walking' || sim.yarn.targetX)) {
+        // Head turns towards the side it is heading to:
+        // distToTarget > 0 means moving right -> facing = 1
+        // distToTarget < 0 means moving left -> facing = -1
         sim.facing = distToTarget > 0 ? 1 : -1;
-        sim.x += (distToTarget > 0 ? 1 : -1) * sim.speed;
+        sim.x += sim.facing * sim.speed;
+
         if (sim.tick % 6 === 0) {
           sim.frameIndex = (sim.frameIndex + 1) % 4;
         }
@@ -350,18 +470,22 @@ export default function PixelCat() {
         if (sim.catAction === 'walking') {
           if (sim.yarn.targetX) {
             sim.yarn.targetX = null;
-            sim.yarn.vx = (sim.facing === 1 ? 1 : -1) * (2.2 + Math.random() * 1.5);
+            sim.yarn.vx = (sim.facing === 1 ? 1 : -1) * (2.0 + Math.random() * 1.2);
             setTimeout(() => {
               sim.catAction = 'idle';
-            }, 1200);
+            }, 1000);
           } else {
             sim.catAction = 'idle';
           }
         }
+        // When idle, keep head turned toward toy if nearby or placed
+        if (!isDraggingToyRef.current && Math.abs(sim.yarn.x - sim.x) > 15) {
+          sim.facing = sim.yarn.x >= sim.x ? 1 : -1;
+        }
       }
 
-      // 4. Toy Ball Physics
-      if (Math.abs(sim.yarn.vx) > 0.04) {
+      // 4. Toy Physics (When rolled or drifting)
+      if (!isDraggingToyRef.current && Math.abs(sim.yarn.vx) > 0.04) {
         sim.yarn.x += sim.yarn.vx;
         sim.yarn.vx *= 0.94;
         if (sim.yarn.x < 15) {
@@ -373,40 +497,45 @@ export default function PixelCat() {
         }
       }
 
-      // 5. Draw Black & White Pixel Toy Ball
+      // 5. Draw Black & White Pixel Toy
+      const yx = Math.round(sim.yarn.x);
+      const yy = Math.round(sim.yarn.y);
+
+      // Playful trailing string connecting to ground or following movement
       ctx.strokeStyle = '#111111';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.moveTo(sim.yarn.x - 12, 67);
-      ctx.lineTo(sim.yarn.x - 6, 65);
-      ctx.lineTo(sim.yarn.x, 66);
+      ctx.moveTo(Math.max(6, yx - 14), 67);
+      ctx.quadraticCurveTo(yx - 7, (yy + 67) / 2 + 1, yx - 4, yy + 1);
       ctx.stroke();
 
-      const yx = Math.round(sim.yarn.x);
-      const yy = 64;
+      // Pixel Toy Body (mouse/bell cassette aesthetic)
       ctx.fillStyle = '#111111';
-      ctx.fillRect(yx - 4, yy - 5, 8, 10);
-      ctx.fillRect(yx - 5, yy - 4, 10, 8);
+      ctx.fillRect(yx - 5, yy - 5, 10, 10);
+      ctx.fillRect(yx - 6, yy - 4, 12, 8);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(yx - 3, yy - 4, 6, 8);
-      ctx.fillRect(yx - 4, yy - 3, 8, 6);
+      ctx.fillRect(yx - 4, yy - 4, 8, 8);
+      ctx.fillRect(yx - 5, yy - 3, 10, 6);
       ctx.fillStyle = '#111111';
       ctx.fillRect(yx - 2, yy - 2, 4, 1);
       ctx.fillRect(yx - 1, yy, 3, 1);
       ctx.fillRect(yx - 2, yy + 2, 4, 1);
 
-      // 6. Select Sprite
+      // 6. Select Cat Sprite
       let spriteKey = 'sit';
       const pixelSize = 2.4;
 
-      if (sim.isPopped) {
-        // Mouth open fitted seamlessly onto the current figure
+      if (sim.isMeowing) {
+        // Meow mouth open
         spriteKey = sim.catAction === 'walking' ? 'popWalk' : 'pop';
+      } else if (sim.isPurring) {
+        // Soothing squint eyes while purring
+        spriteKey = 'sitBlink';
       } else if (sim.catAction === 'walking') {
         const walkCycle = ['walk1', 'walk2', 'walk3', 'walk2'];
         spriteKey = walkCycle[sim.frameIndex] || 'walk1';
       } else {
-        if (sim.tick % 110 === 0) {
+        if (sim.tick % 115 === 0) {
           sim.blinkTick = 12;
         }
         if (sim.blinkTick > 0) {
@@ -423,13 +552,22 @@ export default function PixelCat() {
 
       ctx.save();
       const catDrawX = Math.round(sim.x);
-      const catDrawY = Math.round(68 - spriteH * pixelSize);
+      // Gentle purring chest vibration tremolo when purring
+      const purrJitterY = sim.isPurring ? Math.sin(sim.tick * 0.9) * 0.6 : 0;
+      const catDrawY = Math.round(68 - spriteH * pixelSize + purrJitterY);
 
-      if (sim.facing === -1) {
+      // -----------------------------------------------------------------------
+      // HEAD DIRECTION TRANSFORMATION:
+      // In SPRITES, col 0 is the face (left) and col 20/25 is the tail (right).
+      // When heading right (facing === 1): flip horizontally so head points right.
+      // When heading left (facing === -1): render unflipped so head points left.
+      // -----------------------------------------------------------------------
+      if (sim.facing === 1) {
         ctx.translate(catDrawX + spriteW * pixelSize, 0);
         ctx.scale(-1, 1);
       } else {
         ctx.translate(catDrawX, 0);
+        ctx.scale(1, 1);
       }
 
       // Pure Black & White Pixel Rendering
@@ -452,7 +590,7 @@ export default function PixelCat() {
       }
       ctx.restore();
 
-      // 7. Floating Black/White "POP!" Particles
+      // 7. Floating Text Particles (Meow / Purr / Hearts)
       for (let i = sim.particles.length - 1; i >= 0; i--) {
         const p = sim.particles[i];
         p.y += p.vy;
@@ -461,7 +599,7 @@ export default function PixelCat() {
         const alpha = Math.max(0, p.life / p.maxLife);
         ctx.save();
         ctx.globalAlpha = alpha;
-        ctx.font = 'bold 13px "Courier New", monospace';
+        ctx.font = 'bold 12px "Courier New", monospace';
         ctx.fillStyle = '#111111';
         ctx.fillText(p.text, p.x, p.y);
         ctx.restore();
@@ -478,18 +616,22 @@ export default function PixelCat() {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
-      if (popTimeoutRef.current) clearTimeout(popTimeoutRef.current);
+      if (meowTimeoutRef.current) clearTimeout(meowTimeoutRef.current);
+      if (purrTimeoutRef.current) clearTimeout(purrTimeoutRef.current);
     };
-  }, []);
+  }, [handleMeow, handlePurr]);
 
   return (
-    <div 
-      className="vinyl-pixel-cat-section" 
+    <div
+      className="vinyl-pixel-cat-section"
       ref={containerRef}
       onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onPointerLeave={handlePointerUp}
-      title="Tap kitty to Pop! • Click floor to roll toy"
+      style={{ cursor: cursorStyle }}
+      title="Click kitty to Meow • Pet continuously to Purr • Drag toy anywhere to play"
     >
       <canvas ref={canvasRef} className="vinyl-pixel-cat-canvas" />
     </div>

@@ -12,7 +12,8 @@
   padding: 2px 14px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
   margin: 0;
-  cursor: pointer;
+  cursor: default;
+  touch-action: none;
   overflow: hidden;
   user-select: none;
   height: 82px;
