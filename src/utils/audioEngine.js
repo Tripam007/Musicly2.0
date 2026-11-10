@@ -336,6 +336,22 @@ class AudioEngine {
     audio.volume = this.volume;
     audio.muted = false;
 
+    // Wait for enough data to play smoothly before calling play()
+    // This prevents glitching/stuttering on new track loads
+    if (!isSameSrc && audio.readyState < 3) {
+      await new Promise((resolve) => {
+        const onReady = () => {
+          audio.removeEventListener('canplay', onReady);
+          audio.removeEventListener('error', onReady);
+          resolve();
+        };
+        audio.addEventListener('canplay', onReady, { once: true });
+        audio.addEventListener('error', onReady, { once: true });
+        // Safety timeout — don't block indefinitely
+        setTimeout(resolve, 3000);
+      });
+    }
+
     if (startTime > 0) {
       try {
         audio.currentTime = startTime;

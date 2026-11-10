@@ -69,7 +69,13 @@ export default function App() {
   const [publicTracks, setPublicTracks] = useState(() => getLocalPublicTracks());
   const [customTracks, setCustomTracks] = useState([]);
   const [selectedGenre, setSelectedGenre] = useState('All');
-  const [currentTrackId, setCurrentTrackId] = useState(() => TRACKS[0]?.id || 'lofi-1');
+  const [currentTrackId, setCurrentTrackId] = useState(() => {
+    try {
+      const saved = localStorage.getItem('musicly_last_track_id');
+      if (saved) return saved;
+    } catch (e) {}
+    return TRACKS[0]?.id || 'lofi-1';
+  });
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(173);
@@ -91,6 +97,15 @@ export default function App() {
       localStorage.setItem('musicly_volume', volume.toString());
     } catch (e) {}
   }, [volume]);
+
+  // Persist the last played track ID so the app resumes from where user left off
+  useEffect(() => {
+    if (currentTrackId) {
+      try {
+        localStorage.setItem('musicly_last_track_id', currentTrackId);
+      } catch (e) {}
+    }
+  }, [currentTrackId]);
 
   // Purge any legacy device settings and log default audio routing diagnostics on mount
   useEffect(() => {
