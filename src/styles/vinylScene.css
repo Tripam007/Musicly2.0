@@ -5103,14 +5103,20 @@
    PEACE PLAYLIST SPECIAL WATCH EXPERIENCE: DEEP AMBIENT BACKGROUND BLUR
    ========================================================================== */
 .vinyl-scene-root.is-peace-blur-active .vinyl-top-header,
-.vinyl-scene-root.is-peace-blur-active .vinyl-main-workspace,
-.vinyl-scene-root.is-peace-blur-active .vinyl-left-rail,
-.vinyl-scene-root.is-peace-blur-active .vinyl-playlists-stack,
-.vinyl-scene-root.is-peace-blur-active .vinyl-bottom-controls-bar {
-  filter: blur(40px) saturate(65%) brightness(0.92) !important;
-  opacity: 0.08 !important;
+.vinyl-scene-root.is-peace-blur-active .vinyl-stage-layout,
+.vinyl-scene-root.is-peace-blur-active .vinyl-nav-rail,
+.vinyl-scene-root.is-peace-blur-active .vinyl-hero-column,
+.vinyl-scene-root.is-peace-blur-active .vinyl-content-column,
+.vinyl-scene-root.is-peace-blur-active .vinyl-deck-container,
+.vinyl-scene-root.is-peace-blur-active .vinyl-now-playing-panel,
+.vinyl-scene-root.is-peace-blur-active .vinyl-controls-bar,
+.vinyl-scene-root.is-peace-blur-active .vinyl-lyrics-floating-popover,
+.vinyl-scene-root.is-peace-blur-active .vinyl-liked-popover-panel {
+  filter: blur(55px) saturate(30%) brightness(0.85) !important;
+  opacity: 0.03 !important;
   pointer-events: none !important;
-  transition: filter 0.45s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+  transition: filter 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 

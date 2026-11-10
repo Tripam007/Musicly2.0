@@ -1458,7 +1458,23 @@ export default function VinylScene({
     return false;
   }, [activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist]);
 
-  const [isPeaceWatchDismissed, setIsPeaceWatchDismissed] = useState(false);
+  const [isPeaceWatchDismissed, setIsPeaceWatchDismissed] = useState(true);
+
+  // Trigger Peace Watch experience whenever Peace playlist begins playback
+  useEffect(() => {
+    if (isPeacePlaylist && isPlaying) {
+      setIsPeaceWatchDismissed(false);
+    }
+  }, [isPeacePlaylist, isPlaying]);
+
+  // Automatically dismiss if switched to a non-peace playlist
+  useEffect(() => {
+    if (!isPeacePlaylist) {
+      setIsPeaceWatchDismissed(true);
+    }
+  }, [isPeacePlaylist]);
+
+  const isPeaceWatchActive = Boolean(isPeacePlaylist && !isPeaceWatchDismissed);
 
   // Handle Gym workout mode active lifecycle & calm idle exit timer
   useEffect(() => {
@@ -1880,7 +1896,7 @@ export default function VinylScene({
   };
 
   return (
-    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymModeActive ? 'is-gym-mode-active' : ''} ${isSmoothlyExitingScene ? 'is-smoothly-exiting' : ''} ${isPeacePlaylist && isPlaying && !isPeaceWatchDismissed ? 'is-peace-blur-active' : ''}`}>
+    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymModeActive ? 'is-gym-mode-active' : ''} ${isSmoothlyExitingScene ? 'is-smoothly-exiting' : ''} ${isPeaceWatchActive ? 'is-peace-blur-active' : ''}`}>
       {/* Subtle Grain Overlay */}
       <div className="vinyl-grain-overlay" />
 
@@ -1889,7 +1905,7 @@ export default function VinylScene({
 
       {/* Peace Playlist Minimal Cyber Watch Special Experience */}
       <PeaceWatchOverlay
-        isOpen={Boolean(isPeacePlaylist && isPlaying && !isPeaceWatchDismissed)}
+        isOpen={isPeaceWatchActive}
         onClose={() => setIsPeaceWatchDismissed(true)}
         currentTrack={currentTrack}
         isPlaying={isPlaying}
