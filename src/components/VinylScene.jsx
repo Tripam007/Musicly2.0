@@ -238,6 +238,15 @@ export default function VinylScene({
   const minimalActiveLineRef = useRef(null);
   const isUserScrollingRef = useRef(false);
   const userScrollTimeoutRef = useRef(null);
+  const playlistClickTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (playlistClickTimerRef.current) {
+        clearTimeout(playlistClickTimerRef.current);
+      }
+    };
+  }, []);
 
   // Derived upcoming queue: shows only the next 4 upcoming songs at a time,
   // strictly filtered by the selected language and automatically reloading as songs finish playing
@@ -1762,24 +1771,43 @@ export default function VinylScene({
     const isPlaylistActive = activePlayingPlaylistId === playlist.id;
     const isPlaylistPlaying = isPlaylistActive && isPlaying;
 
+    const handleItemClick = (e) => {
+      e.preventDefault();
+      // Single Click: Delay 240ms to detect potential double click; if none, toggle Play/Pause!
+      if (playlistClickTimerRef.current) {
+        clearTimeout(playlistClickTimerRef.current);
+        playlistClickTimerRef.current = null;
+      }
+      playlistClickTimerRef.current = setTimeout(() => {
+        handlePlayPlaylist(playlist, e);
+        playlistClickTimerRef.current = null;
+      }, 240);
+    };
+
+    const handleItemDoubleClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      // Double Click: Cancel single click play/pause immediately & open playlist library/details
+      if (playlistClickTimerRef.current) {
+        clearTimeout(playlistClickTimerRef.current);
+        playlistClickTimerRef.current = null;
+      }
+      if (playlist.id === 'liked_songs') {
+        setIsLikedPanelOpen(true);
+      } else {
+        setSelectedCustomPlaylist(playlist);
+        setIsEditingPlaylistTitle(false);
+        playClickSound('light');
+      }
+    };
+
     return (
       <div
         key={playlist.id}
         className={`vinyl-playlist-item ${playlist.isCustom ? 'is-custom' : ''} ${isPlaylistActive ? 'is-active-playing' : ''}`}
-        onClick={() => {
-          if (playlist.id === 'liked_songs') {
-            setIsLikedPanelOpen(true);
-          } else {
-            setSelectedCustomPlaylist(playlist);
-            setIsEditingPlaylistTitle(false);
-            playClickSound('light');
-          }
-        }}
-        title={
-          playlist.isCustom
-            ? `Private playlist: Click to open & manage "${playlist.title}"`
-            : (playlist.isMusiclyOfficial ? `Official Public playlist: Click to browse "${playlist.title}"` : `Browse "${playlist.title}"`)
-        }
+        onClick={handleItemClick}
+        onDoubleClick={handleItemDoubleClick}
+        title={`Click once to ${isPlaylistPlaying ? 'pause' : 'play'} "${playlist.title}" • Double click to open playlist library`}
       >
         <div className="vinyl-playlist-info-left">
           <img
@@ -1813,7 +1841,14 @@ export default function VinylScene({
         {/* Circular Play Button: Loads playlist tracks into turntable queue */}
         <button
           className={`vinyl-playlist-play-btn ${isPlaylistPlaying ? 'is-playing' : ''}`}
-          onClick={(e) => handlePlayPlaylist(playlist, e)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (playlistClickTimerRef.current) {
+              clearTimeout(playlistClickTimerRef.current);
+              playlistClickTimerRef.current = null;
+            }
+            handlePlayPlaylist(playlist, e);
+          }}
           title={isPlaylistPlaying ? `Pause "${playlist.title}"` : `Play "${playlist.title}" on turntable and queue all songs`}
           aria-label={isPlaylistPlaying ? `Pause ${playlist.title}` : `Play ${playlist.title}`}
         >
@@ -3826,7 +3861,7 @@ export default function VinylScene({
                 />
                 <div className="vinyl-playlist-detail-info">
                   {isEditingPlaylistTitle ? (
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div className="vinyl-playlist-edit-title-form" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', width: '100%', maxWidth: '440px' }}>
                       <input
                         type="text"
                         className="vinyl-playlist-text-input"
@@ -3837,15 +3872,23 @@ export default function VinylScene({
                           if (e.key === 'Enter') handleSaveEditedTitle(selectedCustomPlaylist.id);
                           if (e.key === 'Escape') setIsEditingPlaylistTitle(false);
                         }}
-                        style={{ padding: '6px 12px', fontSize: '1.1rem' }}
+                        style={{ padding: '6px 12px', fontSize: '1rem', minWidth: '180px', flex: 1 }}
                       />
                       <button
                         type="button"
                         className="vinyl-btn-primary"
-                        style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                        style={{ padding: '6px 14px', fontSize: '0.8rem', height: '34px' }}
                         onClick={() => handleSaveEditedTitle(selectedCustomPlaylist.id)}
                       >
                         Save
+                      </button>
+                      <button
+                        type="button"
+                        className="vinyl-btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '0.8rem', height: '34px' }}
+                        onClick={() => setIsEditingPlaylistTitle(false)}
+                      >
+                        Cancel
                       </button>
                     </div>
                   ) : (
@@ -3861,8 +3904,10 @@ export default function VinylScene({
                             playClickSound('light');
                           }}
                           title="Rename playlist"
+                          aria-label="Rename playlist"
                         >
-                          <Edit3 size={15} />
+                          <Edit3 size={13} strokeWidth={2.2} />
+                          <span>Rename</span>
                         </button>
                       )}
                     </div>

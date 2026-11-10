@@ -4253,6 +4253,7 @@
   display: flex;
   gap: 18px;
   padding: 22px;
+  padding-right: 64px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   position: relative;
 }
@@ -4279,31 +4280,49 @@
 .vinyl-playlist-detail-title-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .vinyl-playlist-detail-title {
   font-family: var(--vinyl-font-pixel);
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: #ffffff;
   margin: 0;
+  line-height: 1.25;
 }
 
 .vinyl-playlist-edit-title-btn {
-  background: transparent;
-  border: none;
-  color: #8c8375;
-  cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  padding: 4px;
-  border-radius: 4px;
-  transition: color 0.15s ease;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffd166;
+  cursor: pointer;
+  padding: 4px 12px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
 }
 
 .vinyl-playlist-edit-title-btn:hover {
-  color: #ffd166;
+  background: rgba(255, 209, 102, 0.2);
+  border-color: #ffd166;
+  color: #ffe08a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 209, 102, 0.25);
+}
+
+.vinyl-playlist-edit-title-btn:active {
+  transform: translateY(0);
 }
 
 .vinyl-playlist-detail-sub {
