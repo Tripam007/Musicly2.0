@@ -194,7 +194,7 @@ export default function PeaceWatchOverlay({
       {/* Center Watch Device Wrapper */}
       <div className="peace-watch-device-wrapper">
         <img
-          src="/assets/images/peace_watch_device.jpg"
+          src="/assets/images/peace_watch_device.png"
           alt="Peace Minimal Cyber Watch"
           className="peace-watch-device-img"
         />
@@ -398,3 +398,4 @@ export default function PeaceWatchOverlay({
     </div>
   );
 }
+
