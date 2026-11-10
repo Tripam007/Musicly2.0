@@ -15,6 +15,7 @@ import {
   Download
 } from 'lucide-react';
 import { playPeacefulLikeSound } from '../utils/audioSynth';
+import { formatGenrePill } from '../data/tracks';
 
 export default function Player({
   currentTrack,
@@ -253,7 +254,7 @@ export default function Player({
                   if (clean.length > 0) g = clean.join(', ');
                 }
                 if (g && g.toLowerCase() === 'custom') g = 'Lo-Fi';
-                return g ? <span className="track-genre-tag">{g}</span> : null;
+                return g ? <span className="track-genre-tag" title={g}>{formatGenrePill(g)}</span> : null;
               })()}
             </div>
             <h3 className="track-title" title={currentTrack?.title}>

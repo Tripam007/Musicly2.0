@@ -1,5 +1,37 @@
 export const GENRES = ['All', 'Retro', 'Indie', 'Lo-Fi', 'Synthwave', 'Peace', 'Chill/Sleep'];
 
+// Format genre pill: when there are many genres, keep it short and add the initials only
+export const formatGenrePill = (genreInput) => {
+  if (!genreInput) return 'CLASSIC';
+
+  let genres = [];
+  if (Array.isArray(genreInput)) {
+    genres = genreInput.filter(g => g && typeof g === 'string' && g.toLowerCase() !== 'custom');
+  } else if (typeof genreInput === 'string') {
+    genres = genreInput.split(',').map(g => g.trim()).filter(g => g && g.toLowerCase() !== 'custom');
+  }
+
+  if (genres.length === 0) return 'CLASSIC';
+  if (genres.length === 1) return genres[0].toUpperCase();
+
+  const totalLength = genres.reduce((acc, g) => acc + g.length, 0);
+  if (genres.length === 2 && totalLength <= 16) {
+    return `${genres[0].toUpperCase()}, ${genres[1].toUpperCase()}`;
+  }
+
+  // When there are many of them: make it short and add the initials only
+  const primary = genres[0].toUpperCase();
+  const initials = genres.slice(1).map(g => {
+    const parts = g.split(/[\s/-]+/).filter(Boolean);
+    if (parts.length > 1) {
+      return parts.map(p => p[0].toUpperCase()).join('');
+    }
+    return g[0].toUpperCase();
+  });
+
+  return `${primary}, ${initials.join(', ')}`;
+};
+
 export const isGhazalLanguage = (lang) => {
   if (!lang) return false;
   if (Array.isArray(lang)) {

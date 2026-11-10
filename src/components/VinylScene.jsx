@@ -41,7 +41,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
-import { LANGUAGES, LANGUAGE_LABELS, isTrackInLanguages } from '../data/tracks';
+import { LANGUAGES, LANGUAGE_LABELS, isTrackInLanguages, formatGenrePill } from '../data/tracks';
 import { fetchLyrics } from '../utils/lyricsService';
 import { audioEngine } from '../utils/audioEngine';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
@@ -2731,9 +2731,16 @@ export default function VinylScene({
 
                 {/* Genre Tag Pill */}
                 <div className="vinyl-pill-row">
-                  <span className="vinyl-genre-pill">
-                    {currentTrack?.genre || selectedGenre || 'CLASSIC'}
-                  </span>
+                  {(() => {
+                    const rawGenre = currentTrack?.genres || currentTrack?.genre || selectedGenre || 'CLASSIC';
+                    const fullText = Array.isArray(rawGenre) ? rawGenre.join(', ') : String(rawGenre);
+                    const pillText = formatGenrePill(rawGenre);
+                    return (
+                      <span className="vinyl-genre-pill" title={fullText}>
+                        {pillText}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Waveform Scrubber */}
@@ -3813,7 +3820,9 @@ export default function VinylScene({
                           <span className="vinyl-song-artist">{track.artist}</span>
                         </div>
                         {track.genre && (
-                          <span className="vinyl-song-genre-tag">{track.genre}</span>
+                          <span className="vinyl-song-genre-tag" title={Array.isArray(track.genres) ? track.genres.join(', ') : track.genre}>
+                            {formatGenrePill(track.genres || track.genre)}
+                          </span>
                         )}
                       </div>
                     );
@@ -4092,7 +4101,9 @@ export default function VinylScene({
                             <span className="vinyl-song-artist">{track.artist}</span>
                           </div>
                           {track.genre && (
-                            <span className="vinyl-song-genre-tag">{track.genre}</span>
+                            <span className="vinyl-song-genre-tag" title={Array.isArray(track.genres) ? track.genres.join(', ') : track.genre}>
+                              {formatGenrePill(track.genres || track.genre)}
+                            </span>
                           )}
 
                           {/* Quick Add to Up Next Queue */}
@@ -4203,7 +4214,9 @@ export default function VinylScene({
                           <span className="vinyl-song-artist">{track.artist}</span>
                         </div>
                         {track.genre && (
-                          <span className="vinyl-song-genre-tag">{track.genre}</span>
+                          <span className="vinyl-song-genre-tag" title={Array.isArray(track.genres) ? track.genres.join(', ') : track.genre}>
+                            {formatGenrePill(track.genres || track.genre)}
+                          </span>
                         )}
                       </div>
                     );
