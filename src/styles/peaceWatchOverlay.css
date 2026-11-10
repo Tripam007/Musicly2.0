@@ -1,0 +1,461 @@
+/* ==========================================================================
+   MINIMALIST INDUSTRIAL CYBER WATCH OVERLAY (PEACE PLAYLIST SPECIAL EXPERIENCE)
+   ========================================================================== */
+
+.peace-watch-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(236, 234, 228, 0.68);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  animation: peaceBackdropFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  cursor: default;
+}
+
+@keyframes peaceBackdropFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+  }
+}
+
+/* Exit Button at Top Right */
+.peace-watch-exit-btn {
+  position: absolute;
+  top: 26px;
+  right: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  color: #1a1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10000;
+}
+
+.peace-watch-exit-btn:hover {
+  background: #ffffff;
+  color: #000000;
+  transform: scale(1.08) rotate(90deg);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.14);
+}
+
+.peace-watch-exit-btn:active {
+  transform: scale(0.96) rotate(90deg);
+}
+
+/* Watch Container */
+.peace-watch-device-wrapper {
+  position: relative;
+  width: 400px;
+  max-width: 90vw;
+  aspect-ratio: 435 / 552;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: peaceWatchPopIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: drop-shadow(0 32px 64px rgba(0, 0, 0, 0.24)) drop-shadow(0 12px 24px rgba(0, 0, 0, 0.12));
+}
+
+@keyframes peaceWatchPopIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.peace-watch-device-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Interactive Circular Screen (Fitted directly over the watch bezel)
+   -------------------------------------------------------------------------- */
+
+.peace-watch-screen {
+  position: absolute;
+  top: 48.55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50.5%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: #fbfbf9;
+  overflow: hidden;
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, 0.16), inset 0 -1px 3px rgba(255, 255, 255, 0.8);
+  cursor: grab;
+  touch-action: none;
+}
+
+.peace-watch-screen:active {
+  cursor: grabbing;
+}
+
+/* Screen Slide Carousel */
+.peace-screen-slides-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.peace-screen-slide {
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 14px;
+  box-sizing: border-box;
+  text-align: center;
+  color: #111111;
+  font-family: var(--vinyl-font-mono, monospace);
+}
+
+/* Slide 1: Clock & Zen Pulse Face (Faithful to Image 2) */
+.peace-glyph-top {
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: #111111;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.peace-center-gauge-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin: 6px 0;
+}
+
+.peace-gauge-line {
+  width: 68px;
+  height: 3.5px;
+  background: #111111;
+  border-radius: 2px;
+  transition: transform 0.2s ease, width 0.2s ease;
+}
+
+.peace-gauge-line.is-pulse {
+  animation: peaceBarPulse 1.8s ease-in-out infinite alternate;
+}
+
+@keyframes peaceBarPulse {
+  0% {
+    transform: scaleX(0.85);
+  }
+  100% {
+    transform: scaleX(1.15);
+  }
+}
+
+.peace-time-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.peace-time-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #111111;
+}
+
+.peace-time-numeric {
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #111111;
+}
+
+.peace-drag-hint-up {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: #777777;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+/* Slide 2: "Other Stuffs" (Track Info, Ambient, Progress) */
+.peace-music-slide {
+  background: #fbfbf9;
+}
+
+.peace-slide-header-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #888888;
+  text-transform: uppercase;
+}
+
+.peace-track-info-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  max-width: 150px;
+}
+
+.peace-track-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #111111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.peace-track-artist {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #666666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.peace-music-playback-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 4px 0;
+}
+
+.peace-screen-control-btn {
+  background: transparent;
+  border: none;
+  color: #111111;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: transform 0.12s ease;
+}
+
+.peace-screen-control-btn:hover {
+  transform: scale(1.15);
+}
+
+.peace-screen-control-btn:active {
+  transform: scale(0.92);
+}
+
+.peace-track-progress-bar-wrap {
+  width: 80%;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 3px;
+}
+
+.peace-track-progress-fill {
+  height: 100%;
+  background: #111111;
+  transition: width 0.3s linear;
+}
+
+.peace-drag-hint-down {
+  font-size: 0.62rem;
+  letter-spacing: 0.1em;
+  color: #777777;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Slide 3: Zen Breathing Rhythm */
+.peace-breathing-slide {
+  background: #fbfbf9;
+}
+
+.peace-breathing-circle-wrap {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.peace-breathing-circle {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #111111;
+  animation: peaceBreathePulse 12s ease-in-out infinite;
+}
+
+@keyframes peaceBreathePulse {
+  0%, 100% {
+    transform: scale(0.7);
+    opacity: 0.45;
+  }
+  33% {
+    transform: scale(1.18);
+    opacity: 0.95;
+  }
+  66% {
+    transform: scale(1.18);
+    opacity: 0.75;
+  }
+}
+
+.peace-breathing-label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #111111;
+}
+
+/* --------------------------------------------------------------------------
+   Physical Hardware Hotspot Buttons (Overlayed seamlessly on watch chassis)
+   -------------------------------------------------------------------------- */
+
+.peace-hotspot {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  z-index: 10;
+  border-radius: 6px;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.peace-hotspot:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.peace-hotspot:active {
+  transform: scale(0.92);
+}
+
+/* 1. Top-Left Dial (Volume Up) */
+.peace-btn-top-left-dial {
+  left: 0%;
+  top: 28%;
+  width: 9.5%;
+  height: 12%;
+  border-radius: 8px 0 0 8px;
+}
+
+/* 2. Bottom-Left Dial (Volume Down) */
+.peace-btn-bottom-left-dial {
+  left: 0%;
+  top: 61%;
+  width: 9.5%;
+  height: 12%;
+  border-radius: 8px 0 0 8px;
+}
+
+/* 3. Right Crown Knob with Red Stripe (Play / Pause) */
+.peace-btn-right-crown {
+  right: 0%;
+  top: 25.5%;
+  width: 10.5%;
+  height: 13.5%;
+  border-radius: 0 8px 8px 0;
+}
+
+/* 4. Top-Left Red Push Button (Previous Song) */
+.peace-btn-top-red {
+  left: 21%;
+  top: 15.5%;
+  width: 7.5%;
+  height: 4.5%;
+  border-radius: 4px;
+}
+
+/* 5. Bottom-Left Red Push Button (Next Song) */
+.peace-btn-bottom-red {
+  left: 21%;
+  top: 79.5%;
+  width: 7.5%;
+  height: 4.5%;
+  border-radius: 4px;
+}
+
+/* 6. TOUSEN Black Tactile Button (Switch Screen Mode) */
+.peace-btn-tousen {
+  left: 17%;
+  top: 66.5%;
+  width: 12%;
+  height: 9.5%;
+  border-radius: 50%;
+}
+
+/* 7. Bottom-Right Concave Button (Zen Bell Chime / Like) */
+.peace-btn-bottom-right-circle {
+  left: 69%;
+  top: 66.5%;
+  width: 12.5%;
+  height: 10%;
+  border-radius: 50%;
+}
+
+/* 8. Top-Right Mode Buttons (PSIT / EEFTI - Shuffle / Repeat) */
+.peace-btn-top-right-modes {
+  left: 67%;
+  top: 24%;
+  width: 17%;
+  height: 5.5%;
+  border-radius: 4px;
+}
+
+/* Responsive Scaling */
+@media (max-width: 480px) {
+  .peace-watch-device-wrapper {
+    width: 330px;
+  }
+  .peace-glyph-top {
+    font-size: 1.1rem;
+  }
+  .peace-time-numeric {
+    font-size: 0.95rem;
+  }
+}

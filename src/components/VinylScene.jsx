@@ -47,6 +47,7 @@ import { audioEngine } from '../utils/audioEngine';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
 import PixelCat from './PixelCat';
 import SweatDropletsOverlay from './SweatDropletsOverlay';
+import PeaceWatchOverlay from './PeaceWatchOverlay';
 import '../styles/vinylScene.css';
 
 // Curated Category Filters inspired by the reference image
@@ -1441,7 +1442,23 @@ export default function VinylScene({
   // Reset user manual dismissal whenever playlist changes
   useEffect(() => {
     setIsGymModeDismissedByUser(false);
+    setIsPeaceWatchDismissed(false);
   }, [activePlayingPlaylistId]);
+
+  // Peace Playlist Minimal Cyber Watch Special Experience detection
+  const isPeacePlaylist = useMemo(() => {
+    const check = (str) => typeof str === 'string' && str.toLowerCase().includes('peace');
+    if (activePlayingPlaylist && check(activePlayingPlaylist.title)) return true;
+    if (check(activePlayingPlaylistId)) return true;
+    if (selectedCustomPlaylist && check(selectedCustomPlaylist.title)) {
+      if (activePlayingPlaylistId === selectedCustomPlaylist.id) {
+        return true;
+      }
+    }
+    return false;
+  }, [activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist]);
+
+  const [isPeaceWatchDismissed, setIsPeaceWatchDismissed] = useState(false);
 
   // Handle Gym workout mode active lifecycle & calm idle exit timer
   useEffect(() => {
@@ -1869,6 +1886,23 @@ export default function VinylScene({
 
       {/* Gym Workout Sweat Droplets & Motion Blur Overlay */}
       <SweatDropletsOverlay isActive={isGymModeActive} />
+
+      {/* Peace Playlist Minimal Cyber Watch Special Experience */}
+      <PeaceWatchOverlay
+        isOpen={Boolean(isPeacePlaylist && isPlaying && !isPeaceWatchDismissed)}
+        onClose={() => setIsPeaceWatchDismissed(true)}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        onTogglePlay={onTogglePlay}
+        onNextTrack={onNextTrack}
+        onPrevTrack={onPrevTrack}
+        currentTime={currentTime}
+        duration={duration}
+        volume={volume}
+        onVolumeChange={onVolumeChange}
+        isFavorite={isCurrentFavorite}
+        onToggleFavorite={() => onToggleFavorite?.(currentTrack)}
+      />
 
       {/* Gentle Calm Scene Exit Notification */}
       {gymExitNotice && (
