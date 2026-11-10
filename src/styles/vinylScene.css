@@ -2141,21 +2141,29 @@
   box-shadow: none !important;
 }
 
-/* Minimalist Floating Lyrics Section - Completely seamlessly integrated without borders or boxes */
+/* Minimalist Floating Lyrics Section - ONLY in Vintage Hi-Fi, strictly constrained within available space */
 .vinyl-minimal-lyrics-section {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  margin-top: 10px;
+  margin-top: 6px;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  max-height: 140px;
+  overflow: hidden;
+}
+
+/* Strictly hide minimal lyrics section in Modern Clay deck */
+.vinyl-deck-switcher-container.show-modern ~ .vinyl-now-playing-panel .vinyl-minimal-lyrics-section,
+.vinyl-deck-stage-wrapper:has(.show-modern) ~ .vinyl-now-playing-panel .vinyl-minimal-lyrics-section {
+  display: none !important;
 }
 
 .vinyl-minimal-lyrics-btn {
   font-family: var(--vinyl-font-sans, sans-serif);
-  font-size: 1.4rem;
+  font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.04em;
   color: #1a1a1e;
@@ -2181,12 +2189,12 @@
   color: #0b0b0e;
 }
 
-/* Minimalist Lyrics Flow Container - Absolutely NOT in any box, compact vertical height as before */
+/* Minimalist Lyrics Flow Container - Strictly constrained within available space between waveform and controls bar */
 .vinyl-minimal-lyrics-flow {
   position: relative;
   width: 100%;
-  max-height: 190px;
-  margin-top: 14px;
+  max-height: 105px;
+  margin-top: 8px;
   overflow-y: auto;
   overflow-x: hidden;
   background: transparent !important;
@@ -2195,27 +2203,27 @@
   outline: none !important;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 10px 0 16px 0;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+  gap: 8px;
+  padding: 6px 0 10px 0;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 16%, black 84%, transparent 100%);
 }
 
 .vinyl-minimal-lyrics-flow::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 .vinyl-minimal-lyrics-flow::-webkit-scrollbar-track {
   background: transparent;
 }
 .vinyl-minimal-lyrics-flow::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.14);
   border-radius: 999px;
 }
 
 .vinyl-minimal-lyric-line {
   font-family: var(--vinyl-font-sans, sans-serif);
-  font-size: 1.3rem;
-  line-height: 1.45;
+  font-size: 1.15rem;
+  line-height: 1.35;
   color: #8c8375;
   cursor: pointer;
   transition: color 0.25s ease, transform 0.25s ease, opacity 0.25s ease;
@@ -2223,7 +2231,7 @@
   border: none !important;
   box-shadow: none !important;
   letter-spacing: -0.015em;
-  opacity: 0.55;
+  opacity: 0.52;
   user-select: text;
   width: 100%;
 }
@@ -2234,11 +2242,11 @@
 }
 
 .vinyl-minimal-lyric-line.is-active {
-  font-size: 1.55rem;
+  font-size: 1.36rem;
   font-weight: 700;
   color: #0d0d0f !important;
   opacity: 1 !important;
-  transform: translateX(6px);
+  transform: translateX(4px);
   letter-spacing: -0.025em;
 }
 
@@ -2250,14 +2258,14 @@
 .vinyl-minimal-lyrics-flow.is-plain .vinyl-minimal-lyric-line {
   opacity: 0.85;
   color: #1a1a1e;
-  font-size: 1.25rem;
+  font-size: 1.15rem;
 }
 
 .vinyl-minimal-lyrics-status {
   font-family: var(--vinyl-font-sans, sans-serif);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   color: #8c8375;
-  padding: 10px 0;
+  padding: 6px 0;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;

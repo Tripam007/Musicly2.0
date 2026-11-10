@@ -2768,61 +2768,63 @@ export default function VinylScene({
                   </span>
                 </div>
 
-                {/* Minimalist Floating Lyrics Section (Not in any box) */}
-                <div className="vinyl-minimal-lyrics-section">
-                  <button
-                    type="button"
-                    className={`vinyl-minimal-lyrics-btn ${isMinimalLyricsOpen ? 'is-active' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsMinimalLyricsOpen(prev => !prev);
-                      playClickSound('toggle');
-                    }}
-                    title={isMinimalLyricsOpen ? "Hide lyrics" : "Show song lyrics"}
-                    aria-expanded={isMinimalLyricsOpen}
-                  >
-                    <span>LYRICS</span>
-                    {isMinimalLyricsOpen && <span className="modern-lyrics-active-dot" />}
-                  </button>
-
-                  {isMinimalLyricsOpen && (
-                    <div
-                      className={`vinyl-minimal-lyrics-flow ${lyricsData?.isSynced ? 'is-synced' : 'is-plain'}`}
-                      ref={minimalLyricsContainerRef}
-                      onScroll={handleLyricsManualScroll}
-                      onClick={(e) => e.stopPropagation()}
+                {/* Minimalist Floating Lyrics Section (Not in any box) — ONLY in Vintage Hi-Fi, never in Modern Clay */}
+                {turntableSkin === 'vintage' && (
+                  <div className="vinyl-minimal-lyrics-section">
+                    <button
+                      type="button"
+                      className={`vinyl-minimal-lyrics-btn ${isMinimalLyricsOpen ? 'is-active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsMinimalLyricsOpen(prev => !prev);
+                        playClickSound('toggle');
+                      }}
+                      title={isMinimalLyricsOpen ? "Hide lyrics" : "Show song lyrics"}
+                      aria-expanded={isMinimalLyricsOpen}
                     >
-                      {isLyricsLoading ? (
-                        <div className="vinyl-minimal-lyrics-status">Loading lyrics...</div>
-                      ) : lyricsData?.lines && lyricsData.lines.length > 0 ? (
-                        lyricsData.lines.map((line, idx) => {
-                          const isActive = lyricsData.isSynced && idx === activeLineIndex;
-                          const isPassed = lyricsData.isSynced && activeLineIndex !== -1 && idx < activeLineIndex;
-                          return (
-                            <div
-                              key={idx}
-                              ref={isActive ? minimalActiveLineRef : null}
-                              className={`vinyl-minimal-lyric-line ${isActive ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (line.time !== undefined) {
-                                  handleLyricLineClick(line.time);
-                                }
-                              }}
-                              title={line.time !== undefined ? `Jump to ${formatModernTime(line.time)}` : undefined}
-                            >
-                              {line.text}
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="vinyl-minimal-lyrics-status">
-                          {lyricsData?.notFound ? 'Lyrics unavailable for this track' : 'No lyrics available'}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      <span>LYRICS</span>
+                      {isMinimalLyricsOpen && <span className="modern-lyrics-active-dot" />}
+                    </button>
+
+                    {isMinimalLyricsOpen && (
+                      <div
+                        className={`vinyl-minimal-lyrics-flow ${lyricsData?.isSynced ? 'is-synced' : 'is-plain'}`}
+                        ref={minimalLyricsContainerRef}
+                        onScroll={handleLyricsManualScroll}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {isLyricsLoading ? (
+                          <div className="vinyl-minimal-lyrics-status">Loading lyrics...</div>
+                        ) : lyricsData?.lines && lyricsData.lines.length > 0 ? (
+                          lyricsData.lines.map((line, idx) => {
+                            const isActive = lyricsData.isSynced && idx === activeLineIndex;
+                            const isPassed = lyricsData.isSynced && activeLineIndex !== -1 && idx < activeLineIndex;
+                            return (
+                              <div
+                                key={idx}
+                                ref={isActive ? minimalActiveLineRef : null}
+                                className={`vinyl-minimal-lyric-line ${isActive ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (line.time !== undefined) {
+                                    handleLyricLineClick(line.time);
+                                  }
+                                }}
+                                title={line.time !== undefined ? `Jump to ${formatModernTime(line.time)}` : undefined}
+                              >
+                                {line.text}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="vinyl-minimal-lyrics-status">
+                            {lyricsData?.notFound ? 'Lyrics unavailable for this track' : 'No lyrics available'}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
             </section>
