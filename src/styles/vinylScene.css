@@ -2123,8 +2123,13 @@
 
 .vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played {
   animation: barPulseAnim 0.9s ease-in-out infinite alternate;
-  animation-delay: calc((var(--bar-index, 0) % 5) * 0.16s);
 }
+
+.vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played:nth-child(5n + 1) { animation-delay: 0s; }
+.vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played:nth-child(5n + 2) { animation-delay: 0.16s; }
+.vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played:nth-child(5n + 3) { animation-delay: 0.32s; }
+.vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played:nth-child(5n + 4) { animation-delay: 0.48s; }
+.vinyl-waveform-track.is-playing .vinyl-waveform-bar.is-played:nth-child(5n + 5) { animation-delay: 0.64s; }
 
 /* ==========================================================================
    MINIMALIST INLINE LYRICS SECTION (NOT IN ANY BOX)
