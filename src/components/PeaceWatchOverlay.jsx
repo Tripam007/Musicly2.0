@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Play, Pause, SkipBack, SkipForward, Heart, Volume2, Sparkles, ChevronUp, ChevronDown, Disc3, Radio } from 'lucide-react';
-import { playClickSound, playPeacefulLikeSound, playTactileClickSound } from '../utils/audioSynth';
+import { X, Play, Pause, SkipBack, SkipForward, Heart, Volume2, Sparkles, ChevronUp, ChevronDown, Disc3, RotateCcw, Orbit } from 'lucide-react';
+import { playClickSound, playPeacefulLikeSound, playTactileClickSound, playTingSound } from '../utils/audioSynth';
 import '../styles/peaceWatchOverlay.css';
 
 export default function PeaceWatchOverlay({
@@ -26,12 +26,20 @@ export default function PeaceWatchOverlay({
   const [breathingPhase, setBreathingPhase] = useState('INHALE');
   const [hudMessage, setHudMessage] = useState(null);
   const [activeControl, setActiveControl] = useState(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [jogRotation, setJogRotation] = useState(0);
   const [volRotation, setVolRotation] = useState(volume * 270 - 135);
 
+  // 360-Degree Continuous Rotation Physics & Motion Blur
+  const [rotY, setRotY] = useState(0);
+  const [rotX, setRotX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [motionBlur, setMotionBlur] = useState(0);
+  const [isAutoSpin, setIsAutoSpin] = useState(false);
+
+  const lastPointerRef = useRef({ x: 0, y: 0, time: 0 });
+  const velocityRef = useRef({ x: 0, y: 0 });
+  const animFrameRef = useRef(null);
   const hudTimerRef = useRef(null);
-  const wrapperRef = useRef(null);
 
   // Sync volume knob rotation
   useEffect(() => {
@@ -116,28 +124,117 @@ export default function PeaceWatchOverlay({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // 4. Smooth 3D Gyroscope Mouse Tracking
-  const handleMouseMove = (e) => {
-    if (!wrapperRef.current) return;
-    const rect = wrapperRef.current.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
+  // 4. Auto-Spin Showcase Loop
+  useEffect(() => {
+    if (!isAutoSpin || isDragging) return;
+    let frameId;
+    const spinLoop = () => {
+      setRotY((prev) => (prev + 0.75) % 360);
+      frameId = requestAnimationFrame(spinLoop);
+    };
+    frameId = requestAnimationFrame(spinLoop);
+    return () => cancelAnimationFrame(frameId);
+  }, [isAutoSpin, isDragging]);
 
-    const deltaX = (e.clientX - centerX) / (window.innerWidth / 2);
-    const deltaY = (e.clientY - centerY) / (window.innerHeight / 2);
+  // 5. 360° Drag Rotation with Inertia & Motion Blur
+  const handlePointerDown = (e) => {
+    // If clicking a control button or screen, don't initiate canvas rotation
+    if (e.target.closest('.peace-interactive-el')) return;
 
-    setTilt({
-      x: Math.max(-8, Math.min(8, deltaX * 7)),
-      y: Math.max(-8, Math.min(8, -deltaY * 7))
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    setIsDragging(true);
+    setIsAutoSpin(false);
+
+    lastPointerRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: performance.now()
+    };
+    velocityRef.current = { x: 0, y: 0 };
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) return;
+
+    const now = performance.now();
+    const dt = Math.max(1, now - lastPointerRef.current.time);
+    const dx = e.clientX - lastPointerRef.current.x;
+    const dy = e.clientY - lastPointerRef.current.y;
+
+    // Apply rotation (continuous 360° on Y, clamped on X for natural view)
+    setRotY((prev) => prev + dx * 0.75);
+    setRotX((prev) => Math.max(-65, Math.min(65, prev - dy * 0.65)));
+
+    // Measure instant rotational speed for motion blur
+    const speed = Math.hypot(dx, dy) / dt; // pixels per ms
+    if (speed > 0.4) {
+      const blurPx = Math.min(16, (speed - 0.4) * 8.5);
+      setMotionBlur(blurPx);
+    } else {
+      setMotionBlur(0);
+    }
+
+    velocityRef.current = {
+      x: (dx / dt) * 14,
+      y: (-dy / dt) * 14
+    };
+
+    lastPointerRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: now
+    };
+  };
+
+  const handlePointerUp = () => {
+    if (!isDragging) return;
+    setIsDragging(false);
+
+    // Friction momentum loop
+    const runInertia = () => {
+      velocityRef.current.x *= 0.93;
+      velocityRef.current.y *= 0.93;
+
+      const currentSpeed = Math.hypot(velocityRef.current.x, velocityRef.current.y);
+      if (currentSpeed > 0.12) {
+        setRotY((prev) => prev + velocityRef.current.x * 0.75);
+        setRotX((prev) => Math.max(-65, Math.min(65, prev + velocityRef.current.y * 0.65)));
+        setMotionBlur(Math.min(16, currentSpeed * 1.4));
+        animFrameRef.current = requestAnimationFrame(runInertia);
+      } else {
+        setMotionBlur(0);
+      }
+    };
+
+    animFrameRef.current = requestAnimationFrame(runInertia);
+  };
+
+  // Reset to front face
+  const handleResetFront = () => {
+    if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+    setIsAutoSpin(false);
+    setMotionBlur(0);
+    setRotX(0);
+    setRotY((prev) => {
+      // Find closest full multiple of 360 so it smoothly snaps to 0
+      const remainder = prev % 360;
+      return prev - remainder;
+    });
+    playTactileClickSound();
+    showHud('RESET: FRONT VIEW');
+  };
+
+  // Toggle Auto-Spin
+  const handleToggleAutoSpin = () => {
+    setIsAutoSpin((prev) => {
+      const next = !prev;
+      playClickSound('light');
+      showHud(next ? '360° ORBIT: ACTIVE' : '360° ORBIT: PAUSED');
+      return next;
     });
   };
 
-  const handleMouseLeave = () => {
-    setTilt({ x: 0, y: 0 });
-  };
-
-  // 5. Hardware Handlers
-  // A. Main Crown Dial (Right Side) -> Play / Pause
+  // 6. Hardware Action Handlers
   const handleCrownClick = () => {
     triggerControl('right-crown');
     playClickSound('normal');
@@ -145,7 +242,6 @@ export default function PeaceWatchOverlay({
     showHud(isPlaying ? '⏸ PAUSED' : '▶ PLAYING', currentTrack?.title || 'Peace Audio');
   };
 
-  // B. Top-Left Rotary Dial (Inside Orange Chamber) -> Volume Up
   const handleVolUp = (e) => {
     e.stopPropagation();
     triggerControl('top-left-knob');
@@ -156,7 +252,6 @@ export default function PeaceWatchOverlay({
     showHud(`VOL ▲ ${Math.round(newVol * 100)}%`, newVol >= 1 ? 'MAX OUTPUT' : '');
   };
 
-  // C. Top-Right Rotary Dial (Inside Orange Chamber) -> Volume Down
   const handleVolDown = (e) => {
     e.stopPropagation();
     triggerControl('top-right-knob');
@@ -167,7 +262,6 @@ export default function PeaceWatchOverlay({
     showHud(`VOL ▼ ${Math.round(newVol * 100)}%`, newVol === 0 ? 'MUTED' : '');
   };
 
-  // D. Large Center-Left Jog Dial -> Scrub / Skip Track
   const handleJogClick = (e) => {
     e.stopPropagation();
     triggerControl('large-jog');
@@ -187,7 +281,6 @@ export default function PeaceWatchOverlay({
     }
   };
 
-  // E. Left Orange Push Button -> Zen Bell Chime & Favorite Toggle
   const handleOrangeButtonClick = () => {
     triggerControl('orange-btn');
     playPeacefulLikeSound();
@@ -195,7 +288,6 @@ export default function PeaceWatchOverlay({
     showHud(isFavorite ? '🤍 UNFAVORITED' : '♥ ZEN FAVORITE', 'Peace Bell Chime');
   };
 
-  // F. Left Black Crown -> Mode Switcher (Clock / Track / Zen)
   const handleModeSwitch = () => {
     triggerControl('left-crown');
     playClickSound('normal');
@@ -218,19 +310,21 @@ export default function PeaceWatchOverlay({
 
   return (
     <div
-      className="peace-cyber-backdrop"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      className={`peace-cyber-backdrop ${isDragging ? 'is-user-dragging' : ''}`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       onDoubleClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose?.();
         }
       }}
     >
-      {/* Sleek Frosted Obsidian Exit Button */}
+      {/* Sleek Frosted Glass Exit Button */}
       <button
         type="button"
-        className="peace-cyber-exit-btn"
+        className="peace-cyber-exit-btn peace-interactive-el"
         onClick={onClose}
         title="Exit Cyber Watch (or press Esc)"
         aria-label="Exit Peace Mode"
@@ -238,22 +332,59 @@ export default function PeaceWatchOverlay({
         <X size={20} strokeWidth={2.4} />
       </button>
 
+      {/* Floating 360° Quick Navigation & Physics Dock (Bottom Center) */}
+      <div className="peace-360-dock-bar peace-interactive-el">
+        <button
+          type="button"
+          className="peace-dock-btn"
+          onClick={handleResetFront}
+          title="Reset to Front View"
+        >
+          <RotateCcw size={13} />
+          <span>FRONT</span>
+        </button>
+
+        <div className="peace-dock-separator" />
+
+        <button
+          type="button"
+          className={`peace-dock-btn ${isAutoSpin ? 'is-active' : ''}`}
+          onClick={handleToggleAutoSpin}
+          title="Toggle 360° Automatic Showcase Orbit"
+        >
+          <Orbit size={13} className={isAutoSpin ? 'animate-spin' : ''} />
+          <span>{isAutoSpin ? 'ORBITING' : '360° SPIN'}</span>
+        </button>
+
+        <div className="peace-dock-separator" />
+
+        <div className="peace-dock-hint">DRAG TO ROTATE 360°</div>
+      </div>
+
       {/* Volumetric Studio Aura Glow behind the 3D watch */}
       <div className={`peace-cyber-ambient-glow ${isPlaying ? 'is-playing' : ''}`} />
 
       {/* 3D Perspective Card Viewport */}
-      <div
-        ref={wrapperRef}
-        className="peace-cyber-watch-viewport"
-        style={{
-          transform: `perspective(1200px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`
-        }}
-      >
-        {/* ------------------------------------------------------------------
-            FULLY-CRAFTED 3D CYBERNETIC TIMEPIECE HARDWARE
-           ------------------------------------------------------------------ */}
-        <div className="peace-cyber-watch-assembly">
-          
+      <div className="peace-cyber-watch-viewport">
+        
+        {/* ==================================================================
+            VOLUMETRIC 3D TIMEPIECE WITH CONTINUOUS 360° ROTATION & MOTION BLUR
+           ================================================================== */}
+        <div
+          className="peace-cyber-watch-assembly"
+          style={{
+            transform: `rotateX(${rotX}deg) rotateY(${rotY}deg)`,
+            '--motion-blur': `${motionBlur}px`
+          }}
+        >
+          {/* Dynamic Motion Blur Speed Streak Layer */}
+          {motionBlur > 1.5 && (
+            <div
+              className="peace-motion-blur-trail"
+              style={{ opacity: Math.min(0.85, motionBlur / 10) }}
+            />
+          )}
+
           {/* Left Segmented Wristband with Neon-Orange Accent Block */}
           <div className="peace-watch-strap-left">
             <div className="peace-strap-rib rib-1" />
@@ -273,40 +404,47 @@ export default function PeaceWatchOverlay({
             <div className="peace-bracelet-link link-4" />
           </div>
 
-          {/* Left Black Knurled Crown Knob (Mode Switcher) */}
-          <button
-            type="button"
-            className={`peace-hardware-left-crown ${activeControl === 'left-crown' ? 'is-active' : ''}`}
-            onClick={handleModeSwitch}
-            title="Left Crown: Switch Watch Mode"
-            aria-label="Switch Mode"
-          />
+          {/* Extruded 3D Side Walls (Chassis Thickness) */}
+          <div className="peace-case-side-wall wall-right">
+            {/* Right Ribbed Titanium Crown Dial (Main Play / Pause) */}
+            <button
+              type="button"
+              className={`peace-hardware-right-crown peace-interactive-el ${activeControl === 'right-crown' ? 'is-active' : ''} ${isPlaying ? 'is-spinning' : ''}`}
+              onClick={handleCrownClick}
+              title={isPlaying ? 'Right Crown: Pause Playback' : 'Right Crown: Play Playback'}
+              aria-label="Play or Pause"
+            >
+              <div className="peace-crown-ridges" />
+            </button>
+          </div>
 
-          {/* Left Tactile Neon-Orange Push Button (Zen Bell & Favorite) */}
-          <button
-            type="button"
-            className={`peace-hardware-orange-btn ${activeControl === 'orange-btn' ? 'is-active' : ''} ${isFavorite ? 'is-favorited' : ''}`}
-            onClick={handleOrangeButtonClick}
-            title="Orange Push Button: Peaceful Bell Chime & Favorite"
-            aria-label="Zen Bell Chime"
-          />
+          <div className="peace-case-side-wall wall-left">
+            {/* Left Black Knurled Crown (Mode Switcher) */}
+            <button
+              type="button"
+              className={`peace-hardware-left-crown peace-interactive-el ${activeControl === 'left-crown' ? 'is-active' : ''}`}
+              onClick={handleModeSwitch}
+              title="Left Crown: Switch Watch Mode"
+              aria-label="Switch Mode"
+            />
 
-          {/* Right Ribbed Titanium Crown Dial (Main Play / Pause) */}
-          <button
-            type="button"
-            className={`peace-hardware-right-crown ${activeControl === 'right-crown' ? 'is-active' : ''} ${isPlaying ? 'is-spinning' : ''}`}
-            onClick={handleCrownClick}
-            title={isPlaying ? 'Right Crown: Pause Playback' : 'Right Crown: Play Playback'}
-            aria-label="Play or Pause"
-          >
-            <div className="peace-crown-ridges" />
-          </button>
+            {/* Left Tactile Neon-Orange Push Button (Zen Bell & Favorite) */}
+            <button
+              type="button"
+              className={`peace-hardware-orange-btn peace-interactive-el ${activeControl === 'orange-btn' ? 'is-active' : ''} ${isFavorite ? 'is-favorited' : ''}`}
+              onClick={handleOrangeButtonClick}
+              title="Orange Push Button: Peaceful Bell Chime & Favorite"
+              aria-label="Zen Bell Chime"
+            />
+          </div>
+
+          <div className="peace-case-side-wall wall-top" />
+          <div className="peace-case-side-wall wall-bottom" />
 
           {/* ==============================================================
-              MAIN WATCH BODY (Brushed Titanium Cushion Case)
+              FACE 1: FRONT WATCH FACE (Brushed Titanium Cushion Case)
              ============================================================== */}
-          <div className="peace-watch-main-case">
-            {/* Outer Bevel Frame */}
+          <div className="peace-watch-face-front">
             <div className="peace-case-outer-rim" />
             <div className="peace-case-inner-rim" />
             <div className="peace-case-glass-glare" />
@@ -317,9 +455,7 @@ export default function PeaceWatchOverlay({
             <span className="peace-case-screw screw-bl" />
             <span className="peace-case-screw screw-br" />
 
-            {/* ==========================================================
-                WATCH FACE (Brushed Aluminum Inset Dial)
-               ========================================================== */}
+            {/* DIAL INSET */}
             <div className="peace-watch-dial-face">
               
               {/* 1. TOP SECTION: Glowing Neon-Orange Recessed Chamber */}
@@ -327,9 +463,9 @@ export default function PeaceWatchOverlay({
                 <div className="peace-orange-chamber-glow-core" />
                 <div className="peace-orange-chamber-bezel" />
 
-                {/* Top-Left Precision Rotary Dial (Volume Control) */}
+                {/* Top-Left Rotary Dial (Volume Control) */}
                 <div
-                  className={`peace-rotary-dial dial-left ${activeControl === 'top-left-knob' ? 'is-active' : ''}`}
+                  className={`peace-rotary-dial dial-left peace-interactive-el ${activeControl === 'top-left-knob' ? 'is-active' : ''}`}
                   onClick={handleVolUp}
                   title={`Volume Up Dial (${Math.round(volume * 100)}%)`}
                 >
@@ -341,9 +477,9 @@ export default function PeaceWatchOverlay({
                   </div>
                 </div>
 
-                {/* Top-Right Precision Rotary Dial (Volume Down / Ambience) */}
+                {/* Top-Right Rotary Dial (Volume Down) */}
                 <div
-                  className={`peace-rotary-dial dial-right ${activeControl === 'top-right-knob' ? 'is-active' : ''}`}
+                  className={`peace-rotary-dial dial-right peace-interactive-el ${activeControl === 'top-right-knob' ? 'is-active' : ''}`}
                   onClick={handleVolDown}
                   title={`Volume Down Dial (${Math.round(volume * 100)}%)`}
                 >
@@ -356,12 +492,11 @@ export default function PeaceWatchOverlay({
                 </div>
               </div>
 
-              {/* 2. MIDDLE SECTION */}
+              {/* 2. MIDDLE SECTION: Jog Dial & Speaker */}
               <div className="peace-dial-middle-row">
-                
                 {/* Large Center-Left Rotary Jog Dial */}
                 <div
-                  className={`peace-large-jog-dial ${activeControl === 'large-jog' ? 'is-active' : ''}`}
+                  className={`peace-large-jog-dial peace-interactive-el ${activeControl === 'large-jog' ? 'is-active' : ''}`}
                   onClick={handleJogClick}
                   title="Jog Dial: Click top for Next Track, bottom for Prev Track"
                 >
@@ -374,7 +509,7 @@ export default function PeaceWatchOverlay({
                   </div>
                 </div>
 
-                {/* Middle-Right Area: Branding & Acoustic Speaker Grill */}
+                {/* Branding & Acoustic Speaker Matrix */}
                 <div className="peace-dial-branding-column">
                   <div className="peace-brand-label-row">
                     <span className="peace-brand-title-d1">D1</span>
@@ -382,7 +517,7 @@ export default function PeaceWatchOverlay({
                     <span className="peace-brand-title-trk">TRK</span>
                   </div>
 
-                  {/* 8-Dot Acoustic Speaker Aperture Matrix */}
+                  {/* 8-Aperture Acoustic Speaker Grid */}
                   <div className={`peace-acoustic-aperture-grid ${isPlaying ? 'is-active' : ''}`}>
                     {[...Array(8)].map((_, i) => (
                       <span key={i} className="peace-aperture-dot" style={{ animationDelay: `${i * 0.1}s` }} />
@@ -391,9 +526,8 @@ export default function PeaceWatchOverlay({
                 </div>
               </div>
 
-              {/* 3. BOTTOM SECTION: Dual Vents & Recessed Pill OLED Display */}
+              {/* 3. BOTTOM SECTION: Vents & Recessed Pill OLED Display */}
               <div className="peace-dial-bottom-row">
-                
                 {/* Left: Dual Angled Vents (//) */}
                 <div className="peace-vents-group">
                   <div className="peace-vent-slits">
@@ -403,16 +537,13 @@ export default function PeaceWatchOverlay({
                   <div className="peace-made-in-italy">MADE IN ITALY</div>
                 </div>
 
-                {/* Right: The Authentic Pill-Shaped OLED Digital Screen */}
+                {/* Right: The Authentic Pill-Shaped OLED Screen */}
                 <div
-                  className="peace-pill-oled-display"
+                  className="peace-pill-oled-display peace-interactive-el"
                   onClick={handleModeSwitch}
                   title="Click screen to cycle: Clock & EQ / Track Info / Zen Rhythm"
                 >
-                  {/* Outer Bezel with Radial Tachymeter Ticks */}
                   <div className="peace-pill-optical-ticks-ring" />
-
-                  {/* Anti-reflective OLED Glass Lens */}
                   <div className="peace-pill-glass-reflection" />
 
                   {/* On-Screen Transient HUD Flash Notice */}
@@ -425,10 +556,9 @@ export default function PeaceWatchOverlay({
                     </div>
                   )}
 
-                  {/* SCREEN SLIDE 0: Cyber Time & Frequency Equalizer */}
+                  {/* SCREEN SLIDE 0: Cyber Time & Frequency EQ */}
                   {currentSlide === 0 && (
                     <div className="peace-oled-slide peace-slide-clock">
-                      {/* Top Equalizer Frequency Bars */}
                       <div className={`peace-oled-eq-bar-row ${isPlaying ? 'is-playing' : ''}`}>
                         {[...Array(16)].map((_, i) => (
                           <span
@@ -442,16 +572,13 @@ export default function PeaceWatchOverlay({
                         ))}
                       </div>
 
-                      {/* Day / Date */}
                       <div className="peace-oled-day-tag">{dayStr}</div>
 
-                      {/* Main Large Monospace Digital Clock */}
                       <div className="peace-oled-digits-row">
                         <span className="peace-oled-digits-time">{timeStr}</span>
                         <span className="peace-oled-digits-sec">{secondsStr}</span>
                       </div>
 
-                      {/* Bottom Signature Tag */}
                       <div className="peace-oled-bottom-status">
                         <span>{monthYearStr}</span>
                         <span className="peace-oled-peace-tag">D1 • PEACE</span>
@@ -474,7 +601,6 @@ export default function PeaceWatchOverlay({
                         {currentTrack?.artist || 'Musicly Zen'}
                       </div>
 
-                      {/* Progress Bar inside OLED */}
                       <div className="peace-oled-progress-wrap">
                         <div
                           className="peace-oled-progress-bar"
@@ -503,9 +629,49 @@ export default function PeaceWatchOverlay({
                   )}
                 </div>
               </div>
-
             </div>
           </div>
+
+          {/* ==============================================================
+              FACE 2: BACK 3D CASEBACK (Exhibition Sapphire Glass & Calibre 01)
+             ============================================================== */}
+          <div className="peace-watch-face-back">
+            <div className="peace-caseback-outer-rim" />
+            <div className="peace-caseback-screws-layer">
+              <span className="peace-case-screw screw-tl" />
+              <span className="peace-case-screw screw-tr" />
+              <span className="peace-case-screw screw-bl" />
+              <span className="peace-case-screw screw-br" />
+            </div>
+
+            {/* Circular Machined Titanium Caseback Frame */}
+            <div className="peace-caseback-circular-housing">
+              {/* Technical Engravings Ring */}
+              <div className="peace-caseback-engraved-text-ring">
+                <span>MUSICLY PEACE CHRONOGRAPH • AUTOMATIC CALIBRE 01</span>
+                <span>TITANIUM CHASSIS • 50M WATER RESISTANT • 28800 VPH</span>
+              </div>
+
+              {/* Sapphire Glass Exhibition Window */}
+              <div className="peace-caseback-sapphire-window">
+                {/* Rotating Skeleton Balance Rotor */}
+                <div className={`peace-skeleton-rotor ${isPlaying ? 'is-spinning' : ''}`}>
+                  <div className="peace-rotor-weight" />
+                  <div className="peace-rotor-cutout" />
+                </div>
+
+                {/* Optical Heart-Rate & Audio Biosensor Pulse Core */}
+                <div className={`peace-caseback-biosensor-core ${isPlaying ? 'is-active' : ''}`} />
+
+                {/* Center Laser Etch Badge */}
+                <div className="peace-caseback-center-badge">
+                  <span className="peace-badge-calibre">CALIBRE 01</span>
+                  <span className="peace-badge-logo">D1 x TRK</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
