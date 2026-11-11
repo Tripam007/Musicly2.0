@@ -129,15 +129,15 @@ class YouTubeAudioEngine {
       if (!container) {
         container = document.createElement('div');
         container.id = containerId;
-        // Keep inside viewport with small non-zero dimensions without clip-path to prevent Chromium and YouTube embed security blocking
+        // Keep inside viewport with non-occluded layer and pointer-events none to prevent Chromium background/timer throttling
         container.style.position = 'fixed';
-        container.style.bottom = '10px';
-        container.style.right = '10px';
+        container.style.bottom = '4px';
+        container.style.right = '4px';
         container.style.width = '200px';
         container.style.height = '200px';
-        container.style.opacity = '0.02';
+        container.style.opacity = '0.06'; // Above Chromium 0.05 threshold to prevent timer deprioritization
         container.style.pointerEvents = 'none';
-        container.style.zIndex = '0';
+        container.style.zIndex = '999998'; // Top-layer unoccluded by modals so background audio timers stay active
         container.style.overflow = 'hidden';
         document.body.appendChild(container);
       }

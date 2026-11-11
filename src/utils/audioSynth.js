@@ -1,6 +1,7 @@
 // Web Audio API Synthesizers for Ambient Sounds, Melodic Chords & Technical UI Audio Effects
 
-let audioCtx = null;
+let sfxAudioCtx = null;
+let musicAudioCtx = null;
 const audioBufferCache = {};
 
 export async function getAudioBuffer(url, ctx) {
@@ -17,24 +18,36 @@ export async function getAudioBuffer(url, ctx) {
   }
 }
 
+// Dedicated Sound Effects & Tactile Feedback AudioContext (interactive latency, never shares node graph with music)
 function getAudioContext() {
-  if (!audioCtx) {
+  if (!sfxAudioCtx) {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AudioContext();
+    sfxAudioCtx = new AudioContext({ latencyHint: 'interactive' });
   }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume().catch(() => {});
+  if (sfxAudioCtx.state === 'suspended') {
+    sfxAudioCtx.resume().catch(() => {});
   }
-  return audioCtx;
+  return sfxAudioCtx;
 }
 
+// Dedicated Music Media AudioContext (playback latency buffer to completely prevent underrun jitter during clicks/work)
 export function getSharedAudioContext() {
-  return getAudioContext();
+  if (!musicAudioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    musicAudioCtx = new AudioContext({ latencyHint: 'playback' });
+  }
+  if (musicAudioCtx.state === 'suspended') {
+    musicAudioCtx.resume().catch(() => {});
+  }
+  return musicAudioCtx;
 }
 
 export function resumeAudioSynthContext() {
-  if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
-    audioCtx.resume().catch(() => {});
+  if (musicAudioCtx && (musicAudioCtx.state === 'suspended' || musicAudioCtx.state === 'interrupted')) {
+    musicAudioCtx.resume().catch(() => {});
+  }
+  if (sfxAudioCtx && (sfxAudioCtx.state === 'suspended' || sfxAudioCtx.state === 'interrupted')) {
+    sfxAudioCtx.resume().catch(() => {});
   }
 }
 
@@ -247,9 +260,11 @@ export function playTactileClickSound(intensity = 'normal', overrideOptions = nu
         subOsc.stop(now + 0.015);
       }
 
-      // Subtle physical haptic pulse on mobile / touchscreens
+      // Subtle physical haptic pulse on mobile / touchscreens (touch only, preventing desktop audio micro-halts)
       if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-        navigator.vibrate(6);
+        if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+          try { navigator.vibrate(6); } catch (_) {}
+        }
       }
     } catch (e) {}
   };
