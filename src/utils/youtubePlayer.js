@@ -1,5 +1,7 @@
 // YouTube IFrame Audio Engine Bridge for Musicly - High Performance, Zero-Delay Engine
 
+import { getStreamingSettings, subscribeStreamingSettings } from './streamingSettings';
+
 export function extractYouTubeId(url) {
   if (!url || typeof url !== 'string') return null;
   // Clean surrounding whitespace, quotes, backticks, markdown angle brackets, and parentheses
@@ -99,6 +101,12 @@ class YouTubeAudioEngine {
     this.pendingVolume = 1;
     this.isSeeking = false;
     this.lastSeekTime = 0;
+
+    // Reactively adjust active player quality when settings change
+    subscribeStreamingSettings((settings) => {
+      const q = settings.dataUsage === 'low' ? 'small' : 'default';
+      this.setQuality(q);
+    });
   }
 
   setCallbacks(callbacks) {
@@ -284,17 +292,29 @@ class YouTubeAudioEngine {
       }
 
       const startSec = Math.floor(startSeconds || 0);
+      const streamSettings = getStreamingSettings();
+      const targetQuality = streamSettings.dataUsage === 'low' ? 'small' : 'default';
 
       if (this.currentVideoId !== videoId) {
         this.currentVideoId = videoId;
-        this.player.loadVideoById(videoId, startSec);
+        // Use suggestedQuality to reduce video bitrate by 90%+ on 'low', streaming audio without video lag
+        if (typeof this.player.loadVideoById === 'function') {
+          this.player.loadVideoById({
+            videoId: videoId,
+            startSeconds: startSec,
+            suggestedQuality: targetQuality
+          });
+        }
+        if (this.player.setPlaybackQuality) {
+          try { this.player.setPlaybackQuality(targetQuality); } catch (e) {}
+        }
         if (this.player.playVideo) {
           this.player.playVideo();
         }
       } else {
-        // Only seek if difference is significant (> 1.8s), preventing unnecessary buffer flushing!
+        // Only seek if difference is large (> 3.5s), preventing unnecessary buffer flushing during minor drifts!
         const curr = (this.player.getCurrentTime && this.player.getCurrentTime()) || 0;
-        if (startSec > 0 && Math.abs(curr - startSec) > 1.8) {
+        if (startSec > 0 && Math.abs(curr - startSec) > 3.5) {
           this.player.seekTo(startSec, true);
         }
         this.player.playVideo();
@@ -302,6 +322,14 @@ class YouTubeAudioEngine {
       this.startProgressTracking();
     } catch (e) {
       console.warn("Error playing YouTube video:", e);
+    }
+  }
+
+  setQuality(quality) {
+    if (this.player && this.player.setPlaybackQuality) {
+      try {
+        this.player.setPlaybackQuality(quality);
+      } catch (e) {}
     }
   }
 
@@ -326,14 +354,18 @@ class YouTubeAudioEngine {
 
   startBufferingWatchdog() {
     this.clearBufferingWatchdog();
-    // Gently nudge the player if buffering takes more than 4.5s, without prematurely killing playback
+    // Gently nudge the player if buffering takes more than 3.2s, without prematurely killing playback
     this.bufferingWatchdog = setTimeout(() => {
       try {
-        if (this.player && typeof this.player.playVideo === 'function') {
-          this.player.playVideo();
+        if (this.player && typeof this.player.getPlayerState === 'function') {
+          const state = this.player.getPlayerState();
+          if (state === window.YT.PlayerState.BUFFERING || state === window.YT.PlayerState.PAUSED) {
+            console.log('[Musicly YouTube] Buffer auto-recovery: nudging player');
+            this.player.playVideo();
+          }
         }
       } catch (e) {}
-    }, 4500);
+    }, 3200);
   }
 
   clearBufferingWatchdog() {

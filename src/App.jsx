@@ -893,16 +893,19 @@ export default function App() {
       if (currentTrack.duration) {
         setDuration(currentTrack.duration);
       }
-    }
-
-    if (isPlaying) {
-      if (isNewTrack || !audioEngine.isPlaying) {
-        const startSec = isNewTrack ? (currentTrack.startTime || 0) : (currentTimeRef.current || 0);
+      if (isPlaying) {
+        const startSec = currentTrack.startTime || 0;
         audioEngine.playTrack(currentTrack, startSec);
       }
     } else {
-      if (audioEngine.isPlaying) {
-        audioEngine.pause();
+      if (isPlaying) {
+        if (!audioEngine.isPlaying) {
+          audioEngine.resume(currentTrack, currentTimeRef.current || 0);
+        }
+      } else {
+        if (audioEngine.isPlaying) {
+          audioEngine.pause();
+        }
       }
     }
   }, [currentTrack?.id, isPlaying]);
@@ -925,7 +928,7 @@ export default function App() {
     if (!nextState) {
       audioEngine.pause();
     } else {
-      audioEngine.playTrack(currentTrack, currentTimeRef.current || 0);
+      audioEngine.resume(currentTrack, currentTimeRef.current || 0);
 
       // Auto-activate Chill/Sleep ambient soundscape when playing in Chill/Sleep section
       if (currentTrack?.genre === 'Chill/Sleep' || selectedGenre === 'Chill/Sleep') {

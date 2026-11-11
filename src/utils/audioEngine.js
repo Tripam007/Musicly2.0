@@ -102,14 +102,17 @@ class AudioEngine {
 
     this.audio.addEventListener('canplay', () => {
       this.logDiag('CANPLAY');
+      if (this.stallTimeout) clearTimeout(this.stallTimeout);
     });
 
     this.audio.addEventListener('waiting', () => {
       this.logDiag('WAITING');
+      this.handleNativeBufferStall();
     });
 
     this.audio.addEventListener('stalled', () => {
       this.logDiag('STALLED');
+      this.handleNativeBufferStall();
     });
 
     this.audio.addEventListener('ended', () => {
@@ -384,19 +387,24 @@ class AudioEngine {
     }
   }
 
-  // Resume or start playback of current track
-  async play() {
-    if (this.isPlaying) return;
+  handleNativeBufferStall() {
+    if (this.stallTimeout) clearTimeout(this.stallTimeout);
+    this.stallTimeout = setTimeout(() => {
+      if (this.isPlaying && this.playbackMode === 'native' && this.audio && this.audio.paused && this.audio.readyState >= 2) {
+        console.log('[Musicly AudioEngine] Auto-resuming stalled native audio');
+        this.audio.play().catch(() => {});
+      }
+    }, 2000);
+  }
 
-    if (!this.currentTrack) return;
+  // Resume or start playback of current track smoothly without flushing buffers
+  async resume(track = null, startTime = 0) {
+    if (this.isPlaying) return;
 
     if (this.playbackMode === 'youtube') {
       this.isPlaying = true;
       this.notifyState();
-      const ytId = this.currentTrack.youtubeId || extractYouTubeId(this.currentTrack.audioUrl || '');
-      if (ytId) {
-        await ytEngine.playVideo(ytId, this.currentTime, this.volume);
-      }
+      ytEngine.resume();
     } else if (this.playbackMode === 'native' && this.audio) {
       try {
         this.audio.volume = this.volume;
@@ -409,15 +417,19 @@ class AudioEngine {
         } catch (e) {}
         await this.audio.play();
       } catch (err) {
-        this.logDiag('Resume error:', err);
-        // If element is in an unready state, re-trigger playTrack
-        if (this.currentTrack) {
-          await this.playTrack(this.currentTrack, this.currentTime);
+        this.logDiag('Resume native error:', err);
+        if (track || this.currentTrack) {
+          await this.playTrack(track || this.currentTrack, startTime || this.currentTime);
         }
       }
-    } else if (this.currentTrack) {
-      await this.playTrack(this.currentTrack, this.currentTime);
+    } else if (track || this.currentTrack) {
+      await this.playTrack(track || this.currentTrack, startTime || this.currentTime);
     }
+  }
+
+  // Resume or start playback of current track
+  async play() {
+    return this.resume();
   }
 
   // Pause playback

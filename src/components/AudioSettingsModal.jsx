@@ -9,7 +9,11 @@ import {
   Check, 
   Vibrate, 
   Radio, 
-  Music
+  Music,
+  Wifi,
+  Zap,
+  Gauge,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   audioEqualizer, 
@@ -22,6 +26,12 @@ import {
   subscribeTactileSettings, 
   TACTILE_STYLES 
 } from '../utils/tactileSettings';
+import {
+  getStreamingSettings,
+  updateStreamingSettings,
+  subscribeStreamingSettings,
+  DATA_USAGE_OPTIONS
+} from '../utils/streamingSettings';
 import { playTactileClickSound } from '../utils/audioSynth';
 import '../styles/audioSettingsModal.css';
 
@@ -29,9 +39,10 @@ export default function AudioSettingsModal({
   isOpen,
   onClose
 }) {
-  const [activeTab, setActiveTab] = useState('eq'); // 'eq' | 'tactile'
+  const [activeTab, setActiveTab] = useState('eq'); // 'eq' | 'stream' | 'tactile'
   const [eqState, setEqState] = useState(() => audioEqualizer.getState());
   const [tactileState, setTactileState] = useState(() => getTactileSettings());
+  const [streamingState, setStreamingState] = useState(() => getStreamingSettings());
 
   // Subscribe to external state changes
   useEffect(() => {
@@ -41,9 +52,13 @@ export default function AudioSettingsModal({
     const unsubTactile = subscribeTactileSettings((newSettings) => {
       setTactileState(newSettings);
     });
+    const unsubStreaming = subscribeStreamingSettings((newSettings) => {
+      setStreamingState(newSettings);
+    });
     return () => {
       unsubEq();
       unsubTactile();
+      unsubStreaming();
     };
   }, []);
 
@@ -105,6 +120,12 @@ export default function AudioSettingsModal({
     playTactileClickSound('accent', { ...tactileState, enabled: true });
   };
 
+  // Handlers for Streaming & Data Usage
+  const handleDataUsageChange = (modeId) => {
+    updateStreamingSettings({ dataUsage: modeId });
+    playTactileClickSound('accent', { ...tactileState, enabled: true });
+  };
+
   return (
     <div className="audio-settings-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true">
       <div 
@@ -118,8 +139,8 @@ export default function AudioSettingsModal({
               <Sliders size={20} className="audio-settings-header-icon" />
             </div>
             <div>
-              <h2 className="audio-settings-title">Sound & Equalizer</h2>
-              <p className="audio-settings-subtitle">Customize audio acoustics & button tactile feedback</p>
+              <h2 className="audio-settings-title">Sound & Settings</h2>
+              <p className="audio-settings-subtitle">Customize audio acoustics, data usage & tactile feedback</p>
             </div>
           </div>
           <button 
@@ -140,6 +161,14 @@ export default function AudioSettingsModal({
           >
             <Sliders size={16} />
             <span>Audio Equalizer</span>
+          </button>
+
+          <button 
+            className={`audio-settings-tab-btn ${activeTab === 'stream' ? 'active' : ''}`}
+            onClick={() => setActiveTab('stream')}
+          >
+            <Wifi size={16} />
+            <span>Data & Streaming</span>
           </button>
 
           <button 
@@ -296,6 +325,78 @@ export default function AudioSettingsModal({
               <div className="eq-info-note">
                 <Music size={13} style={{ color: '#a78bfa', flexShrink: 0 }} />
                 <span>Real-time parametric DSP filtering is applied to audio playback, ambient soundscapes, and local library files.</span>
+              </div>
+            </div>
+          ) : activeTab === 'stream' ? (
+            /* =================== STREAMING & DATA USAGE VIEW =================== */
+            <div className="streaming-content-section">
+              {/* Master Header Card */}
+              <div className="streaming-master-card">
+                <div className="streaming-master-left">
+                  <div className="streaming-icon-box">
+                    <Wifi size={20} className="icon-streaming" />
+                  </div>
+                  <div>
+                    <h3 className="streaming-card-title">Internet Data & Playback Smoothness</h3>
+                    <p className="streaming-card-desc">
+                      Configure streaming bandwidth to eliminate buffering stalls, stuttering, and jitter
+                    </p>
+                  </div>
+                </div>
+
+                <div className="streaming-active-pill">
+                  <span className="streaming-pulse-dot" />
+                  <span>
+                    {streamingState.dataUsage === 'low' ? 'Smooth (Anti-Stutter)' : 'Standard (High Bitrate)'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Data Usage Modes Grid */}
+              <div className="streaming-modes-grid">
+                {DATA_USAGE_OPTIONS.map((opt) => {
+                  const isSelected = streamingState.dataUsage === opt.id;
+                  const isLow = opt.id === 'low';
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      className={`streaming-mode-card ${isSelected ? 'active' : ''} ${isLow ? 'mode-low' : 'mode-high'}`}
+                      onClick={() => handleDataUsageChange(opt.id)}
+                    >
+                      <div className="streaming-card-top">
+                        <div className="streaming-mode-badges">
+                          <span className={`streaming-badge ${isLow ? 'badge-recommended' : 'badge-standard'}`}>
+                            {opt.tag}
+                          </span>
+                          <span className="streaming-subbadge">{opt.badge}</span>
+                        </div>
+
+                        <div className="streaming-radio-circle">
+                          {isSelected && <span className="streaming-radio-inner" />}
+                        </div>
+                      </div>
+
+                      <div className="streaming-card-main">
+                        <h4 className="streaming-mode-title">{opt.name}</h4>
+                        <p className="streaming-mode-desc">{opt.desc}</p>
+                      </div>
+
+                      <div className="streaming-card-footer">
+                        <ShieldCheck size={14} className="streaming-benefit-icon" />
+                        <span>{opt.benefit}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Pro-Tip Box */}
+              <div className="streaming-protip-box">
+                <Zap size={16} className="streaming-protip-icon" />
+                <div className="streaming-protip-text">
+                  <strong>Smooth Playback Guarantee:</strong> When set to <em>Low Internet Usage</em>, Musicly streams lightweight audio-first resolution. Songs buffer ahead instantly without stops, pauses, or jitter even on mobile hotspots.
+                </div>
               </div>
             </div>
           ) : (
