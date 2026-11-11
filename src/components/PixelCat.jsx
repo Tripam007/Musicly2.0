@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { playMeowSound, playPurrSound } from '../utils/audioSynth';
+import { playMeowSound, playPurrSound, preloadCatAudio } from '../utils/audioSynth';
 import '../styles/pixelCat.css';
 
 // -----------------------------------------------------------------------------
@@ -310,8 +310,8 @@ export default function PixelCat() {
       return;
     }
 
-    // 2. Check if clicking on the Kitty (Cat box: x to x+62, y 15 to 70)
-    const isCatHit = clickX >= sim.x - 12 && clickX <= sim.x + 64 && clickY >= 14 && clickY <= 72;
+    // 2. Check if clicking on the Kitty (Generous, responsive hit box)
+    const isCatHit = clickX >= sim.x - 18 && clickX <= sim.x + 72 && clickY >= 8 && clickY <= 76;
     if (isCatHit) {
       const now = Date.now();
       // Keep click timestamps within the last 1500ms
@@ -400,6 +400,11 @@ export default function PixelCat() {
       }
     }
   };
+
+  // Preload authentic cat audio buffer on mount so clicks trigger 0ms instantaneously
+  useEffect(() => {
+    preloadCatAudio();
+  }, []);
 
   // Main Canvas Animation & Render Loop
   useEffect(() => {

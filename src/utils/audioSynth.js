@@ -1193,7 +1193,7 @@ export function playDoorKnockSound() {
   } catch (_e) {}
 }
 
-// 🐾 Real Cat Audio Buffer Cache
+// 🐾 Real Cat Audio Buffer Cache & Pre-warmer
 let cachedMeowBuffer = null;
 let meowBufferPromise = null;
 
@@ -1218,83 +1218,89 @@ async function getMeowAudioBuffer(ctx) {
   return meowBufferPromise;
 }
 
-// 🐾 Authentic Real Cat Sound Player (5 Distinct Personalities)
-export async function playCatSound(catIndex = 0) {
+export function preloadCatAudio() {
   try {
     const ctx = getAudioContext();
-    if (ctx.state === 'suspended') await ctx.resume();
-    const now = ctx.currentTime;
+    getMeowAudioBuffer(ctx).catch(() => {});
+  } catch (e) {}
+}
 
-    // Try playing real recorded cat audio with distinct per-cat voice modulation
+// 🐾 Authentic Real Cat Sound Player
+export async function playCatSound(catIndex = 1) {
+  try {
+    const ctx = getAudioContext();
+    if (ctx.state === 'suspended' || ctx.state === 'interrupted') {
+      await ctx.resume().catch(() => {});
+    }
+
+    // Await buffer decode first
     const realBuffer = await getMeowAudioBuffer(ctx);
+    // CRITICAL: Compute now AFTER buffer is resolved so audio nodes are never scheduled in the past
+    const now = ctx.currentTime + 0.005;
 
     if (realBuffer) {
       if (catIndex === 0) {
-        // Cat 0: Mochi (Sleepy Tabby on Ledge) -> Soothing, rhythmic cat purr with soft sleepy "mrrr" onset
-        // 1. Soft vocalized "mrrr" onset (soft, warm, gently slowed domestic cat voice)
+        // Cat 0: Soothing, rhythmic cat purr with soft sleepy "mrrr" onset & rich chest flutter
+        // 1. Soft vocalized "mrrr" onset (audible over active music)
         const vocalSrc = ctx.createBufferSource();
         const vocalFilter = ctx.createBiquadFilter();
         const vocalGain = ctx.createGain();
         vocalSrc.buffer = realBuffer;
-        vocalSrc.playbackRate.setValueAtTime(0.82, now);
+        vocalSrc.playbackRate.setValueAtTime(0.85, now);
         vocalFilter.type = 'lowpass';
-        vocalFilter.frequency.setValueAtTime(1800, now);
-        vocalGain.gain.setValueAtTime(0.01, now);
-        vocalGain.gain.linearRampToValueAtTime(0.36, now + 0.06);
-        vocalGain.gain.exponentialRampToValueAtTime(0.005, now + 0.52);
+        vocalFilter.frequency.setValueAtTime(2400, now);
+        vocalGain.gain.setValueAtTime(0.02, now);
+        vocalGain.gain.linearRampToValueAtTime(0.65, now + 0.08);
+        vocalGain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
         vocalSrc.connect(vocalFilter);
         vocalFilter.connect(vocalGain);
         vocalGain.connect(ctx.destination);
         vocalSrc.start(now);
-        vocalSrc.stop(now + 0.55);
+        vocalSrc.stop(now + 0.58);
 
-        // 2. Deep, velvety rhythmic chest purr (natural 2-phase breathing flutter at 24-26Hz)
-        const dur = 1.85;
+        // 2. Velvety rhythmic chest purr (clearly audible and warm even when background song is playing)
+        const dur = 1.95;
         const purrMasterGain = ctx.createGain();
         purrMasterGain.connect(ctx.destination);
 
-        // Two-phase organic breath swell (exhale purr into gentle inhale purr)
-        purrMasterGain.gain.setValueAtTime(0.01, now);
-        purrMasterGain.gain.linearRampToValueAtTime(0.68, now + 0.16);
-        purrMasterGain.gain.setValueAtTime(0.55, now + 0.72);
-        purrMasterGain.gain.linearRampToValueAtTime(0.42, now + 0.88); // breath turn
-        purrMasterGain.gain.linearRampToValueAtTime(0.62, now + 1.15); // second gentle purr wave
+        purrMasterGain.gain.setValueAtTime(0.05, now);
+        purrMasterGain.gain.linearRampToValueAtTime(0.95, now + 0.18);
+        purrMasterGain.gain.setValueAtTime(0.82, now + 0.72);
+        purrMasterGain.gain.linearRampToValueAtTime(0.65, now + 0.92);
+        purrMasterGain.gain.linearRampToValueAtTime(0.88, now + 1.20);
         purrMasterGain.gain.exponentialRampToValueAtTime(0.001, now + dur);
 
         // 25 Hz laryngeal flutter tremolo
         const purrLFO = ctx.createOscillator();
         const purrLFOGain = ctx.createGain();
         purrLFO.type = 'sine';
-        purrLFO.frequency.setValueAtTime(24.5, now);
-        purrLFO.frequency.linearRampToValueAtTime(26.0, now + 0.9);
-        purrLFO.frequency.linearRampToValueAtTime(23.5, now + dur);
-        purrLFOGain.gain.value = 0.52;
+        purrLFO.frequency.setValueAtTime(25.0, now);
+        purrLFOGain.gain.value = 0.55;
 
         const purrGainVCA = ctx.createGain();
-        purrGainVCA.gain.value = 0.48;
+        purrGainVCA.gain.value = 0.75;
         purrLFO.connect(purrGainVCA.gain);
         purrGainVCA.connect(purrMasterGain);
 
-        // Warm, resonant chest sub-harmonics (pure sine tones, no harsh sawtooth)
+        // Warm, resonant chest sub-harmonics
         const subOsc = ctx.createOscillator();
         const warmOsc = ctx.createOscillator();
+        const midOsc = ctx.createOscillator();
         const chestGain = ctx.createGain();
         subOsc.type = 'sine';
-        subOsc.frequency.setValueAtTime(58, now);
-        subOsc.frequency.linearRampToValueAtTime(62, now + 1.0);
-        subOsc.frequency.linearRampToValueAtTime(56, now + dur);
-
+        subOsc.frequency.setValueAtTime(68, now);
         warmOsc.type = 'sine';
-        warmOsc.frequency.setValueAtTime(116, now);
-        warmOsc.frequency.linearRampToValueAtTime(124, now + 1.0);
-        warmOsc.frequency.linearRampToValueAtTime(112, now + dur);
+        warmOsc.frequency.setValueAtTime(136, now);
+        midOsc.type = 'sine';
+        midOsc.frequency.setValueAtTime(204, now);
 
-        chestGain.gain.value = 0.42;
+        chestGain.gain.value = 0.55;
         subOsc.connect(chestGain);
         warmOsc.connect(chestGain);
+        midOsc.connect(chestGain);
         chestGain.connect(purrGainVCA);
 
-        // Velvety soft breath/throat noise texture (filtered pink noise)
+        // Velvety soft breath/throat noise texture
         const sampleCount = Math.floor(ctx.sampleRate * dur);
         const noiseBuf = ctx.createBuffer(1, sampleCount, ctx.sampleRate);
         const noiseData = noiseBuf.getChannelData(0);
@@ -1304,17 +1310,17 @@ export async function playCatSound(catIndex = 0) {
           b0 = 0.99765 * b0 + white * 0.0990460;
           b1 = 0.96300 * b1 + white * 0.2965164;
           b2 = 0.57000 * b2 + white * 1.0526913;
-          noiseData[i] = (b0 + b1 + b2 + white * 0.1848) * 0.075;
+          noiseData[i] = (b0 + b1 + b2 + white * 0.1848) * 0.085;
         }
         const noiseSrc = ctx.createBufferSource();
         noiseSrc.buffer = noiseBuf;
         const noiseFilter = ctx.createBiquadFilter();
         noiseFilter.type = 'bandpass';
-        noiseFilter.frequency.setValueAtTime(430, now);
-        noiseFilter.Q.value = 2.2;
+        noiseFilter.frequency.setValueAtTime(520, now);
+        noiseFilter.Q.value = 1.8;
 
         const noiseGain = ctx.createGain();
-        noiseGain.gain.value = 0.46;
+        noiseGain.gain.value = 0.52;
 
         noiseSrc.connect(noiseFilter);
         noiseFilter.connect(noiseGain);
@@ -1323,24 +1329,27 @@ export async function playCatSound(catIndex = 0) {
         purrLFO.start(now);
         subOsc.start(now);
         warmOsc.start(now);
+        midOsc.start(now);
         noiseSrc.start(now);
 
         purrLFO.stop(now + dur + 0.05);
         subOsc.stop(now + dur + 0.05);
         warmOsc.stop(now + dur + 0.05);
+        midOsc.stop(now + dur + 0.05);
         noiseSrc.stop(now + dur + 0.05);
       } else if (catIndex === 1) {
-        // Cat 1: Tangerine (Orange Tabby Climber) -> Natural authentic domestic cat meow (1.0x)
+        // Particular iconic domestic cat meow (sweet, natural, bright, audible over music)
         const src = ctx.createBufferSource();
         const gain = ctx.createGain();
         src.buffer = realBuffer;
-        src.playbackRate.setValueAtTime(1.0, now);
-        gain.gain.setValueAtTime(0.55, now);
+        src.playbackRate.setValueAtTime(1.04, now);
+        // Clear, present volume so it cuts distinctly even when music is at 100% volume
+        gain.gain.setValueAtTime(0.92, now);
         src.connect(gain);
         gain.connect(ctx.destination);
         src.start(now);
       } else if (catIndex === 2) {
-        // Cat 2: Boba (Chubby Peeker) -> Deep, warm, mature cat meow (0.82x with warm acoustic filter)
+        // Cat 2: Boba (Chubby Peeker) -> Deep, warm, mature cat meow
         const src = ctx.createBufferSource();
         const filter = ctx.createBiquadFilter();
         const gain = ctx.createGain();
@@ -1348,29 +1357,29 @@ export async function playCatSound(catIndex = 0) {
         src.playbackRate.setValueAtTime(0.82, now);
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(2400, now);
-        gain.gain.setValueAtTime(0.58, now);
+        gain.gain.setValueAtTime(0.85, now);
         src.connect(filter);
         filter.connect(gain);
         gain.connect(ctx.destination);
         src.start(now);
       } else if (catIndex === 3) {
-        // Cat 3: Pepper (Grey Climber) -> Sweet, softer, higher cat meow (1.18x)
+        // Cat 3: Pepper (Grey Climber) -> Sweet, softer, higher cat meow
         const src = ctx.createBufferSource();
         const gain = ctx.createGain();
         src.buffer = realBuffer;
         src.playbackRate.setValueAtTime(1.18, now);
-        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.setValueAtTime(0.85, now);
         src.connect(gain);
         gain.connect(ctx.destination);
         src.start(now);
       } else {
-        // Cat 4: Cookie (Playful Kitten) -> Adorable double kitten squeak (1.5x)
+        // Cat 4: Cookie (Playful Kitten) -> Adorable double kitten squeak
         [0, 0.22].forEach((delay, idx) => {
           const s = ctx.createBufferSource();
           const g = ctx.createGain();
           s.buffer = realBuffer;
           s.playbackRate.setValueAtTime(1.48 + idx * 0.08, now + delay);
-          g.gain.setValueAtTime(0.42, now + delay);
+          g.gain.setValueAtTime(0.72, now + delay);
           s.connect(g);
           g.connect(ctx.destination);
           s.start(now + delay);
@@ -1381,8 +1390,7 @@ export async function playCatSound(catIndex = 0) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       const filter = ctx.createBiquadFilter();
-      const pitches = [480, 560, 420, 680, 880];
-      const p = pitches[catIndex] || 520;
+      const p = 540;
 
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(p, now);
@@ -1394,7 +1402,7 @@ export async function playCatSound(catIndex = 0) {
       filter.Q.value = 2.0;
 
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.4, now + 0.06);
+      gain.gain.linearRampToValueAtTime(0.75, now + 0.06);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.48);
 
       osc.connect(filter);
@@ -1406,13 +1414,9 @@ export async function playCatSound(catIndex = 0) {
   } catch (_e) {}
 }
 
-// 🐾 Meow Sound (Cycles through natural and sweet meows)
-let meowVariationIdx = 0;
+// 🐾 Meow Sound (Dedicated Single Particular Sweet Domestic Cat Sound)
 export function playMeowSound() {
-  const meowVariations = [1, 3, 4, 2];
-  const idx = meowVariations[meowVariationIdx % meowVariations.length];
-  meowVariationIdx++;
-  playCatSound(idx);
+  playCatSound(1); // 1 single consistent natural domestic cat meow
 }
 
 // 🐾 Purr Sound (Velvety rhythmic cat purr with laryngeal flutter)
@@ -1420,7 +1424,7 @@ let lastPurrCallTime = 0;
 export function playPurrSound() {
   const now = Date.now();
   // Throttle purr restarts so the soothing breathing waves blend continuously
-  if (now - lastPurrCallTime < 900) return;
+  if (now - lastPurrCallTime < 800) return;
   lastPurrCallTime = now;
   playCatSound(0);
 }
