@@ -47,7 +47,6 @@ import { audioEngine } from '../utils/audioEngine';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
 import PixelCat from './PixelCat';
 import SweatDropletsOverlay from './SweatDropletsOverlay';
-import PeaceWatchOverlay from './PeaceWatchOverlay';
 import '../styles/vinylScene.css';
 
 // Curated Category Filters inspired by the reference image
@@ -1442,39 +1441,7 @@ export default function VinylScene({
   // Reset user manual dismissal whenever playlist changes
   useEffect(() => {
     setIsGymModeDismissedByUser(false);
-    setIsPeaceWatchDismissed(false);
   }, [activePlayingPlaylistId]);
-
-  // Peace Playlist Minimal Cyber Watch Special Experience detection
-  const isPeacePlaylist = useMemo(() => {
-    const check = (str) => typeof str === 'string' && str.toLowerCase().includes('peace');
-    if (activePlayingPlaylist && check(activePlayingPlaylist.title)) return true;
-    if (check(activePlayingPlaylistId)) return true;
-    if (selectedCustomPlaylist && check(selectedCustomPlaylist.title)) {
-      if (activePlayingPlaylistId === selectedCustomPlaylist.id) {
-        return true;
-      }
-    }
-    return false;
-  }, [activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist]);
-
-  const [isPeaceWatchDismissed, setIsPeaceWatchDismissed] = useState(true);
-
-  // Trigger Peace Watch experience whenever Peace playlist begins playback
-  useEffect(() => {
-    if (isPeacePlaylist && isPlaying) {
-      setIsPeaceWatchDismissed(false);
-    }
-  }, [isPeacePlaylist, isPlaying]);
-
-  // Automatically dismiss if switched to a non-peace playlist
-  useEffect(() => {
-    if (!isPeacePlaylist) {
-      setIsPeaceWatchDismissed(true);
-    }
-  }, [isPeacePlaylist]);
-
-  const isPeaceWatchActive = Boolean(isPeacePlaylist && !isPeaceWatchDismissed);
 
   // Handle Gym workout mode active lifecycle & calm idle exit timer
   useEffect(() => {
@@ -1896,29 +1863,12 @@ export default function VinylScene({
   };
 
   return (
-    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymModeActive ? 'is-gym-mode-active' : ''} ${isSmoothlyExitingScene ? 'is-smoothly-exiting' : ''} ${isPeaceWatchActive ? 'is-peace-blur-active' : ''}`}>
+    <div className={`vinyl-scene-root ${isFullscreen ? 'is-fullscreen-mode' : ''} ${isAnyModalActive ? 'is-modal-active' : ''} ${isGymModeActive ? 'is-gym-mode-active' : ''} ${isSmoothlyExitingScene ? 'is-smoothly-exiting' : ''}`}>
       {/* Subtle Grain Overlay */}
       <div className="vinyl-grain-overlay" />
 
       {/* Gym Workout Sweat Droplets & Motion Blur Overlay */}
       <SweatDropletsOverlay isActive={isGymModeActive} />
-
-      {/* Peace Playlist Minimal Cyber Watch Special Experience */}
-      <PeaceWatchOverlay
-        isOpen={isPeaceWatchActive}
-        onClose={() => setIsPeaceWatchDismissed(true)}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        onTogglePlay={onTogglePlay}
-        onNextTrack={onNextTrack}
-        onPrevTrack={onPrevTrack}
-        currentTime={currentTime}
-        duration={duration}
-        volume={volume}
-        onVolumeChange={onVolumeChange}
-        isFavorite={isCurrentFavorite}
-        onToggleFavorite={() => onToggleFavorite?.(currentTrack)}
-      />
 
       {/* Gentle Calm Scene Exit Notification */}
       {gymExitNotice && (
