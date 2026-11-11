@@ -37,6 +37,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  overscroll-behavior: none;
   user-select: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -53,19 +54,26 @@
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
 }
 
-/* Top Header Bar */
+/* Top Header Bar — Permanently Fixed at Top */
 .vinyl-top-header {
-  position: relative;
-  z-index: 20;
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  flex-shrink: 0;
+  z-index: 150;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 32px 14px 28px;
+  padding: 16px 32px 14px 28px;
   border-bottom: 1px solid var(--vinyl-border);
-  background: rgba(243, 242, 238, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(243, 242, 238, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   gap: 20px;
+  box-sizing: border-box;
+  overscroll-behavior: none;
   transition: opacity 0.22s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s ease;
 }
 
@@ -276,6 +284,7 @@
   display: flex;
   min-height: 0;
   overflow: hidden;
+  overscroll-behavior: contain;
 }
 
 /* Left Vertical Navigation Rail */
@@ -332,6 +341,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
   padding: 20px 36px 36px 36px;
   scroll-padding-top: 28px;
   display: flex;
@@ -3345,6 +3355,13 @@
 
 @media (max-width: 768px) {
   .vinyl-top-header {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    flex-shrink: 0;
+    z-index: 150;
     padding: 12px 16px;
     gap: 12px;
   }
@@ -4985,14 +5002,26 @@
 }
 
 /* Motion Blur on Header & Left Navigation Rail during Gym Mode */
-.vinyl-scene-root.is-gym-mode-active .vinyl-top-header,
+.vinyl-scene-root.is-gym-mode-active .vinyl-top-header {
+  background: rgba(18, 18, 22, 0.92);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  filter: blur(4px);
+  opacity: 0.65;
+  transition: filter 0.6s ease, opacity 0.6s ease, background 0.3s ease;
+}
+
 .vinyl-scene-root.is-gym-mode-active .vinyl-nav-rail {
   filter: blur(4px);
   opacity: 0.65;
   transition: filter 0.6s ease, opacity 0.6s ease;
 }
 
-.vinyl-scene-root.is-gym-mode-active .vinyl-top-header:hover,
+.vinyl-scene-root.is-gym-mode-active .vinyl-top-header:hover {
+  filter: blur(0px) !important;
+  opacity: 1 !important;
+  background: rgba(18, 18, 22, 0.96) !important;
+}
+
 .vinyl-scene-root.is-gym-mode-active .vinyl-nav-rail:hover {
   filter: blur(0px) !important;
   opacity: 1 !important;
