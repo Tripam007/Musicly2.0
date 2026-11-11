@@ -1,8 +1,8 @@
 /* ==========================================================================
-   FUTURISTIC 3D CYBER TIMEPIECE OVERLAY (PEACE PLAYLIST LUXURY SHOWCASE)
+   CRAFTED 3D CYBERNETIC TIMEPIECE OVERLAY (PEACE LUXURY MASTERPIECE)
    ========================================================================== */
 
-/* Fullscreen Luxury Obsidian Backdrop (Not Complete White - Premium Dark Tint) */
+/* Fullscreen Luxury Obsidian Studio Blur (NOT Complete White) */
 .peace-cyber-backdrop {
   position: fixed;
   inset: 0;
@@ -10,9 +10,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(circle at 50% 38%, rgba(22, 24, 32, 0.88) 0%, rgba(9, 10, 14, 0.95) 100%);
-  backdrop-filter: blur(60px) saturate(140%) brightness(0.88);
-  -webkit-backdrop-filter: blur(60px) saturate(140%) brightness(0.88);
+  background: radial-gradient(circle at 50% 36%, rgba(22, 25, 34, 0.90) 0%, rgba(7, 8, 12, 0.96) 100%);
+  backdrop-filter: blur(65px) saturate(140%) brightness(0.85);
+  -webkit-backdrop-filter: blur(65px) saturate(140%) brightness(0.85);
   animation: cyberBackdropIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
   cursor: default;
@@ -27,8 +27,8 @@
   }
   to {
     opacity: 1;
-    backdrop-filter: blur(60px);
-    -webkit-backdrop-filter: blur(60px);
+    backdrop-filter: blur(65px);
+    -webkit-backdrop-filter: blur(65px);
   }
 }
 
@@ -40,12 +40,12 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: rgba(30, 32, 40, 0.75);
+  background: rgba(30, 34, 44, 0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 90, 0, 0.15);
-  color: #f0f2f8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 90, 0, 0.18);
+  color: #f0f3fa;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -55,11 +55,11 @@
 }
 
 .peace-cyber-exit-btn:hover {
-  background: rgba(255, 80, 10, 0.9);
+  background: #ff5500;
   color: #ffffff;
-  border-color: rgba(255, 120, 50, 0.8);
+  border-color: #ff7722;
   transform: scale(1.08) rotate(90deg);
-  box-shadow: 0 10px 32px rgba(255, 80, 0, 0.45);
+  box-shadow: 0 10px 32px rgba(255, 85, 0, 0.5);
 }
 
 .peace-cyber-exit-btn:active {
@@ -72,16 +72,16 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 580px;
-  height: 580px;
+  width: 620px;
+  height: 620px;
   border-radius: 50%;
   background: radial-gradient(
     circle at 52% 44%,
-    rgba(255, 85, 0, 0.25) 0%,
-    rgba(20, 130, 255, 0.10) 42%,
+    rgba(255, 85, 0, 0.26) 0%,
+    rgba(0, 160, 255, 0.12) 42%,
     rgba(0, 0, 0, 0) 70%
   );
-  filter: blur(45px);
+  filter: blur(50px);
   pointer-events: none;
   z-index: 1;
   transition: opacity 0.8s ease, transform 0.8s ease;
@@ -91,8 +91,8 @@
 .peace-cyber-ambient-glow.is-playing {
   background: radial-gradient(
     circle at 52% 44%,
-    rgba(255, 95, 0, 0.35) 0%,
-    rgba(30, 150, 255, 0.15) 45%,
+    rgba(255, 95, 0, 0.38) 0%,
+    rgba(0, 180, 255, 0.16) 45%,
     rgba(0, 0, 0, 0) 70%
   );
 }
@@ -112,7 +112,7 @@
 .peace-cyber-watch-viewport {
   position: relative;
   z-index: 5;
-  perspective: 1400px;
+  perspective: 1200px;
   transform-style: preserve-3d;
   display: flex;
   align-items: center;
@@ -120,18 +120,19 @@
   transition: transform 0.12s cubic-bezier(0.2, 0, 0.2, 1);
 }
 
-/* 3D Watch Housing with Realistic Depth Shadows */
-.peace-cyber-watch-housing {
+/* Main Assembly */
+.peace-cyber-watch-assembly {
   position: relative;
-  width: 385px;
-  max-width: 88vw;
-  aspect-ratio: 403 / 454;
+  width: 370px;
+  height: 500px;
+  max-width: 90vw;
+  max-height: 85vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  filter: drop-shadow(0 35px 70px rgba(0, 0, 0, 0.85)) 
-          drop-shadow(0 15px 30px rgba(0, 0, 0, 0.6)) 
-          drop-shadow(0 0 45px rgba(255, 85, 0, 0.22));
+  filter: drop-shadow(0 40px 80px rgba(0, 0, 0, 0.9))
+          drop-shadow(0 15px 30px rgba(0, 0, 0, 0.7))
+          drop-shadow(0 0 50px rgba(255, 80, 0, 0.22));
   animation: cyberWatchFloat 6s ease-in-out infinite;
   transform-style: preserve-3d;
 }
@@ -145,215 +146,636 @@
   }
 }
 
-.peace-cyber-watch-img {
+/* ==========================================================================
+   STRAPS & BRACELETS
+   ========================================================================== */
+
+/* Left Segmented Matte Graphite Strap with Neon-Orange Accent */
+.peace-watch-strap-left {
+  position: absolute;
+  left: -48px;
+  top: 70px;
+  width: 58px;
+  height: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 1;
+  transform: perspective(600px) rotateY(38deg) rotateZ(2deg);
+}
+
+.peace-strap-rib {
+  width: 100%;
+  height: 38px;
+  background: linear-gradient(90deg, #181920 0%, #2a2c36 50%, #15161c 100%);
+  border-radius: 6px;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 4px 8px rgba(0, 0, 0, 0.6);
+}
+
+.peace-strap-orange-accent {
+  width: 100%;
+  height: 48px;
+  background: linear-gradient(90deg, #e03c00 0%, #ff5500 50%, #cc3300 100%);
+  border-radius: 8px;
+  box-shadow: 0 0 18px rgba(255, 85, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+/* Bottom Segmented Titanium Link Bracelet */
+.peace-watch-strap-bottom {
+  position: absolute;
+  bottom: -48px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 1;
+}
+
+.peace-bracelet-link {
+  width: 100%;
+  height: 16px;
+  background: linear-gradient(180deg, #e2e6ee 0%, #a6acb8 50%, #686e7a 100%);
+  border-radius: 3px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}
+
+/* ==========================================================================
+   HARDWARE SIDE CONTROLS
+   ========================================================================== */
+
+/* Right Ribbed Titanium Crown Dial (Play / Pause) */
+.peace-hardware-right-crown {
+  position: absolute;
+  right: -24px;
+  top: 48%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 52px;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(90deg, #a0a6b4 0%, #d8dce6 40%, #828896 100%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7), inset 0 1px 3px rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  z-index: 15;
+  transition: transform 0.1s ease, filter 0.15s ease;
+  overflow: hidden;
+  padding: 0;
+}
+
+.peace-crown-ridges {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  display: block;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.4) 0px,
+    rgba(0, 0, 0, 0.4) 3px,
+    rgba(255, 255, 255, 0.6) 3px,
+    rgba(255, 255, 255, 0.6) 6px
+  );
+}
+
+.peace-hardware-right-crown:hover {
+  filter: brightness(1.15);
+}
+
+.peace-hardware-right-crown:active,
+.peace-hardware-right-crown.is-active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+.peace-hardware-right-crown.is-spinning .peace-crown-ridges {
+  animation: crownRidgesSpin 1.8s linear infinite;
+}
+
+@keyframes crownRidgesSpin {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 24px;
+  }
+}
+
+/* Left Black Knurled Crown (Mode Switcher) */
+.peace-hardware-left-crown {
+  position: absolute;
+  left: -20px;
+  top: 36%;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 48px;
+  border-radius: 8px 0 0 8px;
+  background: linear-gradient(90deg, #0d0e12 0%, #242630 60%, #15161c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.7);
+  cursor: pointer;
+  z-index: 15;
+  transition: transform 0.1s ease;
+}
+
+.peace-hardware-left-crown:hover {
+  filter: brightness(1.2);
+}
+
+.peace-hardware-left-crown:active,
+.peace-hardware-left-crown.is-active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+/* Left Tactile Neon-Orange Push Button (Zen Bell & Favorite) */
+.peace-hardware-orange-btn {
+  position: absolute;
+  left: -14px;
+  top: 54%;
+  width: 18px;
+  height: 28px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ff4500 0%, #ff7722 50%, #cc3300 100%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 12px rgba(255, 85, 0, 0.6), inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  z-index: 15;
+  transition: all 0.15s ease;
+}
+
+.peace-hardware-orange-btn:hover {
+  box-shadow: 0 0 20px rgba(255, 85, 0, 0.85);
+  transform: scale(1.08);
+}
+
+.peace-hardware-orange-btn:active,
+.peace-hardware-orange-btn.is-active {
+  transform: scale(0.88);
+}
+
+.peace-hardware-orange-btn.is-favorited {
+  box-shadow: 0 0 24px #ff5500;
+}
+
+/* ==========================================================================
+   MAIN WATCH CASE (Brushed Titanium Cushion Squircle)
+   ========================================================================== */
+
+.peace-watch-main-case {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 54px;
+  background: linear-gradient(150deg, #f0f2f7 0%, #c4cad6 30%, #7e8594 70%, #d2d6e0 100%);
+  box-shadow: 
+    0 35px 80px rgba(0, 0, 0, 0.85),
+    inset 0 3px 6px rgba(255, 255, 255, 0.95),
+    inset 0 -4px 10px rgba(0, 0, 0, 0.6);
+  padding: 16px;
+  box-sizing: border-box;
+  z-index: 5;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Dual Concentric Inner Metallic Rims */
+.peace-case-outer-rim {
+  position: absolute;
+  inset: 7px;
+  border-radius: 48px;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
 
-/* Dynamic Specular Glass Sheen */
-.peace-cyber-glass-specular {
+.peace-case-inner-rim {
   position: absolute;
-  top: 10%;
-  left: 20%;
-  width: 60%;
-  height: 70%;
-  border-radius: 40px;
+  inset: 13px;
+  border-radius: 43px;
+  border: 1.5px solid rgba(70, 75, 88, 0.5);
+  pointer-events: none;
+}
+
+.peace-case-glass-glare {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.24) 0%,
-    rgba(255, 255, 255, 0.06) 35%,
-    rgba(255, 255, 255, 0) 65%
+    rgba(255, 255, 255, 0.28) 0%,
+    rgba(255, 255, 255, 0.05) 35%,
+    rgba(0, 0, 0, 0) 65%
   );
   pointer-events: none;
-  z-index: 15;
-  transition: transform 0.1s linear;
+  z-index: 20;
 }
 
-/* --------------------------------------------------------------------------
-   Top Glowing Neon-Orange Cavity Glow & Indicators
-   -------------------------------------------------------------------------- */
-
-.peace-orange-chamber-glow {
+/* Precision Screws on 4 Corners */
+.peace-case-screw {
   position: absolute;
-  left: 36.5%;
-  top: 12.5%;
-  width: 43.5%;
-  height: 23%;
-  border-radius: 35px;
-  background: radial-gradient(
-    circle at 50% 50%,
-    rgba(255, 110, 20, 0.45) 0%,
-    rgba(255, 60, 0, 0.15) 60%,
-    transparent 80%
-  );
-  box-shadow: 0 0 25px rgba(255, 85, 0, 0.35);
-  pointer-events: none;
-  z-index: 3;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #8c92a0 70%, #30333d 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  z-index: 10;
 }
 
-.peace-orange-chamber-glow.is-pulsing {
-  animation: neonChamberPulse 2.8s ease-in-out infinite;
+.peace-case-screw::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 15%;
+  width: 70%;
+  height: 1px;
+  background: #2a2c34;
+  transform: translateY(-50%) rotate(45deg);
 }
 
-@keyframes neonChamberPulse {
+.screw-tl { top: 20px; left: 20px; }
+.screw-tr { top: 20px; right: 20px; }
+.screw-bl { bottom: 20px; left: 20px; }
+.screw-br { bottom: 20px; right: 20px; }
+
+/* ==========================================================================
+   WATCH DIAL FACE (Brushed Aluminum Inset)
+   ========================================================================== */
+
+.peace-watch-dial-face {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 38px;
+  background: linear-gradient(170deg, #f4f6fa 0%, #dce0e8 45%, #c8ced8 100%);
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+  padding: 16px 14px 14px 14px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+/* ==========================================================================
+   1. TOP SECTION: Glowing Neon-Orange Recessed Chamber
+   ========================================================================== */
+
+.peace-top-orange-chamber {
+  position: relative;
+  width: 100%;
+  height: 94px;
+  border-radius: 34px;
+  background: radial-gradient(circle at 50% 40%, #ff6e1a 0%, #ff4500 55%, #b82600 100%);
+  box-shadow: 
+    inset 0 4px 12px rgba(0, 0, 0, 0.7),
+    inset 0 0 0 2px rgba(0, 0, 0, 0.4),
+    0 0 32px rgba(255, 80, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: box-shadow 0.5s ease;
+}
+
+.peace-top-orange-chamber.is-pulsing {
+  animation: chamberNeonGlow 3s ease-in-out infinite;
+}
+
+@keyframes chamberNeonGlow {
   0%, 100% {
-    opacity: 0.85;
-    box-shadow: 0 0 20px rgba(255, 85, 0, 0.3);
+    box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.7), 0 0 25px rgba(255, 80, 0, 0.45);
   }
   50% {
-    opacity: 1;
-    box-shadow: 0 0 32px rgba(255, 105, 10, 0.6);
+    box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.7), 0 0 44px rgba(255, 100, 10, 0.85);
   }
 }
 
-/* Rotary Dial Indicators (Small Dot Markers on Top Knobs) */
-.peace-knob-indicator {
+.peace-orange-chamber-glow-core {
   position: absolute;
-  border-radius: 50%;
+  top: -20px;
+  left: 20%;
+  width: 60%;
+  height: 80px;
+  background: radial-gradient(circle, rgba(255, 230, 180, 0.45) 0%, transparent 70%);
   pointer-events: none;
-  z-index: 6;
+}
+
+.peace-orange-chamber-bezel {
+  position: absolute;
+  inset: 0;
+  border-radius: 34px;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+/* Two Precision Rotary Dials Inside Orange Chamber */
+.peace-rotary-dial {
+  position: relative;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 40%, #ffffff 0%, #cbd2dc 50%, #767d8c 100%);
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.65),
+    inset 0 2px 4px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, filter 0.15s ease;
+  z-index: 10;
+}
+
+.peace-rotary-dial:hover {
+  filter: brightness(1.12);
+  transform: scale(1.05);
+}
+
+.peace-rotary-dial:active,
+.peace-rotary-dial.is-active {
+  transform: scale(0.94);
+}
+
+.peace-dial-cap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 45%, #edf1f7 0%, #b4bcc8 70%, #828a98 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.peace-dial-marker {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.peace-knob-ind-left {
-  left: 45.8%;
-  top: 22.8%;
-  width: 6px;
-  height: 6px;
-  background: #ff5500;
+.marker-orange {
+  background: #ff4500;
   box-shadow: 0 0 6px #ff5500;
 }
 
-.peace-knob-ind-right {
-  left: 65.5%;
-  top: 22.8%;
-  width: 5px;
-  height: 5px;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
+.marker-white {
+  background: #ffffff;
+  box-shadow: 0 0 4px #ffffff;
 }
 
-/* Center-Left Large Jog Dial Notch Indicator */
-.peace-jog-indicator {
-  position: absolute;
-  left: 49.2%;
-  top: 49.2%;
-  width: 7px;
-  height: 7px;
+/* ==========================================================================
+   2. MIDDLE SECTION: Large Jog Dial & Branding / Speaker
+   ========================================================================== */
+
+.peace-dial-middle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 6px 4px 6px;
+}
+
+/* Large Center-Left Rotary Jog Dial */
+.peace-large-jog-dial {
+  position: relative;
+  width: 96px;
+  height: 96px;
   border-radius: 50%;
-  background: #ff5500;
-  box-shadow: 0 0 8px #ff5500;
+  background: radial-gradient(circle at 35% 35%, #ffffff 0%, #b8beca 55%, #565d6c 100%);
+  box-shadow: 
+    0 12px 24px rgba(0, 0, 0, 0.55),
+    inset 0 3px 6px rgba(255, 255, 255, 0.9),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.peace-large-jog-dial:hover {
+  filter: brightness(1.08);
+  transform: scale(1.04);
+}
+
+.peace-large-jog-dial:active,
+.peace-large-jog-dial.is-active {
+  transform: scale(0.94);
+}
+
+.peace-jog-outer-knurled-ring {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 3px dashed rgba(40, 45, 55, 0.6);
   pointer-events: none;
-  z-index: 7;
+}
+
+.peace-jog-inner-cap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 45%, #f2f5fa 0%, #c2c9d6 65%, #88909e 100%);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.peace-jog-pointer-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4500;
+  box-shadow: 0 0 8px #ff5500;
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Acoustic Speaker Grill (8 dots) Wave Effect */
-.peace-acoustic-speaker-grid {
-  position: absolute;
-  left: 61.5%;
-  top: 49.5%;
-  width: 14%;
-  height: 9%;
+/* Middle-Right Area: Branding & Speaker Matrix */
+.peace-dial-branding-column {
   display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  pointer-events: none;
-  z-index: 6;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  padding-right: 6px;
 }
 
-.peace-speaker-dot {
-  width: 3px;
-  height: 3px;
+.peace-brand-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+  letter-spacing: 0.04em;
+  color: #1a1b20;
+}
+
+.peace-brand-title-d1 {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #111215;
+}
+
+.peace-brand-title-x {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #ff5500;
+}
+
+.peace-brand-title-trk {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #111215;
+}
+
+/* 8-Aperture Acoustic Speaker Grid */
+.peace-acoustic-aperture-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 6px 8px;
+  border-radius: 10px;
+}
+
+.peace-aperture-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: #111115;
+  background: #181920;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
   transition: all 0.2s ease;
 }
 
-.peace-acoustic-speaker-grid.is-active .peace-speaker-dot {
-  background: #ff6610;
-  box-shadow: 0 0 4px #ff6610;
-  animation: speakerDotBlink 1.4s ease-in-out infinite alternate;
+.peace-acoustic-aperture-grid.is-active .peace-aperture-dot {
+  background: #ff5500;
+  box-shadow: 0 0 6px #ff5500;
+  animation: aperturePulse 1.4s ease-in-out infinite alternate;
 }
 
-@keyframes speakerDotBlink {
+@keyframes aperturePulse {
   0% {
     opacity: 0.4;
     transform: scale(0.9);
   }
   100% {
     opacity: 1;
-    transform: scale(1.3);
+    transform: scale(1.25);
   }
 }
 
-/* Dual Diagonal Vents Glow (//) */
-.peace-twin-vents-glow {
-  position: absolute;
-  left: 50.5%;
-  top: 61%;
-  width: 7%;
-  height: 7.5%;
-  pointer-events: none;
-  z-index: 6;
-  opacity: 0.3;
-  transition: opacity 0.3s ease;
+/* ==========================================================================
+   3. BOTTOM SECTION: Vents & Authentic Recessed Pill OLED Screen
+   ========================================================================= */
+
+.peace-dial-bottom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 2px 6px;
 }
 
-.peace-twin-vents-glow.is-active {
-  opacity: 1;
-  background: radial-gradient(circle, rgba(255, 90, 0, 0.4) 0%, transparent 70%);
+/* Left: Dual Angled Vents (//) */
+.peace-vents-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
 }
 
-/* --------------------------------------------------------------------------
-   Pill-Shaped OLED / LCD Digital Screen (Bottom-Right)
-   -------------------------------------------------------------------------- */
+.peace-vent-slits {
+  display: flex;
+  gap: 6px;
+}
 
-.peace-pill-screen-container {
-  position: absolute;
-  left: 54.4%;
-  top: 46.2%;
-  width: 27.8%;
-  height: 19.8%;
+.peace-vent-bar {
+  width: 6px;
+  height: 24px;
   border-radius: 999px;
-  transform: rotate(-10.5deg) skewX(-3deg);
-  background: #0d0f14;
+  background: #1a1b22;
+  transform: rotate(20deg);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+  transition: all 0.3s ease;
+}
+
+.peace-vent-bar.is-active {
+  background: #ff5500;
+  box-shadow: 0 0 8px rgba(255, 85, 0, 0.6);
+}
+
+.peace-made-in-italy {
+  font-family: -apple-system, BlinkMacSystemFont, monospace;
+  font-size: 0.44rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #727885;
+}
+
+/* Right: The Recessed Pill-Shaped OLED Digital Screen */
+.peace-pill-oled-display {
+  position: relative;
+  width: 154px;
+  height: 98px;
+  border-radius: 999px;
+  background: #08090d;
   box-shadow: 
-    inset 0 3px 8px rgba(0, 0, 0, 0.95),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 0 15px rgba(0, 200, 255, 0.18);
-  overflow: hidden;
+    inset 0 4px 10px rgba(0, 0, 0, 0.95),
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.14),
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(0, 190, 255, 0.15);
   cursor: pointer;
-  z-index: 8;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 8px 12px;
   box-sizing: border-box;
+  transition: transform 0.15s ease, box-shadow 0.25s ease;
 }
 
-.peace-pill-screen-container::after {
-  content: '';
+.peace-pill-oled-display:hover {
+  box-shadow: 
+    inset 0 4px 10px rgba(0, 0, 0, 0.95),
+    inset 0 0 0 1.5px rgba(255, 85, 0, 0.4),
+    0 0 24px rgba(255, 85, 0, 0.35);
+  transform: scale(1.03);
+}
+
+.peace-pill-glass-reflection {
   position: absolute;
   inset: 0;
   border-radius: 999px;
   background: linear-gradient(
     135deg,
     rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.04) 35%,
-    rgba(0, 0, 0, 0.2) 100%
+    rgba(255, 255, 255, 0.03) 38%,
+    rgba(0, 0, 0, 0.25) 100%
   );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Radial Tachymeter Optical Ticks Ring */
+.peace-pill-optical-ticks-ring {
+  position: absolute;
+  inset: -1px;
+  border-radius: 999px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
   pointer-events: none;
 }
 
-/* Transient Cyber HUD Flash Notice inside screen */
-.peace-pill-hud-notice {
+/* On-Screen Transient HUD Flash Notice */
+.peace-pill-hud-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(10, 12, 16, 0.96);
+  background: rgba(6, 7, 10, 0.96);
   border-radius: 999px;
   display: flex;
   flex-direction: column;
@@ -361,7 +783,7 @@
   justify-content: center;
   z-index: 25;
   animation: pillHudPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  padding: 2px 8px;
+  padding: 4px 10px;
 }
 
 @keyframes pillHudPop {
@@ -377,337 +799,252 @@
 
 .peace-pill-hud-title {
   font-family: 'Space Grotesk', monospace;
-  font-size: 0.60rem;
+  font-size: 0.64rem;
   font-weight: 800;
-  color: #ff6610;
-  letter-spacing: 0.06em;
-  text-shadow: 0 0 6px rgba(255, 102, 16, 0.6);
+  color: #ff5500;
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px rgba(255, 85, 0, 0.7);
 }
 
 .peace-pill-hud-detail {
-  font-size: 0.48rem;
-  color: #b5c2d4;
+  font-size: 0.50rem;
+  color: #a4b2c6;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 90px;
+  max-width: 110px;
 }
 
-/* SCREEN SLIDE 0: Cyber Time & Frequency EQ */
-.peace-pill-slide {
+/* OLED Content Slides */
+.peace-oled-slide {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
+  z-index: 5;
 }
 
-/* Top Equalizer Frequency Barcode */
-.peace-pill-eq-bar-row {
+/* SLIDE 0: Cyber Clock & Frequency EQ */
+.peace-oled-eq-bar-row {
   display: flex;
   align-items: flex-end;
   justify-content: center;
   gap: 2px;
-  height: 8px;
-  width: 82%;
+  height: 10px;
+  width: 85%;
   margin-top: 1px;
 }
 
-.peace-eq-bar-segment {
-  width: 2px;
+.peace-oled-eq-bar {
+  width: 2.5px;
   height: 2px;
   border-radius: 1px;
-  background: rgba(180, 200, 230, 0.3);
+  background: rgba(160, 185, 215, 0.28);
 }
 
-.peace-pill-eq-bar-row.is-playing .peace-eq-bar-segment {
+.peace-oled-eq-bar-row.is-playing .peace-oled-eq-bar {
   background: #ff5500;
-  box-shadow: 0 0 3px #ff5500;
-  animation: eqBarHop 0.5s ease-in-out infinite alternate;
+  box-shadow: 0 0 4px #ff5500;
+  animation: eqBarPulse 0.45s ease-in-out infinite alternate;
 }
 
-@keyframes eqBarHop {
+@keyframes eqBarPulse {
   0% {
     height: 2px;
   }
   100% {
-    height: 8px;
+    height: 10px;
   }
 }
 
-/* Day / Date Meta */
-.peace-pill-meta-day {
+.peace-oled-day-tag {
   font-family: -apple-system, BlinkMacSystemFont, monospace;
-  font-size: 0.50rem;
+  font-size: 0.54rem;
   font-weight: 700;
-  color: #8c9cb0;
+  color: #8a9bb2;
   letter-spacing: 0.08em;
   line-height: 1;
 }
 
-/* Digital Monospace LCD Clock */
-.peace-pill-digits-clock {
+.peace-oled-digits-row {
   display: flex;
   align-items: baseline;
   justify-content: center;
   line-height: 1;
 }
 
-.peace-digits-main {
+.peace-oled-digits-time {
   font-family: 'Space Grotesk', 'Courier New', monospace;
-  font-size: 0.88rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-size: 1.05rem;
+  font-weight: 900;
   color: #eaf1fb;
-  text-shadow: 0 0 8px rgba(180, 220, 255, 0.5);
+  letter-spacing: -0.01em;
+  text-shadow: 0 0 10px rgba(180, 220, 255, 0.6);
 }
 
-.peace-digits-sec {
+.peace-oled-digits-sec {
   font-family: 'Space Grotesk', monospace;
-  font-size: 0.52rem;
-  font-weight: 700;
+  font-size: 0.60rem;
+  font-weight: 800;
   color: #ff5500;
-  margin-left: 1px;
-  text-shadow: 0 0 6px rgba(255, 85, 0, 0.6);
+  margin-left: 2px;
+  text-shadow: 0 0 8px rgba(255, 85, 0, 0.7);
 }
 
-/* Bottom Tag */
-.peace-pill-bottom-tag {
+.peace-oled-bottom-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 90%;
-  font-size: 0.44rem;
+  font-size: 0.48rem;
   font-weight: 700;
   color: #728296;
   letter-spacing: 0.04em;
   margin-bottom: 1px;
 }
 
-.peace-pill-mode-badge {
+.peace-oled-peace-tag {
   color: #ff5500;
   font-weight: 800;
 }
 
-/* SCREEN SLIDE 1: Audio Playback Info */
-.peace-pill-track-slide {
+/* SLIDE 1: Audio Playback Info */
+.peace-slide-track {
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
 }
 
-.peace-pill-track-badge {
+.peace-oled-track-status {
   display: flex;
   align-items: center;
-  gap: 3px;
-  font-size: 0.46rem;
+  gap: 4px;
+  font-size: 0.50rem;
   font-weight: 800;
   color: #ff5500;
   letter-spacing: 0.08em;
 }
 
-.peace-pill-track-title {
+.peace-oled-track-title {
   font-family: 'Space Grotesk', sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   font-weight: 800;
   color: #eaf1fb;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 85px;
+  max-width: 105px;
   text-align: center;
 }
 
-.peace-pill-track-artist {
-  font-size: 0.48rem;
+.peace-oled-track-artist {
+  font-size: 0.52rem;
   color: #8c9cb0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 85px;
+  max-width: 105px;
   text-align: center;
 }
 
-.peace-pill-progress-wrap {
-  width: 80%;
-  height: 2px;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 1px;
+.peace-oled-progress-wrap {
+  width: 82%;
+  height: 2.5px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
   overflow: hidden;
   margin-top: 2px;
 }
 
-.peace-pill-progress-bar {
+.peace-oled-progress-bar {
   height: 100%;
   background: #ff5500;
-  box-shadow: 0 0 4px #ff5500;
+  box-shadow: 0 0 6px #ff5500;
   transition: width 0.3s linear;
 }
 
-.peace-pill-track-time-row {
+.peace-oled-time-counters {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  width: 80%;
-  font-size: 0.44rem;
+  width: 82%;
+  font-size: 0.48rem;
   color: #728296;
 }
 
-/* SCREEN SLIDE 2: Zen Rhythm Breathing */
-.peace-pill-zen-slide {
+/* SLIDE 2: Zen Rhythm Breathing Guide */
+.peace-slide-zen {
   justify-content: center;
-  gap: 3px;
+  gap: 4px;
 }
 
-.peace-pill-zen-tag {
-  font-size: 0.48rem;
+.peace-oled-zen-badge {
+  font-size: 0.52rem;
   font-weight: 800;
   color: #ff5500;
   letter-spacing: 0.08em;
 }
 
-.peace-pill-breath-ring-wrap {
-  width: 22px;
-  height: 22px;
+.peace-oled-breath-circle-wrap {
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.peace-pill-breath-ring {
+.peace-oled-breath-circle {
   width: 100%;
   height: 100%;
   border-radius: 50%;
   border: 1.5px solid #ff5500;
-  box-shadow: 0 0 6px rgba(255, 85, 0, 0.5);
+  box-shadow: 0 0 8px rgba(255, 85, 0, 0.6);
   transition: all 4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.peace-pill-breath-ring.phase-inhale {
+.peace-oled-breath-circle.phase-inhale {
   transform: scale(1.3);
   border-width: 2px;
   opacity: 1;
 }
 
-.peace-pill-breath-ring.phase-hold {
+.peace-oled-breath-circle.phase-hold {
   transform: scale(1.3);
   opacity: 0.85;
 }
 
-.peace-pill-breath-ring.phase-exhale {
+.peace-oled-breath-circle.phase-exhale {
   transform: scale(0.6);
   opacity: 0.4;
 }
 
-.peace-pill-breath-phase {
-  font-size: 0.52rem;
+.peace-oled-breath-phase {
+  font-size: 0.56rem;
   font-weight: 800;
   color: #eaf1fb;
   letter-spacing: 0.08em;
 }
 
-/* --------------------------------------------------------------------------
-   Interactive Hardware Hotspot Buttons (Overlayed on 3D Chassis)
-   -------------------------------------------------------------------------- */
+/* ==========================================================================
+   RESPONSIVE SCALING
+   ========================================================================== */
 
-.peace-3d-hotspot {
-  position: absolute;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  z-index: 20;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.12s ease;
-}
-
-/* Futuristic Target Reticle on Hover */
-.peace-3d-hotspot::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  border: 1.5px solid transparent;
-  background: transparent;
-  transition: all 0.18s ease;
-  pointer-events: none;
-}
-
-.peace-3d-hotspot:hover::before {
-  border-color: rgba(255, 100, 20, 0.6);
-  background: rgba(255, 90, 0, 0.15);
-  box-shadow: 0 0 12px rgba(255, 90, 0, 0.35);
-}
-
-.peace-3d-hotspot:active,
-.peace-3d-hotspot.is-active {
-  transform: scale(0.92);
-}
-
-.peace-3d-hotspot:active::before,
-.peace-3d-hotspot.is-active::before {
-  border-color: rgba(255, 90, 0, 0.95);
-  background: rgba(255, 90, 0, 0.4);
-  box-shadow: 0 0 16px rgba(255, 90, 0, 0.6);
-}
-
-/* 1. Right Silver Crown (Play / Pause) */
-.peace-hs-right-crown {
-  left: 77.2%;
-  top: 37.4%;
-  width: 18.8%;
-  height: 19.8%;
-  border-radius: 0 12px 12px 0;
-}
-
-/* 2. Top-Left Silver Rotary Knob (Volume Up) */
-.peace-hs-top-left-knob {
-  left: 37.5%;
-  top: 13.5%;
-  width: 18%;
-  height: 19%;
-  border-radius: 50%;
-}
-
-/* 3. Top-Right Silver Rotary Knob (Volume Down) */
-.peace-hs-top-right-knob {
-  left: 57.5%;
-  top: 13.5%;
-  width: 18%;
-  height: 19%;
-  border-radius: 50%;
-}
-
-/* 4. Large Center-Left Jog Dial (Scrub / Skip Track) */
-.peace-hs-large-jog {
-  left: 37.2%;
-  top: 37.4%;
-  width: 24.8%;
-  height: 24.2%;
-  border-radius: 50%;
-}
-
-/* 5. Left Orange Tactile Push Button (Zen Bell & Favorite) */
-.peace-hs-orange-btn {
-  left: 29.5%;
-  top: 47%;
-  width: 6.5%;
-  height: 7%;
-  border-radius: 50%;
-}
-
-/* 6. Left Black Crown Knob (Mode Switcher) */
-.peace-hs-left-crown {
-  left: 21%;
-  top: 35.2%;
-  width: 16%;
-  height: 15.5%;
-  border-radius: 12px 0 0 12px;
-}
-
-/* Responsive Scaling */
 @media (max-width: 480px) {
-  .peace-cyber-watch-housing {
-    width: 320px;
+  .peace-cyber-watch-assembly {
+    width: 330px;
+    height: 450px;
+  }
+  .peace-rotary-dial {
+    width: 52px;
+    height: 52px;
+  }
+  .peace-large-jog-dial {
+    width: 82px;
+    height: 82px;
+  }
+  .peace-pill-oled-display {
+    width: 135px;
+    height: 86px;
   }
 }
