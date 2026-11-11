@@ -68,6 +68,7 @@ export default function App() {
   // Audio & Library state
   const [publicTracks, setPublicTracks] = useState(() => getLocalPublicTracks());
   const [customTracks, setCustomTracks] = useState([]);
+  const [previewTrack, setPreviewTrack] = useState(null);
   const [selectedGenre, setSelectedGenre] = useState('All');
   const [currentTrackId, setCurrentTrackId] = useState(() => {
     try {
@@ -100,12 +101,12 @@ export default function App() {
 
   // Persist the last played track ID so the app resumes from where user left off
   useEffect(() => {
-    if (currentTrackId) {
+    if (currentTrackId && allTracks.some(t => t.id === currentTrackId)) {
       try {
         localStorage.setItem('musicly_last_track_id', currentTrackId);
       } catch (e) {}
     }
-  }, [currentTrackId]);
+  }, [currentTrackId, allTracks]);
 
   // Purge any legacy device settings and log default audio routing diagnostics on mount
   useEffect(() => {
@@ -645,8 +646,11 @@ export default function App() {
   const lastUiUpdateRef = useRef(0);
 
   const currentTrack = useMemo(() => {
+    if (previewTrack && previewTrack.id === currentTrackId) {
+      return previewTrack;
+    }
     return allTracks.find(t => t.id === currentTrackId) || activePlaylist[0] || allTracks[0] || TRACKS[0];
-  }, [allTracks, currentTrackId, activePlaylist]);
+  }, [allTracks, currentTrackId, activePlaylist, previewTrack]);
 
   // Live state refs to avoid stale closure issues in audio callbacks and intervals
   const activePlaylistRef = useRef(activePlaylist);
@@ -938,6 +942,7 @@ export default function App() {
   // Dedicated single-track selector
   const handleSelectTrack = (track, shouldPlay = true) => {
     if (!track) return;
+    setPreviewTrack(null);
     setCurrentTrackId(track.id);
     setCurrentTime(0);
     currentTimeRef.current = 0;
@@ -2930,9 +2935,7 @@ export default function App() {
         onDeleteTrack={handleDeletePublicTrack}
         onPlayTrack={(track) => {
           if (!track) return;
-          if (!allTracks.some(t => t.id === track.id)) {
-            setCustomTracks(prev => [track, ...prev.filter(t => t.id !== track.id)]);
-          }
+          setPreviewTrack(track);
           if (currentTrackId === track.id) {
             togglePlay();
           } else {
