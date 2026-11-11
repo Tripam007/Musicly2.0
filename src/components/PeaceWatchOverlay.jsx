@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { X, Play, Pause, SkipBack, SkipForward, Heart, Volume2, Sparkles, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Play, Pause, SkipBack, SkipForward, Heart, Volume2, Sparkles, ChevronUp, ChevronDown, Compass, Disc3 } from 'lucide-react';
 import { playClickSound, playPeacefulLikeSound, playTactileClickSound } from '../utils/audioSynth';
 import '../styles/peaceWatchOverlay.css';
 
@@ -18,53 +18,68 @@ export default function PeaceWatchOverlay({
   isFavorite = false,
   onToggleFavorite
 }) {
-  const [currentSlide, setCurrentSlide] = useState(0); // 0 = Clock Face, 1 = Track Info ("Other Stuffs"), 2 = Zen Breathing
-  const [currentTimeStr, setCurrentTimeStr] = useState('');
-  const [currentSecondsDot, setCurrentSecondsDot] = useState(2);
-  const [is24Hour, setIs24Hour] = useState(false);
-  const [breathingPhase, setBreathingPhase] = useState('INHALE'); // INHALE, HOLD, EXHALE
-  const [hudMessage, setHudMessage] = useState(null); // On-screen tactile HUD feedback { title, detail }
-  const [activeButtonKey, setActiveButtonKey] = useState(null); // For visible button click animation
+  const [currentSlide, setCurrentSlide] = useState(0); // 0 = Cyber Time & Audio EQ, 1 = Track Info & Progress, 2 = Zen Breathing
+  const [timeStr, setTimeStr] = useState('19:17');
+  const [secondsStr, setSecondsStr] = useState(':00');
+  const [dayStr, setDayStr] = useState('MON 10th');
+  const [monthYearStr, setMonthYearStr] = useState('NOV 2026');
+  const [breathingPhase, setBreathingPhase] = useState('INHALE');
+  const [hudMessage, setHudMessage] = useState(null);
+  const [activeControl, setActiveControl] = useState(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [jogRotation, setJogRotation] = useState(0);
+  const [volRotation, setVolRotation] = useState(volume * 270 - 135);
 
   const hudTimerRef = useRef(null);
-  const dragStartYRef = useRef(null);
-  const isDraggingRef = useRef(false);
+  const wrapperRef = useRef(null);
 
-  // Trigger on-screen HUD flash notification whenever any hardware or touch button is used
+  // Sync volume knob rotation with volume prop
+  useEffect(() => {
+    setVolRotation(volume * 270 - 135);
+  }, [volume]);
+
+  // Trigger transient on-screen HUD readout
   const showHud = useCallback((title, detail = '') => {
     if (hudTimerRef.current) clearTimeout(hudTimerRef.current);
     setHudMessage({ title, detail });
     hudTimerRef.current = setTimeout(() => {
       setHudMessage(null);
-    }, 1400);
+    }, 1500);
   }, []);
 
-  // Visual button depression trigger
-  const flashButton = (key) => {
-    setActiveButtonKey(key);
-    setTimeout(() => setActiveButtonKey(null), 220);
+  // Flash active control state
+  const triggerControl = (name) => {
+    setActiveControl(name);
+    setTimeout(() => setActiveControl(null), 250);
   };
 
-  // 1. Live Real-Time Clock
+  // 1. Live Real-Time Clock & Date
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      let hours = now.getHours();
+      const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      const seconds = now.getSeconds();
+      const seconds = String(now.getSeconds()).padStart(2, '0');
 
-      if (!is24Hour) {
-        hours = hours % 12 || 12;
-      }
-      const formattedHours = String(hours).padStart(2, '0');
-      setCurrentTimeStr(`${formattedHours}:${minutes}`);
-      setCurrentSecondsDot(Math.floor((seconds % 10) / 2)); // Cycles 0 to 4
+      const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      
+      const dayNum = now.getDate();
+      let suffix = 'th';
+      if (dayNum === 1 || dayNum === 21 || dayNum === 31) suffix = 'st';
+      else if (dayNum === 2 || dayNum === 22) suffix = 'nd';
+      else if (dayNum === 3 || dayNum === 23) suffix = 'rd';
+
+      setTimeStr(`${hours}:${minutes}`);
+      setSecondsStr(`:${seconds}`);
+      setDayStr(`${days[now.getDay()]} ${dayNum}${suffix}`);
+      setMonthYearStr(`${months[now.getMonth()]} ${now.getFullYear()}`);
     };
 
     updateTime();
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
-  }, [is24Hour]);
+  }, []);
 
   // 2. Peaceful Breathing Cycle (4s Inhale, 7s Hold, 8s Exhale)
   useEffect(() => {
@@ -102,109 +117,94 @@ export default function PeaceWatchOverlay({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // 4. Touch & Pointer Drag Gestures on Circular Screen (Swipe up for other stuffs, swipe down for clock)
-  const handlePointerDown = (e) => {
-    dragStartYRef.current = e.clientY;
-    isDraggingRef.current = true;
+  // 4. Realistic 3D Gyroscope Mouse Parallax Tracking
+  const handleMouseMove = (e) => {
+    if (!wrapperRef.current) return;
+    const rect = wrapperRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    const deltaX = (e.clientX - centerX) / (window.innerWidth / 2);
+    const deltaY = (e.clientY - centerY) / (window.innerHeight / 2);
+
+    // Limit tilt to 7.5 degrees for smooth elegance
+    setTilt({
+      x: Math.max(-8, Math.min(8, deltaX * 8)),
+      y: Math.max(-8, Math.min(8, -deltaY * 8))
+    });
   };
 
-  const handlePointerMove = (e) => {
-    if (!isDraggingRef.current || dragStartYRef.current === null) return;
-    const deltaY = e.clientY - dragStartYRef.current;
-
-    // Dragged Upwards: advance screen (Clock -> Track Info -> Breathing)
-    if (deltaY < -24) {
-      isDraggingRef.current = false;
-      dragStartYRef.current = null;
-      setCurrentSlide((prev) => {
-        const next = prev < 2 ? prev + 1 : 0;
-        const labels = ['CLOCK MODE', 'AUDIO PLAYBACK', 'ZEN BREATHING'];
-        showHud(labels[next]);
-        return next;
-      });
-      playTactileClickSound();
-    }
-    // Dragged Downwards: return screen (Breathing -> Track Info -> Clock)
-    else if (deltaY > 24) {
-      isDraggingRef.current = false;
-      dragStartYRef.current = null;
-      setCurrentSlide((prev) => {
-        const next = prev > 0 ? prev - 1 : 2;
-        const labels = ['CLOCK MODE', 'AUDIO PLAYBACK', 'ZEN BREATHING'];
-        showHud(labels[next]);
-        return next;
-      });
-      playTactileClickSound();
-    }
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
   };
 
-  const handlePointerUp = () => {
-    isDraggingRef.current = false;
-    dragStartYRef.current = null;
-  };
-
-  // 5. Hardware Button Action Handlers with Visual HUD & Audio Response
+  // 5. Interactive Hardware Handlers
+  // A. Main Crown Knob (Right Side) -> Play / Pause
   const handleCrownClick = () => {
-    flashButton('crown');
+    triggerControl('right-crown');
     playClickSound('normal');
     onTogglePlay?.();
     showHud(isPlaying ? '⏸ PAUSED' : '▶ PLAYING', currentTrack?.title || 'Peace Audio');
   };
 
-  const handleVolumeUp = () => {
-    flashButton('vol-up');
+  // B. Top-Left Rotary Knob (Inside Orange Chamber) -> Volume Up
+  const handleVolUp = () => {
+    triggerControl('top-left-knob');
     playClickSound('high');
     const newVol = Math.min(1, Math.round((volume + 0.08) * 100) / 100);
     onVolumeChange?.(newVol);
-    showHud(`VOL ▲ ${Math.round(newVol * 100)}%`, `${newVol >= 1 ? 'MAX' : ''}`);
+    setVolRotation(newVol * 270 - 135);
+    showHud(`VOL ▲ ${Math.round(newVol * 100)}%`, newVol >= 1 ? 'MAX OUTPUT' : '');
   };
 
-  const handleVolumeDown = () => {
-    flashButton('vol-down');
+  // C. Top-Right Rotary Knob (Inside Orange Chamber) -> Volume Down
+  const handleVolDown = () => {
+    triggerControl('top-right-knob');
     playClickSound('normal');
     const newVol = Math.max(0, Math.round((volume - 0.08) * 100) / 100);
     onVolumeChange?.(newVol);
-    showHud(`VOL ▼ ${Math.round(newVol * 100)}%`, `${newVol === 0 ? 'MUTED' : ''}`);
+    setVolRotation(newVol * 270 - 135);
+    showHud(`VOL ▼ ${Math.round(newVol * 100)}%`, newVol === 0 ? 'MUTED' : '');
   };
 
-  const handlePrev = () => {
-    flashButton('prev');
-    playClickSound('light');
-    onPrevTrack?.();
-    showHud('◀ PREV SONG', 'Skipping back');
+  // D. Large Center-Left Jog Dial -> Scrub / Skip Track
+  const handleJogClick = (e) => {
+    triggerControl('large-jog');
+    playTactileClickSound();
+    
+    // Check if clicked top or bottom half of the jog dial
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickY = e.clientY - rect.top;
+    
+    if (clickY < rect.height / 2) {
+      // Top half: Next song
+      setJogRotation((prev) => prev + 35);
+      onNextTrack?.();
+      showHud('NEXT TRACK ▶', 'Jog Scrub Forward');
+    } else {
+      // Bottom half: Prev song
+      setJogRotation((prev) => prev - 35);
+      onPrevTrack?.();
+      showHud('◀ PREV TRACK', 'Jog Scrub Rewind');
+    }
   };
 
-  const handleNext = () => {
-    flashButton('next');
-    playClickSound('light');
-    onNextTrack?.();
-    showHud('NEXT SONG ▶', 'Skipping forward');
-  };
-
-  const handleTousenClick = () => {
-    flashButton('tousen');
-    playClickSound('normal');
-    setCurrentSlide((prev) => {
-      const next = (prev + 1) % 3;
-      const labels = ['CLOCK MODE', 'AUDIO PLAYBACK', 'ZEN BREATHING'];
-      showHud(`TOUSEN: ${labels[next]}`);
-      return next;
-    });
-  };
-
-  const handleConcaveButton = () => {
-    flashButton('concave');
+  // E. Left Orange Push Button -> Zen Bell Chime & Favorite Toggle
+  const handleOrangeButtonClick = () => {
+    triggerControl('orange-btn');
     playPeacefulLikeSound();
     onToggleFavorite?.();
     showHud(isFavorite ? '🤍 UNFAVORITED' : '♥ ZEN FAVORITE', 'Peace Bell Chime');
   };
 
-  const handleToggleTimeFormat = () => {
-    flashButton('modes');
-    playClickSound('light');
-    setIs24Hour((prev) => {
-      const next = !prev;
-      showHud(next ? 'FORMAT: 24-HOUR' : 'FORMAT: 12-HOUR');
+  // F. Left Black Crown -> Mode Switcher (Clock / Track / Zen)
+  const handleModeSwitch = () => {
+    triggerControl('left-crown');
+    playClickSound('normal');
+    setCurrentSlide((prev) => {
+      const next = (prev + 1) % 3;
+      const modes = ['CYBER TIME & EQ', 'TRACK AUDIO INFO', 'ZEN BREATHING'];
+      showHud(modes[next]);
       return next;
     });
   };
@@ -220,317 +220,238 @@ export default function PeaceWatchOverlay({
 
   return (
     <div
-      className="peace-watch-backdrop"
+      className="peace-cyber-backdrop"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
       onDoubleClick={(e) => {
-        // Double clicking blurred backdrop returns cleanly to normal deck
         if (e.target === e.currentTarget) {
           onClose?.();
         }
       }}
     >
-      {/* Top-Right Exit Button */}
+      {/* Sleek Frosted Obsidian Exit Button */}
       <button
         type="button"
-        className="peace-watch-exit-btn"
+        className="peace-cyber-exit-btn"
         onClick={onClose}
-        title="Exit Peace Watch (or press Esc)"
-        aria-label="Exit Peace Watch"
+        title="Exit Cyber Watch (or press Esc)"
+        aria-label="Exit Peace Mode"
       >
         <X size={20} strokeWidth={2.4} />
       </button>
 
-      {/* Center Watch Device Wrapper */}
-      <div className="peace-watch-device-wrapper">
-        <img
-          src="/assets/images/peace_watch_device.png"
-          alt="Peace Minimal Cyber Watch"
-          className="peace-watch-device-img"
-        />
+      {/* Volumetric Studio Aura Glow behind the 3D watch */}
+      <div className={`peace-cyber-ambient-glow ${isPlaying ? 'is-playing' : ''}`} />
 
-        {/* ------------------------------------------------------------------
-            Circular Recessed E-Ink Screen (Center)
-           ------------------------------------------------------------------ */}
-        <div
-          className="peace-watch-screen"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          title="Drag UP / DOWN or tap TOUSEN button to switch screen"
-        >
-          {/* Subtle Top Rim Micro-Stamp matching original hardware */}
-          <div className="peace-rim-stamp-top">S / P</div>
+      {/* 3D Perspective Card Viewport */}
+      <div
+        ref={wrapperRef}
+        className="peace-cyber-watch-viewport"
+        style={{
+          transform: `perspective(1300px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)`
+        }}
+      >
+        {/* Main 3D Cyber Watch Transparent Image Asset */}
+        <div className="peace-cyber-watch-housing">
+          <img
+            src="/assets/images/cyber_watch_3d.png"
+            alt="3D Futuristic Cyber Timepiece"
+            className="peace-cyber-watch-img"
+          />
 
-          {/* Transient E-Ink HUD Feedback Banner */}
-          {hudMessage && (
-            <div className="peace-screen-hud-toast" role="status" aria-live="polite">
-              <div className="peace-screen-hud-title">{hudMessage.title}</div>
-              {hudMessage.detail && (
-                <div className="peace-screen-hud-detail">{hudMessage.detail}</div>
-              )}
-            </div>
-          )}
-
+          {/* Dynamic Specular Glass Reflection Sheen */}
           <div
-            className="peace-screen-slides-container"
-            style={{ transform: `translateY(-${currentSlide * 100}%)` }}
+            className="peace-cyber-glass-specular"
+            style={{
+              transform: `translateX(${tilt.x * 2.5}px) translateY(${tilt.y * 2.5}px)`
+            }}
+          />
+
+          {/* ----------------------------------------------------------------
+              Top Neon-Orange Cavity Glow & Rotary Dials
+             ---------------------------------------------------------------- */}
+          <div className={`peace-orange-chamber-glow ${isPlaying ? 'is-pulsing' : ''}`} />
+
+          {/* Interactive Rotary Dial Indicators inside Orange Chamber */}
+          <div
+            className="peace-knob-indicator peace-knob-ind-left"
+            style={{ transform: `rotate(${volRotation}deg)` }}
+          />
+          <div
+            className="peace-knob-indicator peace-knob-ind-right"
+            style={{ transform: `rotate(${-volRotation}deg)` }}
+          />
+
+          {/* Interactive Indicator on Large Center-Left Jog Dial */}
+          <div
+            className="peace-jog-indicator"
+            style={{ transform: `rotate(${jogRotation}deg)` }}
+          />
+
+          {/* Perforated Speaker Acoustic Wave Lights (8 dots) */}
+          <div className={`peace-acoustic-speaker-grid ${isPlaying ? 'is-active' : ''}`}>
+            {[...Array(8)].map((_, i) => (
+              <span key={i} className="peace-speaker-dot" style={{ animationDelay: `${i * 0.12}s` }} />
+            ))}
+          </div>
+
+          {/* Dual Diagonal Vents Glow (//) */}
+          <div className={`peace-twin-vents-glow ${isPlaying ? 'is-active' : ''}`} />
+
+          {/* ----------------------------------------------------------------
+              Pill-Shaped OLED / LCD Digital Screen (Bottom-Right)
+             ---------------------------------------------------------------- */}
+          <div
+            className="peace-pill-screen-container"
+            onClick={handleModeSwitch}
+            title="Click screen or Left Crown to switch modes"
           >
-            {/* SLIDE 0: Zen Clock Face (Faithful to Image 2) */}
-            <div className="peace-screen-slide peace-clock-slide">
-              {/* Authentic Stencil µ Glyph */}
-              <div className="peace-glyph-top-box">
-                <svg
-                  className="peace-stencil-mu-svg"
-                  viewBox="0 0 32 38"
-                  width="26"
-                  height="30"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M 8 5 L 8 26 C 8 29.5 11 32 15 32 C 19 32 22 29.5 22 26 L 22 5"
-                    stroke="#111113"
-                    strokeWidth="3.6"
-                    strokeLinecap="square"
-                  />
-                  <path
-                    d="M 8 16 L 2 16"
-                    stroke="#111113"
-                    strokeWidth="3.6"
-                    strokeLinecap="square"
-                  />
-                  <path
-                    d="M 22 14 L 30 14 L 30 5"
-                    stroke="#111113"
-                    strokeWidth="3.6"
-                    strokeLinecap="square"
-                  />
-                </svg>
+            {/* Transient Cyber HUD Flash Notice */}
+            {hudMessage && (
+              <div className="peace-pill-hud-notice" role="status" aria-live="polite">
+                <span className="peace-pill-hud-title">{hudMessage.title}</span>
+                {hudMessage.detail && (
+                  <span className="peace-pill-hud-detail">{hudMessage.detail}</span>
+                )}
               </div>
+            )}
 
-              {/* Bold Precision Technical Divider Bar */}
-              <div className="peace-center-gauge-row">
-                <div className={`peace-gauge-line ${isPlaying ? 'is-pulse' : ''}`} />
-              </div>
-
-              {/* Bottom Technical Indicators & Minimalist Time */}
-              <div className="peace-time-bottom">
-                <div className="peace-technical-meta-row">
-                  <span className="peace-indicator-bracket">[:2</span>
-                  <div className="peace-time-dots">
-                    <span className="peace-dot-left">·</span>
-                    <span className="peace-dot-right">{currentSecondsDot > 1 ? '●' : '·'}</span>
-                  </div>
-                  <span className="peace-indicator-angle">o/</span>
+            {/* SCREEN SLIDE 0: Cyber Time & Frequency EQ Barcode */}
+            {currentSlide === 0 && (
+              <div className="peace-pill-slide peace-pill-time-slide">
+                {/* Top Equalizer Frequency Bars */}
+                <div className={`peace-pill-eq-bar-row ${isPlaying ? 'is-playing' : ''}`}>
+                  {[...Array(14)].map((_, i) => (
+                    <span
+                      key={i}
+                      className="peace-eq-bar-segment"
+                      style={{
+                        animationDuration: `${0.35 + (i % 5) * 0.15}s`,
+                        animationDelay: `${(i % 4) * 0.08}s`
+                      }}
+                    />
+                  ))}
                 </div>
 
-                <div className="peace-time-numeric">{currentTimeStr}</div>
+                {/* Day / Date Meta */}
+                <div className="peace-pill-meta-day">{dayStr}</div>
 
-                <button
-                  type="button"
-                  className="peace-drag-hint-pill"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentSlide(1);
-                    playTactileClickSound();
-                    showHud('AUDIO PLAYBACK');
-                  }}
-                  title="View Peace Audio Controls"
-                >
-                  <ChevronUp size={10} strokeWidth={3} />
-                  <span>AUDIO</span>
-                </button>
-              </div>
-            </div>
-
-            {/* SLIDE 1: "Other Stuffs" (Track Info, Controls, Progress) */}
-            <div className="peace-screen-slide peace-music-slide">
-              <div className="peace-slide-header-tag">PEACE AUDIO</div>
-
-              <div className="peace-track-info-box">
-                <div className="peace-track-title" title={currentTrack?.title || 'Peace Meditation'}>
-                  {currentTrack?.title || 'Peace Meditation'}
+                {/* Main Large LCD Digital Clock */}
+                <div className="peace-pill-digits-clock">
+                  <span className="peace-digits-main">{timeStr}</span>
+                  <span className="peace-digits-sec">{secondsStr}</span>
                 </div>
-                <div className="peace-track-artist">
+
+                {/* Bottom Tag / Year */}
+                <div className="peace-pill-bottom-tag">
+                  <span>{monthYearStr}</span>
+                  <span className="peace-pill-mode-badge">D1 • PEACE</span>
+                </div>
+              </div>
+            )}
+
+            {/* SCREEN SLIDE 1: Audio Playback Info ("Other Stuffs") */}
+            {currentSlide === 1 && (
+              <div className="peace-pill-slide peace-pill-track-slide">
+                <div className="peace-pill-track-badge">
+                  <Disc3 size={8} className={isPlaying ? 'animate-spin' : ''} />
+                  <span>PLAYING</span>
+                </div>
+
+                <div className="peace-pill-track-title" title={currentTrack?.title || 'Peace Audio'}>
+                  {currentTrack?.title || 'Peace Audio'}
+                </div>
+                <div className="peace-pill-track-artist">
                   {currentTrack?.artist || 'Musicly Zen'}
                 </div>
+
+                {/* Progress Bar inside pill display */}
+                <div className="peace-pill-progress-wrap">
+                  <div
+                    className="peace-pill-progress-bar"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+
+                <div className="peace-pill-track-time-row">
+                  <span>{formatTime(currentTime)}</span>
+                  <span>{formatTime(duration)}</span>
+                </div>
               </div>
+            )}
 
-              <div className="peace-music-playback-row">
-                <button
-                  type="button"
-                  className="peace-screen-control-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePrev();
-                  }}
-                  title="Previous Track"
-                  aria-label="Previous Track"
-                >
-                  <SkipBack size={13} fill="currentColor" />
-                </button>
-                <button
-                  type="button"
-                  className="peace-screen-control-btn peace-play-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCrownClick();
-                  }}
-                  title={isPlaying ? 'Pause' : 'Play'}
-                  aria-label={isPlaying ? 'Pause' : 'Play'}
-                >
-                  {isPlaying ? (
-                    <Pause size={14} fill="currentColor" />
-                  ) : (
-                    <Play size={14} fill="currentColor" style={{ marginLeft: 1.5 }} />
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="peace-screen-control-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleNext();
-                  }}
-                  title="Next Track"
-                  aria-label="Next Track"
-                >
-                  <SkipForward size={13} fill="currentColor" />
-                </button>
+            {/* SCREEN SLIDE 2: Zen Rhythm Breathing Guide */}
+            {currentSlide === 2 && (
+              <div className="peace-pill-slide peace-pill-zen-slide">
+                <div className="peace-pill-zen-tag">ZEN HARMONY</div>
+
+                <div className="peace-pill-breath-ring-wrap">
+                  <div className={`peace-pill-breath-ring phase-${breathingPhase.toLowerCase()}`} />
+                </div>
+
+                <div className="peace-pill-breath-phase">{breathingPhase}</div>
               </div>
-
-              <div className="peace-track-progress-bar-wrap">
-                <div
-                  className="peace-track-progress-fill"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-
-              <div className="peace-music-bottom-row">
-                <span className="peace-time-display-micro">
-                  {formatTime(currentTime)} / {formatTime(duration)}
-                </span>
-                <button
-                  type="button"
-                  className="peace-return-clock-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCurrentSlide(0);
-                    playTactileClickSound();
-                    showHud('CLOCK MODE');
-                  }}
-                  title="Return to Clock"
-                >
-                  <ChevronDown size={10} strokeWidth={3} />
-                  <span>CLOCK</span>
-                </button>
-              </div>
-            </div>
-
-            {/* SLIDE 2: Zen Rhythm Breathing Guide */}
-            <div className="peace-screen-slide peace-breathing-slide">
-              <div className="peace-slide-header-tag">ZEN HARMONY</div>
-
-              <div className="peace-breathing-circle-wrap">
-                <div className={`peace-breathing-circle phase-${breathingPhase.toLowerCase()}`} />
-                <div className="peace-breathing-center-dot" />
-              </div>
-
-              <div className="peace-breathing-label">{breathingPhase}</div>
-
-              <button
-                type="button"
-                className="peace-return-clock-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentSlide(0);
-                  playTactileClickSound();
-                  showHud('CLOCK MODE');
-                }}
-                title="Return to Clock"
-              >
-                <ChevronDown size={10} strokeWidth={3} />
-                <span>CLOCK</span>
-              </button>
-            </div>
+            )}
           </div>
+
+          {/* ----------------------------------------------------------------
+              Interactive Hardware Button Hotspots (Mapped seamlessly to 3D chassis)
+             ---------------------------------------------------------------- */}
+
+          {/* 1. Right Silver Crown (Main Play / Pause) */}
+          <button
+            type="button"
+            className={`peace-3d-hotspot peace-hs-right-crown ${activeControl === 'right-crown' ? 'is-active' : ''}`}
+            onClick={handleCrownClick}
+            title={isPlaying ? 'Right Crown: Pause Playback' : 'Right Crown: Start Playback'}
+            aria-label="Play or Pause"
+          />
+
+          {/* 2. Top-Left Silver Rotary Knob (Volume Up) */}
+          <button
+            type="button"
+            className={`peace-3d-hotspot peace-hs-top-left-knob ${activeControl === 'top-left-knob' ? 'is-active' : ''}`}
+            onClick={handleVolUp}
+            title={`Top-Left Knob: Volume Up (${Math.round(volume * 100)}%)`}
+            aria-label="Volume Up"
+          />
+
+          {/* 3. Top-Right Silver Rotary Knob (Volume Down) */}
+          <button
+            type="button"
+            className={`peace-3d-hotspot peace-hs-top-right-knob ${activeControl === 'top-right-knob' ? 'is-active' : ''}`}
+            onClick={handleVolDown}
+            title={`Top-Right Knob: Volume Down (${Math.round(volume * 100)}%)`}
+            aria-label="Volume Down"
+          />
+
+          {/* 4. Large Center-Left Jog Dial (Scrub / Skip Track) */}
+          <button
+            type="button"
+            className={`peace-3d-hotspot peace-hs-large-jog ${activeControl === 'large-jog' ? 'is-active' : ''}`}
+            onClick={handleJogClick}
+            title="Center Jog Dial: Click Top for Next, Click Bottom for Prev Track"
+            aria-label="Jog Track Navigation"
+          />
+
+          {/* 5. Left Orange Tactile Push Button (Zen Bell & Favorite) */}
+          <button
+            type="button"
+            className={`peace-3d-hotspot peace-hs-orange-btn ${activeControl === 'orange-btn' ? 'is-active' : ''}`}
+            onClick={handleOrangeButtonClick}
+            title="Orange Push Button: Peaceful Bell Chime & Favorite"
+            aria-label="Peaceful Bell Chime"
+          />
+
+          {/* 6. Left Black Crown Knob (Mode Switcher) */}
+          <button
+            type="button"
+            className={`peace-3d-hotspot peace-hs-left-crown ${activeControl === 'left-crown' ? 'is-active' : ''}`}
+            onClick={handleModeSwitch}
+            title="Left Crown: Switch Watch Mode (Clock / Track / Zen)"
+            aria-label="Switch Mode"
+          />
         </div>
-
-        {/* ------------------------------------------------------------------
-            Physical Hardware Button Hotspots (Mapped seamlessly over watch chassis)
-           ------------------------------------------------------------------ */}
-
-        {/* 1. Top-Left Rotary Dial (Volume Up) */}
-        <button
-          type="button"
-          className={`peace-hotspot peace-btn-top-left-dial ${activeButtonKey === 'vol-up' ? 'is-active' : ''}`}
-          onClick={handleVolumeUp}
-          title={`Top Dial: Volume Up (${Math.round(volume * 100)}%)`}
-          aria-label="Volume Up"
-        />
-
-        {/* 2. Bottom-Left Rotary Dial (Volume Down) */}
-        <button
-          type="button"
-          className={`peace-hotspot peace-btn-bottom-left-dial ${activeButtonKey === 'vol-down' ? 'is-active' : ''}`}
-          onClick={handleVolumeDown}
-          title={`Bottom Dial: Volume Down (${Math.round(volume * 100)}%)`}
-          aria-label="Volume Down"
-        />
-
-        {/* 3. Right Crown Knob with Red Stripe (Play / Pause) */}
-        <button
-          type="button"
-          className={`peace-hotspot peace-btn-right-crown ${activeButtonKey === 'crown' ? 'is-active' : ''}`}
-          onClick={handleCrownClick}
-          title={isPlaying ? 'Main Crown Knob: Pause (Click)' : 'Main Crown Knob: Play (Click)'}
-          aria-label="Play or Pause Playback"
-        />
-
-        {/* 4. Top-Left Red Push Button (Previous Song) */}
-        <button
-          type="button"
-          className={`peace-hotspot peace-btn-top-red ${activeButtonKey === 'prev' ? 'is-active' : ''}`}
-          onClick={handlePrev}
-          title="Red Button (Top): Previous Track"
-          aria-label="Previous Track"
-        />
-
-        {/* 5. Bottom-Left Red Push Button (Next Song) */}
-        <button
-          type="button"
-          className={`peace-hotspot peace-btn-bottom-red ${activeButtonKey === 'next' ? 'is-active' : ''}`}
-          onClick={handleNext}
-          title="Red Button (Bottom): Next Track"
-          aria-label="Next Track"
-        />
-
-        {/* 6. TOUSEN Black Tactile Button (Switch Screen Mode) */}
-        <button
-          type="button"
-          className={`peace-hotspot peace-btn-tousen ${activeButtonKey === 'tousen' ? 'is-active' : ''}`}
-          onClick={handleTousenClick}
-          title="TOUSEN Button: Switch Mode (Clock / Audio / Zen)"
-          aria-label="Switch Screen Mode"
-        />
-
-        {/* 7. Bottom-Right Concave Button (Zen Bell Chime & Favorite) */}
-        <button
-          type="button"
-          className={`peace-hotspot peace-btn-bottom-right-circle ${activeButtonKey === 'concave' ? 'is-active' : ''}`}
-          onClick={handleConcaveButton}
-          title="Concave Button: Zen Chime & Favorite"
-          aria-label="Peaceful Bell Chime & Favorite"
-        />
-
-        {/* 8. Top-Right Mode Buttons (PSIT / EEFTI - 12h/24h Format) */}
-        <button
-          type="button"
-          className={`peace-hotspot peace-btn-top-right-modes ${activeButtonKey === 'modes' ? 'is-active' : ''}`}
-          onClick={handleToggleTimeFormat}
-          title="PSIT / EEFTI: Toggle 12h / 24h Time Format"
-          aria-label="Toggle Time Format"
-        />
       </div>
     </div>
   );
