@@ -99,15 +99,6 @@ export default function App() {
     } catch (e) {}
   }, [volume]);
 
-  // Persist the last played track ID so the app resumes from where user left off
-  useEffect(() => {
-    if (currentTrackId && allTracks.some(t => t.id === currentTrackId)) {
-      try {
-        localStorage.setItem('musicly_last_track_id', currentTrackId);
-      } catch (e) {}
-    }
-  }, [currentTrackId, allTracks]);
-
   // Purge any legacy device settings and log default audio routing diagnostics on mount
   useEffect(() => {
     purgeLegacyAudioSettings();
@@ -651,6 +642,15 @@ export default function App() {
     }
     return allTracks.find(t => t.id === currentTrackId) || activePlaylist[0] || allTracks[0] || TRACKS[0];
   }, [allTracks, currentTrackId, activePlaylist, previewTrack]);
+
+  // Persist the last played track ID so the app resumes from where user left off (only for saved library tracks)
+  useEffect(() => {
+    if (currentTrackId && allTracks.some(t => t.id === currentTrackId)) {
+      try {
+        localStorage.setItem('musicly_last_track_id', currentTrackId);
+      } catch (e) {}
+    }
+  }, [currentTrackId, allTracks]);
 
   // Live state refs to avoid stale closure issues in audio callbacks and intervals
   const activePlaylistRef = useRef(activePlaylist);
