@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Clock, 
   Users, 
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { GENRES, getAvailableGenres } from '../data/tracks';
 import { VoiceControlUI } from '../voice/VoiceControlUI';
+import { playClickSound } from '../utils/audioSynth';
 
 export default function TopBar({
   selectedGenre,
@@ -83,6 +84,111 @@ export default function TopBar({
     });
   };
 
+  // Fluid Flowing Slider Indicator Logic (matches redpipe ok.mp4 sliding pill physics)
+  const navRef = useRef(null);
+  const pillRefs = useRef({});
+  const [hoveredGenre, setHoveredGenre] = useState(null);
+  const [indicatorStyle, setIndicatorStyle] = useState({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+    opacity: 0,
+    isReady: false,
+    skipTransition: true
+  });
+
+  const availableGenres = useMemo(() => {
+    return getAvailableGenres(selectedLanguage);
+  }, [selectedLanguage]);
+
+  const effectiveActiveGenre = useMemo(() => {
+    if (availableGenres.includes(selectedGenre)) return selectedGenre;
+    return availableGenres[0] || 'All';
+  }, [availableGenres, selectedGenre]);
+
+  const currentTargetGenre = hoveredGenre || effectiveActiveGenre;
+  const isHoveringOther = Boolean(hoveredGenre && hoveredGenre !== effectiveActiveGenre);
+
+  const updateIndicatorPosition = useCallback((target = currentTargetGenre, isImmediate = false) => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const pill = pillRefs.current[target] || pillRefs.current[effectiveActiveGenre] || pillRefs.current[availableGenres[0]];
+    if (!pill) return;
+
+    const navRect = nav.getBoundingClientRect();
+    const pillRect = pill.getBoundingClientRect();
+
+    const left = pillRect.left - navRect.left + nav.scrollLeft;
+    const top = pillRect.top - navRect.top + nav.scrollTop;
+    const width = pillRect.width;
+    const height = pillRect.height;
+
+    if (width > 0 && height > 0) {
+      setIndicatorStyle(prev => ({
+        left,
+        top,
+        width,
+        height,
+        opacity: 1,
+        isReady: true,
+        skipTransition: !prev.isReady || isImmediate
+      }));
+    }
+  }, [currentTargetGenre, effectiveActiveGenre, availableGenres]);
+
+  // Update position on target genre or language changes
+  useEffect(() => {
+    updateIndicatorPosition(currentTargetGenre, !indicatorStyle.isReady);
+  }, [currentTargetGenre, updateIndicatorPosition, indicatorStyle.isReady]);
+
+  // Window resize, ResizeObserver, and font load observers
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const handleResize = () => {
+      updateIndicatorPosition(currentTargetGenre, false);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    let resizeObserver = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => {
+        updateIndicatorPosition(currentTargetGenre, false);
+      });
+      resizeObserver.observe(nav);
+    }
+
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => {
+        updateIndicatorPosition(currentTargetGenre, true);
+      }).catch(() => {});
+    }
+
+    const timer = setTimeout(() => {
+      updateIndicatorPosition(currentTargetGenre, true);
+    }, 120);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (resizeObserver) resizeObserver.disconnect();
+      clearTimeout(timer);
+    };
+  }, [currentTargetGenre, updateIndicatorPosition]);
+
+  // Track horizontal scroll inside navbar on compact screens
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const handleScroll = () => {
+      updateIndicatorPosition(currentTargetGenre, true);
+    };
+    nav.addEventListener('scroll', handleScroll, { passive: true });
+    return () => nav.removeEventListener('scroll', handleScroll);
+  }, [currentTargetGenre, updateIndicatorPosition]);
+
   return (
     <header className="top-bar-container">
       {/* Left side: Live indicator & Clock & Air Controls */}
@@ -124,19 +230,49 @@ export default function TopBar({
         </button>
       </div>
 
-      {/* Center: Genre / Mood pills */}
-      <nav className={`genre-pills-nav ${isAdmin ? 'admin-layout' : ''}`} aria-label="Genre Selection">
-        {getAvailableGenres(selectedLanguage).map((genre) => {
-          const isActive = selectedGenre === genre;
+      {/* Center: Genre / Mood pills with fluid sliding flow indicator */}
+      <nav
+        ref={navRef}
+        className={`genre-pills-nav ${isAdmin ? 'admin-layout' : ''}`}
+        aria-label="Genre Selection"
+        onMouseLeave={() => setHoveredGenre(null)}
+      >
+        {/* Flowing Floating Sliding Indicator (ok.mp4 effect) */}
+        <div
+          className={`genre-sliding-indicator ${isHoveringOther ? 'is-hover' : 'is-active'} ${indicatorStyle.isReady ? 'is-ready' : ''}`}
+          style={{
+            transform: `translate3d(${indicatorStyle.left}px, ${indicatorStyle.top}px, 0)`,
+            width: `${indicatorStyle.width}px`,
+            height: `${indicatorStyle.height}px`,
+            opacity: indicatorStyle.opacity,
+            transition: indicatorStyle.skipTransition
+              ? 'none'
+              : 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1), background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, opacity 0.2s ease',
+          }}
+          aria-hidden="true"
+        />
+
+        {availableGenres.map((genre) => {
+          const isActive = effectiveActiveGenre === genre;
+          const isHovered = hoveredGenre === genre;
           return (
             <button
               key={genre}
+              ref={(el) => {
+                if (el) pillRefs.current[genre] = el;
+                else delete pillRefs.current[genre];
+              }}
               id={`genre-${genre.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
-              className={`genre-pill ${isActive ? 'active' : ''}`}
-              onClick={() => onSelectGenre(genre)}
+              className={`genre-pill ${isActive ? 'active' : ''} ${isHovered ? 'hovered' : ''}`}
+              onClick={() => {
+                onSelectGenre(genre);
+                playClickSound('light');
+              }}
+              onMouseEnter={() => setHoveredGenre(genre)}
+              title={`Switch vibe to ${genre}`}
             >
               {isActive && <span className="pill-dot" />}
-              {genre}
+              <span>{genre}</span>
             </button>
           );
         })}

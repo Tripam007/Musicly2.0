@@ -420,16 +420,18 @@ body, html, #root {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 4px;
-  background: var(--glass-bg);
+  gap: 2px;
+  background: rgba(14, 16, 24, 0.65);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--glass-border);
-  padding: 5px 8px;
-  border-radius: var(--radius-full);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px;
+  border-radius: 9999px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   z-index: 10;
   pointer-events: auto;
+  user-select: none;
+  isolation: isolate;
 }
 
 /* Only for admin login: adjusted to 45.5% to provide breathing room for the admin crown badge */
@@ -437,33 +439,61 @@ body, html, #root {
   left: 45.5%;
 }
 
-.genre-pill {
-  position: relative;
-  background: transparent;
-  border: 1px solid transparent;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: var(--radius-full);
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
+/* Floating Fluid Flow Indicator Pill (matches ok.mp4 exact sliding flow effect) */
+.genre-sliding-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: 1;
+  box-sizing: border-box;
+  will-change: transform, width, height;
 }
 
-.genre-pill:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.08);
+/* Active State (Warm Amber/Gold Glass - matches user screenshot) */
+.genre-sliding-indicator.is-active {
+  background: rgba(251, 146, 60, 0.18);
+  border: 1px solid rgba(251, 146, 60, 0.62);
+  box-shadow: 0 0 18px rgba(251, 133, 0, 0.28), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Hovering Inactive Items State (Subtle Frosted Glass Flow) */
+.genre-sliding-indicator.is-hover {
+  background: rgba(255, 255, 255, 0.11);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.18);
+}
+
+.genre-pill {
+  position: relative;
+  z-index: 2;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  color: rgba(226, 232, 240, 0.72);
+  font-size: 13.5px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: color 0.18s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.genre-pill:hover,
+.genre-pill.hovered {
+  color: #ffffff;
 }
 
 .genre-pill.active {
-  background: rgba(251, 133, 0, 0.2);
   color: #ffb703;
-  border-color: rgba(251, 133, 0, 0.4);
-  box-shadow: 0 0 18px rgba(251, 133, 0, 0.25);
+  font-weight: 600;
 }
 
 .pill-dot {
@@ -471,7 +501,14 @@ body, html, #root {
   height: 5px;
   border-radius: 50%;
   background: #ffb703;
-  box-shadow: 0 0 6px #ffb703;
+  box-shadow: 0 0 7px #ffb703;
+  flex-shrink: 0;
+  animation: pillDotPop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pillDotPop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 /* Top Right Actions - Shifted comfortably toward the right edge to give maximum breathing room to Scene */

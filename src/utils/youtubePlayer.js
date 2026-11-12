@@ -129,23 +129,23 @@ class YouTubeAudioEngine {
       if (!container) {
         container = document.createElement('div');
         container.id = containerId;
+        // Invisible 2x2px viewport anchor with pointer-events none to prevent Chromium background throttling while having 0 visual presence
+        container.style.position = 'fixed';
+        container.style.bottom = '0px';
+        container.style.right = '0px';
+        container.style.width = '2px';
+        container.style.height = '2px';
+        container.style.opacity = '0.001';
+        container.style.pointerEvents = 'none';
+        container.style.zIndex = '-1';
+        container.style.overflow = 'hidden';
         document.body.appendChild(container);
       }
-      // Completely hidden off-screen with 0 visual footprint so it NEVER overlays any app UI
-      container.style.position = 'fixed';
-      container.style.top = '-9999px';
-      container.style.left = '-9999px';
-      container.style.width = '1px';
-      container.style.height = '1px';
-      container.style.opacity = '0';
-      container.style.pointerEvents = 'none';
-      container.style.zIndex = '-9999';
-      container.style.overflow = 'hidden';
 
       const playerDiv = document.createElement('div');
       playerDiv.id = 'yt-inner-player-frame';
-      playerDiv.style.width = '1px';
-      playerDiv.style.height = '1px';
+      playerDiv.style.width = '2px';
+      playerDiv.style.height = '2px';
       container.innerHTML = '';
       container.appendChild(playerDiv);
 
@@ -153,8 +153,8 @@ class YouTubeAudioEngine {
         try {
           const initialVid = this.pendingVideoId || 'rm9coqlk8fY';
           this.player = new window.YT.Player('yt-inner-player-frame', {
-            height: '1',
-            width: '1',
+            height: '2',
+            width: '2',
             videoId: initialVid,
             playerVars: {
               autoplay: 0,
@@ -418,19 +418,3 @@ class YouTubeAudioEngine {
 }
 
 export const ytEngine = new YouTubeAudioEngine();
-
-// Clean up any stale container immediately on bundle load
-if (typeof document !== 'undefined') {
-  const existing = document.getElementById('musicly-yt-player-container');
-  if (existing) {
-    existing.style.position = 'fixed';
-    existing.style.top = '-9999px';
-    existing.style.left = '-9999px';
-    existing.style.width = '1px';
-    existing.style.height = '1px';
-    existing.style.opacity = '0';
-    existing.style.pointerEvents = 'none';
-    existing.style.zIndex = '-9999';
-    existing.style.overflow = 'hidden';
-  }
-}
