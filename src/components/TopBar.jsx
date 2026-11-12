@@ -272,7 +272,18 @@ export default function TopBar({
               title={`Switch vibe to ${genre}`}
             >
               {isActive && <span className="pill-dot" />}
-              <span>{genre}</span>
+              <span className="rolling-text" aria-label={genre}>
+                {genre.split('').map((char, i) => (
+                  <span
+                    key={i}
+                    className="letter-roller"
+                    style={{ '--char-index': i }}
+                  >
+                    <span className="letter-char letter-primary">{char === ' ' ? '\u00A0' : char}</span>
+                    <span className="letter-char letter-secondary" aria-hidden="true">{char === ' ' ? '\u00A0' : char}</span>
+                  </span>
+                ))}
+              </span>
             </button>
           );
         })}
