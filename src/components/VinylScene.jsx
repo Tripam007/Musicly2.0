@@ -1410,15 +1410,21 @@ export default function VinylScene({
     return favoritePlaylists.find(p => p.id === activePlayingPlaylistId) || null;
   }, [activePlayingPlaylistId, favoritePlaylists]);
 
-  // Gym Workout Mode detection: strictly when ANY gym playlist is being played
+  // Gym Workout Mode detection: strictly when ANY gym playlist is being played as a whole playlist
+  const [isGymPlaylistPlayingAsWhole, setIsGymPlaylistPlayingAsWhole] = useState(false);
+
   const isGymPlaylist = useMemo(() => {
+    // Strictly require that the gym playlist was triggered to play as a whole playlist
+    if (!isGymPlaylistPlayingAsWhole) return false;
+    if (!activePlayingPlaylistId) return false;
+
     // 1. Direct active playing playlist check
     if (activePlayingPlaylist && (activePlayingPlaylist.title || '').toLowerCase().includes('gym')) {
       return true;
     }
 
     // 2. By active playlist ID
-    if (activePlayingPlaylistId && String(activePlayingPlaylistId).toLowerCase().includes('gym')) {
+    if (String(activePlayingPlaylistId).toLowerCase().includes('gym')) {
       return true;
     }
 
@@ -1430,7 +1436,7 @@ export default function VinylScene({
     }
 
     return false;
-  }, [activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist]);
+  }, [isGymPlaylistPlayingAsWhole, activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist]);
 
   // Persistent Gym Mode state: stays active even while paused until user idle wait completes
   const [isGymModeActive, setIsGymModeActive] = useState(false);
@@ -1438,9 +1444,13 @@ export default function VinylScene({
   const [isSmoothlyExitingScene, setIsSmoothlyExitingScene] = useState(false);
   const [gymExitNotice, setGymExitNotice] = useState('');
 
-  // Reset user manual dismissal whenever playlist changes
+  // Reset user manual dismissal and verify gym playlist state whenever activePlayingPlaylistId changes
   useEffect(() => {
     setIsGymModeDismissedByUser(false);
+    if (!activePlayingPlaylistId) {
+      setIsGymPlaylistPlayingAsWhole(false);
+      setIsGymModeActive(false);
+    }
   }, [activePlayingPlaylistId]);
 
   // Handle Gym workout mode active lifecycle & calm idle exit timer
@@ -1531,6 +1541,15 @@ export default function VinylScene({
 
     const tracksToPlay = filterTracksByLang(playlist.tracks);
     if (tracksToPlay.length === 0) return;
+
+    const isGym = Boolean(
+      (playlist.title || '').toLowerCase().includes('gym') ||
+      String(playlist.id || '').toLowerCase().includes('gym')
+    );
+    setIsGymPlaylistPlayingAsWhole(isGym);
+    if (!isGym) {
+      setIsGymModeActive(false);
+    }
 
     setActivePlayingPlaylistId(playlist.id);
     setIsGymModeDismissedByUser(false);
@@ -2086,7 +2105,10 @@ export default function VinylScene({
                     className="vinyl-liked-playall-btn"
                     onClick={() => {
                       if (likedTracks[0]) {
-                        onSelectTrack?.(likedTracks[0], true);
+                        setIsGymPlaylistPlayingAsWhole(false);
+                        setIsGymModeActive(false);
+                        setActivePlayingPlaylistId('liked_songs');
+                        onSelectTrack?.(likedTracks[0], true, false);
                       }
                     }}
                     title="Play all liked songs"
@@ -2128,7 +2150,12 @@ export default function VinylScene({
                     <div
                       key={track.id}
                       className={`vinyl-liked-track-row ${isCurrent ? 'is-current' : ''}`}
-                      onClick={() => onSelectTrack?.(track, true)}
+                      onClick={() => {
+                        setIsGymPlaylistPlayingAsWhole(false);
+                        setIsGymModeActive(false);
+                        setActivePlayingPlaylistId(null);
+                        onSelectTrack?.(track, true, false);
+                      }}
                     >
                       <span className="vinyl-liked-row-num">
                         {String(idx + 1).padStart(2, '0')}
@@ -2149,7 +2176,10 @@ export default function VinylScene({
                             if (isCurrent) {
                               onTogglePlay?.();
                             } else {
-                              onSelectTrack?.(track, true);
+                              setIsGymPlaylistPlayingAsWhole(false);
+                              setIsGymModeActive(false);
+                              setActivePlayingPlaylistId(null);
+                              onSelectTrack?.(track, true, false);
                             }
                           }}
                           aria-label={isTrackPlaying ? "Pause" : "Play"}
@@ -3090,7 +3120,10 @@ export default function VinylScene({
                                   onTogglePlay?.();
                                   return;
                                 }
-                                onSelectTrack?.(track, true);
+                                setIsGymPlaylistPlayingAsWhole(false);
+                                setIsGymModeActive(false);
+                                setActivePlayingPlaylistId(null);
+                                onSelectTrack?.(track, true, false);
                                 if (onSetCustomQueue) {
                                   onSetCustomQueue(upcomingQueue.filter(t => t.id !== track.id));
                                 }
@@ -3213,7 +3246,10 @@ export default function VinylScene({
                               if (currentTrack?.id === track.id) {
                                 onTogglePlay?.();
                               } else {
-                                onSelectTrack?.(track, true);
+                                setIsGymPlaylistPlayingAsWhole(false);
+                                setIsGymModeActive(false);
+                                setActivePlayingPlaylistId(null);
+                                onSelectTrack?.(track, true, false);
                               }
                             }}
                             title={isCardPlaying ? `Pause "${track.title}"` : `Play "${track.title}" by ${track.artist}. Drag to add to queue.`}
@@ -4069,9 +4105,11 @@ export default function VinylScene({
                               onTogglePlay?.();
                               return;
                             }
-                            setActivePlayingPlaylistId(selectedCustomPlaylist.id);
+                            setIsGymPlaylistPlayingAsWhole(false);
+                            setIsGymModeActive(false);
+                            setActivePlayingPlaylistId(null);
                             const remaining = filterTracksByLang(selectedCustomPlaylist.tracks.slice(idx + 1));
-                            onSelectTrack?.(track, true, true);
+                            onSelectTrack?.(track, true, false);
                             if (onSetCustomQueue) {
                               onSetCustomQueue(remaining);
                             }

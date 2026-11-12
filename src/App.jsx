@@ -943,8 +943,14 @@ export default function App() {
   };
 
   // Dedicated single-track selector
-  const handleSelectTrack = (track, shouldPlay = true) => {
+  const handleSelectTrack = (track, shouldPlay = true, isPartOfPlaylistPlayback = false) => {
     if (!track) return;
+    if (!isPartOfPlaylistPlayback && activePlayingPlaylistIdRef.current) {
+      setActivePlayingPlaylistId(null);
+      try {
+        localStorage.removeItem('musicly_active_playlist_id');
+      } catch {}
+    }
     setPreviewTrack(null);
     setCurrentTrackId(track.id);
     setCurrentTime(0);
