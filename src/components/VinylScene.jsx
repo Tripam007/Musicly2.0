@@ -1406,9 +1406,12 @@ export default function VinylScene({
   }, [playlistSourceMode, musiclyPlaylists, userPlaylists, favoritePlaylists]);
 
   const activePlayingPlaylist = useMemo(() => {
-    if (!activePlayingPlaylistId) return null;
-    return favoritePlaylists.find(p => p.id === activePlayingPlaylistId) || null;
-  }, [activePlayingPlaylistId, favoritePlaylists]);
+    if (!activePlayingPlaylistId || !currentTrack) return null;
+    const pl = favoritePlaylists.find(p => p.id === activePlayingPlaylistId);
+    if (!pl || !pl.tracks) return null;
+    const trackBelongsToPlaylist = pl.tracks.some(t => t.id === currentTrack.id);
+    return trackBelongsToPlaylist ? pl : null;
+  }, [activePlayingPlaylistId, favoritePlaylists, currentTrack]);
 
   // Gym Workout Mode detection: strictly when ANY gym playlist is being played as a whole playlist
   const [isGymPlaylistPlayingAsWhole, setIsGymPlaylistPlayingAsWhole] = useState(false);
@@ -1416,27 +1419,14 @@ export default function VinylScene({
   const isGymPlaylist = useMemo(() => {
     // Strictly require that the gym playlist was triggered to play as a whole playlist
     if (!isGymPlaylistPlayingAsWhole) return false;
-    if (!activePlayingPlaylistId) return false;
+    if (!activePlayingPlaylist) return false;
 
-    // 1. Direct active playing playlist check
-    if (activePlayingPlaylist && (activePlayingPlaylist.title || '').toLowerCase().includes('gym')) {
-      return true;
-    }
+    // Check if the verified active playing playlist has 'gym' in title or id
+    const titleMatch = (activePlayingPlaylist.title || '').toLowerCase().includes('gym');
+    const idMatch = String(activePlayingPlaylist.id || '').toLowerCase().includes('gym');
 
-    // 2. By active playlist ID
-    if (String(activePlayingPlaylistId).toLowerCase().includes('gym')) {
-      return true;
-    }
-
-    // 3. By selected custom playlist currently playing
-    if (selectedCustomPlaylist && (selectedCustomPlaylist.title || '').toLowerCase().includes('gym')) {
-      if (activePlayingPlaylistId === selectedCustomPlaylist.id) {
-        return true;
-      }
-    }
-
-    return false;
-  }, [isGymPlaylistPlayingAsWhole, activePlayingPlaylist, activePlayingPlaylistId, selectedCustomPlaylist]);
+    return titleMatch || idMatch;
+  }, [isGymPlaylistPlayingAsWhole, activePlayingPlaylist]);
 
   // Persistent Gym Mode state: stays active even while paused until user idle wait completes
   const [isGymModeActive, setIsGymModeActive] = useState(false);
@@ -1452,6 +1442,20 @@ export default function VinylScene({
       setIsGymModeActive(false);
     }
   }, [activePlayingPlaylistId]);
+
+  // Auto-clear activePlayingPlaylistId if current playing track does not belong to the active playlist
+  useEffect(() => {
+    if (!activePlayingPlaylistId || !currentTrack) return;
+    const currentActive = favoritePlaylists.find(p => p.id === activePlayingPlaylistId);
+    if (currentActive && currentActive.tracks && currentActive.tracks.length > 0) {
+      const belongs = currentActive.tracks.some(t => t.id === currentTrack.id);
+      if (!belongs) {
+        setActivePlayingPlaylistId(null);
+        setIsGymPlaylistPlayingAsWhole(false);
+        setIsGymModeActive(false);
+      }
+    }
+  }, [currentTrack, activePlayingPlaylistId, favoritePlaylists, setActivePlayingPlaylistId]);
 
   // Handle Gym workout mode active lifecycle & calm idle exit timer
   useEffect(() => {
@@ -1527,19 +1531,26 @@ export default function VinylScene({
     e?.stopPropagation?.();
     if (!playlist || !playlist.tracks || playlist.tracks.length === 0) return;
 
+    const isCurrentTrackInPlaylist = Boolean(
+      playlist.tracks && playlist.tracks.some(t => t.id === currentTrack?.id)
+    );
+
     // If this playlist is currently playing and pressed again -> stop/pause playback!
-    if (activePlayingPlaylistId === playlist.id && isPlaying) {
+    if (activePlayingPlaylistId === playlist.id && isPlaying && isCurrentTrackInPlaylist) {
       onTogglePlay?.();
       return;
     }
 
     // If this playlist is active but paused -> resume playback
-    if (activePlayingPlaylistId === playlist.id && !isPlaying && currentTrack) {
+    if (activePlayingPlaylistId === playlist.id && !isPlaying && currentTrack && isCurrentTrackInPlaylist) {
       onTogglePlay?.();
       return;
     }
 
-    const tracksToPlay = filterTracksByLang(playlist.tracks);
+    let tracksToPlay = filterTracksByLang(playlist.tracks);
+    if (!tracksToPlay || tracksToPlay.length === 0) {
+      tracksToPlay = playlist.tracks || [];
+    }
     if (tracksToPlay.length === 0) return;
 
     const isGym = Boolean(
@@ -1787,7 +1798,10 @@ export default function VinylScene({
 
   // Render single playlist item in the playlist stack
   const renderPlaylistItem = (playlist) => {
-    const isPlaylistActive = activePlayingPlaylistId === playlist.id;
+    const isCurrentTrackInPlaylist = Boolean(
+      playlist.tracks && playlist.tracks.some(t => t.id === currentTrack?.id)
+    );
+    const isPlaylistActive = activePlayingPlaylistId === playlist.id && isCurrentTrackInPlaylist;
     const isPlaylistPlaying = isPlaylistActive && isPlaying;
 
     const handleItemClick = (e) => {
@@ -3967,7 +3981,11 @@ export default function VinylScene({
 
                   <div className="vinyl-playlist-detail-actions">
                     {(() => {
-                      const isModalPlaylistPlaying = activePlayingPlaylistId === selectedCustomPlaylist.id && isPlaying;
+                      const isModalTrackCurrent = Boolean(
+                        selectedCustomPlaylist.tracks &&
+                        selectedCustomPlaylist.tracks.some(t => t.id === currentTrack?.id)
+                      );
+                      const isModalPlaylistPlaying = activePlayingPlaylistId === selectedCustomPlaylist.id && isPlaying && isModalTrackCurrent;
                       return (
                         <button
                           type="button"

@@ -2504,6 +2504,10 @@ export default function App() {
             onToggleFavorite={handleToggleFavorite}
             onSelectTrack={(track, shouldPlay) => {
               if (!track) return;
+              setActivePlayingPlaylistId(null);
+              try {
+                localStorage.removeItem('musicly_active_playlist_id');
+              } catch {}
               setCurrentTrackId(track.id);
               setCurrentTime(0);
               currentTimeRef.current = 0;
@@ -2536,6 +2540,10 @@ export default function App() {
             onPrevTrack={handlePrevTrack}
             onSelectTrack={(track, shouldPlay) => {
               if (!track) return;
+              setActivePlayingPlaylistId(null);
+              try {
+                localStorage.removeItem('musicly_active_playlist_id');
+              } catch {}
               setCurrentTrackId(track.id);
               setCurrentTime(0);
               currentTimeRef.current = 0;
@@ -2587,6 +2595,10 @@ export default function App() {
           onPrevTrack={handlePrevTrack}
           onSelectTrack={(track, shouldPlay) => {
             if (!track) return;
+            setActivePlayingPlaylistId(null);
+            try {
+              localStorage.removeItem('musicly_active_playlist_id');
+            } catch {}
             setCurrentTrackId(track.id);
             setCurrentTime(0);
             currentTimeRef.current = 0;
@@ -2802,6 +2814,10 @@ export default function App() {
                   handleResetAmbient();
                 }
               }
+              setActivePlayingPlaylistId(null);
+              try {
+                localStorage.removeItem('musicly_active_playlist_id');
+              } catch {}
               setCurrentTime(0);
               currentTimeRef.current = 0;
               setCurrentTrackId(track.id);
