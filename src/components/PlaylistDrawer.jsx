@@ -64,11 +64,13 @@ export default function PlaylistDrawer({
   autoFocusSearch = false
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('musicly'); // 'musicly' | 'playlists' | 'favorites' | 'public' | 'custom' | 'offline'
+  const [mainSource, setMainSource] = useState('musicly'); // 'musicly' | 'user' | 'favorites'
+  const [viewMode, setViewMode] = useState('single'); // 'playlists' | 'single'
   const [editingTrackId, setEditingTrackId] = useState(null);
   const [downloadingTrackId, setDownloadingTrackId] = useState(null);
   const [userPlaylists, setUserPlaylists] = useState(() => getLocalUserPlaylists(user));
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState(null);
+  const [selectedUserPlaylistId, setSelectedUserPlaylistId] = useState(null);
+  const [selectedMusiclyPlaylistId, setSelectedMusiclyPlaylistId] = useState(null);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
   const [playlistMenuTrackId, setPlaylistMenuTrackId] = useState(null);
@@ -87,21 +89,21 @@ export default function PlaylistDrawer({
     }
   }, [isOpen, user]);
 
-  // Set default selected playlist when playlists load
+  // Set default selected playlist when user playlists load
   useEffect(() => {
     if (userPlaylists.length > 0) {
-      if (!selectedPlaylistId || !userPlaylists.some(p => p.id === selectedPlaylistId)) {
-        setSelectedPlaylistId(userPlaylists[0].id);
+      if (!selectedUserPlaylistId || !userPlaylists.some(p => p.id === selectedUserPlaylistId)) {
+        setSelectedUserPlaylistId(userPlaylists[0].id);
       }
     } else {
-      setSelectedPlaylistId(null);
+      setSelectedUserPlaylistId(null);
     }
-  }, [userPlaylists, selectedPlaylistId]);
+  }, [userPlaylists, selectedUserPlaylistId]);
 
-  // Close row playlist menus when active tab changes
+  // Close row playlist menus when main source or view mode changes
   useEffect(() => {
     setPlaylistMenuTrackId(null);
-  }, [activeTab]);
+  }, [mainSource, viewMode]);
 
   // Auto-focus search input if opened in search mode
   useEffect(() => {
@@ -119,7 +121,7 @@ export default function PlaylistDrawer({
 
   // Default to 'musicly' so official curated tracks are autoselected at first
   useEffect(() => {
-    setActiveTab('musicly');
+    setMainSource('musicly');
   }, [user]);
 
   // Close when clicking outside with safe mount delay
@@ -180,60 +182,110 @@ export default function PlaylistDrawer({
 
   // When without login, show all official Musicly tracks (Public Library & Curated Catalog)
   const visibleTracks = tracks.filter(t => isAuthed ? (!t.isCustom || isOfflineTrack(t) || t.isCustom) : (!t.isCustom || !!t.isPublic));
-  const musiclyTracks = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
-  const musiclyCount = musiclyTracks.length;
-  const youtubeCount = visibleTracks.filter(isYouTubeTrack).length;
-  const offlineCount = visibleTracks.filter(isOfflineTrack).length;
-  const customCount = isAuthed ? visibleTracks.filter(t => t.isCustom).length : 0;
-  const publicCount = visibleTracks.filter(t => t.isPublic || !t.isCustom).length;
 
-  const activeSelectedPlaylist = useMemo(() => {
-    if (!selectedPlaylistId) return userPlaylists[0] || null;
-    return userPlaylists.find(p => p.id === selectedPlaylistId) || userPlaylists[0] || null;
-  }, [userPlaylists, selectedPlaylistId]);
+  // Curated Official Musicly Playlists
+  const musiclyPlaylists = useMemo(() => {
+    const list = [];
+    const official = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
 
-  const filteredTracks = visibleTracks.filter((track) => {
-    const matchesSearch = 
-      track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      track.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      track.genre.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (!matchesSearch) return false;
-
-    if (activeLangs.length > 0) {
-      if (!isTrackInLanguages(track.language, activeLangs)) return false;
+    // 1. Vintage Hi-Fi & 80s
+    const retro = official.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro'))));
+    if (retro.length > 0) {
+      list.push({ id: 'vintage_retro', title: 'Vintage Hi-Fi & 80s', tracks: retro, trackIds: retro.map(t => t.id) });
     }
 
-    if (activeTab === 'musicly') {
-      return !track.isCustom || !!track.isPublic;
+    // 2. Late Night Lo-Fi
+    const lofi = official.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi'))));
+    if (lofi.length > 0) {
+      list.push({ id: 'latenight_lofi', title: 'Late Night Lo-Fi', tracks: lofi, trackIds: lofi.map(t => t.id) });
     }
-    if (activeTab === 'playlists') {
-      if (!activeSelectedPlaylist || !Array.isArray(activeSelectedPlaylist.trackIds)) return false;
-      return activeSelectedPlaylist.trackIds.includes(track.id);
+
+    // 3. Country Roads & Roots
+    const country = official.filter(t => (t.genre || '').toLowerCase().includes('country') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country'))));
+    if (country.length > 0) {
+      list.push({ id: 'country_roots', title: 'Country Roads & Roots', tracks: country, trackIds: country.map(t => t.id) });
     }
-    if (activeTab === 'public') {
-      return !!track.isPublic || !track.isCustom;
+
+    // 4. Indie Acoustic Sessions
+    const indie = official.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie'))));
+    if (indie.length > 0) {
+      list.push({ id: 'indie_warmth', title: 'Indie Acoustic Sessions', tracks: indie, trackIds: indie.map(t => t.id) });
     }
-    if (activeTab === 'favorites') {
-      return favorites.includes(track.id);
+
+    // 5. Timeless Ghazals
+    const ghazals = official.filter(t => (t.genre || '').toLowerCase().includes('ghazal') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal'))));
+    if (ghazals.length > 0) {
+      list.push({ id: 'timeless_ghazals', title: 'Timeless Ghazals & Mehfil', tracks: ghazals, trackIds: ghazals.map(t => t.id) });
     }
-    if (activeTab === 'youtube') {
-      return isYouTubeTrack(track);
+
+    // 6. Rabindra Sangeet & Folk
+    const bengali = official.filter(t => (t.genre || '').toLowerCase().includes('rabindra') || (t.title || '').toLowerCase().includes('majhe'));
+    if (bengali.length > 0) {
+      list.push({ id: 'bengali_classics', title: 'Rabindra Sangeet & Folk', tracks: bengali, trackIds: bengali.map(t => t.id) });
     }
-    if (activeTab === 'offline') {
-      return isOfflineTrack(track);
+
+    // 7. Peace
+    const peace = official.filter(t => (t.genre || '').toLowerCase().includes('peace') || (t.title || '').toLowerCase().includes('peace'));
+    if (peace.length > 0) {
+      list.push({ id: 'peace_playlist', title: 'Peace', tracks: peace, trackIds: peace.map(t => t.id) });
     }
-    if (activeTab === 'custom') {
-      return isAuthed && !!track.isCustom;
+
+    return list;
+  }, [visibleTracks]);
+
+  const activeMusiclyPlaylist = useMemo(() => {
+    if (!selectedMusiclyPlaylistId) return musiclyPlaylists[0] || null;
+    return musiclyPlaylists.find(p => p.id === selectedMusiclyPlaylistId) || musiclyPlaylists[0] || null;
+  }, [musiclyPlaylists, selectedMusiclyPlaylistId]);
+
+  const activeUserPlaylist = useMemo(() => {
+    if (!selectedUserPlaylistId) return userPlaylists[0] || null;
+    return userPlaylists.find(p => p.id === selectedUserPlaylistId) || userPlaylists[0] || null;
+  }, [userPlaylists, selectedUserPlaylistId]);
+
+  const filteredTracks = useMemo(() => {
+    let baseList = [];
+
+    if (mainSource === 'musicly') {
+      if (viewMode === 'playlists') {
+        baseList = activeMusiclyPlaylist?.tracks || [];
+      } else {
+        baseList = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
+      }
+    } else if (mainSource === 'user') {
+      if (viewMode === 'playlists') {
+        const tIds = activeUserPlaylist?.trackIds || [];
+        baseList = tracks.filter(t => tIds.includes(t.id));
+      } else {
+        baseList = visibleTracks.filter(t => t.isCustom);
+      }
+    } else if (mainSource === 'favorites') {
+      baseList = visibleTracks.filter(t => favorites.includes(t.id));
     }
-    return true;
-  });
+
+    const q = searchQuery.toLowerCase().trim();
+    return baseList.filter((track) => {
+      if (q) {
+        const matchesSearch = 
+          track.title.toLowerCase().includes(q) ||
+          track.artist.toLowerCase().includes(q) ||
+          track.genre.toLowerCase().includes(q);
+        if (!matchesSearch) return false;
+      }
+
+      if (activeLangs.length > 0 && mainSource === 'musicly' && viewMode === 'single') {
+        if (!isTrackInLanguages(track.language, activeLangs)) return false;
+      }
+
+      return true;
+    });
+  }, [mainSource, viewMode, activeMusiclyPlaylist, activeUserPlaylist, visibleTracks, tracks, favorites, searchQuery, activeLangs]);
 
   // Preserve user custom playlist track sequencing when in playlists tab
   const sortedFilteredTracks = useMemo(() => {
-    if (activeTab === 'playlists' && activeSelectedPlaylist && Array.isArray(activeSelectedPlaylist.trackIds)) {
+    if (mainSource === 'user' && viewMode === 'playlists' && activeUserPlaylist && Array.isArray(activeUserPlaylist.trackIds)) {
       const orderMap = new Map();
-      activeSelectedPlaylist.trackIds.forEach((id, idx) => orderMap.set(id, idx));
+      activeUserPlaylist.trackIds.forEach((id, idx) => orderMap.set(id, idx));
       return [...filteredTracks].sort((a, b) => {
         const aOrder = orderMap.has(a.id) ? orderMap.get(a.id) : 999999;
         const bOrder = orderMap.has(b.id) ? orderMap.get(b.id) : 999999;
@@ -241,7 +293,7 @@ export default function PlaylistDrawer({
       });
     }
     return filteredTracks;
-  }, [filteredTracks, activeTab, activeSelectedPlaylist]);
+  }, [filteredTracks, mainSource, viewMode, activeUserPlaylist]);
 
   // Playlist management actions (strictly private to user)
   const handleCreateNewPlaylist = (e) => {
@@ -260,7 +312,7 @@ export default function PlaylistDrawer({
     const updated = [newPl, ...userPlaylists];
     setUserPlaylists(updated);
     saveUserPlaylists(updated, user);
-    setSelectedPlaylistId(newPl.id);
+    setSelectedUserPlaylistId(newPl.id);
     setIsCreatingPlaylist(false);
     setNewPlaylistTitle('');
     playPeacefulLikeSound();
@@ -298,8 +350,8 @@ export default function PlaylistDrawer({
       const updated = userPlaylists.filter(p => p.id !== playlistId);
       setUserPlaylists(updated);
       saveUserPlaylists(updated, user);
-      if (selectedPlaylistId === playlistId) {
-        setSelectedPlaylistId(updated[0]?.id || null);
+      if (selectedUserPlaylistId === playlistId) {
+        setSelectedUserPlaylistId(updated[0]?.id || null);
       }
     }
   };
@@ -358,15 +410,15 @@ export default function PlaylistDrawer({
         )}
       </div>
 
-      {/* Category / Filter Tabs */}
+      {/* Category / Filter Tabs: ONLY Musicly, User's Own Playlist, and Like */}
       <div className="drawer-tabs-row">
         <div className="drawer-tabs-group">
-          {/* 1. Official Musicly Curated Library (Autoselected at first, with Musicly icon) */}
+          {/* 1. Official Musicly (Autoselected at first, with Musicly icon) */}
           <button 
-            className={`drawer-tab-btn musicly-tab-btn ${activeTab === 'musicly' ? 'active' : ''}`}
-            onClick={() => setActiveTab('musicly')}
-            title={`Official Musicly Library (${musiclyCount})`}
-            aria-label={`Official Musicly Library (${musiclyCount})`}
+            className={`drawer-tab-btn musicly-tab-btn ${mainSource === 'musicly' ? 'active' : ''}`}
+            onClick={() => setMainSource('musicly')}
+            title="Musicly Official Catalog & Playlists"
+            aria-label="Musicly"
           >
             <img 
               src="/favicon.svg" 
@@ -374,58 +426,30 @@ export default function PlaylistDrawer({
               className="drawer-musicly-tab-icon"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            <span>Musicly ({musiclyCount})</span>
+            <span>Musicly ({musiclyPlaylists.reduce((acc, p) => acc + (p.tracks?.length || 0), 0) > 0 ? (visibleTracks.filter(t => !t.isCustom || !!t.isPublic).length) : 0})</span>
           </button>
 
           {/* 2. User's Own Playlist (Only accessed and seen by the user respectively) */}
           <button 
-            className={`drawer-tab-btn ${activeTab === 'playlists' ? 'active' : ''}`}
-            onClick={() => setActiveTab('playlists')}
-            title="User's Own Playlists — Private mixes only accessible and seen by you"
-            aria-label={`User's Own Playlists (${userPlaylists.length})`}
+            className={`drawer-tab-btn ${mainSource === 'user' ? 'active' : ''}`}
+            onClick={() => setMainSource('user')}
+            title="User's Own Playlist — Private mixes and songs only seen by you"
+            aria-label="User's Own Playlist"
           >
             <ListMusic size={13} />
-            <span>Playlists ({userPlaylists.length})</span>
+            <span>User's Own Playlist{userPlaylists.length > 0 ? ` (${userPlaylists.length})` : ''}</span>
           </button>
 
           {/* 3. Liked Songs */}
           <button 
-            className={`drawer-tab-btn ${activeTab === 'favorites' ? 'active' : ''}`}
-            onClick={() => setActiveTab('favorites')}
+            className={`drawer-tab-btn ${mainSource === 'favorites' ? 'active' : ''}`}
+            onClick={() => setMainSource('favorites')}
             title={`Liked (${favorites.length})`}
+            aria-label={`Liked (${favorites.length})`}
           >
-            <Heart size={13} fill={activeTab === 'favorites' ? '#ff4b4b' : 'currentColor'} />
+            <Heart size={13} fill={mainSource === 'favorites' ? '#ff4b4b' : 'currentColor'} />
             <span>({favorites.length})</span>
           </button>
-          {publicCount > 0 && (
-            <button 
-              className={`drawer-tab-btn ${activeTab === 'public' ? 'active' : ''}`}
-              onClick={() => setActiveTab('public')}
-              title={`Public Library (${publicCount})`}
-              aria-label={`Public Library (${publicCount})`}
-            >
-              <Globe size={14} />
-            </button>
-          )}
-          {isAuthed && customCount > 0 && (
-            <button 
-              className={`drawer-tab-btn ${activeTab === 'custom' ? 'active' : ''}`}
-              onClick={() => setActiveTab('custom')}
-              title="Your uploaded songs & YouTube links"
-            >
-              Uploads ({customCount})
-            </button>
-          )}
-          {offlineCount > 0 && (
-            <button 
-              className={`drawer-tab-btn ${activeTab === 'offline' ? 'active' : ''}`}
-              onClick={() => setActiveTab('offline')}
-              title={`Offline Downloaded (${offlineCount})`}
-              aria-label={`Offline Downloaded (${offlineCount})`}
-            >
-              <Download size={14} />
-            </button>
-          )}
         </div>
 
         <div className="drawer-actions-right">
@@ -473,19 +497,98 @@ export default function PlaylistDrawer({
         </div>
       </div>
 
-      {/* User's Own Playlist Sub-Bar & Active Playlist Controls */}
-      {activeTab === 'playlists' && (
+      {/* Mode Selector: Choose Playlist or Play Songs Singly */}
+      {(mainSource === 'musicly' || mainSource === 'user') && (
+        <div className="drawer-mode-toggle-row">
+          <div className="drawer-mode-toggle-pill">
+            <button
+              type="button"
+              className={`drawer-mode-toggle-btn ${viewMode === 'playlists' ? 'active' : ''}`}
+              onClick={() => setViewMode('playlists')}
+              title={mainSource === 'musicly' ? "Browse Musicly Curated Playlists" : "Browse Your Private Playlists"}
+            >
+              <ListMusic size={13} />
+              <span>Playlists</span>
+            </button>
+            <button
+              type="button"
+              className={`drawer-mode-toggle-btn ${viewMode === 'single' ? 'active' : ''}`}
+              onClick={() => setViewMode('single')}
+              title={mainSource === 'musicly' ? "Play Musicly songs individually" : "Play your uploaded songs individually"}
+            >
+              <Music size={13} />
+              <span>Single Songs</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* When in Musicly Playlists Mode */}
+      {mainSource === 'musicly' && viewMode === 'playlists' && (
+        <div className="drawer-playlists-container">
+          <div className="drawer-playlists-chips-row">
+            {musiclyPlaylists.map(pl => {
+              const isPlSelected = pl.id === activeMusiclyPlaylist?.id;
+              const plCount = pl.tracks?.length || 0;
+              return (
+                <button
+                  key={pl.id}
+                  type="button"
+                  className={`drawer-playlist-chip ${isPlSelected ? 'active' : ''}`}
+                  onClick={() => setSelectedMusiclyPlaylistId(pl.id)}
+                  title={`Musicly playlist: "${pl.title}" (${plCount} songs)`}
+                >
+                  <Sparkles size={11} style={{ color: '#ffd166' }} />
+                  <span>{pl.title}</span>
+                  <span className="playlist-chip-count">({plCount})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeMusiclyPlaylist && (
+            <div className="drawer-playlist-header-card">
+              <div className="drawer-playlist-header-left">
+                <div className="drawer-playlist-badge" style={{ color: '#ffd166', background: 'rgba(255, 209, 102, 0.15)' }}>OFFICIAL MUSICLY PLAYLIST</div>
+                <h4 className="drawer-playlist-header-title">{activeMusiclyPlaylist.title}</h4>
+                <span className="drawer-playlist-header-meta">
+                  {(activeMusiclyPlaylist.tracks || []).length} songs • Curated by Musicly
+                </span>
+              </div>
+              <div className="drawer-playlist-header-actions">
+                {activeMusiclyPlaylist.tracks?.length > 0 && (
+                  <button
+                    type="button"
+                    className="drawer-pl-action-btn play"
+                    onClick={() => {
+                      if (activeMusiclyPlaylist.tracks[0]) {
+                        onSelectTrack(activeMusiclyPlaylist.tracks[0]);
+                      }
+                    }}
+                    title={`Play all songs in "${activeMusiclyPlaylist.title}"`}
+                  >
+                    <Play size={12} fill="currentColor" /> Play All
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* When in User's Own Playlist Mode */}
+      {mainSource === 'user' && viewMode === 'playlists' && (
         <div className="drawer-playlists-container">
           <div className="drawer-playlists-chips-row">
             {userPlaylists.map(pl => {
-              const isPlSelected = pl.id === activeSelectedPlaylist?.id;
+              const isPlSelected = pl.id === activeUserPlaylist?.id;
               const plCount = Array.isArray(pl.trackIds) ? pl.trackIds.length : 0;
               return (
                 <button
                   key={pl.id}
                   type="button"
                   className={`drawer-playlist-chip ${isPlSelected ? 'active' : ''}`}
-                  onClick={() => setSelectedPlaylistId(pl.id)}
+                  onClick={() => setSelectedUserPlaylistId(pl.id)}
                   title={`Private playlist: "${pl.title}" (${plCount} songs)`}
                 >
                   <ListMusic size={12} />
@@ -526,13 +629,13 @@ export default function PlaylistDrawer({
             </form>
           )}
 
-          {activeSelectedPlaylist && (
+          {activeUserPlaylist && (
             <div className="drawer-playlist-header-card">
               <div className="drawer-playlist-header-left">
-                <div className="drawer-playlist-badge">PRIVATE PLAYLIST</div>
-                <h4 className="drawer-playlist-header-title">{activeSelectedPlaylist.title}</h4>
+                <div className="drawer-playlist-badge">USER'S OWN PLAYLIST</div>
+                <h4 className="drawer-playlist-header-title">{activeUserPlaylist.title}</h4>
                 <span className="drawer-playlist-header-meta">
-                  {(activeSelectedPlaylist.trackIds || []).length} songs • Accessible and seen only by your account
+                  {(activeUserPlaylist.trackIds || []).length} songs • Accessible and seen only by you
                 </span>
               </div>
               <div className="drawer-playlist-header-actions">
@@ -545,7 +648,7 @@ export default function PlaylistDrawer({
                         onSelectTrack(sortedFilteredTracks[0]);
                       }
                     }}
-                    title={`Play "${activeSelectedPlaylist.title}"`}
+                    title={`Play "${activeUserPlaylist.title}"`}
                   >
                     <Play size={12} fill="currentColor" /> Play All
                   </button>
@@ -553,7 +656,7 @@ export default function PlaylistDrawer({
                 <button
                   type="button"
                   className="drawer-pl-action-btn delete"
-                  onClick={() => handleDeletePlaylist(activeSelectedPlaylist.id)}
+                  onClick={() => handleDeletePlaylist(activeUserPlaylist.id)}
                   title="Delete this private playlist"
                   aria-label="Delete playlist"
                 >
@@ -565,36 +668,38 @@ export default function PlaylistDrawer({
         </div>
       )}
 
-      {/* Quick Language Filter Chips (English, Hindi, Bengali) */}
-      <div 
-        className="drawer-lang-filter-bar"
-        style={!isAuthed ? { justifyContent: 'center', padding: '4px 14px 12px 14px' } : {}}
-      >
+      {/* Quick Language Filter Chips (Only in Musicly Single Songs mode) */}
+      {mainSource === 'musicly' && viewMode === 'single' && (
         <div 
-          className="lang-filter-chips"
-          style={!isAuthed ? { justifyContent: 'center' } : {}}
+          className="drawer-lang-filter-bar"
+          style={!isAuthed ? { justifyContent: 'center', padding: '4px 14px 12px 14px' } : {}}
         >
-          {LANGUAGES.map(lang => {
-            const isActive = activeLangs.includes(lang);
-            return (
-              <button
-                key={lang}
-                type="button"
-                className={`drawer-lang-chip ${isActive ? 'active' : ''}`}
-                onClick={() => {
-                  if (typeof onSelectLanguage === 'function') onSelectLanguage(lang);
-                }}
-                title={isActive 
-                  ? `Click to deselect ${LANGUAGE_LABELS[lang] || lang}` 
-                  : `Filter by ${LANGUAGE_LABELS[lang] || lang}`}
-              >
-                {isActive && <Check size={11} className="chip-active-check" />}
-                <span>{LANGUAGE_LABELS[lang] || lang}</span>
-              </button>
-            );
-          })}
+          <div 
+            className="lang-filter-chips"
+            style={!isAuthed ? { justifyContent: 'center' } : {}}
+          >
+            {LANGUAGES.map(lang => {
+              const isActive = activeLangs.includes(lang);
+              return (
+                <button
+                  key={lang}
+                  type="button"
+                  className={`drawer-lang-chip ${isActive ? 'active' : ''}`}
+                  onClick={() => {
+                    if (typeof onSelectLanguage === 'function') onSelectLanguage(lang);
+                  }}
+                  title={isActive 
+                    ? `Click to deselect ${LANGUAGE_LABELS[lang] || lang}` 
+                    : `Filter by ${LANGUAGE_LABELS[lang] || lang}`}
+                >
+                  {isActive && <Check size={11} className="chip-active-check" />}
+                  <span>{LANGUAGE_LABELS[lang] || lang}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Scrollable Track List with Apple VisionOS Glass Scrollbar */}
       <div className="drawer-track-list-container">
@@ -603,12 +708,14 @@ export default function PlaylistDrawer({
           <div className="drawer-empty-state">
             <Sparkles size={30} className="empty-icon" />
             <p>
-              {activeTab === 'offline' 
-                ? 'No downloaded offline audio tracks found. Upload an MP3/WAV file to play offline!' 
-                : activeTab === 'playlists'
+              {mainSource === 'favorites'
+                ? 'No liked songs yet. Click the heart icon on any song to add it to your favorites!'
+                : mainSource === 'user' && viewMode === 'playlists'
                 ? (userPlaylists.length === 0
                     ? 'No private playlists created yet. Click "+ New Playlist" to create your first personal mix!'
-                    : `No songs in "${activeSelectedPlaylist?.title || 'this playlist'}" yet. Add songs from the Musicly tab using the + button!`)
+                    : `No songs in "${activeUserPlaylist?.title || 'this playlist'}" yet. Add songs using the + button!`)
+                : mainSource === 'user' && viewMode === 'single'
+                ? 'No uploaded songs found. Click "+ Add" to upload your personal music!'
                 : 'No songs found'}
             </p>
           </div>
@@ -721,7 +828,8 @@ export default function PlaylistDrawer({
                                 className="drawer-row-pl-create-btn"
                                 onClick={() => {
                                   setPlaylistMenuTrackId(null);
-                                  setActiveTab('playlists');
+                                  setMainSource('user');
+                                  setViewMode('playlists');
                                   setIsCreatingPlaylist(true);
                                 }}
                               >
@@ -752,16 +860,16 @@ export default function PlaylistDrawer({
                       )}
                     </div>
 
-                    {/* Remove from this playlist button when in playlists tab */}
-                    {activeTab === 'playlists' && activeSelectedPlaylist && (
+                    {/* Remove from this playlist button when in user's own playlist mode */}
+                    {mainSource === 'user' && viewMode === 'playlists' && activeUserPlaylist && (
                       <button 
                         type="button"
                         className="row-remove-pl-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleToggleSongInPlaylist(activeSelectedPlaylist.id, track.id);
+                          handleToggleSongInPlaylist(activeUserPlaylist.id, track.id);
                         }}
-                        title={`Remove from "${activeSelectedPlaylist.title}"`}
+                        title={`Remove from "${activeUserPlaylist.title}"`}
                         aria-label="Remove from playlist"
                       >
                         <Trash2 size={13} color="#f87171" />
