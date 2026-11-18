@@ -8029,6 +8029,311 @@ body, html, #root {
   transform: scale(1.08);
 }
 
+/* ============================================================
+   DRAWER MUSICLY & USER PRIVATE PLAYLISTS ENHANCEMENTS
+   ============================================================ */
+.drawer-musicly-tab-icon {
+  width: 13px;
+  height: 13px;
+  display: inline-block;
+  vertical-align: middle;
+  border-radius: 2px;
+  object-fit: contain;
+  margin-right: 3px;
+}
+
+.drawer-playlists-container {
+  padding: 8px 14px 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.drawer-playlists-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.drawer-playlists-chips-row::-webkit-scrollbar {
+  display: none;
+}
+
+.drawer-playlist-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  border-radius: 20px;
+  padding: 4px 11px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.drawer-playlist-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.drawer-playlist-chip.active {
+  background: rgba(251, 133, 0, 0.2);
+  border-color: rgba(251, 133, 0, 0.45);
+  color: #ffb703;
+}
+
+.drawer-playlist-chip .playlist-chip-count {
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+.drawer-playlist-chip.new-pl-chip {
+  border-style: dashed;
+  color: #ffd166;
+  border-color: rgba(255, 209, 102, 0.35);
+}
+.drawer-playlist-chip.new-pl-chip:hover {
+  background: rgba(255, 209, 102, 0.15);
+  border-color: rgba(255, 209, 102, 0.6);
+}
+
+.drawer-new-playlist-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.drawer-new-playlist-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #fff;
+  outline: none;
+}
+.drawer-new-playlist-input:focus {
+  border-color: #ffd166;
+}
+
+.drawer-new-playlist-btn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+.drawer-new-playlist-btn.submit {
+  background: #ffd166;
+  color: #111;
+}
+.drawer-new-playlist-btn.cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ccc;
+}
+
+.drawer-playlist-header-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  gap: 10px;
+}
+
+.drawer-playlist-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.drawer-playlist-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.12);
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  width: fit-content;
+}
+
+.drawer-playlist-header-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-playlist-header-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.drawer-playlist-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.drawer-pl-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+.drawer-pl-action-btn.play {
+  background: #ffd166;
+  color: #111;
+}
+.drawer-pl-action-btn.play:hover {
+  background: #ffe082;
+  transform: scale(1.02);
+}
+.drawer-pl-action-btn.delete {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  padding: 5px 7px;
+}
+.drawer-pl-action-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.row-add-pl-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+.row-add-pl-btn:hover {
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.1);
+}
+
+.drawer-row-pl-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 4px;
+  background: #18181f;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  padding: 8px;
+  min-width: 180px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.7);
+  z-index: 999;
+}
+
+.drawer-row-pl-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: #ffd166;
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.drawer-row-pl-menu-close {
+  background: transparent;
+  border: none;
+  color: #888;
+  cursor: pointer;
+}
+.drawer-row-pl-menu-close:hover {
+  color: #fff;
+}
+
+.drawer-row-pl-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.drawer-row-pl-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #eee;
+  font-size: 11.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.drawer-row-pl-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.drawer-row-pl-menu-item.is-in {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: rgba(74, 222, 128, 0.25);
+  color: #86efac;
+}
+
+.drawer-row-pl-menu-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 130px;
+}
+
+.row-remove-pl-btn {
+  background: transparent;
+  border: none;
+  color: #f87171;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.row-remove-pl-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
 /* Admin Dashboard Modal Panel */
 .admin-modal-overlay {
   position: fixed;
