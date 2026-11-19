@@ -296,49 +296,53 @@ export default function MinimalStudioScene({
       const next = typeof updater === 'function' ? updater(prev) : updater;
       try {
         localStorage.setItem('musicly_studio_bg_index', String(next));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
+            detail: { activeIndex: next }
+          }));
+        }
       } catch (e) {}
       return next;
     });
   }, []);
 
-  // Background gallery state initialized from localStorage/defaults with automatic migration
+  // Background gallery state initialized from localStorage/defaults
   const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
     try {
-      const MIGRATION_KEY = 'musicly_studio_bg_v5_4k_centered';
-      if (!localStorage.getItem(MIGRATION_KEY)) {
-        localStorage.setItem(MIGRATION_KEY, 'true');
-        localStorage.removeItem('musicly_studio_bg_gallery');
-        localStorage.setItem('musicly_studio_bg_index', '0');
-        return DEFAULT_STUDIO_PHOTOS;
-      }
       const local = localStorage.getItem('musicly_studio_bg_gallery');
       if (local) {
         const parsed = JSON.parse(local);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const clean = parsed.filter(i => {
-            const u = typeof i === 'string' ? i : (i?.url || '');
-            return !u.startsWith('data:');
-          });
-          if (clean.length > 0) return clean;
+          return parsed;
         }
       }
     } catch (e) {}
     return DEFAULT_STUDIO_PHOTOS;
   });
 
-  // Load persisted background visuals from IndexedDB
+  // Load persisted background visuals from IndexedDB and sync with external events
   useEffect(() => {
     let isMounted = true;
-    getStudioBackgrounds().then((bgs) => {
-      if (isMounted && Array.isArray(bgs) && bgs.length > 0) {
-        const clean = bgs.filter(i => {
-          const u = typeof i === 'string' ? i : (i?.url || '');
-          return !u.startsWith('data:');
-        });
-        setStudioBackgrounds(clean.length > 0 ? clean : DEFAULT_STUDIO_PHOTOS);
-      }
-    }).catch(() => {});
-    return () => { isMounted = false; };
+    const reload = () => {
+      getStudioBackgrounds().then((bgs) => {
+        if (isMounted && Array.isArray(bgs) && bgs.length > 0) {
+          setStudioBackgrounds(bgs);
+        }
+      }).catch(() => {});
+      try {
+        const savedIdx = localStorage.getItem('musicly_studio_bg_index');
+        if (savedIdx !== null && isMounted) {
+          setMediaPhotoIndex(parseInt(savedIdx, 10) || 0);
+        }
+      } catch (e) {}
+    };
+
+    reload();
+    window.addEventListener('musicly_studio_bg_updated', reload);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('musicly_studio_bg_updated', reload);
+    };
   }, []);
 
   const currentStudioBgUrl = useMemo(() => {
@@ -347,12 +351,7 @@ export default function MinimalStudioScene({
     }
     const safeIdx = mediaPhotoIndex % studioBackgrounds.length;
     const item = studioBackgrounds[safeIdx];
-    const url = typeof item === 'string' ? item : (item?.url || '/assets/images/zenitsu_clean_wallpaper.jpg');
-    // If it's an uploaded data URL with duplicate mockup UI, immediately fall back to the clean Zenitsu artwork
-    if (url.startsWith('data:')) {
-      return '/assets/images/zenitsu_clean_wallpaper.jpg';
-    }
-    return url;
+    return typeof item === 'string' ? item : (item?.url || '/assets/images/zenitsu_clean_wallpaper.jpg');
   }, [studioBackgrounds, mediaPhotoIndex]);
 
   // When user explicitly selects any curated or custom theme, manual selection is active

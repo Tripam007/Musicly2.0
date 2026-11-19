@@ -40,7 +40,9 @@ import {
   Link,
   Star,
   Mail,
-  Activity
+  Activity,
+  RotateCcw,
+  MonitorPlay
 } from 'lucide-react';
 
 import { GENRES, LANGUAGES, getAvailableSections, getAvailableGenres, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
@@ -52,6 +54,16 @@ import { extractPaletteFromImage } from '../utils/aiThemeGenerator';
 import { loadSongRequests, updateSongRequestStatus, deleteSongRequest, updateSongRequestAdminNote, updateSongRequestAudio, updateSongRequestDetails } from '../utils/songRequestsDB';
 import { loadSavedFeedback, deleteFeedback } from '../utils/feedbackDB';
 import { fetchLiveStreamRecommendations, LIVE_STREAM_PRESETS } from '../utils/youtubeLiveAgent';
+import { 
+  getStudioBackgrounds, 
+  saveStudioBackgrounds, 
+  resetStudioBackgroundsToDefaults, 
+  process4KImageFile, 
+  setActiveStudioBackgroundIndex, 
+  getActiveStudioBackgroundIndex, 
+  addStudioBackground, 
+  removeStudioBackground 
+} from '../utils/studioBackgroundsDB';
 
 const AVAILABLE_SECTIONS = GENRES.filter(g => g !== 'All');
 const AVAILABLE_LANGUAGES = LANGUAGES;
@@ -350,6 +362,151 @@ export default function AdminDashboardModal({
       console.warn("Failed to load feedback reviews:", err);
     } finally {
       setLoadingFeedbacks(false);
+    }
+  };
+
+  // Studio Wallpapers & 4K Backgrounds State
+  const [studioBackgrounds, setStudioBackgrounds] = useState([]);
+  const [activeStudioBgIndex, setActiveStudioBgIndexState] = useState(0);
+  const [bgProcessing, setBgProcessing] = useState(false);
+  const [bgSuccess, setBgSuccess] = useState('');
+  const [bgError, setBgError] = useState('');
+  const [bgUrlInput, setBgUrlInput] = useState('');
+  const [bgTitleInput, setBgTitleInput] = useState('');
+  const [bgDragOver, setBgDragOver] = useState(false);
+  const bgFileInputRef = useRef(null);
+
+  // Load studio backgrounds and active index, syncing with window event
+  React.useEffect(() => {
+    let isMounted = true;
+    const loadBgs = () => {
+      getStudioBackgrounds().then((bgs) => {
+        if (isMounted && Array.isArray(bgs) && bgs.length > 0) {
+          setStudioBackgrounds(bgs);
+        }
+      }).catch(() => {});
+      try {
+        const idx = getActiveStudioBackgroundIndex();
+        if (isMounted) setActiveStudioBgIndexState(idx);
+      } catch (e) {}
+    };
+
+    loadBgs();
+    window.addEventListener('musicly_studio_bg_updated', loadBgs);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('musicly_studio_bg_updated', loadBgs);
+    };
+  }, []);
+
+  const handleSelectWallpaper = (idx) => {
+    setActiveStudioBackgroundIndex(idx);
+    setActiveStudioBgIndexState(idx);
+    playTingSound();
+    setBgSuccess(`Activated background: ${studioBackgrounds[idx]?.title || `Wallpaper ${idx + 1}`}`);
+    setTimeout(() => setBgSuccess(''), 3000);
+  };
+
+  const handleUploadWallpaperFile = async (file) => {
+    if (!file) return;
+    try {
+      setBgProcessing(true);
+      setBgError('');
+      setBgSuccess('Preserving 4K crystal-clear resolution...');
+      const processed = await process4KImageFile(file);
+      const newBg = {
+        id: `bg-admin-${Date.now()}`,
+        url: processed.url,
+        title: bgTitleInput.trim() || processed.title || file.name.replace(/\.[^/.]+$/, "") || 'Studio 4K Visual',
+        isCustom: true,
+        is4K: true,
+        width: processed.width,
+        height: processed.height
+      };
+      const updated = await addStudioBackground(newBg);
+      setStudioBackgrounds(updated);
+      setActiveStudioBgIndexState(0);
+      setBgTitleInput('');
+      setBgSuccess(`Added & Activated 4K Wallpaper: "${newBg.title}"!`);
+      playTingSound();
+      setTimeout(() => setBgSuccess(''), 4000);
+    } catch (err) {
+      console.error(err);
+      setBgError(err.message || 'Failed to process and upload 4K wallpaper.');
+    } finally {
+      setBgProcessing(false);
+      if (bgFileInputRef.current) bgFileInputRef.current.value = '';
+    }
+  };
+
+  const handleAddWallpaperUrl = async (e) => {
+    if (e) e.preventDefault();
+    const cleanUrl = bgUrlInput.trim();
+    if (!cleanUrl) return;
+
+    try {
+      setBgProcessing(true);
+      setBgError('');
+      setBgSuccess('Processing 4K visual link...');
+      const processed = await process4KImageFile(cleanUrl);
+      const newBg = {
+        id: `bg-admin-url-${Date.now()}`,
+        url: processed.url || cleanUrl,
+        title: bgTitleInput.trim() || processed.title || 'Studio Web Visual',
+        isCustom: true,
+        is4K: true,
+        width: processed.width || 3840,
+        height: processed.height || 2160
+      };
+      const updated = await addStudioBackground(newBg);
+      setStudioBackgrounds(updated);
+      setActiveStudioBgIndexState(0);
+      setBgUrlInput('');
+      setBgTitleInput('');
+      setBgSuccess(`Added & Activated 4K Wallpaper: "${newBg.title}"!`);
+      playTingSound();
+      setTimeout(() => setBgSuccess(''), 4000);
+    } catch (err) {
+      console.error(err);
+      setBgError(err.message || 'Failed to add image from URL.');
+    } finally {
+      setBgProcessing(false);
+    }
+  };
+
+  const handleDeleteWallpaper = async (idx) => {
+    if (studioBackgrounds.length <= 1) {
+      setBgError('At least one studio background must remain in the catalog.');
+      return;
+    }
+    const target = studioBackgrounds[idx];
+    if (window.confirm(`Delete wallpaper "${target?.title || `Visual ${idx + 1}`}"?`)) {
+      try {
+        const updated = await removeStudioBackground(idx);
+        setStudioBackgrounds(updated);
+        const nextIdx = getActiveStudioBackgroundIndex();
+        setActiveStudioBgIndexState(nextIdx);
+        playClickSound();
+        setBgSuccess('Wallpaper removed successfully.');
+        setTimeout(() => setBgSuccess(''), 3000);
+      } catch (err) {
+        setBgError('Failed to remove wallpaper.');
+      }
+    }
+  };
+
+  const handleResetWallpapers = async () => {
+    if (window.confirm('Reset studio gallery back to official default 4K visuals (including Zenitsu)?')) {
+      try {
+        const defaults = await resetStudioBackgroundsToDefaults();
+        setStudioBackgrounds(defaults);
+        setActiveStudioBgIndexState(0);
+        playTingSound();
+        setBgSuccess('Restored official default 4K wallpapers.');
+        setTimeout(() => setBgSuccess(''), 3000);
+      } catch (err) {
+        setBgError('Failed to reset wallpapers.');
+      }
     }
   };
 
@@ -1139,6 +1296,12 @@ export default function AdminDashboardModal({
             <Sparkles size={15} /> Room Themes ({customScenes.length})
           </button>
           <button 
+            className={`admin-nav-btn ${activeTab === 'wallpapers' ? 'active' : ''}`}
+            onClick={() => setActiveTab('wallpapers')}
+          >
+            <ImageIcon size={15} /> Studio Wallpapers ({studioBackgrounds.length})
+          </button>
+          <button 
             className={`admin-nav-btn ${activeTab === 'requests' ? 'active' : ''}`}
             onClick={() => setActiveTab('requests')}
           >
@@ -1899,6 +2062,194 @@ export default function AdminDashboardModal({
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: Studio Wallpapers & 4K Backgrounds */}
+        {activeTab === 'wallpapers' && (
+          <div className="admin-tab-content admin-wallpapers-tab">
+            <div className="admin-scenes-intro">
+              <div className="status-indicator-header">
+                <ImageIcon size={24} style={{ color: '#ffd166' }} />
+                <div>
+                  <h4>Minimal Studio 4K Wallpapers & Visuals</h4>
+                  <p>Upload true native 4K wallpapers, manage visual backdrops, and switch the active studio background in real time</p>
+                </div>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="admin-reset-theme-btn"
+                    onClick={handleResetWallpapers}
+                    title="Reset gallery to pristine official default visuals (including centered Zenitsu)"
+                  >
+                    <RotateCcw size={12} /> Reset Defaults
+                  </button>
+                  <span className="badge-pill granted">
+                    {studioBackgrounds.length} {studioBackgrounds.length === 1 ? 'Visual' : 'Visuals'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="admin-scenes-builder-layout">
+              {/* Card 1: Add & Upload 4K Wallpaper */}
+              <div className="admin-scene-form-card">
+                <div className="admin-scene-form-header">
+                  <h5>Add & Upload 4K Wallpaper</h5>
+                  <span className="admin-form-hint">Upload any image file or enter a direct image link (Preserves 100% 4K Quality)</span>
+                </div>
+
+                {bgError && (
+                  <div className="admin-alert error">
+                    <AlertCircle size={15} /> {bgError}
+                  </div>
+                )}
+                {bgSuccess && (
+                  <div className="admin-alert success">
+                    <Check size={15} /> {bgSuccess}
+                  </div>
+                )}
+
+                {/* Title Input */}
+                <div className="admin-form-group">
+                  <label>Wallpaper Title (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Zenitsu Thunder 4K / Cyberpunk Tokyo"
+                    value={bgTitleInput}
+                    onChange={(e) => setBgTitleInput(e.target.value)}
+                  />
+                </div>
+
+                {/* Drag and Drop Upload Zone */}
+                <div className="admin-form-group">
+                  <label>Upload Image File (Preserves True 4K Native Resolution)</label>
+                  <div 
+                    className={`admin-bg-dropzone ${bgDragOver ? 'drag-over' : ''} ${bgProcessing ? 'processing' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setBgDragOver(true); }}
+                    onDragLeave={() => setBgDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setBgDragOver(false);
+                      const file = e.dataTransfer?.files?.[0];
+                      if (file) handleUploadWallpaperFile(file);
+                    }}
+                    onClick={() => bgFileInputRef.current?.click()}
+                    style={{ cursor: 'pointer', padding: '24px', textAlign: 'center', border: '2px dashed rgba(255,255,255,0.2)', borderRadius: '16px', background: 'rgba(255,255,255,0.02)' }}
+                  >
+                    <input 
+                      type="file"
+                      ref={bgFileInputRef}
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUploadWallpaperFile(file);
+                      }}
+                    />
+                    <div className="admin-bg-dropzone-inner" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                      <div className="admin-bg-upload-icon-circle" style={{ width: '44px', height: '44px', borderRadius: '50%', background: 'rgba(244,160,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Upload size={20} color="#f4a000" />
+                      </div>
+                      <span style={{ fontWeight: 600, color: '#fff', fontSize: '0.9rem' }}>
+                        {bgProcessing ? 'Preserving 4K crystal-clear resolution...' : 'Click or Drag & Drop 4K Image File'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)' }}>
+                        Supports PNG, JPG, WebP, AVIF up to full 3840×2160 UHD & beyond
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Direct Image URL Form */}
+                <div className="admin-form-group">
+                  <label>Or Enter Direct Image Link</label>
+                  <div className="admin-input-file-combo">
+                    <input
+                      type="url"
+                      placeholder="https://images.unsplash.com/... or direct image link"
+                      value={bgUrlInput}
+                      onChange={(e) => setBgUrlInput(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="admin-secondary-file-btn"
+                      disabled={!bgUrlInput.trim() || bgProcessing}
+                      onClick={handleAddWallpaperUrl}
+                      style={{ background: '#f4a000', color: '#1a1b22', fontWeight: 700 }}
+                    >
+                      <Plus size={14} /> Add Visual
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Gallery of Available Visuals */}
+              <div className="admin-scenes-directory-card">
+                <div className="admin-scenes-directory-header">
+                  <h5>Visual Wallpapers Gallery ({studioBackgrounds.length})</h5>
+                  <span className="admin-scenes-dir-sub">Click any card to immediately switch active studio background</span>
+                </div>
+
+                <div className="admin-bg-grid" style={{ padding: '4px', maxHeight: '520px', overflowY: 'auto' }}>
+                  {studioBackgrounds.map((bg, idx) => {
+                    const isActive = idx === activeStudioBgIndex;
+                    const bgUrl = typeof bg === 'string' ? bg : (bg?.url || '');
+                    const bgTitle = typeof bg === 'string' ? `Visual 0${idx + 1}` : (bg?.title || `Wallpaper ${idx + 1}`);
+
+                    return (
+                      <div 
+                        key={bg?.id || idx}
+                        className={`admin-bg-thumb-card ${isActive ? 'is-active' : ''}`}
+                        onClick={() => handleSelectWallpaper(idx)}
+                        style={{ position: 'relative', cursor: 'pointer' }}
+                        title={`Click to set as Studio Background: "${bgTitle}"`}
+                      >
+                        <img 
+                          src={bgUrl} 
+                          alt={bgTitle} 
+                          className="admin-bg-thumb-img" 
+                          loading="lazy" 
+                        />
+
+                        {/* Top Badges */}
+                        <div className="admin-bg-thumb-top-badges">
+                          {isActive ? (
+                            <span className="admin-bg-active-tag">
+                              <Check size={10} strokeWidth={3} /> ACTIVE
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.62rem', background: 'rgba(0,0,0,0.65)', color: '#ffd166', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                              4K UHD
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          className="admin-bg-thumb-del-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteWallpaper(idx);
+                          }}
+                          title="Delete this wallpaper"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+
+                        {/* Info Overlay at Bottom */}
+                        <div className="admin-bg-thumb-info">
+                          <span className="admin-bg-thumb-title">
+                            {bgTitle}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         )}
