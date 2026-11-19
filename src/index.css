@@ -17841,7 +17841,6 @@ body, html, #root {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   transform: translate3d(0, 0, 0);
-  filter: contrast(1.02) saturate(1.03) brightness(1.01);
 }
 
 /* Interactive Hotspot Layer matching IMAGE 2 exactly */
