@@ -18148,14 +18148,16 @@ body, html, #root {
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-top: none;
-  border-radius: 0 0 20px 20px;
-  padding: 8px 20px 9px 20px;
+  border-radius: 0 0 18px 18px;
+  padding: 13px 16px 11px 16px;
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 12px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   z-index: 22;
   transition: background 0.3s ease, border-color 0.3s ease;
+  box-sizing: border-box;
 }
 
 .ref-top-stat-btn {
@@ -18164,20 +18166,22 @@ body, html, #root {
   color: #ffffff;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 6px;
-  transition: transform 0.18s ease;
+  padding: 3px 6px;
+  border-radius: 8px;
+  transition: transform 0.18s ease, background 0.18s ease;
   user-select: none;
+  line-height: 1;
 }
 
 .ref-top-stat-btn:hover {
-  transform: scale(1.15);
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .ref-top-stat-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.94);
 }
 
 .ref-stat-num {
@@ -18185,6 +18189,14 @@ body, html, #root {
   font-size: 0.74rem;
   font-weight: 700;
   color: #ffffff;
+  line-height: 1;
+}
+
+.ref-bell-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ref-stat-bell {
@@ -18195,18 +18207,19 @@ body, html, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  border-radius: 50%;
+  padding: 3px 5px;
+  border-radius: 8px;
   transition: transform 0.2s ease, background 0.2s ease, color 0.3s ease;
+  line-height: 1;
 }
 
 .ref-stat-bell:hover {
-  transform: scale(1.18);
+  transform: scale(1.12);
   background: var(--ref-accent-glow, rgba(244, 160, 0, 0.18));
 }
 
 .ref-stat-bell:active {
-  transform: scale(0.9);
+  transform: scale(0.92);
 }
 
 .ref-stat-bell.ringing {
