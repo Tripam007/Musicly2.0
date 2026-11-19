@@ -3407,7 +3407,7 @@ export default function VinylScene({
                     </div>
                     <div className="vinyl-source-info">
                       <div className="vinyl-source-title-row">
-                        <span className="vinyl-source-title">USER'S OWN PLAYLIST</span>
+                        <span className="vinyl-source-title">MINE PLAYLIST</span>
                         <span className="vinyl-source-count">{userPlaylists.length}</span>
                       </div>
                       <span className="vinyl-source-desc">Private mixes & tracklists built by you</span>
@@ -3447,9 +3447,9 @@ export default function VinylScene({
                       </div>
                       {musiclyPlaylists.map(playlist => renderPlaylistItem(playlist))}
 
-                      {/* Section 2: User's Own Playlists */}
+                      {/* Section 2: Mine Playlists */}
                       <div className="vinyl-playlist-section-label-row" style={{ marginTop: 14 }}>
-                        <span className="vinyl-playlist-section-label">USER'S OWN PLAYLISTS ({userPlaylists.length})</span>
+                        <span className="vinyl-playlist-section-label">MINE PLAYLISTS ({userPlaylists.length})</span>
                         <button
                           type="button"
                           className="vinyl-playlist-section-btn"

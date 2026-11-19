@@ -429,15 +429,15 @@ export default function PlaylistDrawer({
             <span>Musicly ({musiclyPlaylists.reduce((acc, p) => acc + (p.tracks?.length || 0), 0) > 0 ? (visibleTracks.filter(t => !t.isCustom || !!t.isPublic).length) : 0})</span>
           </button>
 
-          {/* 2. User's Own Playlist (Only accessed and seen by the user respectively) */}
+          {/* 2. Mine Playlist (Only accessed and seen by the user respectively) */}
           <button 
             className={`drawer-tab-btn ${mainSource === 'user' ? 'active' : ''}`}
             onClick={() => setMainSource('user')}
-            title="User's Own Playlist — Private mixes and songs only seen by you"
-            aria-label="User's Own Playlist"
+            title="Mine Playlist — Private mixes and songs only seen by you"
+            aria-label="Mine Playlist"
           >
             <ListMusic size={13} />
-            <span>User's Own Playlist{userPlaylists.length > 0 ? ` (${userPlaylists.length})` : ''}</span>
+            <span>Mine Playlist{userPlaylists.length > 0 ? ` (${userPlaylists.length})` : ''}</span>
           </button>
 
           {/* 3. Liked Songs */}
@@ -632,7 +632,7 @@ export default function PlaylistDrawer({
           {activeUserPlaylist && (
             <div className="drawer-playlist-header-card">
               <div className="drawer-playlist-header-left">
-                <div className="drawer-playlist-badge">USER'S OWN PLAYLIST</div>
+                <div className="drawer-playlist-badge">MINE PLAYLIST</div>
                 <h4 className="drawer-playlist-header-title">{activeUserPlaylist.title}</h4>
                 <span className="drawer-playlist-header-meta">
                   {(activeUserPlaylist.trackIds || []).length} songs • Accessible and seen only by you
