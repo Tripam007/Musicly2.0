@@ -266,130 +266,9 @@ export async function resetStudioBackgroundsToDefaults() {
 }
 
 /**
- * Apply adaptive unsharp mask convolution kernel and micro-contrast enhancement
- * to restore razor-sharp lines and textures on 4K upscaled images.
- */
-function enhanceImageClarity(ctx, width, height, strength = 0.30) {
-  try {
-    const imgData = ctx.getImageData(0, 0, width, height);
-    const data = imgData.data;
-    const src = new Uint8ClampedArray(data);
-
-    // Unsharp mask convolution kernel weight:
-    // [  0, -k,  0 ]
-    // [ -k, 1+4k, -k ]
-    // [  0, -k,  0 ]
-    const k = strength;
-    const centerWeight = 1 + 4 * k;
-
-    for (let y = 1; y < height - 1; y++) {
-      const rowIdx = y * width * 4;
-      const topRowIdx = (y - 1) * width * 4;
-      const botRowIdx = (y + 1) * width * 4;
-
-      for (let x = 1; x < width - 1; x++) {
-        const i = rowIdx + x * 4;
-        const top = topRowIdx + x * 4;
-        const bot = botRowIdx + x * 4;
-        const left = rowIdx + (x - 1) * 4;
-        const right = rowIdx + (x + 1) * 4;
-
-        // Process RGB channels
-        for (let c = 0; c < 3; c++) {
-          const val = centerWeight * src[i + c] - k * (src[top + c] + src[bot + c] + src[left + c] + src[right + c]);
-          // Adaptive edge steepening: tighten dark cartoon outlines / line boundaries
-          let finalVal = val;
-          if (finalVal < 90) {
-            finalVal = finalVal * 0.95; // Deepen dark lines
-          } else if (finalVal > 180) {
-            finalVal = Math.min(255, finalVal * 1.02); // Clean highlights
-          }
-          // Micro-contrast boost (+3.5%) to eliminate compression wash
-          finalVal = ((finalVal - 128) * 1.035) + 128;
-          data[i + c] = finalVal < 0 ? 0 : (finalVal > 255 ? 255 : finalVal);
-        }
-      }
-    }
-
-    ctx.putImageData(imgData, 0, 0);
-  } catch (err) {
-    console.warn('Clarity enhancement pass skipped:', err);
-  }
-}
-
-/**
- * High-definition multi-pass stepped upscaler to 4K UHD (3840×2160 native resolution).
- * Stepped bicubic scaling avoids single-jump bilinear blurriness,
- * with intermediate sharpening at each harmonic scale step.
- */
-function upscaleTo4KCanvas(img, origWidth, origHeight) {
-  const aspect = origWidth / origHeight;
-  let targetWidth = 3840;
-  let targetHeight = 2160;
-
-  if (aspect >= 1) {
-    // Landscape: target 3840px width minimum, maintaining natural proportions
-    targetWidth = Math.max(origWidth, 3840);
-    targetHeight = Math.round(targetWidth / aspect);
-    if (targetHeight < 2160 && aspect <= 1.85) {
-      targetHeight = 2160;
-      targetWidth = Math.round(targetHeight * aspect);
-    }
-  } else {
-    // Portrait / Tall: target 3840px height minimum
-    targetHeight = Math.max(origHeight, 3840);
-    targetWidth = Math.round(targetHeight * aspect);
-  }
-
-  // Progressive stepped upscaling (1.45x step multiplier for smooth anti-aliased transitions)
-  let currentCanvas = document.createElement('canvas');
-  currentCanvas.width = origWidth;
-  currentCanvas.height = origHeight;
-  let currentCtx = currentCanvas.getContext('2d', { willReadFrequently: true });
-  currentCtx.drawImage(img, 0, 0, origWidth, origHeight);
-
-  let currentW = origWidth;
-  let currentH = origHeight;
-
-  // Step gradually up to target resolution
-  while (currentW < targetWidth || currentH < targetHeight) {
-    const nextW = Math.min(targetWidth, Math.round(currentW * 1.45));
-    const nextH = Math.min(targetHeight, Math.round(currentH * 1.45));
-
-    const nextCanvas = document.createElement('canvas');
-    nextCanvas.width = nextW;
-    nextCanvas.height = nextH;
-    const nextCtx = nextCanvas.getContext('2d', { willReadFrequently: true });
-
-    nextCtx.imageSmoothingEnabled = true;
-    nextCtx.imageSmoothingQuality = 'high';
-    nextCtx.drawImage(currentCanvas, 0, 0, nextW, nextH);
-
-    // Apply gentle intermediate sharpening at intermediate steps if not at final size
-    if (nextW < targetWidth || nextH < targetHeight) {
-      enhanceImageClarity(nextCtx, nextW, nextH, 0.16);
-    }
-
-    currentCanvas = nextCanvas;
-    currentW = nextW;
-    currentH = nextH;
-  }
-
-  // Final clarity sharpening pass on 4K resolution
-  const finalCtx = currentCanvas.getContext('2d', { willReadFrequently: true });
-  enhanceImageClarity(finalCtx, targetWidth, targetHeight, 0.30);
-
-  return {
-    canvas: currentCanvas,
-    width: targetWidth,
-    height: targetHeight
-  };
-}
-
-/**
- * Process uploaded file or image URL into crystal-clear 4K HD Quality.
- * Preserves 100% true native quality on high-res / 4K images with zero degradation,
- * and uses stepped bicubic 4K upscaling on smaller images.
+ * Process uploaded file or image URL with 100% lossless fidelity.
+ * Preserves the exact original image data without any canvas compression,
+ * downsampling, or convolution degradation.
  */
 export async function process4KImageFile(fileOrUrl) {
   return new Promise((resolve, reject) => {
@@ -397,64 +276,27 @@ export async function process4KImageFile(fileOrUrl) {
       return reject(new Error('Please provide an image.'));
     }
 
-    const processLoadedImage = (img, filename, rawSourceUrl) => {
-      const origWidth = img.naturalWidth || img.width;
-      const origHeight = img.naturalHeight || img.height;
-
-      if (!origWidth || !origHeight) {
-        return reject(new Error('Unable to read image dimensions.'));
-      }
-
-      const isHighRes = origWidth >= 1920 || origHeight >= 1080;
-      const is4K = origWidth >= 3400 || origHeight >= 2000;
-
-      // If already high-res (Full HD, 2K, 4K, 8K), preserve 100% of the original uploaded
-      // file data without re-encoding or color degradation so it looks exactly 4K as uploaded
-      if (isHighRes && rawSourceUrl) {
-        return resolve({
-          url: rawSourceUrl,
-          width: origWidth,
-          height: origHeight,
-          is4K: true,
-          title: filename ? filename.replace(/\.[^/.]+$/, "") : 'Studio Visual Wallpaper'
-        });
-      }
-
-      // If it's a smaller image (< 1080p), upscale cleanly to 4K resolution
-      const { canvas, width, height } = upscaleTo4KCanvas(img, origWidth, origHeight);
-
-      let highResDataUrl;
-      try {
-        highResDataUrl = canvas.toDataURL('image/webp', 0.99);
-        if (!highResDataUrl.startsWith('data:image/webp')) {
-          highResDataUrl = canvas.toDataURL('image/png');
-        }
-      } catch (e) {
-        highResDataUrl = canvas.toDataURL('image/png');
-      }
-
-      resolve({
-        url: highResDataUrl,
-        width,
-        height,
-        is4K: true,
-        title: filename ? filename.replace(/\.[^/.]+$/, "") : 'Studio Visual Wallpaper'
-      });
-    };
-
     if (typeof fileOrUrl === 'string') {
       const cleanUrl = fileOrUrl.trim();
       const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => processLoadedImage(img, 'Web Wallpaper', cleanUrl);
+      img.onload = () => {
+        const w = img.naturalWidth || 3840;
+        const h = img.naturalHeight || 2160;
+        resolve({
+          url: cleanUrl,
+          width: w,
+          height: h,
+          is4K: w >= 2560 || h >= 1440,
+          title: 'Studio Wallpaper'
+        });
+      };
       img.onerror = () => {
-        // Fallback for CORS-protected external image links: preserve the link
         resolve({
           url: cleanUrl,
           width: 3840,
           height: 2160,
           is4K: true,
-          title: 'Web Wallpaper'
+          title: 'Studio Wallpaper'
         });
       };
       img.src = cleanUrl;
@@ -463,15 +305,24 @@ export async function process4KImageFile(fileOrUrl) {
       reader.onload = (e) => {
         const rawDataUrl = e.target.result;
         const img = new Image();
-        img.onload = () => processLoadedImage(img, fileOrUrl.name, rawDataUrl);
+        img.onload = () => {
+          const w = img.naturalWidth || 3840;
+          const h = img.naturalHeight || 2160;
+          resolve({
+            url: rawDataUrl,
+            width: w,
+            height: h,
+            is4K: w >= 2560 || h >= 1440,
+            title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
+          });
+        };
         img.onerror = () => {
-          // If <img> decoding fails, still preserve the raw data URL faithfully
           resolve({
             url: rawDataUrl,
             width: 3840,
             height: 2160,
             is4K: true,
-            title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio Visual Wallpaper'
+            title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
           });
         };
         img.src = rawDataUrl;

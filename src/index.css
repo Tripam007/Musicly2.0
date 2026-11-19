@@ -17824,7 +17824,7 @@ body, html, #root {
   height: 100%;
   border-radius: 36px;
   overflow: hidden;
-  background: #ffac01;
+  background: #14151e;
 }
 
 .ref-main-photo-img {
@@ -17836,11 +17836,9 @@ body, html, #root {
   display: block;
   z-index: 2;
   image-rendering: auto;
-  image-rendering: smooth;
+  image-rendering: -webkit-optimize-contrast;
   image-rendering: high-quality;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  transform: translate3d(0, 0, 0);
+  transform: translateZ(0);
 }
 
 /* Interactive Hotspot Layer matching IMAGE 2 exactly */

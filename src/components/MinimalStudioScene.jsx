@@ -38,8 +38,7 @@ import {
   getStudioBackgrounds, 
   saveStudioBackgrounds, 
   resetStudioBackgroundsToDefaults,
-  DEFAULT_STUDIO_PHOTOS, 
-  process4KImageFile 
+  DEFAULT_STUDIO_PHOTOS 
 } from '../utils/studioBackgroundsDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
 import { checkIsAdmin } from '../utils/userModel';
@@ -488,57 +487,6 @@ export default function MinimalStudioScene({
 
     return () => { isMounted = false; };
   }, [currentStudioBgUrl]);
-
-  // Automatically upgrade any active background image to crystal-clear 4K HD
-  const autoEnhancedSetRef = useRef(new Set());
-  useEffect(() => {
-    if (!studioBackgrounds || studioBackgrounds.length === 0) return;
-    const safeIdx = mediaPhotoIndex % studioBackgrounds.length;
-    const currentItem = studioBackgrounds[safeIdx];
-    if (!currentItem) return;
-
-    const url = typeof currentItem === 'string' ? currentItem : currentItem.url;
-    if (!url || autoEnhancedSetRef.current.has(url)) return;
-
-    // Skip if already confirmed 4K enhanced
-    if (typeof currentItem === 'object' && currentItem.is4KEnhanced) return;
-
-    // Check if it's a custom upload / data url or non-default
-    const isCustom = typeof currentItem === 'object' ? (currentItem.isCustom || !currentItem.isDefault) : url.startsWith('data:');
-    if (!isCustom && !url.startsWith('data:')) return;
-
-    autoEnhancedSetRef.current.add(url);
-    const testImg = new Image();
-    testImg.crossOrigin = 'anonymous';
-    testImg.onload = async () => {
-      // If image is lower resolution (< 3840 wide or < 2160 tall) or was uploaded with legacy compression
-      if (testImg.naturalWidth < 3840 || testImg.naturalHeight < 2160 || !currentItem.is4KEnhanced) {
-        try {
-          const processed = await process4KImageFile(url);
-          setStudioBackgrounds((prev) => {
-            const next = [...prev];
-            const targetIdx = next.findIndex(b => (typeof b === 'string' ? b === url : (b.id === currentItem.id || b.url === url)));
-            if (targetIdx >= 0) {
-              const prevItem = next[targetIdx];
-              next[targetIdx] = {
-                ...(typeof prevItem === 'object' ? prevItem : { id: `bg-${Date.now()}` }),
-                url: processed.url,
-                width: processed.width,
-                height: processed.height,
-                is4K: true,
-                is4KEnhanced: true
-              };
-              saveStudioBackgrounds(next);
-            }
-            return next;
-          });
-        } catch (err) {
-          console.warn('Auto 4K background enhancement skipped:', err);
-        }
-      }
-    };
-    testImg.src = url;
-  }, [mediaPhotoIndex, studioBackgrounds]);
 
   const handleAddStudioBg = useCallback((newBg) => {
     setStudioBackgrounds((prev) => {
