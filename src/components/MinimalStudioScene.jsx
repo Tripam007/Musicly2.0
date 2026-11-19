@@ -25,7 +25,10 @@ import {
   VolumeX,
   ThumbsUp,
   Speaker,
-  Headphones
+  Headphones,
+  Mic2,
+  X as CloseIcon,
+  Music
 } from 'lucide-react';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
@@ -33,6 +36,8 @@ import StudioNotificationsDropdown from './StudioNotificationsDropdown';
 import { STUDIO_THEMES, getSavedStudioTheme, saveStudioTheme, getIsAutoThemeEnabled, setIsAutoThemeEnabled } from '../data/studioThemes';
 import { LANGUAGES, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, isTrackInLanguages } from '../data/tracks';
 import { extractThemeFromImage, generateThemeFromHex } from '../utils/themeExtractor';
+import { fetchLyrics } from '../utils/lyricsService';
+import { playClickSound } from '../utils/audioSynth';
 import { 
   getStudioBackgrounds, 
   saveStudioBackgrounds, 
@@ -625,6 +630,79 @@ export default function MinimalStudioScene({
     };
   }, [currentTrack, allTracks]);
 
+  // 🎙️ Zero-Lag High-Performance Lyrics State
+  const [lyricsData, setLyricsData] = useState(null);
+  const [isLyricsLoading, setIsLyricsLoading] = useState(false);
+  const [isLyricsOpen, setIsLyricsOpen] = useState(false);
+  const [livePlayTime, setLivePlayTime] = useState(currentTime || 0);
+  const activeLineRef = useRef(null);
+
+  // High-precision live playback time tracking for exact millisecond lyrics synchronization
+  useEffect(() => {
+    if (!audioElement || !isPlaying) {
+      setLivePlayTime(currentTime || 0);
+      return;
+    }
+    let animId;
+    const updateTime = () => {
+      if (audioElement && !audioElement.paused) {
+        setLivePlayTime(audioElement.currentTime || 0);
+      }
+      animId = requestAnimationFrame(updateTime);
+    };
+    animId = requestAnimationFrame(updateTime);
+    return () => cancelAnimationFrame(animId);
+  }, [audioElement, isPlaying, currentTime]);
+
+  // Pre-load lyrics immediately whenever activeTrack changes (ensures ZERO lag/delay on click!)
+  useEffect(() => {
+    if (!activeTrack?.title) {
+      setLyricsData(null);
+      return;
+    }
+    let isMounted = true;
+    setIsLyricsLoading(true);
+    fetchLyrics(activeTrack, duration || activeTrack.duration || 180)
+      .then((data) => {
+        if (isMounted) {
+          setLyricsData(data);
+          setIsLyricsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setLyricsData({ notFound: true });
+          setIsLyricsLoading(false);
+        }
+      });
+    return () => { isMounted = false; };
+  }, [activeTrack?.id, activeTrack?.title, activeTrack?.artist, duration]);
+
+  // Track active line index in synced lyrics with calibrated vocal anticipation
+  const activeLineIndex = useMemo(() => {
+    if (!lyricsData?.isSynced || !lyricsData.lines || lyricsData.lines.length === 0) return -1;
+    const curTime = (audioElement && isPlaying ? livePlayTime : currentTime) + 0.15;
+    let bestIdx = -1;
+    for (let i = 0; i < lyricsData.lines.length; i++) {
+      if (lyricsData.lines[i].time <= curTime) {
+        bestIdx = i;
+      } else {
+        break;
+      }
+    }
+    return bestIdx;
+  }, [lyricsData, livePlayTime, currentTime, audioElement, isPlaying]);
+
+  // Smooth auto-scroll following the active synced line
+  useEffect(() => {
+    if (isLyricsOpen && activeLineRef.current) {
+      activeLineRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+    }
+  }, [activeLineIndex, isLyricsOpen]);
+
   // Filter available studio genres based on language (Ghazal for Hindi, Country for English, Rabindra Sangeet for Bengali)
   const availableStudioGenres = useMemo(() => {
     return STUDIO_GENRES.filter(g => {
@@ -1196,18 +1274,86 @@ export default function MinimalStudioScene({
 
             {/* Bottom-Left Speech Bubble Island */}
             <div className="ref-speech-bubble-island">
-              <div className="ref-cool-pointer-arrow" title="Pointer Callout">
-                <svg width="34" height="28" viewBox="0 0 34 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="ref-pointer-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="var(--ref-s5)" />
-                      <stop offset="50%" stopColor="var(--ref-s4)" />
-                      <stop offset="100%" stopColor="var(--ref-s3)" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M2 25 L30 14 L6 2 Z" fill="url(#ref-pointer-gradient)" />
-                </svg>
-              </div>
+              {/* Interactive Lyrics Toggle Pill In Place of Arrow */}
+              <button 
+                type="button"
+                className={`ref-lyrics-toggle-btn ${isLyricsOpen ? 'is-active' : ''}`}
+                onClick={() => {
+                  setIsLyricsOpen(prev => !prev);
+                  playClickSound('light');
+                }}
+                title={isLyricsOpen ? "Close Lyrics" : "Show Lyrics for Current Song"}
+              >
+                <Mic2 size={12} className="ref-lyrics-icon" />
+                <span className="ref-lyrics-text">Lyrics</span>
+                {lyricsData?.isSynced && <span className="ref-lyrics-synced-indicator" />}
+              </button>
+
+              {/* Instant Synchronized Lyrics Popover */}
+              {isLyricsOpen && (
+                <div className="ref-studio-lyrics-popover" role="dialog" aria-label="Song Lyrics">
+                  <div className="ref-studio-lyrics-header">
+                    <div className="ref-studio-lyrics-header-left">
+                      <Mic2 size={13} style={{ color: currentTheme?.accent || '#f4a000' }} />
+                      <span className="ref-studio-lyrics-title">Lyrics</span>
+                      {lyricsData?.isSynced && (
+                        <span className="ref-studio-lyrics-synced-pill">SYNCED</span>
+                      )}
+                    </div>
+                    <button 
+                      type="button"
+                      className="ref-studio-lyrics-close-btn"
+                      onClick={() => {
+                        setIsLyricsOpen(false);
+                        playClickSound('light');
+                      }}
+                      title="Close Lyrics"
+                    >
+                      <CloseIcon size={13} />
+                    </button>
+                  </div>
+
+                  <div className="ref-studio-lyrics-body">
+                    {isLyricsLoading ? (
+                      <div className="ref-studio-lyrics-status">
+                        <span className="ref-studio-lyrics-spinner" />
+                        <span>Finding lyrics for "{activeTrack?.title || 'Song'}"...</span>
+                      </div>
+                    ) : lyricsData?.instrumental ? (
+                      <div className="ref-studio-lyrics-status">
+                        <Music size={18} style={{ opacity: 0.5 }} />
+                        <span>Instrumental track (no vocals)</span>
+                      </div>
+                    ) : lyricsData?.lines && lyricsData.lines.length > 0 ? (
+                      <div className="ref-studio-lyrics-lines-container">
+                        {lyricsData.lines.map((line, idx) => {
+                          const isActive = lyricsData.isSynced && idx === activeLineIndex;
+                          const isPassed = lyricsData.isSynced && activeLineIndex !== -1 && idx < activeLineIndex;
+                          return (
+                            <div
+                              key={idx}
+                              ref={isActive ? activeLineRef : null}
+                              className={`ref-studio-lyric-line ${isActive ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
+                              onClick={() => {
+                                if (lyricsData.isSynced && onSeek && line.time !== undefined) {
+                                  onSeek(line.time);
+                                }
+                              }}
+                              style={isActive ? { borderColor: currentTheme?.accent || '#f4a000' } : {}}
+                            >
+                              {line.text}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="ref-studio-lyrics-status">
+                        <span style={{ opacity: 0.7 }}>Lyrics unavailable for this track</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <button 
                 className="ref-island-info-btn"
