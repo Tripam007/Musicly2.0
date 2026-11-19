@@ -2487,6 +2487,8 @@ body, html, #root {
   color: var(--text-muted);
   min-width: 0;
   white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .track-row-artist {
@@ -2642,6 +2644,8 @@ body, html, #root {
   line-height: 1.2;
   white-space: nowrap;
   flex-shrink: 0;
+  max-width: 140px;
+  overflow: hidden;
 }
 
 .genre-tag-interactive:hover {
@@ -2654,6 +2658,9 @@ body, html, #root {
 .genre-tag-interactive .track-row-genre {
   color: inherit;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
 }
 
 .genre-tag-icon {

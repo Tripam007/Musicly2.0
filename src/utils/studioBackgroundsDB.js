@@ -74,8 +74,8 @@ function openDB() {
  */
 export async function getStudioBackgrounds() {
   try {
-    // Auto-migration: Purge any old mockup screenshots so clean 4K centered Zenitsu visual takes effect immediately
-    const MIGRATION_KEY = 'musicly_studio_bg_v5_4k_centered';
+    // Auto-migration: Purge any old mockup screenshots so clean 4K full-fit Zenitsu visual takes effect immediately
+    const MIGRATION_KEY = 'musicly_studio_bg_v6_4k_fullfit';
     if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
       try {
         localStorage.setItem(MIGRATION_KEY, 'true');
