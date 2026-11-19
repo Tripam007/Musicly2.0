@@ -74,6 +74,21 @@ function openDB() {
  */
 export async function getStudioBackgrounds() {
   try {
+    // Auto-migration: Purge any old mockup screenshots so clean Zenitsu visual takes effect immediately
+    const MIGRATION_KEY = 'musicly_studio_bg_v4_zenitsu_clean';
+    if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
+      try {
+        localStorage.setItem(MIGRATION_KEY, 'true');
+        localStorage.removeItem('musicly_studio_bg_gallery');
+        localStorage.setItem('musicly_studio_bg_index', '0');
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        store.put(DEFAULT_STUDIO_PHOTOS, KEY);
+      } catch (e) {}
+      return DEFAULT_STUDIO_PHOTOS;
+    }
+
     const db = await openDB();
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
@@ -82,7 +97,12 @@ export async function getStudioBackgrounds() {
 
       req.onsuccess = () => {
         if (Array.isArray(req.result) && req.result.length > 0) {
-          resolve(req.result);
+          // Filter out any huge data URI that was an old duplicate screenshot
+          const sanitized = req.result.filter(item => {
+            const u = typeof item === 'string' ? item : (item?.url || '');
+            return !u.startsWith('data:');
+          });
+          resolve(sanitized.length > 0 ? sanitized : DEFAULT_STUDIO_PHOTOS);
         } else {
           // Check localStorage fallback
           try {
@@ -90,7 +110,11 @@ export async function getStudioBackgrounds() {
             if (local) {
               const parsed = JSON.parse(local);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                resolve(parsed);
+                const sanitized = parsed.filter(item => {
+                  const u = typeof item === 'string' ? item : (item?.url || '');
+                  return !u.startsWith('data:');
+                });
+                resolve(sanitized.length > 0 ? sanitized : DEFAULT_STUDIO_PHOTOS);
                 return;
               }
             }
@@ -109,7 +133,13 @@ export async function getStudioBackgrounds() {
       const local = localStorage.getItem('musicly_studio_bg_gallery');
       if (local) {
         const parsed = JSON.parse(local);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const sanitized = parsed.filter(item => {
+            const u = typeof item === 'string' ? item : (item?.url || '');
+            return !u.startsWith('data:');
+          });
+          return sanitized.length > 0 ? sanitized : DEFAULT_STUDIO_PHOTOS;
+        }
       }
     } catch (e) {}
     return DEFAULT_STUDIO_PHOTOS;

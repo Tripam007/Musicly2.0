@@ -301,13 +301,26 @@ export default function MinimalStudioScene({
     });
   }, []);
 
-  // Background gallery state initialized from localStorage/defaults
+  // Background gallery state initialized from localStorage/defaults with automatic migration
   const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
     try {
+      const MIGRATION_KEY = 'musicly_studio_bg_v4_zenitsu_clean';
+      if (!localStorage.getItem(MIGRATION_KEY)) {
+        localStorage.setItem(MIGRATION_KEY, 'true');
+        localStorage.removeItem('musicly_studio_bg_gallery');
+        localStorage.setItem('musicly_studio_bg_index', '0');
+        return DEFAULT_STUDIO_PHOTOS;
+      }
       const local = localStorage.getItem('musicly_studio_bg_gallery');
       if (local) {
         const parsed = JSON.parse(local);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const clean = parsed.filter(i => {
+            const u = typeof i === 'string' ? i : (i?.url || '');
+            return !u.startsWith('data:');
+          });
+          if (clean.length > 0) return clean;
+        }
       }
     } catch (e) {}
     return DEFAULT_STUDIO_PHOTOS;
@@ -318,7 +331,11 @@ export default function MinimalStudioScene({
     let isMounted = true;
     getStudioBackgrounds().then((bgs) => {
       if (isMounted && Array.isArray(bgs) && bgs.length > 0) {
-        setStudioBackgrounds(bgs);
+        const clean = bgs.filter(i => {
+          const u = typeof i === 'string' ? i : (i?.url || '');
+          return !u.startsWith('data:');
+        });
+        setStudioBackgrounds(clean.length > 0 ? clean : DEFAULT_STUDIO_PHOTOS);
       }
     }).catch(() => {});
     return () => { isMounted = false; };
@@ -326,11 +343,16 @@ export default function MinimalStudioScene({
 
   const currentStudioBgUrl = useMemo(() => {
     if (!studioBackgrounds || studioBackgrounds.length === 0) {
-      return '/assets/images/greesel_clean_portrait.jpg';
+      return '/assets/images/zenitsu_clean_wallpaper.jpg';
     }
     const safeIdx = mediaPhotoIndex % studioBackgrounds.length;
     const item = studioBackgrounds[safeIdx];
-    return typeof item === 'string' ? item : (item?.url || '/assets/images/greesel_clean_portrait.jpg');
+    const url = typeof item === 'string' ? item : (item?.url || '/assets/images/zenitsu_clean_wallpaper.jpg');
+    // If it's an uploaded data URL with duplicate mockup UI, immediately fall back to the clean Zenitsu artwork
+    if (url.startsWith('data:')) {
+      return '/assets/images/zenitsu_clean_wallpaper.jpg';
+    }
+    return url;
   }, [studioBackgrounds, mediaPhotoIndex]);
 
   // When user explicitly selects any curated or custom theme, manual selection is active
