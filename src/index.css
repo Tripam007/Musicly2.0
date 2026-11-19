@@ -18471,7 +18471,7 @@ body, html, #root {
   left: 0;
   width: 255px;
   height: 155px;
-  perspective: 1000px;
+  perspective: 1200px;
   z-index: 15;
 }
 
@@ -18480,11 +18480,13 @@ body, html, #root {
   width: 100%;
   height: 100%;
   transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: center center;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Controlled Vertical 3D Flip (rotateX) */
 .ref-speech-bubble-island-container.is-flipped .ref-island-flip-card {
-  transform: rotateY(180deg);
+  transform: rotateX(180deg);
 }
 
 .ref-island-face {
@@ -18494,6 +18496,7 @@ body, html, #root {
   height: 100%;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
   border-top-right-radius: 40px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-right: 1px solid rgba(255, 255, 255, 0.10);
@@ -18510,7 +18513,7 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transform: rotateY(0deg);
+  transform: rotateX(0deg) translateZ(1px);
   z-index: 2;
 }
 
@@ -18520,8 +18523,17 @@ body, html, #root {
   padding: 16px 18px 14px 18px;
   display: flex;
   flex-direction: column;
-  transform: rotateY(180deg);
+  transform: rotateX(180deg) translateZ(1px);
   z-index: 1;
+}
+
+/* Prevent pointer event interference between flipped faces */
+.ref-speech-bubble-island-container.is-flipped .ref-island-front {
+  pointer-events: none;
+}
+
+.ref-speech-bubble-island-container:not(.is-flipped) .ref-island-back {
+  pointer-events: none;
 }
 
 /* Interactive Lyrics Toggle Button in place of arrow */
