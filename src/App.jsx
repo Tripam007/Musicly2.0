@@ -2796,6 +2796,8 @@ export default function App() {
             tracks={allTracks}
             user={user}
             isAdmin={isAdmin}
+            activePlayingPlaylistId={activePlayingPlaylistId}
+            onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
             onOpenAdminDashboard={() => {
               setIsDrawerOpen(false);
               setIsAdminDashboardOpen(true);
@@ -2805,7 +2807,7 @@ export default function App() {
             onSelectLanguage={handleSelectLanguage}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
-            onSelectTrack={(track) => {
+            onSelectTrack={(track, shouldPlay = true, isFromPlaylist = false, playlistId = null) => {
               if (track.genre !== 'Chill/Sleep') {
                 const isSleepProfileActive = 
                   Math.abs((ambientVolumes.rain || 0) - 0.20) < 0.05 &&
@@ -2814,14 +2816,21 @@ export default function App() {
                   handleResetAmbient();
                 }
               }
-              setActivePlayingPlaylistId(null);
-              try {
-                localStorage.removeItem('musicly_active_playlist_id');
-              } catch {}
+              if (isFromPlaylist && playlistId) {
+                setActivePlayingPlaylistId(playlistId);
+                try {
+                  localStorage.setItem('musicly_active_playlist_id', playlistId);
+                } catch {}
+              } else if (!isFromPlaylist) {
+                setActivePlayingPlaylistId(null);
+                try {
+                  localStorage.removeItem('musicly_active_playlist_id');
+                } catch {}
+              }
               setCurrentTime(0);
               currentTimeRef.current = 0;
               setCurrentTrackId(track.id);
-              setIsPlaying(true);
+              setIsPlaying(shouldPlay !== undefined ? shouldPlay : true);
             }}
             onTogglePlay={togglePlay}
             favorites={favorites}

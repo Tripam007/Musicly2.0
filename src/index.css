@@ -8093,6 +8093,300 @@ body, html, #root {
   box-shadow: 0 2px 8px rgba(251, 133, 0, 0.15);
 }
 
+/* Playlist Cards List (Shows Only the Playlist Names) */
+.drawer-playlists-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 2px 14px 2px;
+}
+
+.drawer-playlists-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.85;
+  padding: 2px 6px 4px 6px;
+  letter-spacing: 0.2px;
+}
+
+.drawer-playlist-item-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.drawer-playlist-item-card:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.drawer-playlist-item-card.is-playing {
+  background: rgba(251, 133, 0, 0.14) !important;
+  border-color: rgba(251, 133, 0, 0.45) !important;
+  box-shadow: 0 4px 18px rgba(251, 133, 0, 0.16);
+}
+
+.drawer-pl-thumb-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  background: #111;
+}
+
+.drawer-pl-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.drawer-playlist-item-card:hover .drawer-pl-thumb {
+  transform: scale(1.06);
+}
+
+.drawer-pl-overlay-play {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffd166;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.drawer-playlist-item-card:hover .drawer-pl-overlay-play,
+.drawer-playlist-item-card.is-playing .drawer-pl-overlay-play {
+  opacity: 1;
+}
+
+.drawer-pl-text-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.drawer-pl-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.drawer-pl-name {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
+}
+
+.drawer-pl-playing-tag {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #111;
+  background: #ffd166;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.drawer-pl-count {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.drawer-pl-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.drawer-pl-card-play-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full, 9999px);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drawer-pl-card-play-btn:hover {
+  background: #ffd166;
+  border-color: #ffd166;
+  color: #111;
+  transform: scale(1.08);
+}
+
+.drawer-pl-open-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drawer-pl-open-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+/* Drilldown Sticky Header View when double-clicked into a playlist */
+.drawer-drilldown-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 0 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 8px;
+}
+
+.drawer-back-to-playlists-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  width: fit-content;
+  transition: all 0.2s ease;
+}
+
+.drawer-back-to-playlists-btn:hover {
+  color: #ffb703;
+  background: rgba(251, 133, 0, 0.15);
+  border-color: rgba(251, 133, 0, 0.4);
+}
+
+.drawer-drilldown-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.drawer-drilldown-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.drawer-drilldown-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-drilldown-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.drawer-drilldown-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Create New Playlist Card */
+.drawer-create-playlist-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 209, 102, 0.06);
+  border: 1px dashed rgba(255, 209, 102, 0.35);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #ffd166;
+  text-align: left;
+}
+
+.drawer-create-playlist-card:hover {
+  background: rgba(255, 209, 102, 0.14);
+  border-color: rgba(255, 209, 102, 0.65);
+}
+
+.drawer-create-pl-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255, 209, 102, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffd166;
+  flex-shrink: 0;
+}
+
+.drawer-create-pl-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.drawer-create-pl-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ffd166;
+}
+
+.drawer-create-pl-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .drawer-playlists-container {
   padding: 8px 14px 10px 14px;
   display: flex;

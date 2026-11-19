@@ -15,9 +15,11 @@ import {
   Tag,
   Globe,
   Crown,
-  ShieldCheck
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import { playPeacefulLikeSound } from '../utils/audioSynth';
+import { playPeacefulLikeSound, playClickSound } from '../utils/audioSynth';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
 import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections, isTrackInLanguages } from '../data/tracks';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
@@ -47,6 +49,8 @@ export default function PlaylistDrawer({
   onSelectLanguage,
   currentTrack,
   isPlaying,
+  activePlayingPlaylistId = null,
+  onSetActivePlayingPlaylistId = null,
   onSelectTrack,
   onTogglePlay,
   favorites,
@@ -66,14 +70,14 @@ export default function PlaylistDrawer({
   const [searchQuery, setSearchQuery] = useState('');
   const [mainSource, setMainSource] = useState('musicly'); // 'musicly' | 'user' | 'favorites'
   const [viewMode, setViewMode] = useState('single'); // 'playlists' | 'single'
+  const [drilldownPlaylistId, setDrilldownPlaylistId] = useState(null);
   const [editingTrackId, setEditingTrackId] = useState(null);
   const [downloadingTrackId, setDownloadingTrackId] = useState(null);
   const [userPlaylists, setUserPlaylists] = useState(() => getLocalUserPlaylists(user));
-  const [selectedUserPlaylistId, setSelectedUserPlaylistId] = useState(null);
-  const [selectedMusiclyPlaylistId, setSelectedMusiclyPlaylistId] = useState(null);
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
   const [playlistMenuTrackId, setPlaylistMenuTrackId] = useState(null);
+  const clickTimerRef = useRef(null);
   const popoverRef = useRef(null);
   const trackListRef = useRef(null);
 
@@ -188,77 +192,96 @@ export default function PlaylistDrawer({
     const list = [];
     const official = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
 
+    const makePl = (id, title, plTracks, defaultImg) => ({
+      id,
+      title,
+      tracks: plTracks,
+      trackIds: plTracks.map(t => t.id),
+      image: plTracks[0]?.cover || defaultImg,
+      isCustom: false,
+      isMusiclyOfficial: true
+    });
+
     // 1. Vintage Hi-Fi & 80s
     const retro = official.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro'))));
-    if (retro.length > 0) {
-      list.push({ id: 'vintage_retro', title: 'Vintage Hi-Fi & 80s', tracks: retro, trackIds: retro.map(t => t.id) });
-    }
+    if (retro.length > 0) list.push(makePl('vintage_retro', 'Vintage Hi-Fi & 80s', retro, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'));
 
     // 2. Late Night Lo-Fi
     const lofi = official.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi'))));
-    if (lofi.length > 0) {
-      list.push({ id: 'latenight_lofi', title: 'Late Night Lo-Fi', tracks: lofi, trackIds: lofi.map(t => t.id) });
-    }
+    if (lofi.length > 0) list.push(makePl('latenight_lofi', 'Late Night Lo-Fi', lofi, 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'));
 
     // 3. Country Roads & Roots
     const country = official.filter(t => (t.genre || '').toLowerCase().includes('country') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country'))));
-    if (country.length > 0) {
-      list.push({ id: 'country_roots', title: 'Country Roads & Roots', tracks: country, trackIds: country.map(t => t.id) });
-    }
+    if (country.length > 0) list.push(makePl('country_roots', 'Country Roads & Roots', country, 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=300&auto=format&fit=crop&q=80'));
 
     // 4. Indie Acoustic Sessions
     const indie = official.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie'))));
-    if (indie.length > 0) {
-      list.push({ id: 'indie_warmth', title: 'Indie Acoustic Sessions', tracks: indie, trackIds: indie.map(t => t.id) });
-    }
+    if (indie.length > 0) list.push(makePl('indie_warmth', 'Indie Acoustic Sessions', indie, 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80'));
 
     // 5. Timeless Ghazals
     const ghazals = official.filter(t => (t.genre || '').toLowerCase().includes('ghazal') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal'))));
-    if (ghazals.length > 0) {
-      list.push({ id: 'timeless_ghazals', title: 'Timeless Ghazals & Mehfil', tracks: ghazals, trackIds: ghazals.map(t => t.id) });
-    }
+    if (ghazals.length > 0) list.push(makePl('timeless_ghazals', 'Timeless Ghazals & Mehfil', ghazals, 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80'));
 
     // 6. Rabindra Sangeet & Folk
     const bengali = official.filter(t => (t.genre || '').toLowerCase().includes('rabindra') || (t.title || '').toLowerCase().includes('majhe'));
-    if (bengali.length > 0) {
-      list.push({ id: 'bengali_classics', title: 'Rabindra Sangeet & Folk', tracks: bengali, trackIds: bengali.map(t => t.id) });
-    }
+    if (bengali.length > 0) list.push(makePl('bengali_classics', 'Rabindra Sangeet & Folk', bengali, 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg'));
 
     // 7. Peace
     const peace = official.filter(t => (t.genre || '').toLowerCase().includes('peace') || (t.title || '').toLowerCase().includes('peace'));
-    if (peace.length > 0) {
-      list.push({ id: 'peace_playlist', title: 'Peace', tracks: peace, trackIds: peace.map(t => t.id) });
-    }
+    if (peace.length > 0) list.push(makePl('peace_playlist', 'Peace', peace, 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80'));
 
     return list;
   }, [visibleTracks]);
 
-  const activeMusiclyPlaylist = useMemo(() => {
-    if (!selectedMusiclyPlaylistId) return musiclyPlaylists[0] || null;
-    return musiclyPlaylists.find(p => p.id === selectedMusiclyPlaylistId) || musiclyPlaylists[0] || null;
-  }, [musiclyPlaylists, selectedMusiclyPlaylistId]);
+  // Enriched User Playlists with resolved track objects
+  const enrichedUserPlaylists = useMemo(() => {
+    return userPlaylists.map(pl => {
+      const plTracks = (pl.trackIds || []).map(id => tracks.find(t => t.id === id)).filter(Boolean);
+      return {
+        ...pl,
+        tracks: plTracks,
+        count: plTracks.length,
+        image: pl.image || plTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+        isCustom: true
+      };
+    });
+  }, [userPlaylists, tracks]);
 
-  const activeUserPlaylist = useMemo(() => {
-    if (!selectedUserPlaylistId) return userPlaylists[0] || null;
-    return userPlaylists.find(p => p.id === selectedUserPlaylistId) || userPlaylists[0] || null;
-  }, [userPlaylists, selectedUserPlaylistId]);
+  const currentPlaylists = useMemo(() => {
+    return mainSource === 'musicly' ? musiclyPlaylists : enrichedUserPlaylists;
+  }, [mainSource, musiclyPlaylists, enrichedUserPlaylists]);
 
-  const filteredTracks = useMemo(() => {
+  const activeDrilldownPlaylist = useMemo(() => {
+    if (!drilldownPlaylistId) return null;
+    return currentPlaylists.find(p => p.id === drilldownPlaylistId) || null;
+  }, [currentPlaylists, drilldownPlaylistId]);
+
+  const displayedPlaylists = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return currentPlaylists;
+    return currentPlaylists.filter(p => p.title.toLowerCase().includes(q));
+  }, [currentPlaylists, searchQuery]);
+
+  const sortedFilteredTracks = useMemo(() => {
+    if (viewMode === 'playlists') {
+      if (!activeDrilldownPlaylist) return [];
+      const baseList = activeDrilldownPlaylist.tracks || [];
+      const q = searchQuery.toLowerCase().trim();
+      return baseList.filter((track) => {
+        if (!q) return true;
+        return (
+          track.title.toLowerCase().includes(q) ||
+          track.artist.toLowerCase().includes(q) ||
+          track.genre.toLowerCase().includes(q)
+        );
+      });
+    }
+
     let baseList = [];
-
     if (mainSource === 'musicly') {
-      if (viewMode === 'playlists') {
-        baseList = activeMusiclyPlaylist?.tracks || [];
-      } else {
-        baseList = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
-      }
+      baseList = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
     } else if (mainSource === 'user') {
-      if (viewMode === 'playlists') {
-        const tIds = activeUserPlaylist?.trackIds || [];
-        baseList = tracks.filter(t => tIds.includes(t.id));
-      } else {
-        baseList = visibleTracks.filter(t => t.isCustom);
-      }
+      baseList = visibleTracks.filter(t => t.isCustom);
     } else if (mainSource === 'favorites') {
       baseList = visibleTracks.filter(t => favorites.includes(t.id));
     }
@@ -279,21 +302,49 @@ export default function PlaylistDrawer({
 
       return true;
     });
-  }, [mainSource, viewMode, activeMusiclyPlaylist, activeUserPlaylist, visibleTracks, tracks, favorites, searchQuery, activeLangs]);
+  }, [viewMode, activeDrilldownPlaylist, mainSource, visibleTracks, favorites, searchQuery, activeLangs]);
 
-  // Preserve user custom playlist track sequencing when in playlists tab
-  const sortedFilteredTracks = useMemo(() => {
-    if (mainSource === 'user' && viewMode === 'playlists' && activeUserPlaylist && Array.isArray(activeUserPlaylist.trackIds)) {
-      const orderMap = new Map();
-      activeUserPlaylist.trackIds.forEach((id, idx) => orderMap.set(id, idx));
-      return [...filteredTracks].sort((a, b) => {
-        const aOrder = orderMap.has(a.id) ? orderMap.get(a.id) : 999999;
-        const bOrder = orderMap.has(b.id) ? orderMap.get(b.id) : 999999;
-        return aOrder - bOrder;
-      });
+  // Play entire playlist
+  const handlePlayEntirePlaylist = (playlist) => {
+    if (!playlist) return;
+    const plTracks = playlist.tracks || [];
+    if (plTracks.length === 0) return;
+
+    if (typeof onSelectTrack === 'function') {
+      onSelectTrack(plTracks[0], true, true, playlist.id);
     }
-    return filteredTracks;
-  }, [filteredTracks, mainSource, viewMode, activeUserPlaylist]);
+    if (typeof onSetActivePlayingPlaylistId === 'function') {
+      onSetActivePlayingPlaylistId(playlist.id);
+    }
+    playPeacefulLikeSound();
+  };
+
+  // Single-click vs Double-click handler for playlist cards
+  const handlePlaylistRowClick = (playlist) => {
+    if (clickTimerRef.current) {
+      // Second click within 260ms -> DOUBLE CLICK! Show songs in that particular playlist
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      setDrilldownPlaylistId(playlist.id);
+      playClickSound('light');
+      return;
+    }
+
+    clickTimerRef.current = setTimeout(() => {
+      clickTimerRef.current = null;
+      // Single click -> play that one!
+      handlePlayEntirePlaylist(playlist);
+    }, 260);
+  };
+
+  const handlePlaylistRowDoubleClick = (playlist) => {
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
+    setDrilldownPlaylistId(playlist.id);
+    playClickSound('light');
+  };
 
   // Playlist management actions (strictly private to user)
   const handleCreateNewPlaylist = (e) => {
@@ -523,151 +574,6 @@ export default function PlaylistDrawer({
         </div>
       )}
 
-      {/* When in Musicly Playlists Mode */}
-      {mainSource === 'musicly' && viewMode === 'playlists' && (
-        <div className="drawer-playlists-container">
-          <div className="drawer-playlists-chips-row">
-            {musiclyPlaylists.map(pl => {
-              const isPlSelected = pl.id === activeMusiclyPlaylist?.id;
-              const plCount = pl.tracks?.length || 0;
-              return (
-                <button
-                  key={pl.id}
-                  type="button"
-                  className={`drawer-playlist-chip ${isPlSelected ? 'active' : ''}`}
-                  onClick={() => setSelectedMusiclyPlaylistId(pl.id)}
-                  title={`Musicly playlist: "${pl.title}" (${plCount} songs)`}
-                >
-                  <Sparkles size={11} style={{ color: '#ffd166' }} />
-                  <span>{pl.title}</span>
-                  <span className="playlist-chip-count">({plCount})</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {activeMusiclyPlaylist && (
-            <div className="drawer-playlist-header-card">
-              <div className="drawer-playlist-header-left">
-                <div className="drawer-playlist-badge" style={{ color: '#ffd166', background: 'rgba(255, 209, 102, 0.15)' }}>OFFICIAL MUSICLY PLAYLIST</div>
-                <h4 className="drawer-playlist-header-title">{activeMusiclyPlaylist.title}</h4>
-                <span className="drawer-playlist-header-meta">
-                  {(activeMusiclyPlaylist.tracks || []).length} songs • Curated by Musicly
-                </span>
-              </div>
-              <div className="drawer-playlist-header-actions">
-                {activeMusiclyPlaylist.tracks?.length > 0 && (
-                  <button
-                    type="button"
-                    className="drawer-pl-action-btn play"
-                    onClick={() => {
-                      if (activeMusiclyPlaylist.tracks[0]) {
-                        onSelectTrack(activeMusiclyPlaylist.tracks[0]);
-                      }
-                    }}
-                    title={`Play all songs in "${activeMusiclyPlaylist.title}"`}
-                  >
-                    <Play size={12} fill="currentColor" /> Play All
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* When in User's Own Playlist Mode */}
-      {mainSource === 'user' && viewMode === 'playlists' && (
-        <div className="drawer-playlists-container">
-          <div className="drawer-playlists-chips-row">
-            {userPlaylists.map(pl => {
-              const isPlSelected = pl.id === activeUserPlaylist?.id;
-              const plCount = Array.isArray(pl.trackIds) ? pl.trackIds.length : 0;
-              return (
-                <button
-                  key={pl.id}
-                  type="button"
-                  className={`drawer-playlist-chip ${isPlSelected ? 'active' : ''}`}
-                  onClick={() => setSelectedUserPlaylistId(pl.id)}
-                  title={`Private playlist: "${pl.title}" (${plCount} songs)`}
-                >
-                  <ListMusic size={12} />
-                  <span>{pl.title}</span>
-                  <span className="playlist-chip-count">({plCount})</span>
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              className="drawer-playlist-chip new-pl-chip"
-              onClick={() => setIsCreatingPlaylist(true)}
-              title="Create a new private playlist"
-            >
-              <Plus size={12} />
-              <span>New Playlist</span>
-            </button>
-          </div>
-
-          {isCreatingPlaylist && (
-            <form onSubmit={handleCreateNewPlaylist} className="drawer-new-playlist-box">
-              <input
-                type="text"
-                placeholder="New private playlist name..."
-                value={newPlaylistTitle}
-                onChange={(e) => setNewPlaylistTitle(e.target.value)}
-                autoFocus
-                className="drawer-new-playlist-input"
-              />
-              <button type="submit" className="drawer-new-playlist-btn submit">Create</button>
-              <button 
-                type="button" 
-                className="drawer-new-playlist-btn cancel" 
-                onClick={() => { setIsCreatingPlaylist(false); setNewPlaylistTitle(''); }}
-              >
-                Cancel
-              </button>
-            </form>
-          )}
-
-          {activeUserPlaylist && (
-            <div className="drawer-playlist-header-card">
-              <div className="drawer-playlist-header-left">
-                <div className="drawer-playlist-badge">MINE PLAYLIST</div>
-                <h4 className="drawer-playlist-header-title">{activeUserPlaylist.title}</h4>
-                <span className="drawer-playlist-header-meta">
-                  {(activeUserPlaylist.trackIds || []).length} songs • Accessible and seen only by you
-                </span>
-              </div>
-              <div className="drawer-playlist-header-actions">
-                {sortedFilteredTracks.length > 0 && (
-                  <button
-                    type="button"
-                    className="drawer-pl-action-btn play"
-                    onClick={() => {
-                      if (sortedFilteredTracks[0]) {
-                        onSelectTrack(sortedFilteredTracks[0]);
-                      }
-                    }}
-                    title={`Play "${activeUserPlaylist.title}"`}
-                  >
-                    <Play size={12} fill="currentColor" /> Play All
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="drawer-pl-action-btn delete"
-                  onClick={() => handleDeletePlaylist(activeUserPlaylist.id)}
-                  title="Delete this private playlist"
-                  aria-label="Delete playlist"
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Quick Language Filter Chips (Only in Musicly Single Songs mode) */}
       {mainSource === 'musicly' && viewMode === 'single' && (
         <div 
@@ -701,25 +607,201 @@ export default function PlaylistDrawer({
         </div>
       )}
 
-      {/* Scrollable Track List with Apple VisionOS Glass Scrollbar */}
+      {/* Main Content: Either Playlists Catalog or Track List */}
       <div className="drawer-track-list-container">
-        <div className="drawer-track-list" ref={trackListRef}>
-        {sortedFilteredTracks.length === 0 ? (
-          <div className="drawer-empty-state">
-            <Sparkles size={30} className="empty-icon" />
-            <p>
-              {mainSource === 'favorites'
-                ? 'No liked songs yet. Click the heart icon on any song to add it to your favorites!'
-                : mainSource === 'user' && viewMode === 'playlists'
-                ? (userPlaylists.length === 0
-                    ? 'No private playlists created yet. Click "+ New Playlist" to create your first personal mix!'
-                    : `No songs in "${activeUserPlaylist?.title || 'this playlist'}" yet. Add songs using the + button!`)
-                : mainSource === 'user' && viewMode === 'single'
-                ? 'No uploaded songs found. Click "+ Add" to upload your personal music!'
-                : 'No songs found'}
-            </p>
+        {viewMode === 'playlists' && !activeDrilldownPlaylist ? (
+          /* SHOW ONLY THE PLAYLIST'S NAMES HERE */
+          <div className="drawer-track-list" ref={trackListRef}>
+            <div className="drawer-playlists-cards-list">
+              {mainSource === 'user' && (
+                <div className="drawer-new-playlist-row">
+                  {!isCreatingPlaylist ? (
+                    <button
+                      type="button"
+                      className="drawer-create-playlist-card"
+                      onClick={() => {
+                        setIsCreatingPlaylist(true);
+                        playClickSound('light');
+                      }}
+                    >
+                      <div className="drawer-create-pl-icon">
+                        <Plus size={16} />
+                      </div>
+                      <div className="drawer-create-pl-text">
+                        <span className="drawer-create-pl-title">+ Create New Playlist</span>
+                        <span className="drawer-create-pl-desc">Build your personal private tracklist</span>
+                      </div>
+                    </button>
+                  ) : (
+                    <form onSubmit={handleCreateNewPlaylist} className="drawer-new-playlist-box full-width">
+                      <input
+                        type="text"
+                        placeholder="New private playlist name..."
+                        value={newPlaylistTitle}
+                        onChange={(e) => setNewPlaylistTitle(e.target.value)}
+                        autoFocus
+                        className="drawer-new-playlist-input"
+                      />
+                      <button type="submit" className="drawer-new-playlist-btn submit">Create</button>
+                      <button 
+                        type="button" 
+                        className="drawer-new-playlist-btn cancel" 
+                        onClick={() => { setIsCreatingPlaylist(false); setNewPlaylistTitle(''); }}
+                      >
+                        Cancel
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+
+              <div className="drawer-playlists-hint">
+                <span>💡 Click playlist to play • Double-click to view songs</span>
+              </div>
+
+              {displayedPlaylists.length === 0 ? (
+                <div className="drawer-empty-state">
+                  <ListMusic size={30} className="empty-icon" />
+                  <p>
+                    {mainSource === 'user'
+                      ? 'No private playlists found. Click "+ Create New Playlist" above!'
+                      : 'No playlists match your search.'}
+                  </p>
+                </div>
+              ) : (
+                displayedPlaylists.map(pl => {
+                  const isThisPlaying = activePlayingPlaylistId === pl.id && isPlaying;
+                  const count = pl.tracks ? pl.tracks.length : (pl.trackIds ? pl.trackIds.length : 0);
+                  return (
+                    <div
+                      key={pl.id}
+                      className={`drawer-playlist-item-card ${isThisPlaying ? 'is-playing' : ''}`}
+                      onClick={() => handlePlaylistRowClick(pl)}
+                      onDoubleClick={() => handlePlaylistRowDoubleClick(pl)}
+                      title={`Click to play "${pl.title}" • Double-click to view songs`}
+                    >
+                      <div className="drawer-pl-thumb-wrap">
+                        <img 
+                          src={pl.image || (pl.tracks && pl.tracks[0]?.cover) || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80'} 
+                          alt={pl.title}
+                          className="drawer-pl-thumb"
+                        />
+                        <div className="drawer-pl-overlay-play">
+                          {isThisPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                        </div>
+                      </div>
+
+                      <div className="drawer-pl-text-details">
+                        <div className="drawer-pl-name-row">
+                          <h4 className="drawer-pl-name">{pl.title}</h4>
+                          {isThisPlaying && (
+                            <span className="drawer-pl-playing-tag">PLAYING</span>
+                          )}
+                        </div>
+                        <span className="drawer-pl-count">
+                          {count} {count === 1 ? 'song' : 'songs'} {pl.isCustom ? '• Mine' : '• Curated by Musicly'}
+                        </span>
+                      </div>
+
+                      <div className="drawer-pl-card-actions" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="drawer-pl-card-play-btn"
+                          onClick={() => handlePlayEntirePlaylist(pl)}
+                          title={`Play all songs in "${pl.title}"`}
+                        >
+                          {isThisPlaying ? <Pause size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}
+                        </button>
+                        <button
+                          type="button"
+                          className="drawer-pl-open-btn"
+                          onClick={() => {
+                            setDrilldownPlaylistId(pl.id);
+                            playClickSound('light');
+                          }}
+                          title={`View songs in "${pl.title}" (or double-click)`}
+                        >
+                          <span>Songs</span>
+                          <ChevronRight size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         ) : (
+          /* SHOW SONGS: Either drilled down into a playlist OR in single songs mode OR liked songs */
+          <div className="drawer-track-list" ref={trackListRef}>
+            {viewMode === 'playlists' && activeDrilldownPlaylist && (
+              <div className="drawer-drilldown-header">
+                <button
+                  type="button"
+                  className="drawer-back-to-playlists-btn"
+                  onClick={() => {
+                    setDrilldownPlaylistId(null);
+                    playClickSound('light');
+                  }}
+                  title="Back to all playlists"
+                >
+                  <ChevronLeft size={15} />
+                  <span>All Playlists</span>
+                </button>
+                <div className="drawer-drilldown-header-content">
+                  <div className="drawer-drilldown-info">
+                    <div className="drawer-playlist-badge">
+                      {activeDrilldownPlaylist.isCustom ? "MINE PLAYLIST" : "OFFICIAL MUSICLY PLAYLIST"}
+                    </div>
+                    <h3 className="drawer-drilldown-title">{activeDrilldownPlaylist.title}</h3>
+                    <span className="drawer-drilldown-meta">
+                      {activeDrilldownPlaylist.tracks?.length || 0} songs • {activeDrilldownPlaylist.isCustom ? "Accessible and seen only by you" : "Curated by Musicly"}
+                    </span>
+                  </div>
+                  <div className="drawer-drilldown-actions">
+                    {activeDrilldownPlaylist.tracks?.length > 0 && (
+                      <button
+                        type="button"
+                        className="drawer-pl-action-btn play"
+                        onClick={() => handlePlayEntirePlaylist(activeDrilldownPlaylist)}
+                        title={`Play all songs in "${activeDrilldownPlaylist.title}"`}
+                      >
+                        <Play size={12} fill="currentColor" /> Play All
+                      </button>
+                    )}
+                    {activeDrilldownPlaylist.isCustom && (
+                      <button
+                        type="button"
+                        className="drawer-pl-action-btn delete"
+                        onClick={() => {
+                          handleDeletePlaylist(activeDrilldownPlaylist.id);
+                          setDrilldownPlaylistId(null);
+                        }}
+                        title="Delete this private playlist"
+                        aria-label="Delete playlist"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {sortedFilteredTracks.length === 0 ? (
+              <div className="drawer-empty-state">
+                <Sparkles size={30} className="empty-icon" />
+                <p>
+                  {mainSource === 'favorites'
+                    ? 'No liked songs yet. Click the heart icon on any song to add it to your favorites!'
+                    : viewMode === 'playlists' && activeDrilldownPlaylist
+                    ? `No songs in "${activeDrilldownPlaylist.title}" yet. Add songs using the + button!`
+                    : mainSource === 'user' && viewMode === 'single'
+                    ? 'No uploaded songs found. Click "+ Add" to upload your personal music!'
+                    : 'No songs found'}
+                </p>
+              </div>
+            ) : (
           sortedFilteredTracks.map((track, idx) => {
             const isSelected = currentTrack?.id === track.id;
             const isFav = favorites.includes(track.id);
@@ -860,16 +942,16 @@ export default function PlaylistDrawer({
                       )}
                     </div>
 
-                    {/* Remove from this playlist button when in user's own playlist mode */}
-                    {mainSource === 'user' && viewMode === 'playlists' && activeUserPlaylist && (
+                    {/* Remove from this playlist button when in custom playlist mode */}
+                    {viewMode === 'playlists' && activeDrilldownPlaylist && activeDrilldownPlaylist.isCustom && (
                       <button 
                         type="button"
                         className="row-remove-pl-btn"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleToggleSongInPlaylist(activeUserPlaylist.id, track.id);
+                          handleToggleSongInPlaylist(activeDrilldownPlaylist.id, track.id);
                         }}
-                        title={`Remove from "${activeUserPlaylist.title}"`}
+                        title={`Remove from "${activeDrilldownPlaylist.title}"`}
                         aria-label="Remove from playlist"
                       >
                         <Trash2 size={13} color="#f87171" />
@@ -1000,7 +1082,8 @@ export default function PlaylistDrawer({
             );
           })
         )}
-        </div>
+          </div>
+        )}
 
         {/* Apple VisionOS Capsule Glass Scrollbar */}
         <AppleGlassScrollbar targetRef={trackListRef} />
