@@ -304,7 +304,7 @@ export default function MinimalStudioScene({
   // Background gallery state initialized from localStorage/defaults with automatic migration
   const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
     try {
-      const MIGRATION_KEY = 'musicly_studio_bg_v4_zenitsu_clean';
+      const MIGRATION_KEY = 'musicly_studio_bg_v5_4k_centered';
       if (!localStorage.getItem(MIGRATION_KEY)) {
         localStorage.setItem(MIGRATION_KEY, 'true');
         localStorage.removeItem('musicly_studio_bg_gallery');
