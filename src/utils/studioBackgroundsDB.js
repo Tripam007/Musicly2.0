@@ -7,6 +7,13 @@ const KEY = 'current_gallery';
 
 export const DEFAULT_STUDIO_PHOTOS = [
   {
+    id: 'default-zenitsu',
+    url: '/assets/images/zenitsu_clean_wallpaper.jpg',
+    title: 'Agatsuma Zenitsu (Clean Anime Visual)',
+    is4K: true,
+    isDefault: true
+  },
+  {
     id: 'default-1',
     url: '/assets/images/greesel_clean_portrait.jpg',
     title: 'Studio Portrait',
@@ -137,6 +144,28 @@ export async function saveStudioBackgrounds(imagesList) {
     });
     localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(safeForLocalStorage));
   } catch (e) {}
+}
+
+/**
+ * Hard reset studio background gallery to pristine official default visuals
+ */
+export async function resetStudioBackgroundsToDefaults() {
+  try {
+    localStorage.removeItem('musicly_studio_bg_gallery');
+    localStorage.setItem('musicly_studio_bg_index', '0');
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.put(DEFAULT_STUDIO_PHOTOS, KEY);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = (e) => reject(e);
+      req.onerror = (e) => reject(e);
+    });
+  } catch (e) {
+    console.warn('Error resetting studio backgrounds:', e);
+  }
+  return DEFAULT_STUDIO_PHOTOS;
 }
 
 /**

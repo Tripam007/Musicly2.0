@@ -25,7 +25,8 @@ import {
   VolumeX,
   ThumbsUp,
   Speaker,
-  Headphones
+  Headphones,
+  RotateCcw
 } from 'lucide-react';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
@@ -33,7 +34,13 @@ import StudioNotificationsDropdown from './StudioNotificationsDropdown';
 import { STUDIO_THEMES, getSavedStudioTheme, saveStudioTheme, getIsAutoThemeEnabled, setIsAutoThemeEnabled } from '../data/studioThemes';
 import { LANGUAGES, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, isTrackInLanguages } from '../data/tracks';
 import { extractThemeFromImage, generateThemeFromHex } from '../utils/themeExtractor';
-import { getStudioBackgrounds, saveStudioBackgrounds, DEFAULT_STUDIO_PHOTOS, process4KImageFile } from '../utils/studioBackgroundsDB';
+import { 
+  getStudioBackgrounds, 
+  saveStudioBackgrounds, 
+  resetStudioBackgroundsToDefaults,
+  DEFAULT_STUDIO_PHOTOS, 
+  process4KImageFile 
+} from '../utils/studioBackgroundsDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
 import { checkIsAdmin } from '../utils/userModel';
 
@@ -541,10 +548,12 @@ export default function MinimalStudioScene({
   }, [updateMediaPhotoIndex]);
 
   const handleResetStudioBgDefaults = useCallback(() => {
-    setStudioBackgrounds(DEFAULT_STUDIO_PHOTOS);
-    saveStudioBackgrounds(DEFAULT_STUDIO_PHOTOS);
-    updateMediaPhotoIndex(0);
-  }, [updateMediaPhotoIndex]);
+    resetStudioBackgroundsToDefaults().then((defaults) => {
+      setStudioBackgrounds(defaults);
+      updateMediaPhotoIndex(0);
+      showToast("Restored clean studio visuals (cleared duplicate overlays)");
+    });
+  }, [updateMediaPhotoIndex, showToast]);
 
   const showToast = useCallback((msg) => {
     setToastMsg(msg);
@@ -1084,6 +1093,14 @@ export default function MinimalStudioScene({
                   <ThumbsUp size={14} fill={isThumbsUp ? "#38bdf8" : "rgba(56, 189, 248, 0.45)"} color="#38bdf8" />
                 </button>
 
+                <button 
+                  className="ref-top-stat-btn"
+                  onClick={handleResetStudioBgDefaults}
+                  title="Restore clean studio visuals (clears duplicate mockup overlays)"
+                >
+                  <RotateCcw size={13} color="#fbbf24" />
+                </button>
+
                 <div className="ref-bell-wrapper" style={{ position: 'relative' }}>
                   <button 
                     className={`ref-stat-bell ${isBellRinging ? 'ringing' : ''} ${unreadNotifCount > 0 ? 'has-unread' : ''}`}
@@ -1245,29 +1262,29 @@ export default function MinimalStudioScene({
 
               <div className="ref-bubble-pills">
                 <div className="ref-pill-row-top">
-                  <span className="ref-pill-label">Real Name</span>
+                  <span className="ref-pill-label">Artist</span>
                 </div>
                 <button 
                   className="ref-pill-row-bottom ref-pill-clickable"
                   style={{ borderColor: 'var(--ref-s4)' }}
                   onClick={() => {
-                    navigator.clipboard?.writeText("Greesella Sophina Adhalia");
-                    showToast("Copied: Greesella Sophina Adhalia");
+                    navigator.clipboard?.writeText(activeTrack?.artist || "Musicly Artist");
+                    showToast(`Copied: ${activeTrack?.artist || "Musicly Artist"}`);
                   }}
-                  title="Click to copy name"
+                  title="Click to copy artist name"
                 >
-                  <span className="ref-pill-value" style={{ borderColor: 'var(--ref-s4)' }}>Greesella Sophina Adhalia</span>
+                  <span className="ref-pill-value" style={{ borderColor: 'var(--ref-s4)' }}>
+                    {activeTrack?.artist || 'Musicly Artist'}
+                  </span>
                 </button>
               </div>
 
               <div className="ref-bubble-meta-date">
-                <span className="ref-date-header">Birthday</span>
+                <span className="ref-date-header">Now Playing</span>
                 <div className="ref-date-row">
-                  <span className="ref-date-num">10</span>
-                  <div className="ref-date-col">
-                    <span className="ref-date-month">January</span>
-                    <span className="ref-date-year">2006</span>
-                  </div>
+                  <span className="ref-date-num" style={{ fontSize: '0.82rem', fontWeight: 700, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {activeTrack?.title || 'Track'}
+                  </span>
                 </div>
               </div>
             </div>

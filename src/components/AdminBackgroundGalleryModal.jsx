@@ -346,19 +346,18 @@ export default function AdminBackgroundGalleryModal({
               </span>
             </button>
 
-            {/* Subtle Restore Presets Icon */}
+            {/* Restore Presets Button */}
             <button
               type="button"
               className="admin-bg-subtle-icon-btn"
               onClick={() => {
-                if (window.confirm("Restore original studio preset visuals?")) {
-                  onResetDefaults();
-                  showToast?.("Restored original studio visuals.");
-                }
+                onResetDefaults();
+                showToast?.("Restored clean studio visuals.");
               }}
-              title="Restore original studio presets"
+              title="Restore clean studio wallpapers (clears duplicate mockup overlays)"
             >
-              <RotateCcw size={12} />
+              <RotateCcw size={13} />
+              <span style={{ fontSize: '11px', marginLeft: '4px' }}>Reset Presets</span>
             </button>
           </div>
 
