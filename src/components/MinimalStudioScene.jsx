@@ -25,8 +25,7 @@ import {
   VolumeX,
   ThumbsUp,
   Speaker,
-  Headphones,
-  RotateCcw
+  Headphones
 } from 'lucide-react';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
@@ -1060,14 +1059,6 @@ export default function MinimalStudioScene({
                 >
                   <span className="ref-stat-num">{thumbsCount}</span>
                   <ThumbsUp size={14} fill={isThumbsUp ? "#38bdf8" : "rgba(56, 189, 248, 0.45)"} color="#38bdf8" />
-                </button>
-
-                <button 
-                  className="ref-top-stat-btn"
-                  onClick={handleResetStudioBgDefaults}
-                  title="Restore clean studio visuals (clears duplicate mockup overlays)"
-                >
-                  <RotateCcw size={13} color="#fbbf24" />
                 </button>
 
                 <div className="ref-bell-wrapper" style={{ position: 'relative' }}>
