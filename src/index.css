@@ -8559,6 +8559,14 @@ body, html, #root {
   color: #ffd166;
   background: rgba(255, 209, 102, 0.1);
 }
+.row-add-pl-btn.is-added {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+}
+.row-add-pl-btn.is-added:hover {
+  color: #86efac;
+  background: rgba(74, 222, 128, 0.2);
+}
 
 .drawer-row-pl-menu {
   position: absolute;
@@ -8648,6 +8656,201 @@ body, html, #root {
 }
 .row-remove-pl-btn:hover {
   background: rgba(239, 68, 68, 0.15);
+}
+
+/* Custom Playlist Add Songs Picker in Drawer */
+.drawer-pl-action-btn.add-songs {
+  background: rgba(255, 209, 102, 0.12);
+  border-color: rgba(255, 209, 102, 0.3);
+  color: #ffd166;
+}
+.drawer-pl-action-btn.add-songs:hover {
+  background: rgba(255, 209, 102, 0.22);
+  border-color: rgba(255, 209, 102, 0.5);
+  color: #ffe082;
+}
+
+.drawer-add-songs-box {
+  margin: 10px 14px 14px;
+  background: rgba(20, 20, 26, 0.85);
+  border: 1px solid rgba(255, 209, 102, 0.28);
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: fadeIn 0.2s ease-out;
+}
+
+.drawer-add-songs-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.drawer-add-songs-box-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.drawer-add-songs-box-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #ffd166;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.drawer-add-songs-box-sub {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.drawer-add-songs-box-done-btn {
+  background: rgba(255, 209, 102, 0.15);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  color: #ffd166;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.drawer-add-songs-box-done-btn:hover {
+  background: rgba(255, 209, 102, 0.28);
+  color: #fff;
+}
+
+.drawer-add-songs-box-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0 8px;
+}
+
+.drawer-add-songs-box-search input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-size: 0.78rem;
+  padding: 6px 6px 6px 8px;
+}
+
+.drawer-add-songs-box-search .search-icon {
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+}
+
+.drawer-add-songs-box-search .clear-search-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+}
+
+.drawer-add-songs-box-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.drawer-add-songs-empty {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.drawer-add-song-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.drawer-add-song-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.drawer-add-song-row.is-added {
+  border-color: rgba(74, 222, 128, 0.25);
+  background: rgba(74, 222, 128, 0.05);
+}
+
+.drawer-add-song-chip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.drawer-add-song-chip-btn:hover {
+  background: rgba(255, 209, 102, 0.18);
+  border-color: rgba(255, 209, 102, 0.4);
+  color: #ffd166;
+}
+
+.drawer-add-song-chip-btn.is-in {
+  background: rgba(74, 222, 128, 0.14);
+  border-color: rgba(74, 222, 128, 0.35);
+  color: #86efac;
+}
+
+.drawer-empty-add-songs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(255, 209, 102, 0.14);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  color: #ffd166;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.drawer-empty-add-songs-btn:hover {
+  background: rgba(255, 209, 102, 0.24);
+  border-color: rgba(255, 209, 102, 0.6);
+  color: #fff;
 }
 
 /* Admin Dashboard Modal Panel */

@@ -20,7 +20,14 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { playPeacefulLikeSound, playClickSound } from '../utils/audioSynth';
-import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
+import { 
+  getLocalUserPlaylists, 
+  loadUserPlaylists, 
+  saveUserPlaylists,
+  getLocalUserPersonalSongIds,
+  loadUserPersonalSongIds,
+  saveUserPersonalSongIds
+} from '../utils/userPlaylistsDB';
 import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections, isTrackInLanguages } from '../data/tracks';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
 
@@ -71,6 +78,9 @@ export default function PlaylistDrawer({
   const [mainSource, setMainSource] = useState('musicly'); // 'musicly' | 'user' | 'favorites'
   const [viewMode, setViewMode] = useState('single'); // 'playlists' | 'single'
   const [drilldownPlaylistId, setDrilldownPlaylistId] = useState(null);
+  const [userPersonalSongIds, setUserPersonalSongIds] = useState(() => getLocalUserPersonalSongIds(user));
+  const [isAddSongsToPlaylistOpen, setIsAddSongsToPlaylistOpen] = useState(false);
+  const [addSongSearchQuery, setAddSongSearchQuery] = useState('');
   const [editingTrackId, setEditingTrackId] = useState(null);
   const [downloadingTrackId, setDownloadingTrackId] = useState(null);
   const [userPlaylists, setUserPlaylists] = useState(() => getLocalUserPlaylists(user));
@@ -81,22 +91,29 @@ export default function PlaylistDrawer({
   const popoverRef = useRef(null);
   const trackListRef = useRef(null);
 
-  // Sync user's private playlists (local cache + cloud sync)
+  // Sync user's private playlists and personal songs (local cache + cloud sync)
   useEffect(() => {
     setUserPlaylists(getLocalUserPlaylists(user));
+    setUserPersonalSongIds(getLocalUserPersonalSongIds(user));
     if (isOpen) {
       loadUserPlaylists(user).then(loaded => {
         if (Array.isArray(loaded)) {
           setUserPlaylists(loaded);
         }
       });
+      loadUserPersonalSongIds(user).then(loadedIds => {
+        if (Array.isArray(loadedIds)) {
+          setUserPersonalSongIds(loadedIds);
+        }
+      });
     }
   }, [isOpen, user]);
 
-  // Close row playlist menus when main source or view mode changes
+  // Close row playlist menus, add songs overlay, and drilldown when source or view mode changes
   useEffect(() => {
     setPlaylistMenuTrackId(null);
     setDrilldownPlaylistId(null);
+    setIsAddSongsToPlaylistOpen(false);
     if (clickTimerRef.current) {
       clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
@@ -275,7 +292,7 @@ export default function PlaylistDrawer({
     if (mainSource === 'musicly') {
       baseList = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
     } else if (mainSource === 'user') {
-      baseList = visibleTracks.filter(t => t.isCustom);
+      baseList = visibleTracks.filter(t => t.isCustom || userPersonalSongIds.includes(t.id));
     } else if (mainSource === 'favorites') {
       baseList = visibleTracks.filter(t => favorites.includes(t.id));
     }
@@ -296,7 +313,38 @@ export default function PlaylistDrawer({
 
       return true;
     });
-  }, [viewMode, activeDrilldownPlaylist, mainSource, visibleTracks, favorites, searchQuery, activeLangs]);
+  }, [viewMode, activeDrilldownPlaylist, mainSource, visibleTracks, userPersonalSongIds, favorites, searchQuery, activeLangs]);
+
+  // Toggle personal song in user's collection (from clicking + in Musicly)
+  const handleTogglePersonalSong = (track) => {
+    if (!track) return;
+    const isAlreadyAdded = userPersonalSongIds.includes(track.id);
+    let updated;
+    if (isAlreadyAdded) {
+      updated = userPersonalSongIds.filter(id => id !== track.id);
+    } else {
+      updated = [track.id, ...userPersonalSongIds];
+    }
+    setUserPersonalSongIds(updated);
+    saveUserPersonalSongIds(updated, user);
+    playPeacefulLikeSound();
+  };
+
+  // Candidate personal choice songs available to add into a custom playlist
+  const candidateAddSongs = useMemo(() => {
+    const q = addSongSearchQuery.toLowerCase().trim();
+    const userPool = visibleTracks.filter(t => t.isCustom || userPersonalSongIds.includes(t.id));
+    const pool = q ? visibleTracks : (userPool.length > 0 ? userPool : visibleTracks);
+
+    return pool.filter(t => {
+      if (!q) return true;
+      return (
+        t.title.toLowerCase().includes(q) ||
+        t.artist.toLowerCase().includes(q) ||
+        t.genre.toLowerCase().includes(q)
+      );
+    });
+  }, [visibleTracks, userPersonalSongIds, addSongSearchQuery]);
 
   // Toggle play / pause for entire playlist
   const handlePlaylistTogglePlay = (playlist) => {
@@ -770,20 +818,97 @@ export default function PlaylistDrawer({
                       </button>
                     )}
                     {activeDrilldownPlaylist.isCustom && (
-                      <button
-                        type="button"
-                        className="drawer-pl-action-btn delete"
-                        onClick={() => {
-                          handleDeletePlaylist(activeDrilldownPlaylist.id);
-                          setDrilldownPlaylistId(null);
-                        }}
-                        title="Delete this private playlist"
-                        aria-label="Delete playlist"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          className={`drawer-pl-action-btn add-songs ${isAddSongsToPlaylistOpen ? 'active' : ''}`}
+                          onClick={() => {
+                            setIsAddSongsToPlaylistOpen(prev => !prev);
+                            setAddSongSearchQuery('');
+                            playClickSound('light');
+                          }}
+                          title="Add personal choice songs to this playlist"
+                        >
+                          <Plus size={12} /> {isAddSongsToPlaylistOpen ? 'Close Picker' : 'Add Songs'}
+                        </button>
+                        <button
+                          type="button"
+                          className="drawer-pl-action-btn delete"
+                          onClick={() => {
+                            handleDeletePlaylist(activeDrilldownPlaylist.id);
+                            setDrilldownPlaylistId(null);
+                          }}
+                          title="Delete this private playlist"
+                          aria-label="Delete playlist"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* If Add Songs picker is open for this custom playlist */}
+            {viewMode === 'playlists' && activeDrilldownPlaylist?.isCustom && isAddSongsToPlaylistOpen && (
+              <div className="drawer-add-songs-box">
+                <div className="drawer-add-songs-box-header">
+                  <div className="drawer-add-songs-box-info">
+                    <span className="drawer-add-songs-box-title">Add Songs to "{activeDrilldownPlaylist.title}"</span>
+                    <span className="drawer-add-songs-box-sub">Choose from your personal choice songs</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="drawer-add-songs-box-done-btn"
+                    onClick={() => setIsAddSongsToPlaylistOpen(false)}
+                  >
+                    Done
+                  </button>
+                </div>
+                <div className="drawer-add-songs-box-search">
+                  <Search size={13} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Search personal choice songs..."
+                    value={addSongSearchQuery}
+                    onChange={(e) => setAddSongSearchQuery(e.target.value)}
+                    autoFocus
+                  />
+                  {addSongSearchQuery && (
+                    <button className="clear-search-btn" onClick={() => setAddSongSearchQuery('')}>
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="drawer-add-songs-box-list">
+                  {candidateAddSongs.length === 0 ? (
+                    <div className="drawer-add-songs-empty">
+                      <p>No songs found. Click the + icon on songs in Musicly to add them here first!</p>
+                    </div>
+                  ) : (
+                    candidateAddSongs.map(t => {
+                      const isAlreadyIn = Array.isArray(activeDrilldownPlaylist.trackIds) && activeDrilldownPlaylist.trackIds.includes(t.id);
+                      return (
+                        <div key={t.id} className={`drawer-add-song-row ${isAlreadyIn ? 'is-added' : ''}`}>
+                          <img src={t.cover} alt={t.title} className="track-mini-thumb" />
+                          <div className="track-text-details">
+                            <span className="track-row-title">{t.title}</span>
+                            <span className="track-row-artist">{t.artist}</span>
+                          </div>
+                          <button
+                            type="button"
+                            className={`drawer-add-song-chip-btn ${isAlreadyIn ? 'is-in' : ''}`}
+                            onClick={() => handleToggleSongInPlaylist(activeDrilldownPlaylist.id, t.id)}
+                            title={isAlreadyIn ? "Remove from this playlist" : "Add to this playlist"}
+                          >
+                            {isAlreadyIn ? <Check size={11} color="#4ade80" /> : <Plus size={11} />}
+                            <span>{isAlreadyIn ? 'Added' : 'Add'}</span>
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
@@ -795,11 +920,27 @@ export default function PlaylistDrawer({
                   {mainSource === 'favorites'
                     ? 'No liked songs yet. Click the heart icon on any song to add it to your favorites!'
                     : viewMode === 'playlists' && activeDrilldownPlaylist
-                    ? `No songs in "${activeDrilldownPlaylist.title}" yet. Add songs using the + button!`
+                    ? (activeDrilldownPlaylist.isCustom 
+                        ? `No songs in "${activeDrilldownPlaylist.title}" yet. Click "+ Add Songs" above to add your personal choice songs!`
+                        : `No songs found in "${activeDrilldownPlaylist.title}".`)
                     : mainSource === 'user' && viewMode === 'single'
-                    ? 'No uploaded songs found. Click "+ Add" to upload your personal music!'
+                    ? 'No personal choice songs added yet. In the Musicly tab, click the + icon on any song to add it here!'
                     : 'No songs found'}
                 </p>
+                {viewMode === 'playlists' && activeDrilldownPlaylist?.isCustom && !isAddSongsToPlaylistOpen && (
+                  <button
+                    type="button"
+                    className="drawer-empty-add-songs-btn"
+                    onClick={() => {
+                      setIsAddSongsToPlaylistOpen(true);
+                      setAddSongSearchQuery('');
+                      playClickSound('light');
+                    }}
+                  >
+                    <Plus size={13} />
+                    <span>Add Personal Choice Songs</span>
+                  </button>
+                )}
               </div>
             ) : (
           sortedFilteredTracks.map((track, idx) => {
@@ -876,71 +1017,28 @@ export default function PlaylistDrawer({
                   <div className="track-row-actions">
                     <span className="track-row-duration">{formatDuration(track.duration)}</span>
 
-                    {/* Add to User's Private Playlist Quick Popover */}
-                    <div className="row-playlist-add-wrapper" style={{ position: 'relative' }}>
+                    {/* In Musicly: show + icon to add this song to Mine Playlist (Single Songs).
+                        In Mine Playlist: do NOT show this + icon as it is already added! */}
+                    {mainSource === 'musicly' && (
                       <button 
                         type="button"
-                        className="row-add-pl-btn"
+                        className={`row-add-pl-btn ${userPersonalSongIds.includes(track.id) ? 'is-added' : ''}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPlaylistMenuTrackId(prev => prev === track.id ? null : track.id);
+                          handleTogglePersonalSong(track);
                         }}
-                        title="Add to your private playlist"
-                        aria-label="Add to private playlist"
+                        title={userPersonalSongIds.includes(track.id) 
+                          ? "Added to Mine Playlist Single Songs • Click to remove" 
+                          : "Add to Mine Playlist (Single Songs)"}
+                        aria-label="Add to Mine Playlist"
                       >
-                        <Plus size={14} />
+                        {userPersonalSongIds.includes(track.id) ? (
+                          <Check size={14} color="#4ade80" />
+                        ) : (
+                          <Plus size={14} />
+                        )}
                       </button>
-                      {playlistMenuTrackId === track.id && (
-                        <div className="drawer-row-pl-menu" onClick={(e) => e.stopPropagation()}>
-                          <div className="drawer-row-pl-menu-header">
-                            <span>Add to Private Playlist</span>
-                            <button 
-                              type="button" 
-                              className="drawer-row-pl-menu-close" 
-                              onClick={() => setPlaylistMenuTrackId(null)}
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
-                          {userPlaylists.length === 0 ? (
-                            <div className="drawer-row-pl-menu-empty">
-                              <p style={{ margin: '0 0 6px', fontSize: '0.75rem', opacity: 0.7 }}>No private playlists yet.</p>
-                              <button 
-                                type="button" 
-                                className="drawer-row-pl-create-btn"
-                                onClick={() => {
-                                  setPlaylistMenuTrackId(null);
-                                  setMainSource('user');
-                                  setViewMode('playlists');
-                                  setIsCreatingPlaylist(true);
-                                }}
-                              >
-                                + Create Playlist
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="drawer-row-pl-menu-list">
-                              {userPlaylists.map(pl => {
-                                const inThis = Array.isArray(pl.trackIds) && pl.trackIds.includes(track.id);
-                                return (
-                                  <button
-                                    key={pl.id}
-                                    type="button"
-                                    className={`drawer-row-pl-menu-item ${inThis ? 'is-in' : ''}`}
-                                    onClick={() => {
-                                      handleToggleSongInPlaylist(pl.id, track.id);
-                                    }}
-                                  >
-                                    <span className="drawer-row-pl-menu-title">{pl.title}</span>
-                                    {inThis ? <Check size={12} color="#4ade80" /> : <Plus size={12} />}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    )}
 
                     {/* Remove from this playlist button when in custom playlist mode */}
                     {viewMode === 'playlists' && activeDrilldownPlaylist && activeDrilldownPlaylist.isCustom && (
