@@ -439,6 +439,13 @@ export default function MinimalStudioScene({
   const [isAdminGalleryOpen, setIsAdminGalleryOpen] = useState(false);
   const waveformRef = useRef(null);
 
+  const showToast = useCallback((msg) => {
+    setToastMsg(msg);
+    setTimeout(() => {
+      setToastMsg((current) => current === msg ? null : current);
+    }, 2200);
+  }, []);
+
   // Live dynamic background theme extraction
   useEffect(() => {
     let isMounted = true;
@@ -554,13 +561,6 @@ export default function MinimalStudioScene({
       showToast("Restored clean studio visuals (cleared duplicate overlays)");
     });
   }, [updateMediaPhotoIndex, showToast]);
-
-  const showToast = useCallback((msg) => {
-    setToastMsg(msg);
-    setTimeout(() => {
-      setToastMsg((current) => current === msg ? null : current);
-    }, 2200);
-  }, []);
 
   // Slideshow Auto-Cycle Background with Music Tracks (disabled so background stays fixed)
   const [isAutoCycleBg, setIsAutoCycleBg] = useState(() => {
