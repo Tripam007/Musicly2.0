@@ -1272,60 +1272,112 @@ export default function MinimalStudioScene({
               </div>
             </div>
 
-            {/* Bottom-Left Speech Bubble Island */}
-            <div className="ref-speech-bubble-island">
-              {/* Interactive Lyrics Toggle Pill In Place of Arrow */}
-              <button 
-                type="button"
-                className={`ref-lyrics-toggle-btn ${isLyricsOpen ? 'is-active' : ''}`}
-                onClick={() => {
-                  setIsLyricsOpen(prev => !prev);
-                  playClickSound('light');
-                }}
-                title={isLyricsOpen ? "Close Lyrics" : "Show Lyrics for Current Song"}
-              >
-                <Mic2 size={12} className="ref-lyrics-icon" />
-                <span className="ref-lyrics-text">Lyrics</span>
-                {lyricsData?.isSynced && <span className="ref-lyrics-synced-indicator" />}
-              </button>
+            {/* Bottom-Left Speech Bubble Island with 3D Flip */}
+            <div className={`ref-speech-bubble-island-container ${isLyricsOpen ? 'is-flipped' : ''}`}>
+              <div className="ref-island-flip-card">
+                
+                {/* FRONT FACE: Artist & Track Info */}
+                <div className="ref-island-face ref-island-front">
+                  <button 
+                    type="button"
+                    className="ref-lyrics-toggle-btn"
+                    onClick={() => {
+                      setIsLyricsOpen(true);
+                      playClickSound('light');
+                    }}
+                    title="Flip card to view synchronized lyrics"
+                  >
+                    <Mic2 size={12} className="ref-lyrics-icon" />
+                    <span className="ref-lyrics-text">Lyrics</span>
+                    {lyricsData?.isSynced && <span className="ref-lyrics-synced-indicator" />}
+                  </button>
 
-              {/* Instant Synchronized Lyrics Popover */}
-              {isLyricsOpen && (
-                <div className="ref-studio-lyrics-popover" role="dialog" aria-label="Song Lyrics">
-                  <div className="ref-studio-lyrics-header">
-                    <div className="ref-studio-lyrics-header-left">
-                      <Mic2 size={13} style={{ color: currentTheme?.accent || '#f4a000' }} />
-                      <span className="ref-studio-lyrics-title">Lyrics</span>
-                      {lyricsData?.isSynced && (
-                        <span className="ref-studio-lyrics-synced-pill">SYNCED</span>
-                      )}
+                  <button 
+                    className="ref-island-info-btn"
+                    onClick={() => {
+                      if (onOpenPlaylistDrawer) onOpenPlaylistDrawer();
+                      showToast("Track & Artist Information");
+                    }}
+                    title="Track Information"
+                  >
+                    <span className="ref-info-letter" style={{ color: 'var(--ref-s0)' }}>i</span>
+                  </button>
+
+                  <div className="ref-bubble-pills">
+                    <div className="ref-pill-row-top">
+                      <span className="ref-pill-label">Artist</span>
                     </div>
                     <button 
+                      className="ref-pill-row-bottom ref-pill-clickable"
+                      style={{ borderColor: 'var(--ref-s4)' }}
+                      onClick={() => {
+                        navigator.clipboard?.writeText(activeTrack?.artist || "Musicly Artist");
+                        showToast(`Copied: ${activeTrack?.artist || "Musicly Artist"}`);
+                      }}
+                      title="Click to copy artist name"
+                    >
+                      <span className="ref-pill-value" style={{ borderColor: 'var(--ref-s4)' }}>
+                        {activeTrack?.artist || 'Musicly Artist'}
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="ref-bubble-meta-date">
+                    <span className="ref-date-header">Now Playing</span>
+                    <div className="ref-date-row">
+                      <span className="ref-date-num" style={{ fontSize: '0.82rem', fontWeight: 700, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {activeTrack?.title || 'Track'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BACK FACE: Synchronized Lyrics in this exact box */}
+                <div className="ref-island-face ref-island-back">
+                  <button 
+                    type="button"
+                    className="ref-lyrics-toggle-btn is-active"
+                    onClick={() => {
+                      setIsLyricsOpen(false);
+                      playClickSound('light');
+                    }}
+                    title="Flip back to song info"
+                  >
+                    <Mic2 size={12} className="ref-lyrics-icon" />
+                    <span className="ref-lyrics-text">Info</span>
+                  </button>
+
+                  <div className="ref-island-lyrics-header">
+                    <span className="ref-island-lyrics-title">Lyrics</span>
+                    {lyricsData?.isSynced && (
+                      <span className="ref-studio-lyrics-synced-pill">SYNCED</span>
+                    )}
+                    <button 
                       type="button"
-                      className="ref-studio-lyrics-close-btn"
+                      className="ref-island-flipback-circle-btn"
                       onClick={() => {
                         setIsLyricsOpen(false);
                         playClickSound('light');
                       }}
-                      title="Close Lyrics"
+                      title="Flip back to Song Info"
                     >
-                      <CloseIcon size={13} />
+                      <CloseIcon size={12} />
                     </button>
                   </div>
 
-                  <div className="ref-studio-lyrics-body">
+                  <div className="ref-island-lyrics-content">
                     {isLyricsLoading ? (
-                      <div className="ref-studio-lyrics-status">
+                      <div className="ref-island-lyrics-empty">
                         <span className="ref-studio-lyrics-spinner" />
-                        <span>Finding lyrics for "{activeTrack?.title || 'Song'}"...</span>
+                        <span>Finding lyrics...</span>
                       </div>
                     ) : lyricsData?.instrumental ? (
-                      <div className="ref-studio-lyrics-status">
-                        <Music size={18} style={{ opacity: 0.5 }} />
-                        <span>Instrumental track (no vocals)</span>
+                      <div className="ref-island-lyrics-empty">
+                        <Music size={16} style={{ opacity: 0.5 }} />
+                        <span>Instrumental (no lyrics)</span>
                       </div>
                     ) : lyricsData?.lines && lyricsData.lines.length > 0 ? (
-                      <div className="ref-studio-lyrics-lines-container">
+                      <div className="ref-island-lyrics-stream">
                         {lyricsData.lines.map((line, idx) => {
                           const isActive = lyricsData.isSynced && idx === activeLineIndex;
                           const isPassed = lyricsData.isSynced && activeLineIndex !== -1 && idx < activeLineIndex;
@@ -1333,7 +1385,7 @@ export default function MinimalStudioScene({
                             <div
                               key={idx}
                               ref={isActive ? activeLineRef : null}
-                              className={`ref-studio-lyric-line ${isActive ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
+                              className={`ref-island-lyric-line ${isActive ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
                               onClick={() => {
                                 if (lyricsData.isSynced && onSeek && line.time !== undefined) {
                                   onSeek(line.time);
@@ -1347,51 +1399,13 @@ export default function MinimalStudioScene({
                         })}
                       </div>
                     ) : (
-                      <div className="ref-studio-lyrics-status">
-                        <span style={{ opacity: 0.7 }}>Lyrics unavailable for this track</span>
+                      <div className="ref-island-lyrics-empty">
+                        <span>Lyrics unavailable</span>
                       </div>
                     )}
                   </div>
                 </div>
-              )}
 
-              <button 
-                className="ref-island-info-btn"
-                onClick={() => {
-                  if (onOpenPlaylistDrawer) onOpenPlaylistDrawer();
-                  showToast("Track & Artist Information");
-                }}
-                title="Track Information"
-              >
-                <span className="ref-info-letter" style={{ color: 'var(--ref-s0)' }}>i</span>
-              </button>
-
-              <div className="ref-bubble-pills">
-                <div className="ref-pill-row-top">
-                  <span className="ref-pill-label">Artist</span>
-                </div>
-                <button 
-                  className="ref-pill-row-bottom ref-pill-clickable"
-                  style={{ borderColor: 'var(--ref-s4)' }}
-                  onClick={() => {
-                    navigator.clipboard?.writeText(activeTrack?.artist || "Musicly Artist");
-                    showToast(`Copied: ${activeTrack?.artist || "Musicly Artist"}`);
-                  }}
-                  title="Click to copy artist name"
-                >
-                  <span className="ref-pill-value" style={{ borderColor: 'var(--ref-s4)' }}>
-                    {activeTrack?.artist || 'Musicly Artist'}
-                  </span>
-                </button>
-              </div>
-
-              <div className="ref-bubble-meta-date">
-                <span className="ref-date-header">Now Playing</span>
-                <div className="ref-date-row">
-                  <span className="ref-date-num" style={{ fontSize: '0.82rem', fontWeight: 700, maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {activeTrack?.title || 'Track'}
-                  </span>
-                </div>
               </div>
             </div>
 

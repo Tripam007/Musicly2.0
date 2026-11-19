@@ -18464,26 +18464,64 @@ body, html, #root {
   font-weight: 300;
 }
 
-/* Bottom-Left Speech Bubble Island */
-.ref-speech-bubble-island {
+/* Bottom-Left Speech Bubble Island 3D Flip Container */
+.ref-speech-bubble-island-container {
   position: absolute;
   bottom: 0;
   left: 0;
-  background: #252631;
+  width: 255px;
+  height: 155px;
+  perspective: 1000px;
+  z-index: 15;
+}
+
+.ref-island-flip-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ref-speech-bubble-island-container.is-flipped .ref-island-flip-card {
+  transform: rotateY(180deg);
+}
+
+.ref-island-face {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
   border-top-right-radius: 40px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-right: 1px solid rgba(255, 255, 255, 0.10);
-  padding: 22px 26px 20px 22px;
-  z-index: 12;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 230px;
-  max-width: 270px;
   box-shadow: 
     6px -6px 25px rgba(0, 0, 0, 0.35),
     inset 0 1px 1px rgba(255, 255, 255, 0.15);
   box-sizing: border-box;
+}
+
+/* Front Face: Artist & Track Info */
+.ref-island-front {
+  background: #252631;
+  padding: 22px 24px 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transform: rotateY(0deg);
+  z-index: 2;
+}
+
+/* Back Face: Synchronized Lyrics inside this exact box */
+.ref-island-back {
+  background: #1c1d27;
+  padding: 16px 18px 14px 18px;
+  display: flex;
+  flex-direction: column;
+  transform: rotateY(180deg);
+  z-index: 1;
 }
 
 /* Interactive Lyrics Toggle Button in place of arrow */
@@ -18547,61 +18585,25 @@ body, html, #root {
   display: inline-block;
 }
 
-/* Glassmorphic Minimal Studio Lyrics Popover */
-.ref-studio-lyrics-popover {
-  position: absolute;
-  bottom: calc(100% + 14px);
-  left: 0;
-  width: 320px;
-  max-width: 90vw;
-  max-height: 400px;
-  background: rgba(18, 20, 30, 0.88);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 24px;
-  box-shadow: 
-    0 20px 48px rgba(0, 0, 0, 0.65), 
-    inset 0 1px 1px rgba(255, 255, 255, 0.2);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 35;
-  animation: refLyricsPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-@keyframes refLyricsPopIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.ref-studio-lyrics-header {
+/* Lyrics Header on Back Face */
+.ref-island-lyrics-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
-  background: rgba(255, 255, 255, 0.03);
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.ref-studio-lyrics-header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ref-studio-lyrics-title {
+.ref-island-lyrics-title {
   font-family: 'Outfit', sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.74rem;
   font-weight: 800;
   color: #ffffff;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .ref-studio-lyrics-synced-pill {
@@ -18615,13 +18617,13 @@ body, html, #root {
   letter-spacing: 0.06em;
 }
 
-.ref-studio-lyrics-close-btn {
+.ref-island-flipback-circle-btn {
   background: rgba(255, 255, 255, 0.08);
   border: none;
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -18629,74 +18631,78 @@ body, html, #root {
   transition: all 0.2s ease;
 }
 
-.ref-studio-lyrics-close-btn:hover {
+.ref-island-flipback-circle-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   color: #ffffff;
   transform: scale(1.1);
 }
 
-.ref-studio-lyrics-body {
-  padding: 12px 14px 16px 14px;
+/* Scrollable Lyrics Inside the Flipped Box */
+.ref-island-lyrics-content {
+  flex: 1;
   overflow-y: auto;
-  max-height: 330px;
+  margin-top: 6px;
   display: flex;
   flex-direction: column;
+  scroll-behavior: smooth;
+  padding-right: 4px;
 }
 
-.ref-studio-lyrics-lines-container {
+.ref-island-lyrics-stream {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.ref-studio-lyric-line {
+.ref-island-lyric-line {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.86rem;
-  line-height: 1.45;
-  color: rgba(255, 255, 255, 0.42);
-  padding: 6px 10px;
-  border-radius: 10px;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.38);
+  padding: 4px 6px;
+  border-radius: 6px;
   cursor: pointer;
   border-left: 2px solid transparent;
-  transition: all 0.22s ease;
+  transition: all 0.2s ease;
   user-select: none;
 }
 
-.ref-studio-lyric-line:hover {
+.ref-island-lyric-line:hover {
   color: rgba(255, 255, 255, 0.85);
   background: rgba(255, 255, 255, 0.04);
 }
 
-.ref-studio-lyric-line.is-passed {
-  color: rgba(255, 255, 255, 0.28);
+.ref-island-lyric-line.is-passed {
+  color: rgba(255, 255, 255, 0.24);
 }
 
-.ref-studio-lyric-line.is-active {
-  font-size: 0.94rem;
+.ref-island-lyric-line.is-active {
+  font-size: 0.84rem;
   font-weight: 800;
   color: #ffffff;
   background: rgba(255, 255, 255, 0.08);
   border-left: 3px solid var(--ref-accent, #f4a000);
-  padding-left: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  text-shadow: 0 0 10px var(--ref-accent-glow, rgba(244, 160, 0, 0.35));
+  padding-left: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 0 8px var(--ref-accent-glow, rgba(244, 160, 0, 0.35));
 }
 
-.ref-studio-lyrics-status {
-  padding: 32px 16px;
+.ref-island-lyrics-empty {
+  padding: 20px 8px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.74rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 6px;
+  height: 100%;
 }
 
 .ref-studio-lyrics-spinner {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: 2px solid rgba(255, 255, 255, 0.15);
   border-top-color: var(--ref-accent, #f4a000);
   border-radius: 50%;
@@ -18707,17 +18713,17 @@ body, html, #root {
   to { transform: rotate(360deg); }
 }
 
-.ref-studio-lyrics-body::-webkit-scrollbar {
-  width: 4px;
+.ref-island-lyrics-content::-webkit-scrollbar {
+  width: 3px;
 }
 
-.ref-studio-lyrics-body::-webkit-scrollbar-track {
+.ref-island-lyrics-content::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.ref-studio-lyrics-body::-webkit-scrollbar-thumb {
+.ref-island-lyrics-content::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.18);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 /* Yellow Circular Info Button with Dark 'i' */
