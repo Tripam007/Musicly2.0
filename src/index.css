@@ -18690,7 +18690,7 @@ body, html, #root {
   color: rgba(255, 255, 255, 0.22);
 }
 
-/* Crystal-clear vivid active line highlight with pulse glow */
+/* Crystal-clear vivid active line highlight without circle dot */
 .ref-island-lyric-line.is-active {
   font-size: 0.88rem;
   font-weight: 800;
@@ -18705,32 +18705,6 @@ body, html, #root {
   text-shadow: 0 0 10px var(--ref-accent-glow, rgba(244, 160, 0, 0.6));
   transform: translateX(2px) scale(1.02);
   transform-origin: left center;
-}
-
-.ref-island-lyric-line.is-active::before {
-  content: '';
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ref-accent, #f4a000);
-  box-shadow: 0 0 8px var(--ref-accent, #f4a000);
-  margin-right: 7px;
-  vertical-align: middle;
-  animation: refActiveLineDotGlow 1.2s ease-in-out infinite alternate;
-}
-
-@keyframes refActiveLineDotGlow {
-  from {
-    transform: scale(0.85);
-    opacity: 0.75;
-    box-shadow: 0 0 4px var(--ref-accent, #f4a000);
-  }
-  to {
-    transform: scale(1.35);
-    opacity: 1;
-    box-shadow: 0 0 12px var(--ref-accent, #f4a000);
-  }
 }
 
 .ref-island-lyrics-empty {
