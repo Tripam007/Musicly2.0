@@ -110,32 +110,99 @@ export default function AdminDashboardModal({
   const [addedTrackIds, setAddedTrackIds] = useState(new Set());
   const [agentToast, setAgentToast] = useState('');
 
+  const streamAbortControllerRef = useRef(null);
+
   // Auto-fetch real-time YouTube recommendations when AI Agent is active or query changes
+  // Optimized for instant as-you-type letter search with AbortController
   React.useEffect(() => {
     if (!isLiveAgentActive) return;
 
+    const trimmed = searchQuery.trim();
+    if (!trimmed) {
+      setLiveRecommendations(LIVE_STREAM_PRESETS);
+      setIsLoadingLiveStreams(false);
+      return;
+    }
+
+    if (streamAbortControllerRef.current) {
+      streamAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    streamAbortControllerRef.current = controller;
+
     let isMounted = true;
     setIsLoadingLiveStreams(true);
+
     const timer = setTimeout(async () => {
       try {
-        const results = await fetchLiveStreamRecommendations(searchQuery);
-        if (isMounted) {
+        const results = await fetchLiveStreamRecommendations(trimmed, controller.signal);
+        if (isMounted && !controller.signal.aborted) {
           setLiveRecommendations(results);
         }
       } catch (err) {
-        console.warn("Live stream recommendations fetch error:", err);
+        if (err?.name !== 'AbortError') {
+          console.warn("Live stream recommendations fetch error:", err);
+        }
       } finally {
-        if (isMounted) {
+        if (isMounted && !controller.signal.aborted) {
           setIsLoadingLiveStreams(false);
         }
       }
-    }, 240);
+    }, 100);
 
     return () => {
       isMounted = false;
       clearTimeout(timer);
+      controller.abort();
     };
   }, [isLiveAgentActive, searchQuery]);
+
+  // Instant As-You-Type Stream Results (0ms responsiveness)
+  const displayedStreams = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return LIVE_STREAM_PRESETS;
+
+    // 1. Check if recommendations match current query
+    const matchingRecs = liveRecommendations.filter(item => {
+      if (!item) return false;
+      const t = (item.title || '').toLowerCase();
+      const a = (item.artist || '').toLowerCase();
+      const g = (item.genre || '').toLowerCase();
+      const raw = (item.rawTitle || '').toLowerCase();
+      return t.includes(q) || a.includes(q) || g.includes(q) || raw.includes(q);
+    });
+
+    if (matchingRecs.length > 0) {
+      return matchingRecs;
+    }
+
+    // 2. Instant local search from publicTracks catalog
+    const localMatches = publicTracks
+      .filter(t => {
+        const title = (t.title || '').toLowerCase();
+        const artist = (t.artist || '').toLowerCase();
+        const genre = (t.genre || '').toLowerCase();
+        return title.includes(q) || artist.includes(q) || genre.includes(q);
+      })
+      .map(t => ({
+        id: `pub-${t.id}`,
+        youtubeId: t.youtubeId || null,
+        title: t.title,
+        artist: t.artist,
+        duration: t.duration || 220,
+        durationText: `${Math.floor((t.duration || 220) / 60)}:${((t.duration || 220) % 60).toString().padStart(2, '0')}`,
+        cover: t.cover,
+        audioUrl: t.audioUrl,
+        isLive: false,
+        isYouTube: !!t.isYouTube,
+        genre: t.genre || 'Indie',
+        genres: t.genres || [t.genre || 'Indie'],
+        language: t.language || 'English',
+        isPublic: true
+      }));
+
+    return localMatches;
+  }, [searchQuery, liveRecommendations, publicTracks]);
 
   // Open edit modal for live stream track before adding to Musicly Public Library
   const handleStartAddStreamTrack = (streamTrack) => {
@@ -305,15 +372,38 @@ export default function AdminDashboardModal({
 
   if (!isOpen) return null;
 
-  // Filter public songs in directory
-  const filteredPublicTracks = publicTracks.filter(t => {
-    const q = searchQuery.toLowerCase();
-    return (
-      (t.title && t.title.toLowerCase().includes(q)) ||
-      (t.artist && t.artist.toLowerCase().includes(q)) ||
-      (t.genre && t.genre.toLowerCase().includes(q))
-    );
-  });
+  // Instant As-You-Type Filter for public songs directory
+  const filteredPublicTracks = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return publicTracks;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const scored = publicTracks.map(t => {
+      const title = (t.title || '').toLowerCase();
+      const artist = (t.artist || '').toLowerCase();
+      const genre = (t.genre || '').toLowerCase();
+      const genresStr = Array.isArray(t.genres) ? t.genres.join(' ').toLowerCase() : '';
+      const combined = `${title} ${artist} ${genre} ${genresStr}`;
+
+      let matchesAll = true;
+      for (const tok of tokens) {
+        if (!combined.includes(tok)) {
+          matchesAll = false;
+          break;
+        }
+      }
+      if (!matchesAll) return null;
+
+      let score = 0;
+      if (title.startsWith(q)) score += 2000;
+      if (artist.startsWith(q)) score += 1800;
+      if (title.includes(q)) score += 1000;
+      if (artist.includes(q)) score += 800;
+      return { track: t, score };
+    }).filter(Boolean);
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.map(s => s.track);
+  }, [publicTracks, searchQuery]);
 
   const pendingRequestsCount = songRequests.filter(r => r.status === 'pending').length;
 
@@ -1163,14 +1253,21 @@ export default function AdminDashboardModal({
 
                 {/* Live Stream Recommendations List */}
                 <div className="admin-tracks-scroll-area">
-                  {liveRecommendations.length === 0 ? (
-                    <div className="admin-empty-state">
-                      <Radio size={36} style={{ opacity: 0.4 }} />
-                      <p>No streams found for "{searchQuery}". Try searching for another artist or song.</p>
-                    </div>
+                  {displayedStreams.length === 0 ? (
+                    isLoadingLiveStreams ? (
+                      <div className="admin-empty-state">
+                        <RefreshCw size={36} className="spin-slow" style={{ opacity: 0.6, color: '#c084fc' }} />
+                        <p>Searching YouTube audio streams for "{searchQuery}"...</p>
+                      </div>
+                    ) : (
+                      <div className="admin-empty-state">
+                        <Radio size={36} style={{ opacity: 0.4 }} />
+                        <p>No streams found for "{searchQuery}". Try searching for another artist or song.</p>
+                      </div>
+                    )
                   ) : (
                     <div className="admin-streams-list">
-                      {liveRecommendations.map(item => {
+                      {displayedStreams.map(item => {
                         const isCurrent = currentTrackId === item.id;
                         const isTrackPlaying = isCurrent && isPlaying;
                         const isAdded = addedTrackIds.has(item.id) || publicTracks.some(pt => pt.youtubeId === item.youtubeId);

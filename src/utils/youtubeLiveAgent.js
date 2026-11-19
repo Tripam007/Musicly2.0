@@ -133,17 +133,33 @@ export function inferTrackMetadata(title = '', artist = '', extraContext = '') {
   return { genre, genres, language };
 }
 
+// In-memory instant keystroke query cache
+const liveStreamCache = new Map();
+
 /**
  * Real-time AI YouTube Live Stream & Audio Recommendations Fetcher
+ * Optimized for instant as-you-type letter search with multi-tier fallbacks
  */
-export async function fetchLiveStreamRecommendations(query = '') {
+export async function fetchLiveStreamRecommendations(query = '', signal = null) {
   const cleanQ = (query || '').trim();
+
+  // If query is empty, return top curated live stream presets
+  if (!cleanQ) {
+    return LIVE_STREAM_PRESETS;
+  }
+
+  const qKey = cleanQ.toLowerCase();
+
+  // 1. Instant Cache Hit: 0ms response when typing/backspacing letters
+  if (liveStreamCache.has(qKey)) {
+    return liveStreamCache.get(qKey);
+  }
 
   // If a direct YouTube link is provided, parse the ID directly
   const directYtId = extractYouTubeId(cleanQ);
   if (directYtId) {
     const { genre, genres, language } = inferTrackMetadata(cleanQ, 'YouTube Artist', cleanQ);
-    return [
+    const directResult = [
       {
         id: `yt-${directYtId}`,
         youtubeId: directYtId,
@@ -160,61 +176,104 @@ export async function fetchLiveStreamRecommendations(query = '') {
         language
       }
     ];
+    liveStreamCache.set(qKey, directResult);
+    return directResult;
   }
 
-  // If query is empty, return top curated live stream presets
-  if (!cleanQ) {
-    return LIVE_STREAM_PRESETS;
-  }
+  let finalResults = [];
 
+  // 2. Primary: Fast local API endpoint (YouTube InnerTube JSON API)
   try {
     const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(cleanQ)}`, {
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: signal || undefined
     });
 
-    if (!res.ok) {
-      throw new Error(`Server returned HTTP ${res.status}`);
-    }
-
-    const data = await res.json();
-    if (Array.isArray(data.results) && data.results.length > 0) {
-      return data.results.map(item => {
-        const extraContext = `${item.rawTitle || ''} ${item.channelName || ''} ${cleanQ}`.trim();
-        const { genre, genres, language } = inferTrackMetadata(item.title, item.artist, extraContext);
-        return {
-          ...item,
-          genre,
-          genres,
-          language
-        };
-      });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.results) && data.results.length > 0) {
+        finalResults = data.results.map(item => {
+          const extraContext = `${item.rawTitle || ''} ${item.channelName || ''} ${cleanQ}`.trim();
+          const { genre, genres, language } = inferTrackMetadata(item.title, item.artist, extraContext);
+          return {
+            ...item,
+            genre,
+            genres,
+            language
+          };
+        });
+      }
     }
   } catch (err) {
-    console.warn("AI Live Stream API notice, applying smart fallback recommendations:", err);
+    if (err?.name === 'AbortError') throw err;
+    console.warn("Local YouTube search notice, checking direct fallbacks:", err?.message || err);
   }
 
-  // Filter presets or build query-based recommendations as seamless fallback
-  const qLow = cleanQ.toLowerCase();
-  const scoredPresets = LIVE_STREAM_PRESETS.map(p => {
-    let score = 0;
-    const t = p.title.toLowerCase();
-    const a = p.artist.toLowerCase();
-    if (a.startsWith(qLow)) score += 2000;
-    if (t.startsWith(qLow)) score += 1800;
-    if (a.includes(qLow)) score += 800;
-    if (t.includes(qLow)) score += 600;
-    if (p.genre.toLowerCase().includes(qLow)) score += 500;
-    return {
-      ...p,
-      score,
-      isTopMatch: score >= 1200
-    };
-  });
+  // 3. Secondary Fallback: Direct iTunes Audio Search on client if server endpoint was unreachable
+  if (finalResults.length === 0) {
+    try {
+      const itunesRes = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(cleanQ)}&entity=song&limit=15`, {
+        signal: signal || undefined
+      });
+      if (itunesRes.ok) {
+        const itunesData = await itunesRes.json();
+        if (Array.isArray(itunesData?.results) && itunesData.results.length > 0) {
+          finalResults = itunesData.results.map(item => {
+            const { genre, genres, language } = inferTrackMetadata(item.trackName, item.artistName, cleanQ);
+            const durationSec = Math.round((item.trackTimeMillis || 180000) / 1000);
+            return {
+              id: `itunes-${item.trackId}`,
+              youtubeId: null,
+              title: item.trackName || 'Audio Track',
+              artist: item.artistName || 'Artist',
+              duration: durationSec,
+              durationText: `${Math.floor(durationSec / 60)}:${(durationSec % 60).toString().padStart(2, '0')}`,
+              cover: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+              audioUrl: item.previewUrl || '',
+              isLive: false,
+              isYouTube: false,
+              isAudioStream: true,
+              genre,
+              genres,
+              language,
+              score: 2500,
+              isTopMatch: true
+            };
+          });
+        }
+      }
+    } catch (itunesErr) {
+      if (itunesErr?.name === 'AbortError') throw itunesErr;
+    }
+  }
 
-  const matchingPresets = scoredPresets.filter(p => p.score > 0);
-  matchingPresets.sort((a, b) => b.score - a.score);
+  // 4. Tertiary Fallback: Check curated presets for partial word match
+  if (finalResults.length === 0) {
+    const scoredPresets = LIVE_STREAM_PRESETS.map(p => {
+      let score = 0;
+      const t = p.title.toLowerCase();
+      const a = p.artist.toLowerCase();
+      if (a.startsWith(qKey)) score += 2000;
+      if (t.startsWith(qKey)) score += 1800;
+      if (a.includes(qKey)) score += 800;
+      if (t.includes(qKey)) score += 600;
+      if (p.genre.toLowerCase().includes(qKey)) score += 500;
+      return {
+        ...p,
+        score,
+        isTopMatch: score >= 1200
+      };
+    });
 
-  return matchingPresets.length > 0 ? matchingPresets : LIVE_STREAM_PRESETS;
+    finalResults = scoredPresets.filter(p => p.score > 0);
+    finalResults.sort((a, b) => b.score - a.score);
+  }
+
+  // NEVER return unrelated presets when the user provided a search query!
+  if (finalResults.length > 0) {
+    liveStreamCache.set(qKey, finalResults);
+  }
+  return finalResults;
 }

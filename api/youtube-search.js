@@ -124,41 +124,141 @@ export default async function handler(req, res) {
   return handleSearch(targetSearch, rawQuery, res);
 }
 
-async function handleSearch(searchQuery, userRawQuery, res) {
+async function fetchFromInnerTube(searchQuery) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch('https://www.youtube.com/youtubei/v1/search', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+      },
+      body: JSON.stringify({
+        context: {
+          client: {
+            clientName: 'WEB',
+            clientVersion: '2.20240301.00.00'
+          }
+        },
+        query: searchQuery
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    const sectionList = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents || [];
+    const videoRenderers = [];
+
+    for (const section of sectionList) {
+      const items = section?.itemSectionRenderer?.contents || [];
+      for (const item of items) {
+        if (item.videoRenderer?.videoId) {
+          videoRenderers.push(item.videoRenderer);
+        }
+      }
+    }
+    return videoRenderers;
+  } catch {
+    return [];
+  }
+}
+
+async function fetchFromHtmlScrape(searchQuery) {
   try {
     const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(searchQuery)}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
     const ytRes = await fetch(searchUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-      }
+      },
+      signal: controller.signal
     });
+    clearTimeout(timeout);
 
-    if (!ytRes.ok) {
-      throw new Error(`YouTube responded with status ${ytRes.status}`);
-    }
+    if (!ytRes.ok) return [];
 
     const html = await ytRes.text();
     const match = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/s) || html.match(/var ytInitialData\s*=\s*({.+?});/s);
-
-    if (!match) {
-      throw new Error('Unable to extract initial data from YouTube');
-    }
+    if (!match) return [];
 
     const data = JSON.parse(match[1]);
     const sectionList = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents || [];
-    const results = [];
+    const videoRenderers = [];
+
+    for (const section of sectionList) {
+      const items = section?.itemSectionRenderer?.contents || [];
+      for (const item of items) {
+        if (item.videoRenderer?.videoId) {
+          videoRenderers.push(item.videoRenderer);
+        }
+      }
+    }
+    return videoRenderers;
+  } catch {
+    return [];
+  }
+}
+
+async function fetchFromItunesFallback(searchQuery) {
+  try {
+    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(searchQuery)}&entity=song&limit=25`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+
+    const res = await fetch(itunesUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data?.results)) return [];
+
+    return data.results.map(item => ({
+      id: `itunes-${item.trackId}`,
+      youtubeId: null,
+      title: item.trackName || 'Audio Track',
+      rawTitle: item.trackName || '',
+      channelName: item.artistName || 'Apple Music',
+      artist: item.artistName || 'Artist',
+      duration: Math.round((item.trackTimeMillis || 180000) / 1000),
+      durationText: `${Math.floor((item.trackTimeMillis || 180000) / 60000)}:${(Math.floor(((item.trackTimeMillis || 180000) % 60000) / 1000)).toString().padStart(2, '0')}`,
+      cover: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300',
+      audioUrl: item.previewUrl || '',
+      isLive: false,
+      isYouTube: false,
+      score: 2500,
+      isTopMatch: true
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function handleSearch(searchQuery, userRawQuery, res) {
+  try {
+    // 1. Primary: YouTube Official InnerTube JSON endpoint
+    let rawRenderers = await fetchFromInnerTube(searchQuery);
+
+    // 2. Secondary fallback: YouTube HTML scraping
+    if (!rawRenderers || rawRenderers.length === 0) {
+      rawRenderers = await fetchFromHtmlScrape(searchQuery);
+    }
 
     const qClean = userRawQuery.toLowerCase().trim();
     // Safe regex for word boundary matching
     const safeEscaped = qClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const wordRegex = safeEscaped ? new RegExp(`\\b${safeEscaped}`, 'i') : null;
 
-    for (const section of sectionList) {
-      const items = section?.itemSectionRenderer?.contents || [];
-      for (const item of items) {
-        const v = item.videoRenderer;
+    const results = [];
+    if (rawRenderers && rawRenderers.length > 0) {
+      for (const v of rawRenderers) {
         if (!v || !v.videoId) continue;
 
         const rawTitle = v.title?.runs?.[0]?.text || '';
@@ -264,7 +364,14 @@ async function handleSearch(searchQuery, userRawQuery, res) {
 
         if (results.length >= 30) break;
       }
-      if (results.length >= 30) break;
+    }
+
+    // 3. Tertiary fallback: if YouTube returned no videos, use iTunes Song Search
+    if (results.length === 0) {
+      const itunesItems = await fetchFromItunesFallback(searchQuery);
+      if (itunesItems.length > 0) {
+        results.push(...itunesItems);
+      }
     }
 
     // Sort results descending by score: TOP MATCHED recommendations first, then more below
