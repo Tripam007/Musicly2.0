@@ -46,6 +46,7 @@ import {
 } from '../utils/studioBackgroundsDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
 import { checkIsAdmin } from '../utils/userModel';
+import audioEngine from '../utils/audioEngine';
 
 const STUDIO_GENRES = [
   {
@@ -636,23 +637,50 @@ export default function MinimalStudioScene({
   const [isLyricsOpen, setIsLyricsOpen] = useState(false);
   const [livePlayTime, setLivePlayTime] = useState(currentTime || 0);
   const activeLineRef = useRef(null);
+  const isUserScrollingRef = useRef(false);
+  const userScrollTimeoutRef = useRef(null);
 
-  // High-precision live playback time tracking for exact millisecond lyrics synchronization
+  // Sync initial live play time with currentTime prop
   useEffect(() => {
-    if (!audioElement || !isPlaying) {
+    setLivePlayTime(currentTime || 0);
+  }, [currentTime]);
+
+  // Subscribe directly to audioEngine for real-time engine-level TIME_UPDATE events
+  useEffect(() => {
+    const unsub = audioEngine.subscribe((event) => {
+      if (event.type === 'TIME_UPDATE' && typeof event.currentTime === 'number') {
+        setLivePlayTime(event.currentTime);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // Continuous 60fps micro-interpolation for frame-accurate lyrics synchronization (Native & YouTube)
+  useEffect(() => {
+    if (!isPlaying) {
       setLivePlayTime(currentTime || 0);
       return;
     }
+
     let animId;
-    const updateTime = () => {
-      if (audioElement && !audioElement.paused) {
-        setLivePlayTime(audioElement.currentTime || 0);
+    const pollLiveTime = () => {
+      let t = currentTime || 0;
+      if (audioEngine.playbackMode === 'native' && audioEngine.audio && !isNaN(audioEngine.audio.currentTime)) {
+        t = audioEngine.audio.currentTime;
+      } else if (audioEngine.currentTime !== undefined && !isNaN(audioEngine.currentTime) && audioEngine.currentTime > 0) {
+        t = audioEngine.currentTime;
+      } else if (audioElement && !isNaN(audioElement.currentTime)) {
+        t = audioElement.currentTime;
       }
-      animId = requestAnimationFrame(updateTime);
+      setLivePlayTime(t);
+      animId = requestAnimationFrame(pollLiveTime);
     };
-    animId = requestAnimationFrame(updateTime);
-    return () => cancelAnimationFrame(animId);
-  }, [audioElement, isPlaying, currentTime]);
+
+    animId = requestAnimationFrame(pollLiveTime);
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+    };
+  }, [isPlaying, currentTime, audioElement]);
 
   // Pre-load lyrics immediately whenever activeTrack changes (ensures ZERO lag/delay on click!)
   useEffect(() => {
@@ -678,24 +706,53 @@ export default function MinimalStudioScene({
     return () => { isMounted = false; };
   }, [activeTrack?.id, activeTrack?.title, activeTrack?.artist, duration]);
 
-  // Track active line index in synced lyrics with calibrated vocal anticipation
+  // Track active line index in synced & plain lyrics with calibrated vocal onset anticipation
   const activeLineIndex = useMemo(() => {
-    if (!lyricsData?.isSynced || !lyricsData.lines || lyricsData.lines.length === 0) return -1;
-    const curTime = (audioElement && isPlaying ? livePlayTime : currentTime) + 0.15;
-    let bestIdx = -1;
-    for (let i = 0; i < lyricsData.lines.length; i++) {
-      if (lyricsData.lines[i].time <= curTime) {
-        bestIdx = i;
-      } else {
-        break;
+    if (!lyricsData?.lines || lyricsData.lines.length === 0) return -1;
+
+    const rawTime = (livePlayTime !== null && livePlayTime !== undefined && !isNaN(livePlayTime))
+      ? livePlayTime
+      : (currentTime || 0);
+    // 80ms vocal anticipation locks in synchronously on vocal onset
+    const playbackTime = rawTime + 0.08;
+
+    // 1. Synced LRC lyrics with explicit millisecond timestamps
+    if (lyricsData.isSynced) {
+      let idx = -1;
+      for (let i = 0; i < lyricsData.lines.length; i++) {
+        const lineTime = lyricsData.lines[i].time;
+        if (lineTime !== undefined && lineTime <= playbackTime) {
+          idx = i;
+        } else if (lineTime !== undefined && lineTime > playbackTime) {
+          break;
+        }
       }
+      return idx;
     }
-    return bestIdx;
-  }, [lyricsData, livePlayTime, currentTime, audioElement, isPlaying]);
+
+    // 2. Unsynced Plain Lyrics: fallback smoothly to duration-based progress estimation
+    const effectiveDur = (duration && duration > 0) ? duration : (activeTrack?.duration || 180);
+    if (effectiveDur > 0 && rawTime > 0) {
+      const progress = Math.min(1, Math.max(0, rawTime / effectiveDur));
+      const lineIdx = Math.min(lyricsData.lines.length - 1, Math.floor(progress * lyricsData.lines.length));
+      return lineIdx;
+    }
+
+    return 0;
+  }, [lyricsData, livePlayTime, currentTime, duration, activeTrack?.duration]);
+
+  // Handle user manual scroll with auto-scroll resume timer
+  const handleLyricsManualScroll = useCallback(() => {
+    isUserScrollingRef.current = true;
+    if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
+    userScrollTimeoutRef.current = setTimeout(() => {
+      isUserScrollingRef.current = false;
+    }, 2500);
+  }, []);
 
   // Smooth auto-scroll following the active synced line
   useEffect(() => {
-    if (isLyricsOpen && activeLineRef.current) {
+    if (isLyricsOpen && activeLineRef.current && !isUserScrollingRef.current) {
       activeLineRef.current.scrollIntoView({
         behavior: 'smooth',
         block: 'center'
@@ -1365,7 +1422,10 @@ export default function MinimalStudioScene({
                     </button>
                   </div>
 
-                  <div className="ref-island-lyrics-content">
+                  <div 
+                    className="ref-island-lyrics-content"
+                    onScroll={handleLyricsManualScroll}
+                  >
                     {isLyricsLoading ? (
                       <div className="ref-island-lyrics-empty">
                         <span className="ref-studio-lyrics-spinner" />
@@ -1379,8 +1439,8 @@ export default function MinimalStudioScene({
                     ) : lyricsData?.lines && lyricsData.lines.length > 0 ? (
                       <div className="ref-island-lyrics-stream">
                         {lyricsData.lines.map((line, idx) => {
-                          const isActive = lyricsData.isSynced && idx === activeLineIndex;
-                          const isPassed = lyricsData.isSynced && activeLineIndex !== -1 && idx < activeLineIndex;
+                          const isActive = idx === activeLineIndex;
+                          const isPassed = activeLineIndex !== -1 && idx < activeLineIndex;
                           return (
                             <div
                               key={idx}
@@ -1391,7 +1451,6 @@ export default function MinimalStudioScene({
                                   onSeek(line.time);
                                 }
                               }}
-                              style={isActive ? { borderColor: currentTheme?.accent || '#f4a000' } : {}}
                             >
                               {line.text}
                             </div>
