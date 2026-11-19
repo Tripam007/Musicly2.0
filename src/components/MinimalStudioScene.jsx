@@ -574,6 +574,18 @@ export default function MinimalStudioScene({
     showToast(`Shuffled to: ${title}`);
   }, [studioBackgrounds, mediaPhotoIndex, updateMediaPhotoIndex, showToast]);
 
+  // Active track resolution
+  const activeTrack = useMemo(() => {
+    return currentTrack || allTracks[0] || {
+      id: 'default-track',
+      title: 'The Night We Met',
+      artist: 'Lord Huron',
+      genre: 'Indie',
+      duration: 208,
+      image: '/assets/images/vibe_card_01.jpg'
+    };
+  }, [currentTrack, allTracks]);
+
   // 🎵 Playback Source State: 'musicly' catalog vs 'own' Mine Playlist (private mixes & personal songs)
   const [playSource, setPlaySource] = useState('musicly');
 
@@ -745,18 +757,6 @@ export default function MinimalStudioScene({
       onSelectLanguage(lang);
     }
   }, [onSelectLanguage]);
-
-  // Active track resolution
-  const activeTrack = useMemo(() => {
-    return currentTrack || allTracks[0] || {
-      id: 'default-track',
-      title: 'The Night We Met',
-      artist: 'Lord Huron',
-      genre: 'Indie',
-      duration: 208,
-      image: '/assets/images/vibe_card_01.jpg'
-    };
-  }, [currentTrack, allTracks]);
 
   // 🎙️ Zero-Lag High-Performance Lyrics State
   const [lyricsData, setLyricsData] = useState(null);
