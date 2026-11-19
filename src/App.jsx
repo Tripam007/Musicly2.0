@@ -2633,6 +2633,8 @@ export default function App() {
           selectedLanguages={selectedLanguages}
           onSelectLanguage={handleSelectLanguage}
           audioElement={audioRef.current}
+          customQueue={customQueue}
+          onSetCustomQueue={setCustomQueue}
         />
       )}
 

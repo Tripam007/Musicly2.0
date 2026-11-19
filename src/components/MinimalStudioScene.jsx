@@ -47,6 +47,12 @@ import {
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
 import { checkIsAdmin } from '../utils/userModel';
 import audioEngine from '../utils/audioEngine';
+import { 
+  getLocalUserPlaylists, 
+  loadUserPlaylists, 
+  getLocalUserPersonalSongIds, 
+  loadUserPersonalSongIds 
+} from '../utils/userPlaylistsDB';
 
 const STUDIO_GENRES = [
   {
@@ -256,7 +262,9 @@ export default function MinimalStudioScene({
   onClose,
   audioElement,
   audioOutputMode = 'speaker',
-  onToggleAudioOutputMode
+  onToggleAudioOutputMode,
+  customQueue = [],
+  onSetCustomQueue
 }) {
   const isUserAdmin = isAdmin || checkIsAdmin(user);
 
@@ -566,34 +574,153 @@ export default function MinimalStudioScene({
     showToast(`Shuffled to: ${title}`);
   }, [studioBackgrounds, mediaPhotoIndex, updateMediaPhotoIndex, showToast]);
 
-  // Playback Source State: 'musicly' catalog vs 'own' library & uploads
+  // 🎵 Playback Source State: 'musicly' catalog vs 'own' Mine Playlist (private mixes & personal songs)
   const [playSource, setPlaySource] = useState('musicly');
 
-  // User's own library tracks (custom uploads and favorited tracks)
-  const ownTracks = useMemo(() => {
-    const favSet = new Set((favorites || []).map(f => (typeof f === 'string' ? f : f?.id)));
-    return (allTracks || []).filter(t => t?.isCustom || favSet.has(t?.id));
-  }, [allTracks, favorites]);
+  // User's private playlists and personal songs state (synced with userPlaylistsDB)
+  const [userPlaylists, setUserPlaylists] = useState(() => getLocalUserPlaylists(user));
+  const [userPersonalSongIds, setUserPersonalSongIds] = useState(() => getLocalUserPersonalSongIds(user));
 
+  useEffect(() => {
+    setUserPlaylists(getLocalUserPlaylists(user));
+    setUserPersonalSongIds(getLocalUserPersonalSongIds(user));
+    loadUserPlaylists(user).then(loaded => {
+      if (Array.isArray(loaded)) setUserPlaylists(loaded);
+    });
+    loadUserPersonalSongIds(user).then(loadedIds => {
+      if (Array.isArray(loadedIds)) setUserPersonalSongIds(loadedIds);
+    });
+  }, [user]);
+
+  // User's private "Mine Playlist" tracks ONLY (private mixes, personal songs, and unlisted uploads)
+  const mineTracks = useMemo(() => {
+    const personalIdSet = new Set(userPersonalSongIds || []);
+    (userPlaylists || []).forEach(pl => {
+      if (Array.isArray(pl.trackIds)) {
+        pl.trackIds.forEach(id => personalIdSet.add(id));
+      }
+    });
+
+    return (allTracks || []).filter(track => {
+      if (!track) return false;
+      // 1. Explicitly part of Mine Playlist (Single Songs or custom user playlist)
+      if (personalIdSet.has(track.id)) return true;
+      // 2. Private custom upload by the user (never seen publicly)
+      if (track.isCustom && !track.isPublic) return true;
+      // 3. User's own custom track
+      if (track.isCustom && (track.userId === user?.uid || !track.userId)) return true;
+      return false;
+    });
+  }, [allTracks, userPersonalSongIds, userPlaylists, user?.uid]);
+
+  // Backward compatibility alias for any existing references
+  const ownTracks = mineTracks;
+
+  // Dedicated next/prev song handlers that strictly isolate 'own' (Mine Playlist only) vs 'musicly'
+  const handleNextSong = useCallback(() => {
+    if (playSource === 'own') {
+      if (mineTracks.length > 0) {
+        const curIdx = mineTracks.findIndex(t => t.id === activeTrack?.id);
+        const nextIdx = (curIdx + 1) % mineTracks.length;
+        const nextSong = mineTracks[nextIdx];
+        if (nextSong && onSelectTrack) {
+          const nextQueue = [];
+          for (let i = 1; i < mineTracks.length; i++) {
+            nextQueue.push(mineTracks[(nextIdx + i) % mineTracks.length]);
+          }
+          if (onSetCustomQueue) {
+            onSetCustomQueue(nextQueue);
+          }
+          onSelectTrack(nextSong, true, true);
+          showToast(`Mine Playlist: ${nextSong.title}`);
+        }
+        return;
+      } else {
+        showToast("Mine Playlist is empty! Open library to add songs.");
+        if (onOpenPlaylistDrawer) onOpenPlaylistDrawer();
+        return;
+      }
+    }
+    if (onNextTrack) onNextTrack();
+  }, [playSource, mineTracks, activeTrack?.id, onSelectTrack, onSetCustomQueue, onNextTrack, showToast, onOpenPlaylistDrawer]);
+
+  const handlePrevSong = useCallback(() => {
+    if (playSource === 'own') {
+      if (mineTracks.length > 0) {
+        const curIdx = mineTracks.findIndex(t => t.id === activeTrack?.id);
+        const prevIdx = (curIdx - 1 + mineTracks.length) % mineTracks.length;
+        const prevSong = mineTracks[prevIdx];
+        if (prevSong && onSelectTrack) {
+          const nextQueue = [];
+          for (let i = 1; i < mineTracks.length; i++) {
+            nextQueue.push(mineTracks[(prevIdx + i) % mineTracks.length]);
+          }
+          if (onSetCustomQueue) {
+            onSetCustomQueue(nextQueue);
+          }
+          onSelectTrack(prevSong, true, true);
+          showToast(`Mine Playlist: ${prevSong.title}`);
+        }
+        return;
+      } else {
+        showToast("Mine Playlist is empty! Open library to add songs.");
+        if (onOpenPlaylistDrawer) onOpenPlaylistDrawer();
+        return;
+      }
+    }
+    if (onPrevTrack) onPrevTrack();
+  }, [playSource, mineTracks, activeTrack?.id, onSelectTrack, onSetCustomQueue, onPrevTrack, showToast, onOpenPlaylistDrawer]);
+
+  // Handle switching between public Musicly catalog and user's private Mine Playlist
   const handleSourceChange = useCallback((source) => {
     setPlaySource(source);
     if (source === 'own') {
-      if (ownTracks.length > 0) {
-        if (onSelectTrack) onSelectTrack(ownTracks[0], true);
-        showToast(`Playing Own Library: ${ownTracks[0].title}`);
+      if (mineTracks.length > 0) {
+        const curIdx = mineTracks.findIndex(t => t.id === activeTrack?.id);
+        const startSong = curIdx >= 0 ? mineTracks[curIdx] : mineTracks[0];
+        const startIndex = curIdx >= 0 ? curIdx : 0;
+        const nextQueue = [];
+        for (let i = 1; i < mineTracks.length; i++) {
+          nextQueue.push(mineTracks[(startIndex + i) % mineTracks.length]);
+        }
+        if (onSetCustomQueue) {
+          onSetCustomQueue(nextQueue);
+        }
+        if (onSelectTrack && startSong.id !== activeTrack?.id) {
+          onSelectTrack(startSong, true, true);
+        }
+        showToast(`Playing Mine Playlist: ${startSong.title}`);
       } else {
-        showToast("Own Library: No uploads or favorites yet! Opening library...");
+        showToast("Mine Playlist is empty! Open library to add songs.");
         if (onOpenPlaylistDrawer) onOpenPlaylistDrawer();
       }
     } else {
-      const musiclyCatalog = (allTracks || []).filter(t => !t?.isCustom);
+      if (onSetCustomQueue) {
+        onSetCustomQueue([]);
+      }
+      const musiclyCatalog = (allTracks || []).filter(t => !t?.isCustom || !!t?.isPublic);
       const chosen = musiclyCatalog[0] || allTracks[0];
       if (chosen && onSelectTrack) {
         onSelectTrack(chosen, true);
-        showToast(`Playing Musicly Stream: ${chosen.title}`);
+        showToast(`Playing Musicly Catalog: ${chosen.title}`);
       }
     }
-  }, [ownTracks, allTracks, onSelectTrack, showToast, onOpenPlaylistDrawer]);
+  }, [mineTracks, activeTrack?.id, allTracks, onSelectTrack, onSetCustomQueue, showToast, onOpenPlaylistDrawer]);
+
+  // Auto-advance strictly within Mine Playlist when track ends and 'own' is selected
+  useEffect(() => {
+    const unsub = audioEngine.subscribe((event) => {
+      if (event.type === 'ENDED' && playSource === 'own' && mineTracks.length > 0) {
+        const curIdx = mineTracks.findIndex(t => t.id === activeTrack?.id);
+        const nextIdx = (curIdx + 1) % mineTracks.length;
+        const nextSong = mineTracks[nextIdx];
+        if (nextSong && onSelectTrack) {
+          onSelectTrack(nextSong, true, true);
+        }
+      }
+    });
+    return () => unsub();
+  }, [playSource, mineTracks, activeTrack?.id, onSelectTrack]);
 
   // Active languages array: supports multi-selection, single-selection, or empty (all)
   const activeLangs = useMemo(() => {
@@ -848,7 +975,9 @@ export default function MinimalStudioScene({
       const targetGenreObj = availableStudioGenres[nextIdx];
       const target = targetGenreObj.name.toLowerCase();
 
-      const sourcePool = playSource === 'own' && ownTracks.length > 0 ? ownTracks : (allTracks || []);
+      const sourcePool = playSource === 'own' 
+        ? mineTracks 
+        : (allTracks || []).filter(t => !t?.isCustom || !!t?.isPublic);
 
       // Find all tracks matching this target genre AND selected language
       const matchingTracks = sourcePool.filter(track => {
@@ -929,13 +1058,16 @@ export default function MinimalStudioScene({
   const likeCount = useMemo(() => 7 + (isLiked ? 1 : 0), [isLiked]);
   const thumbsCount = useMemo(() => 80 + (isThumbsUp ? 1 : 0), [isThumbsUp]);
 
-  // Next track preview
+  // Next track preview respecting active source ('own' Mine Playlist vs 'musicly')
   const nextTrack = useMemo(() => {
-    if (!allTracks || allTracks.length === 0) return null;
-    const currentIndex = allTracks.findIndex(t => t.id === activeTrack.id);
-    const nextIdx = (currentIndex + 1) % allTracks.length;
-    return allTracks[nextIdx];
-  }, [allTracks, activeTrack]);
+    const pool = playSource === 'own'
+      ? mineTracks
+      : (allTracks || []).filter(t => !t?.isCustom || !!t?.isPublic);
+    if (!pool || pool.length === 0) return null;
+    const currentIndex = pool.findIndex(t => t.id === activeTrack?.id);
+    const nextIdx = (currentIndex + 1) % pool.length;
+    return pool[nextIdx];
+  }, [allTracks, mineTracks, playSource, activeTrack?.id]);
 
   // Media gallery photos (greesel_clean_portrait.jpg is the crystal-clear focused central visual)
   const mediaPhotos = useMemo(() => {
@@ -1237,7 +1369,7 @@ export default function MinimalStudioScene({
 
               <button 
                 className="ref-badge-next-song"
-                onClick={onNextTrack}
+                onClick={handleNextSong}
                 title={`Next: ${nextTrack ? nextTrack.title : 'Next Track'}`}
               >
                 <span>{nextTrack ? (nextTrack.title.length > 14 ? `${nextTrack.title.substring(0, 13)}…` : nextTrack.title) : 'Next Track'}</span> <span className="ref-badge-arrow">▶▶</span>
@@ -1280,7 +1412,7 @@ export default function MinimalStudioScene({
                   type="button"
                   className={`ref-source-btn ${playSource === 'own' ? 'active' : ''}`}
                   onClick={() => handleSourceChange('own')}
-                  title="Play from your own library & uploads"
+                  title="Play strictly from your private Mine Playlist"
                 >
                   own
                 </button>
@@ -1564,7 +1696,7 @@ export default function MinimalStudioScene({
             <div className="ref-gadget-controls-row">
               <button 
                 className="ref-gadget-btn"
-                onClick={onPrevTrack}
+                onClick={handlePrevSong}
                 title="Previous track"
               >
                 ◀◀
@@ -1580,7 +1712,7 @@ export default function MinimalStudioScene({
 
               <button 
                 className="ref-gadget-btn"
-                onClick={onNextTrack}
+                onClick={handleNextSong}
                 title="Next track"
               >
                 ▶▶
