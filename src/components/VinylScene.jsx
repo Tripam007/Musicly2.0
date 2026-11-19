@@ -74,9 +74,9 @@ export default function VinylScene({
   onTogglePlay,
   onNextTrack,
   onPrevTrack,
-  isShuffle = false,
+  isShuffle = true,
   onToggleShuffle,
-  repeatMode = 'all', // 'off' | 'all' | 'one'
+  repeatMode = 'off', // 'off' | 'all' | 'one'
   onToggleRepeat,
   favorites = [],
   onToggleFavorite,

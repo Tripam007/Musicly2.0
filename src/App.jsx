@@ -133,8 +133,8 @@ export default function App() {
     loadSavedWebappTheme();
   }, []);
 
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [repeatMode, setRepeatMode] = useState('all'); // 'off' | 'all' | 'one'
+  const [isShuffle, setIsShuffle] = useState(true);
+  const [repeatMode, setRepeatMode] = useState('off'); // 'off' | 'all' | 'one'
 
   // Browser route state for cinematic /about-us experience & /admin/air-ai routes
   const [currentRoute, setCurrentRoute] = useState(() => {
