@@ -93,20 +93,14 @@ export default function PlaylistDrawer({
     }
   }, [isOpen, user]);
 
-  // Set default selected playlist when user playlists load
-  useEffect(() => {
-    if (userPlaylists.length > 0) {
-      if (!selectedUserPlaylistId || !userPlaylists.some(p => p.id === selectedUserPlaylistId)) {
-        setSelectedUserPlaylistId(userPlaylists[0].id);
-      }
-    } else {
-      setSelectedUserPlaylistId(null);
-    }
-  }, [userPlaylists, selectedUserPlaylistId]);
-
   // Close row playlist menus when main source or view mode changes
   useEffect(() => {
     setPlaylistMenuTrackId(null);
+    setDrilldownPlaylistId(null);
+    if (clickTimerRef.current) {
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+    }
   }, [mainSource, viewMode]);
 
   // Auto-focus search input if opened in search mode
@@ -363,7 +357,7 @@ export default function PlaylistDrawer({
     const updated = [newPl, ...userPlaylists];
     setUserPlaylists(updated);
     saveUserPlaylists(updated, user);
-    setSelectedUserPlaylistId(newPl.id);
+    setDrilldownPlaylistId(newPl.id);
     setIsCreatingPlaylist(false);
     setNewPlaylistTitle('');
     playPeacefulLikeSound();
@@ -401,8 +395,8 @@ export default function PlaylistDrawer({
       const updated = userPlaylists.filter(p => p.id !== playlistId);
       setUserPlaylists(updated);
       saveUserPlaylists(updated, user);
-      if (selectedUserPlaylistId === playlistId) {
-        setSelectedUserPlaylistId(updated[0]?.id || null);
+      if (drilldownPlaylistId === playlistId) {
+        setDrilldownPlaylistId(null);
       }
     }
   };
