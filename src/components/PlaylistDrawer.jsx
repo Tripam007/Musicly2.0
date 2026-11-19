@@ -298,25 +298,33 @@ export default function PlaylistDrawer({
     });
   }, [viewMode, activeDrilldownPlaylist, mainSource, visibleTracks, favorites, searchQuery, activeLangs]);
 
-  // Play entire playlist
-  const handlePlayEntirePlaylist = (playlist) => {
+  // Toggle play / pause for entire playlist
+  const handlePlaylistTogglePlay = (playlist) => {
     if (!playlist) return;
     const plTracks = playlist.tracks || [];
     if (plTracks.length === 0) return;
 
-    if (typeof onSelectTrack === 'function') {
-      onSelectTrack(plTracks[0], true, true, playlist.id);
+    const isThisPlaylistPlaying = activePlayingPlaylistId === playlist.id;
+
+    if (isThisPlaylistPlaying) {
+      if (typeof onTogglePlay === 'function') {
+        onTogglePlay();
+      }
+    } else {
+      if (typeof onSelectTrack === 'function') {
+        onSelectTrack(plTracks[0], true, true, playlist.id);
+      }
+      if (typeof onSetActivePlayingPlaylistId === 'function') {
+        onSetActivePlayingPlaylistId(playlist.id);
+      }
+      playPeacefulLikeSound();
     }
-    if (typeof onSetActivePlayingPlaylistId === 'function') {
-      onSetActivePlayingPlaylistId(playlist.id);
-    }
-    playPeacefulLikeSound();
   };
 
-  // Single-click vs Double-click handler for playlist cards
+  // Single-click (play/pause) vs Double-click (just open songs) handler
   const handlePlaylistRowClick = (playlist) => {
     if (clickTimerRef.current) {
-      // Second click within 260ms -> DOUBLE CLICK! Show songs in that particular playlist
+      // Second click within 250ms -> DOUBLE CLICK! Just open the songs
       clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
       setDrilldownPlaylistId(playlist.id);
@@ -326,9 +334,9 @@ export default function PlaylistDrawer({
 
     clickTimerRef.current = setTimeout(() => {
       clickTimerRef.current = null;
-      // Single click -> play that one!
-      handlePlayEntirePlaylist(playlist);
-    }, 260);
+      // Single click -> toggle play/pause!
+      handlePlaylistTogglePlay(playlist);
+    }, 250);
   };
 
   const handlePlaylistRowDoubleClick = (playlist) => {
@@ -336,6 +344,7 @@ export default function PlaylistDrawer({
       clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
     }
+    // Double click -> just open the songs
     setDrilldownPlaylistId(playlist.id);
     playClickSound('light');
   };
@@ -407,16 +416,29 @@ export default function PlaylistDrawer({
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const formatGenre = (t) => {
-    if (!t) return 'Lo-Fi';
+  const getCleanGenres = (t) => {
+    if (!t) return ['Lo-Fi'];
+    let items = [];
     if (Array.isArray(t.genres) && t.genres.length > 0) {
-      const clean = t.genres.filter(g => g && g.toLowerCase() !== 'custom');
-      if (clean.length > 0) return clean.join(', ');
+      items = t.genres.filter(g => g && typeof g === 'string' && g.toLowerCase() !== 'custom');
+    } else if (t.genre && typeof t.genre === 'string' && t.genre.toLowerCase() !== 'custom') {
+      items = t.genre.split(',').map(s => s.trim()).filter(g => g && g.toLowerCase() !== 'custom');
     }
-    if (t.genre && typeof t.genre === 'string' && t.genre.toLowerCase() !== 'custom') {
-      return t.genre;
+    return items.length > 0 ? items : ['Lo-Fi'];
+  };
+
+  const formatGenre = (t) => {
+    const items = getCleanGenres(t);
+    if (items.length <= 1) return items[0] || 'Lo-Fi';
+    if (items.length === 2) {
+      const combined = `${items[0]}, ${items[1]}`;
+      return combined.length <= 18 ? combined : `${items[0]} +1`;
     }
-    return 'Lo-Fi';
+    // When more genres are present (> 2): show in short e.g. "Lo-Fi, Country +4"
+    if (items[0].length + items[1].length <= 16) {
+      return `${items[0]}, ${items[1]} +${items.length - 2}`;
+    }
+    return `${items[0]} +${items.length - 1}`;
   };
 
   if (!isOpen) return null;
@@ -649,10 +671,6 @@ export default function PlaylistDrawer({
                 </div>
               )}
 
-              <div className="drawer-playlists-hint">
-                <span>💡 Click playlist to play • Double-click to view songs</span>
-              </div>
-
               {displayedPlaylists.length === 0 ? (
                 <div className="drawer-empty-state">
                   <ListMusic size={30} className="empty-icon" />
@@ -672,7 +690,7 @@ export default function PlaylistDrawer({
                       className={`drawer-playlist-item-card ${isThisPlaying ? 'is-playing' : ''}`}
                       onClick={() => handlePlaylistRowClick(pl)}
                       onDoubleClick={() => handlePlaylistRowDoubleClick(pl)}
-                      title={`Click to play "${pl.title}" • Double-click to view songs`}
+                      title={pl.title}
                     >
                       <div className="drawer-pl-thumb-wrap">
                         <img 
@@ -701,22 +719,10 @@ export default function PlaylistDrawer({
                         <button
                           type="button"
                           className="drawer-pl-card-play-btn"
-                          onClick={() => handlePlayEntirePlaylist(pl)}
-                          title={`Play all songs in "${pl.title}"`}
+                          onClick={() => handlePlaylistTogglePlay(pl)}
+                          title={isThisPlaying ? `Pause "${pl.title}"` : `Play "${pl.title}"`}
                         >
                           {isThisPlaying ? <Pause size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}
-                        </button>
-                        <button
-                          type="button"
-                          className="drawer-pl-open-btn"
-                          onClick={() => {
-                            setDrilldownPlaylistId(pl.id);
-                            playClickSound('light');
-                          }}
-                          title={`View songs in "${pl.title}" (or double-click)`}
-                        >
-                          <span>Songs</span>
-                          <ChevronRight size={13} />
                         </button>
                       </div>
                     </div>
@@ -844,7 +850,7 @@ export default function PlaylistDrawer({
                           e.stopPropagation();
                           setEditingTrackId(isEditingThis ? null : track.id);
                         }}
-                        title="Click to change section/genre"
+                        title={`Genres: ${getCleanGenres(track).join(', ')} • Click to edit`}
                       >
                         <span className="track-row-genre">{formatGenre(track)}</span>
                         <span style={{ fontSize: '9px', opacity: 0.7 }}>▾</span>
