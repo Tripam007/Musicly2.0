@@ -527,10 +527,9 @@ export default function AdminDashboardModal({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   // Instant As-You-Type Filter for public songs directory
   const filteredPublicTracks = useMemo(() => {
+    if (!publicTracks || !Array.isArray(publicTracks)) return [];
     const q = searchQuery.toLowerCase().trim();
     if (!q) return publicTracks;
     const tokens = q.split(/\s+/).filter(Boolean);
@@ -561,6 +560,8 @@ export default function AdminDashboardModal({
     scored.sort((a, b) => b.score - a.score);
     return scored.map(s => s.track);
   }, [publicTracks, searchQuery]);
+
+  if (!isOpen) return null;
 
   const pendingRequestsCount = songRequests.filter(r => r.status === 'pending').length;
 
