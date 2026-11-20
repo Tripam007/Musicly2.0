@@ -98,15 +98,26 @@ export default function PlaylistDrawer({
   const popoverRef = useRef(null);
   const trackListRef = useRef(null);
 
+  // Active languages array: supports multi-selection, single-selection, or empty (all)
+  const activeLangs = useMemo(() => {
+    if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
+      return selectedLanguages.filter(l => l && l !== 'Hinglish');
+    }
+    if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
+      return [selectedLanguage];
+    }
+    return [];
+  }, [selectedLanguages, selectedLanguage]);
+
   // Automatically autoselect language from active language filter when creating a playlist
   useEffect(() => {
     if (isCreatingPlaylist) {
-      const activeLang = (activeLanguages && activeLanguages.length > 0 && activeLanguages[0] !== 'All')
-        ? normalizePlaylistLang(activeLanguages[0])
+      const activeLang = (activeLangs && activeLangs.length > 0 && activeLangs[0] !== 'All')
+        ? normalizePlaylistLang(activeLangs[0])
         : 'All';
       setNewPlaylistLanguage(activeLang);
     }
-  }, [isCreatingPlaylist, activeLanguages]);
+  }, [isCreatingPlaylist, activeLangs]);
 
   // Sync user's private playlists and personal songs (local cache + cloud sync)
   useEffect(() => {
@@ -195,17 +206,6 @@ export default function PlaylistDrawer({
     if (isYouTubeTrack(t)) return false;
     return !!t.isCustom;
   };
-
-  // Active languages array: supports multi-selection, single-selection, or empty (all)
-  const activeLangs = useMemo(() => {
-    if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
-      return selectedLanguages.filter(l => l && l !== 'Hinglish');
-    }
-    if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
-      return [selectedLanguage];
-    }
-    return [];
-  }, [selectedLanguages, selectedLanguage]);
 
   // Filter available sections based on selected languages
   const availableSections = useMemo(() => {
@@ -682,8 +682,8 @@ export default function PlaylistDrawer({
                       type="button"
                       className="drawer-create-playlist-card"
                       onClick={() => {
-                        const activeLang = (activeLanguages && activeLanguages.length > 0 && activeLanguages[0] !== 'All')
-                          ? normalizePlaylistLang(activeLanguages[0])
+                        const activeLang = (activeLangs && activeLangs.length > 0 && activeLangs[0] !== 'All')
+                          ? normalizePlaylistLang(activeLangs[0])
                           : 'All';
                         setNewPlaylistLanguage(activeLang);
                         setNewPlaylistTarget(mainSource === 'musicly' && isAdmin ? 'musicly' : 'user');
