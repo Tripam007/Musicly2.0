@@ -7,6 +7,7 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 import { checkIsAdmin } from './userModel';
+import { isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
 
 const PLAYLISTS_CACHE_KEY = 'musicly_public_playlists_cache';
 
@@ -48,6 +49,61 @@ export function isPlaylistMatchingLanguage(playlistLang, selectedLanguages = [],
 
   // When a specific language is selected: show ONLY playlists matching that language
   return active.includes(pLang);
+}
+
+/**
+ * Filter songs candidate for a playlist by target language:
+ * - When target language is 'All': shows all songs.
+ * - When target language is 'Other': shows only songs tagged as 'Other' (or untagged).
+ * - When target language is a specific language (English, Hindi, Bengali):
+ *   shows ONLY songs in that specific language AND songs tagged as 'Other'.
+ */
+export function isSongMatchingPlaylistLang(track, playlistLang) {
+  if (!playlistLang) return true;
+  const pLang = normalizePlaylistLang(playlistLang);
+  if (pLang === 'All') return true;
+
+  const rawLang = String(track?.language || '').trim();
+  const tLang = normalizePlaylistLang(rawLang);
+
+  // If track language is explicitly 'Other' or has no language specified,
+  // it is allowed across all language-specific playlists
+  const isOther = tLang === 'Other' || !rawLang;
+
+  if (pLang === 'Other') {
+    return isOther;
+  }
+
+  // If the track is 'Other', it is included in any language playlist
+  if (isOther) {
+    return true;
+  }
+
+  // Exact normalized language match (English === English, Hindi === Hindi, Bengali === Bengali)
+  if (tLang.toLowerCase() === pLang.toLowerCase()) {
+    return true;
+  }
+
+  // Fallback heuristics for tracks without standard language tags
+  const genre = String(track?.genre || '').toLowerCase();
+  const title = String(track?.title || '').toLowerCase();
+
+  if (pLang === 'Hindi') {
+    if (genre.includes('ghazal') || genre.includes('hindi') || title.includes('ghazal')) return true;
+    if (isGhazalLanguage(rawLang)) return true;
+  }
+
+  if (pLang === 'Bengali') {
+    if (genre.includes('rabindra') || genre.includes('bengali') || title.includes('majhe')) return true;
+    if (isRabindraSangeetLanguage(rawLang)) return true;
+  }
+
+  if (pLang === 'English') {
+    if (genre.includes('country') || genre.includes('retro') || genre.includes('indie')) return true;
+    if (isCountryLanguage(rawLang)) return true;
+  }
+
+  return false;
 }
 
 /**

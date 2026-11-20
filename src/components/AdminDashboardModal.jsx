@@ -46,7 +46,7 @@ import {
   ListMusic,
   Lock
 } from 'lucide-react';
-import { PLAYLIST_LANGUAGES, normalizePlaylistLang, getUnifiedMusiclyPlaylists } from '../utils/publicPlaylistsDB';
+import { PLAYLIST_LANGUAGES, normalizePlaylistLang, getUnifiedMusiclyPlaylists, isSongMatchingPlaylistLang } from '../utils/publicPlaylistsDB';
 
 import { GENRES, LANGUAGES, getAvailableSections, getAvailableGenres, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
 import { extractYouTubeId, extractYouTubeStartTime } from '../utils/youtubePlayer';
@@ -3318,40 +3318,47 @@ export default function AdminDashboardModal({
                   />
 
                   <div className="admin-song-picker-list" style={{ maxHeight: '220px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '6px' }}>
-                    {[...publicTracks, ...(allTracks || [])]
-                      .filter(t => !plTrackSearch || (t.title || '').toLowerCase().includes(plTrackSearch.toLowerCase()) || (t.artist || '').toLowerCase().includes(plTrackSearch.toLowerCase()))
-                      .slice(0, 50)
-                      .map(track => {
-                        const isChosen = newPlSelectedTrackIds.includes(track.id);
-                        return (
-                          <div
-                            key={track.id}
-                            className={`admin-song-picker-row ${isChosen ? 'selected' : ''}`}
-                            onClick={() => {
-                              setNewPlSelectedTrackIds(prev => 
-                                isChosen ? prev.filter(id => id !== track.id) : [...prev, track.id]
-                              );
-                            }}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '10px',
-                              padding: '6px 8px',
-                              cursor: 'pointer',
-                              borderRadius: '6px',
-                              background: isChosen ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                              marginBottom: '3px'
-                            }}
-                          >
-                            <input type="checkbox" checked={isChosen} readOnly style={{ pointerEvents: 'none' }} />
-                            <img src={track.cover} alt={track.title} style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover' }} />
-                            <div style={{ flex: 1, overflow: 'hidden' }}>
-                              <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
-                              <div style={{ fontSize: '11px', color: '#a1a1aa' }}>{track.artist} • {track.language || 'Global'}</div>
+                    {(() => {
+                      const trackMap = new Map();
+                      [...(publicTracks || []), ...(allTracks || [])].forEach(t => {
+                        if (t?.id && !trackMap.has(t.id)) trackMap.set(t.id, t);
+                      });
+                      return Array.from(trackMap.values())
+                        .filter(t => isSongMatchingPlaylistLang(t, newPlLang))
+                        .filter(t => !plTrackSearch || (t.title || '').toLowerCase().includes(plTrackSearch.toLowerCase()) || (t.artist || '').toLowerCase().includes(plTrackSearch.toLowerCase()))
+                        .slice(0, 100)
+                        .map(track => {
+                          const isChosen = newPlSelectedTrackIds.includes(track.id);
+                          return (
+                            <div
+                              key={track.id}
+                              className={`admin-song-picker-row ${isChosen ? 'selected' : ''}`}
+                              onClick={() => {
+                                setNewPlSelectedTrackIds(prev => 
+                                  isChosen ? prev.filter(id => id !== track.id) : [...prev, track.id]
+                                );
+                              }}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                padding: '6px 8px',
+                                cursor: 'pointer',
+                                borderRadius: '6px',
+                                background: isChosen ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                                marginBottom: '3px'
+                              }}
+                            >
+                              <input type="checkbox" checked={isChosen} readOnly style={{ pointerEvents: 'none' }} />
+                              <img src={track.cover} alt={track.title} style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover' }} />
+                              <div style={{ flex: 1, overflow: 'hidden' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
+                                <div style={{ fontSize: '11px', color: '#a1a1aa' }}>{track.artist} • {track.language || 'Global'}</div>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        });
+                    })()}
                   </div>
                 </div>
 
@@ -3399,50 +3406,57 @@ export default function AdminDashboardModal({
                 />
 
                 <div className="admin-song-picker-list" style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '6px' }}>
-                  {[...publicTracks, ...(allTracks || [])]
-                    .filter(t => !plTrackSearch || (t.title || '').toLowerCase().includes(plTrackSearch.toLowerCase()) || (t.artist || '').toLowerCase().includes(plTrackSearch.toLowerCase()))
-                    .slice(0, 80)
-                    .map(track => {
-                      const isIncluded = (managingPl.trackIds || []).includes(track.id);
-                      return (
-                        <div
-                          key={track.id}
-                          className={`admin-song-picker-row ${isIncluded ? 'selected' : ''}`}
-                          onClick={() => {
-                            handleToggleSongInPublicPlaylist(managingPl, track.id);
-                            // Also update local state so UI toggles immediately
-                            setManagingPl(prev => {
-                              if (!prev) return null;
-                              const current = Array.isArray(prev.trackIds) ? prev.trackIds : [];
-                              const updated = current.includes(track.id)
-                                ? current.filter(id => id !== track.id)
-                                : [...current, track.id];
-                              return { ...prev, trackIds: updated };
-                            });
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                            padding: '7px 10px',
-                            cursor: 'pointer',
-                            borderRadius: '6px',
-                            background: isIncluded ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
-                            marginBottom: '3px'
-                          }}
-                        >
-                          <input type="checkbox" checked={isIncluded} readOnly style={{ pointerEvents: 'none' }} />
-                          <img src={track.cover} alt={track.title} style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
-                          <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
-                            <div style={{ fontSize: '11px', color: '#a1a1aa' }}>{track.artist} • {track.language || 'Global'}</div>
+                  {(() => {
+                    const trackMap = new Map();
+                    [...(publicTracks || []), ...(allTracks || [])].forEach(t => {
+                      if (t?.id && !trackMap.has(t.id)) trackMap.set(t.id, t);
+                    });
+                    return Array.from(trackMap.values())
+                      .filter(t => isSongMatchingPlaylistLang(t, managingPl.language))
+                      .filter(t => !plTrackSearch || (t.title || '').toLowerCase().includes(plTrackSearch.toLowerCase()) || (t.artist || '').toLowerCase().includes(plTrackSearch.toLowerCase()))
+                      .slice(0, 100)
+                      .map(track => {
+                        const isIncluded = (managingPl.trackIds || []).includes(track.id);
+                        return (
+                          <div
+                            key={track.id}
+                            className={`admin-song-picker-row ${isIncluded ? 'selected' : ''}`}
+                            onClick={() => {
+                              handleToggleSongInPublicPlaylist(managingPl, track.id);
+                              // Also update local state so UI toggles immediately
+                              setManagingPl(prev => {
+                                if (!prev) return null;
+                                const current = Array.isArray(prev.trackIds) ? prev.trackIds : [];
+                                const updated = current.includes(track.id)
+                                  ? current.filter(id => id !== track.id)
+                                  : [...current, track.id];
+                                return { ...prev, trackIds: updated };
+                              });
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              padding: '7px 10px',
+                              cursor: 'pointer',
+                              borderRadius: '6px',
+                              background: isIncluded ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                              marginBottom: '3px'
+                            }}
+                          >
+                            <input type="checkbox" checked={isIncluded} readOnly style={{ pointerEvents: 'none' }} />
+                            <img src={track.cover} alt={track.title} style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
+                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                              <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
+                              <div style={{ fontSize: '11px', color: '#a1a1aa' }}>{track.artist} • {track.language || 'Global'}</div>
+                            </div>
+                            <span style={{ fontSize: '11px', color: isIncluded ? '#38bdf8' : '#71717a' }}>
+                              {isIncluded ? 'In Playlist' : 'Click to Add'}
+                            </span>
                           </div>
-                          <span style={{ fontSize: '11px', color: isIncluded ? '#38bdf8' : '#71717a' }}>
-                            {isIncluded ? 'In Playlist' : 'Click to Add'}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      });
+                  })()}
                 </div>
 
                 <div className="submodal-actions">

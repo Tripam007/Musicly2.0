@@ -45,7 +45,7 @@ import { LANGUAGES, LANGUAGE_LABELS, isTrackInLanguages, formatGenrePill } from 
 import { fetchLyrics } from '../utils/lyricsService';
 import { audioEngine } from '../utils/audioEngine';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
-import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang } from '../utils/publicPlaylistsDB';
+import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang, isSongMatchingPlaylistLang } from '../utils/publicPlaylistsDB';
 import PixelCat from './PixelCat';
 import SweatDropletsOverlay from './SweatDropletsOverlay';
 import '../styles/vinylScene.css';
@@ -358,16 +358,21 @@ export default function VinylScene({
     saveUserPlaylists(playlists, user);
   }, [user]);
 
-  // Filtered tracks for the song picker modal
+  // Filtered tracks for the song picker modal (respects target playlist language: lang + 'Other')
   const filteredPickerTracks = useMemo(() => {
-    if (!songSearchQuery.trim()) return allTracks.slice(0, 60);
+    const targetLang = isAddSongsToExistingOpen && selectedCustomPlaylist
+      ? (selectedCustomPlaylist.language || 'All')
+      : (newPlaylistTarget === 'musicly' ? (newPlaylistLanguage || 'All') : 'All');
+
+    const basePool = (allTracks || []).filter(t => isSongMatchingPlaylistLang(t, targetLang));
+    if (!songSearchQuery.trim()) return basePool.slice(0, 80);
     const q = songSearchQuery.toLowerCase();
-    return allTracks.filter(t =>
+    return basePool.filter(t =>
       (t.title || '').toLowerCase().includes(q) ||
       (t.artist || '').toLowerCase().includes(q) ||
       (t.genre || '').toLowerCase().includes(q)
     );
-  }, [allTracks, songSearchQuery]);
+  }, [allTracks, songSearchQuery, isAddSongsToExistingOpen, selectedCustomPlaylist, newPlaylistTarget, newPlaylistLanguage]);
 
   // Create Playlist Handler (Public Official for Admin if chosen, or Private Personal)
   const handleCreatePlaylist = async (e) => {
@@ -1720,11 +1725,6 @@ export default function VinylScene({
                   PRIVATE
                 </span>
               )}
-              {playlist.language && (
-                <span className={`vinyl-playlist-lang-badge lang-${playlist.language.toLowerCase()}`}>
-                  {playlist.language}
-                </span>
-              )}
               {isPlaylistPlaying && (
                 <span className="vinyl-playlist-playing-badge" title="Playing on Turntable">
                   <span className="mini-equalizer-bar bar-1" />
@@ -1739,21 +1739,6 @@ export default function VinylScene({
         </div>
 
         <div className="vinyl-playlist-actions-row" onClick={(e) => e.stopPropagation()}>
-          {effectiveIsAdmin && !playlist.isCustom && playlist.createdBy && (
-            <button
-              type="button"
-              className="vinyl-playlist-admin-delete-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (window.confirm(`Delete official playlist "${playlist.title}"?`)) {
-                  onDeletePublicPlaylist?.(playlist.id);
-                }
-              }}
-              title="Delete official public playlist"
-            >
-              <Trash2 size={13} />
-            </button>
-          )}
           {/* Circular Play Button: Loads playlist tracks into turntable queue */}
           <button
             className={`vinyl-playlist-play-btn ${isPlaylistPlaying ? 'is-playing' : ''}`}

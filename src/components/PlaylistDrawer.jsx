@@ -29,7 +29,7 @@ import {
   saveUserPersonalSongIds
 } from '../utils/userPlaylistsDB';
 import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections, isTrackInLanguages } from '../data/tracks';
-import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang } from '../utils/publicPlaylistsDB';
+import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang, isSongMatchingPlaylistLang } from '../utils/publicPlaylistsDB';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
 
 const AVAILABLE_SECTIONS = GENRES.filter(g => g !== 'All');
@@ -299,10 +299,12 @@ export default function PlaylistDrawer({
   // Candidate personal choice songs available to add into a custom playlist
   const candidateAddSongs = useMemo(() => {
     const q = addSongSearchQuery.toLowerCase().trim();
+    const targetLang = activeDrilldownPlaylist?.language;
     const userPool = visibleTracks.filter(t => t.isCustom || userPersonalSongIds.includes(t.id));
     const pool = q ? visibleTracks : (userPool.length > 0 ? userPool : visibleTracks);
 
     return pool.filter(t => {
+      if (!isSongMatchingPlaylistLang(t, targetLang)) return false;
       if (!q) return true;
       return (
         t.title.toLowerCase().includes(q) ||
@@ -310,7 +312,7 @@ export default function PlaylistDrawer({
         t.genre.toLowerCase().includes(q)
       );
     });
-  }, [visibleTracks, userPersonalSongIds, addSongSearchQuery]);
+  }, [visibleTracks, userPersonalSongIds, addSongSearchQuery, activeDrilldownPlaylist?.language]);
 
   // Toggle play / pause for entire playlist
   const handlePlaylistTogglePlay = (playlist) => {
@@ -789,11 +791,6 @@ export default function PlaylistDrawer({
                           {isThisPlaying && (
                             <span className="drawer-pl-playing-tag">PLAYING</span>
                           )}
-                          {pl.language && (
-                            <span className={`drawer-playlist-lang-pill lang-${pl.language.toLowerCase()}`}>
-                              {pl.language}
-                            </span>
-                          )}
                         </div>
                         <span className="drawer-pl-count">
                           {count} {count === 1 ? 'song' : 'songs'} {pl.isCustom ? '• Mine' : '• Curated by Musicly'}
@@ -801,21 +798,6 @@ export default function PlaylistDrawer({
                       </div>
 
                       <div className="drawer-pl-card-actions" onClick={(e) => e.stopPropagation()}>
-                        {isAdmin && pl.isMusiclyOfficial && pl.createdBy && (
-                          <button
-                            type="button"
-                            className="drawer-pl-card-delete-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm(`Delete official playlist "${pl.title}"?`)) {
-                                onDeletePublicPlaylist?.(pl.id);
-                              }
-                            }}
-                            title="Delete official playlist"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        )}
                         <button
                           type="button"
                           className="drawer-pl-card-play-btn"
@@ -852,11 +834,6 @@ export default function PlaylistDrawer({
                   <div className="drawer-drilldown-info">
                     <div className="drawer-playlist-badge">
                       {activeDrilldownPlaylist.isCustom ? "MINE PLAYLIST" : "OFFICIAL MUSICLY PLAYLIST"}
-                      {activeDrilldownPlaylist.language && (
-                        <span className={`drawer-drilldown-lang-tag lang-${activeDrilldownPlaylist.language.toLowerCase()}`}>
-                          {activeDrilldownPlaylist.language}
-                        </span>
-                      )}
                     </div>
                     <h3 className="drawer-drilldown-title">{activeDrilldownPlaylist.title}</h3>
                     <span className="drawer-drilldown-meta">
