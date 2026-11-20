@@ -3282,7 +3282,7 @@ export default function AdminDashboardModal({
                 </div>
 
                 <div className="admin-form-group">
-                  <label>TARGET LANGUAGE (SHOWN ONLY IN THIS LANGUAGE)</label>
+                  <label>TARGET LANGUAGE</label>
                   <p className="admin-form-help-text" style={{ fontSize: '12px', color: '#a1a1aa', marginBottom: '8px' }}>
                     Select the language filter where this playlist should appear. English playlists show only in English, Hindi in Hindi, Bengali in Bengali, Other in Other, and All in All.
                   </p>

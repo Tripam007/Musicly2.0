@@ -3672,7 +3672,7 @@ export default function VinylScene({
 
                 {effectiveIsAdmin && newPlaylistTarget === 'musicly' && (
                   <div className="vinyl-playlist-lang-selector-box">
-                    <label className="vinyl-playlist-input-label">LANGUAGE (SHOWN ONLY WHEN THIS LANGUAGE IS ACTIVE)</label>
+                    <label className="vinyl-playlist-input-label">LANGUAGE</label>
                     <div className="vinyl-playlist-lang-pills">
                       {PLAYLIST_LANGUAGES.map(lang => (
                         <button
