@@ -352,6 +352,30 @@ export default function VinylScene({
   const [selectedTrackIdsForNew, setSelectedTrackIdsForNew] = useState([]);
   const [songSearchQuery, setSongSearchQuery] = useState('');
 
+  // Automatically autoselect language from active language filter when opening the create playlist modal
+  useEffect(() => {
+    if (isCreatePlaylistOpen) {
+      const activeLang = (activeLanguages && activeLanguages.length > 0 && activeLanguages[0] !== 'All')
+        ? normalizePlaylistLang(activeLanguages[0])
+        : 'All';
+      setNewPlaylistLanguage(activeLang);
+    }
+  }, [isCreatePlaylistOpen, activeLanguages]);
+
+  // Open create playlist modal with pre-selected language and reset fields
+  const openCreatePlaylistModal = useCallback((target = 'user') => {
+    setNewPlaylistTitle('');
+    setSelectedTrackIdsForNew([]);
+    setSongSearchQuery('');
+    setNewPlaylistTarget(target);
+    const activeLang = (activeLanguages && activeLanguages.length > 0 && activeLanguages[0] !== 'All')
+      ? normalizePlaylistLang(activeLanguages[0])
+      : 'All';
+    setNewPlaylistLanguage(activeLang);
+    setIsCreatePlaylistOpen(true);
+    playClickSound('light');
+  }, [activeLanguages]);
+
   // Save custom playlists to user-scoped storage & private Firestore
   const saveCustomPlaylists = useCallback((playlists) => {
     setCustomPlaylists(playlists);
@@ -3213,14 +3237,7 @@ export default function VinylScene({
                   <button
                     type="button"
                     className="vinyl-add-playlist-btn"
-                    onClick={() => {
-                      setNewPlaylistTitle('');
-                      setSelectedTrackIdsForNew([]);
-                      setSongSearchQuery('');
-                      setNewPlaylistTarget(effectiveIsAdmin ? 'musicly' : 'user');
-                      setIsCreatePlaylistOpen(true);
-                      playClickSound('light');
-                    }}
+                    onClick={() => openCreatePlaylistModal(effectiveIsAdmin ? 'musicly' : 'user')}
                     title={effectiveIsAdmin ? "Create official Musicly playlist or personal playlist" : "Create personal playlist (private to you)"}
                     aria-label="Create new playlist"
                   >
@@ -3293,14 +3310,7 @@ export default function VinylScene({
                           <button
                             type="button"
                             className="vinyl-playlist-section-btn"
-                            onClick={() => {
-                              setNewPlaylistTitle('');
-                              setSelectedTrackIdsForNew([]);
-                              setSongSearchQuery('');
-                              setNewPlaylistTarget('musicly');
-                              setIsCreatePlaylistOpen(true);
-                              playClickSound('light');
-                            }}
+                            onClick={() => openCreatePlaylistModal('musicly')}
                             title="Create official Musicly playlist (Public worldwide)"
                           >
                             <Plus size={13} />
@@ -3316,14 +3326,7 @@ export default function VinylScene({
                         <button
                           type="button"
                           className="vinyl-playlist-section-btn"
-                          onClick={() => {
-                            setNewPlaylistTitle('');
-                            setSelectedTrackIdsForNew([]);
-                            setSongSearchQuery('');
-                            setNewPlaylistTarget('user');
-                            setIsCreatePlaylistOpen(true);
-                            playClickSound('light');
-                          }}
+                          onClick={() => openCreatePlaylistModal('user')}
                           title="Create personal playlist (private to your account)"
                         >
                           <Plus size={13} />
@@ -3342,14 +3345,7 @@ export default function VinylScene({
                           <button
                             type="button"
                             className="vinyl-btn-primary"
-                            onClick={() => {
-                              setNewPlaylistTitle('');
-                              setSelectedTrackIdsForNew([]);
-                              setSongSearchQuery('');
-                              setNewPlaylistTarget('user');
-                              setIsCreatePlaylistOpen(true);
-                              playClickSound('light');
-                            }}
+                            onClick={() => openCreatePlaylistModal('user')}
                           >
                             <Plus size={15} />
                             <span>Create Your First Playlist</span>
@@ -3370,14 +3366,7 @@ export default function VinylScene({
                           <button
                             type="button"
                             className="vinyl-playlist-section-btn"
-                            onClick={() => {
-                              setNewPlaylistTitle('');
-                              setSelectedTrackIdsForNew([]);
-                              setSongSearchQuery('');
-                              setNewPlaylistTarget('musicly');
-                              setIsCreatePlaylistOpen(true);
-                              playClickSound('light');
-                            }}
+                            onClick={() => openCreatePlaylistModal('musicly')}
                             title="Create official Musicly playlist (Public worldwide)"
                           >
                             <Plus size={13} />
@@ -3397,14 +3386,7 @@ export default function VinylScene({
                         <button
                           type="button"
                           className="vinyl-playlist-section-btn"
-                          onClick={() => {
-                            setNewPlaylistTitle('');
-                            setSelectedTrackIdsForNew([]);
-                            setSongSearchQuery('');
-                            setNewPlaylistTarget('user');
-                            setIsCreatePlaylistOpen(true);
-                            playClickSound('light');
-                          }}
+                          onClick={() => openCreatePlaylistModal('user')}
                           title="Create personal playlist (private to your account)"
                         >
                           <Plus size={13} />
@@ -3423,14 +3405,7 @@ export default function VinylScene({
                           <button
                             type="button"
                             className="vinyl-btn-primary"
-                            onClick={() => {
-                              setNewPlaylistTitle('');
-                              setSelectedTrackIdsForNew([]);
-                              setSongSearchQuery('');
-                              setNewPlaylistTarget('user');
-                              setIsCreatePlaylistOpen(true);
-                              playClickSound('light');
-                            }}
+                            onClick={() => openCreatePlaylistModal('user')}
                           >
                             <Plus size={15} />
                             <span>Create Your First Playlist</span>

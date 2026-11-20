@@ -98,6 +98,16 @@ export default function PlaylistDrawer({
   const popoverRef = useRef(null);
   const trackListRef = useRef(null);
 
+  // Automatically autoselect language from active language filter when creating a playlist
+  useEffect(() => {
+    if (isCreatingPlaylist) {
+      const activeLang = (activeLanguages && activeLanguages.length > 0 && activeLanguages[0] !== 'All')
+        ? normalizePlaylistLang(activeLanguages[0])
+        : 'All';
+      setNewPlaylistLanguage(activeLang);
+    }
+  }, [isCreatingPlaylist, activeLanguages]);
+
   // Sync user's private playlists and personal songs (local cache + cloud sync)
   useEffect(() => {
     setUserPlaylists(getLocalUserPlaylists(user));
@@ -672,8 +682,12 @@ export default function PlaylistDrawer({
                       type="button"
                       className="drawer-create-playlist-card"
                       onClick={() => {
-                        setIsCreatingPlaylist(true);
+                        const activeLang = (activeLanguages && activeLanguages.length > 0 && activeLanguages[0] !== 'All')
+                          ? normalizePlaylistLang(activeLanguages[0])
+                          : 'All';
+                        setNewPlaylistLanguage(activeLang);
                         setNewPlaylistTarget(mainSource === 'musicly' && isAdmin ? 'musicly' : 'user');
+                        setIsCreatingPlaylist(true);
                         playClickSound('light');
                       }}
                     >

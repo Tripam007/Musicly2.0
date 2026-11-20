@@ -133,6 +133,13 @@ export default function AdminDashboardModal({
   const [managingPl, setManagingPl] = useState(null); // Playlist being edited for songs
   const [editingPlId, setEditingPlId] = useState(null);
 
+  // Automatically autoselect language from active playlist filter when opening create modal
+  useEffect(() => {
+    if (isCreatingPl) {
+      setNewPlLang(playlistLangFilter || 'All');
+    }
+  }, [isCreatingPl, playlistLangFilter]);
+
   // 🔴 Live Stream AI Agent States
   const [isLiveAgentActive, setIsLiveAgentActive] = useState(false);
   const [liveRecommendations, setLiveRecommendations] = useState(LIVE_STREAM_PRESETS);
@@ -3110,7 +3117,7 @@ export default function AdminDashboardModal({
                 onClick={() => {
                   setIsCreatingPl(true);
                   setNewPlTitle('');
-                  setNewPlLang('All');
+                  setNewPlLang(playlistLangFilter || 'All');
                   setNewPlSelectedTrackIds([]);
                   setPlTrackSearch('');
                   playClickSound('light');
