@@ -1558,18 +1558,22 @@ export default function MinimalStudioScene({
 
                 {/* BACK FACE: Full-Box Synchronized Lyrics inside this exact box */}
                 <div className="ref-island-face ref-island-back">
-                  {/* Floating Flip-Back to Info Button (above box) */}
+                  {/* Floating Flip-Back to Info Button with Musicly Icon (unclipped) */}
                   <button 
                     type="button"
-                    className="ref-lyrics-toggle-btn is-active"
+                    className="ref-lyrics-toggle-btn is-active ref-lyrics-musicly-btn"
                     onClick={() => {
                       setIsLyricsOpen(false);
                       playClickSound('light');
                     }}
-                    title="Flip back to song info"
+                    title="Flip back to Song Info"
+                    aria-label="Back to Song Info"
                   >
-                    <Mic2 size={12} className="ref-lyrics-icon" />
-                    <span className="ref-lyrics-text">Info</span>
+                    <img 
+                      src="/favicon.svg" 
+                      alt="Musicly" 
+                      className="ref-lyrics-musicly-icon" 
+                    />
                   </button>
 
                   {/* Sleek Floating Corner Close Button (zero vertical footprint) */}

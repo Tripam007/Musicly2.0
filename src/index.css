@@ -18538,7 +18538,7 @@ body, html, #root {
   flex-direction: column;
   transform: rotateX(180deg) translateZ(1px);
   z-index: 1;
-  overflow: hidden;
+  overflow: visible;
   position: absolute;
   inset: 0;
 }
@@ -18611,6 +18611,41 @@ body, html, #root {
   background: #38bdf8;
   box-shadow: 0 0 6px #38bdf8;
   display: inline-block;
+}
+
+/* Button with Just the Musicly Icon (unclipped, perfectly centered) */
+.ref-lyrics-musicly-btn {
+  width: 32px !important;
+  height: 28px !important;
+  border-radius: 999px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: absolute !important;
+  top: -14px !important;
+  left: 24px !important;
+  background: var(--ref-accent, #f4a000) !important;
+  border: 1.5px solid #ffffff !important;
+  box-shadow: 0 4px 14px var(--ref-accent-glow, rgba(244, 160, 0, 0.55)), inset 0 1px 1px rgba(255, 255, 255, 0.4) !important;
+  cursor: pointer;
+  z-index: 30;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: visible;
+}
+
+.ref-lyrics-musicly-btn:hover {
+  transform: translateY(-2px) scale(1.1) !important;
+  box-shadow: 0 6px 18px var(--ref-accent-glow, rgba(244, 160, 0, 0.7)), 0 0 14px rgba(255, 255, 255, 0.4) !important;
+}
+
+.ref-lyrics-musicly-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  display: block;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
 }
 
 /* Subtle Floating Corner Close Button for Lyrics (zero header height overhead) */
