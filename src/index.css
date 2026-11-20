@@ -17825,6 +17825,7 @@ body, html, #root {
   border-radius: 36px;
   overflow: hidden;
   background: #14151e;
+  overscroll-behavior: none;
 }
 
 .ref-main-photo-img {
@@ -18486,6 +18487,7 @@ body, html, #root {
   height: 155px;
   perspective: 1200px;
   z-index: 15;
+  overscroll-behavior: contain;
 }
 
 .ref-island-flip-card {
@@ -18541,6 +18543,7 @@ body, html, #root {
   overflow: visible;
   position: absolute;
   inset: 0;
+  overscroll-behavior: contain;
 }
 
 /* Prevent pointer event interference between flipped faces */
@@ -18683,6 +18686,7 @@ body, html, #root {
   height: 100%;
   width: 100%;
   overflow-y: auto;
+  overscroll-behavior: contain;
   margin-top: 0;
   display: flex;
   flex-direction: column;

@@ -27,7 +27,6 @@ import {
   Speaker,
   Headphones,
   Mic2,
-  X as CloseIcon,
   Music
 } from 'lucide-react';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
@@ -892,30 +891,60 @@ export default function MinimalStudioScene({
     return 0;
   }, [lyricsData, livePlayTime, currentTime, duration, activeTrack?.duration]);
 
+  // Dedicated internal scroll function for lyrics: ONLY scrolls lyricsContainerRef, NEVER scrolls ancestor frames or window!
+  const scrollToActiveLyricLine = useCallback((behavior = 'smooth') => {
+    const container = lyricsContainerRef.current;
+    const activeEl = activeLineRef.current;
+    if (!container || !activeEl) return;
+
+    // Calculate position strictly relative to the container without bubbling to parent DOM
+    const containerRect = container.getBoundingClientRect();
+    const activeRect = activeEl.getBoundingClientRect();
+    const currentScrollTop = container.scrollTop;
+    const targetScrollTop = currentScrollTop + (activeRect.top - containerRect.top) - (container.clientHeight / 2) + (activeRect.height / 2);
+
+    container.scrollTo({
+      top: Math.max(0, targetScrollTop),
+      behavior
+    });
+
+    // Zero out any unintentional scroll displacement on ancestors
+    const photoFrame = container.closest('.ref-main-photo-frame');
+    if (photoFrame && photoFrame.scrollTop !== 0) {
+      photoFrame.scrollTop = 0;
+    }
+    const centerStage = container.closest('.ref-center-stage');
+    if (centerStage && centerStage.scrollTop !== 0) {
+      centerStage.scrollTop = 0;
+    }
+  }, []);
+
   // Handle user manual scroll with auto-scroll resume timer that automatically re-centers
   const handleLyricsManualScroll = useCallback(() => {
     isUserScrollingRef.current = true;
     if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
     userScrollTimeoutRef.current = setTimeout(() => {
       isUserScrollingRef.current = false;
-      if (activeLineRef.current) {
-        activeLineRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }
+      scrollToActiveLyricLine('smooth');
     }, 1800);
-  }, []);
+  }, [scrollToActiveLyricLine]);
 
-  // Smooth auto-scroll following the active synced line
+  // Smooth auto-scroll following the active synced line (strictly constrained to lyricsContainer)
   useEffect(() => {
     if (isLyricsOpen && activeLineRef.current && !isUserScrollingRef.current) {
-      activeLineRef.current.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-      });
+      scrollToActiveLyricLine('smooth');
     }
-  }, [activeLineIndex, isLyricsOpen]);
+  }, [activeLineIndex, isLyricsOpen, scrollToActiveLyricLine]);
+
+  // When lyrics are opened, automatically scroll to the currently active lyric line
+  useEffect(() => {
+    if (isLyricsOpen) {
+      const timer = setTimeout(() => {
+        scrollToActiveLyricLine('auto');
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [isLyricsOpen, scrollToActiveLyricLine]);
 
   // Filter available studio genres based on language (Ghazal for Hindi, Country for English, Rabindra Sangeet for Bengali)
   const availableStudioGenres = useMemo(() => {
@@ -1576,20 +1605,6 @@ export default function MinimalStudioScene({
                     />
                   </button>
 
-                  {/* Sleek Floating Corner Close Button (zero vertical footprint) */}
-                  <button 
-                    type="button"
-                    className="ref-island-lyrics-floating-close"
-                    onClick={() => {
-                      setIsLyricsOpen(false);
-                      playClickSound('light');
-                    }}
-                    title="Close Lyrics & Flip back to Song Info"
-                    aria-label="Close Lyrics"
-                  >
-                    <CloseIcon size={12} />
-                  </button>
-
                   {/* Full-Box Lyrics Container */}
                   <div 
                     ref={lyricsContainerRef}
@@ -1627,12 +1642,7 @@ export default function MinimalStudioScene({
                                   setLivePlayTime(targetTime);
                                   onSeek(targetTime);
                                   setTimeout(() => {
-                                    if (activeLineRef.current) {
-                                      activeLineRef.current.scrollIntoView({
-                                        behavior: 'smooth',
-                                        block: 'center'
-                                      });
-                                    }
+                                    scrollToActiveLyricLine('smooth');
                                   }, 20);
                                 }
                               }}
