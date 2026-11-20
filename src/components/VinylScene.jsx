@@ -1719,12 +1719,6 @@ export default function VinylScene({
           <div className="vinyl-playlist-text">
             <div className="vinyl-playlist-name-row">
               <span className="vinyl-playlist-name">{playlist.title}</span>
-              {playlist.isCustom && (
-                <span className="vinyl-playlist-custom-badge vinyl-badge-private" title="Private to your account only">
-                  <Lock size={9} style={{ marginRight: 3, verticalAlign: 'middle' }} />
-                  PRIVATE
-                </span>
-              )}
               {isPlaylistPlaying && (
                 <span className="vinyl-playlist-playing-badge" title="Playing on Turntable">
                   <span className="mini-equalizer-bar bar-1" />
