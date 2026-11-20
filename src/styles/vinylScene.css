@@ -5102,3 +5102,108 @@
 
 
 
+
+
+/* Vinyl Playlist Language Badge & Admin Actions */
+.vinyl-playlist-lang-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-family: var(--vinyl-font-pixel, inherit);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-radius: 4px;
+  margin-left: 5px;
+}
+
+.vinyl-playlist-lang-badge.lang-english {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.vinyl-playlist-lang-badge.lang-hindi {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.4);
+}
+
+.vinyl-playlist-lang-badge.lang-bengali {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.vinyl-playlist-lang-badge.lang-other {
+  background: rgba(192, 132, 252, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.4);
+}
+
+.vinyl-playlist-lang-badge.lang-all {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.vinyl-playlist-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.vinyl-playlist-admin-delete-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vinyl-playlist-admin-delete-btn:hover {
+  background: #ef4444;
+  color: #fff;
+  transform: scale(1.08);
+}
+
+.vinyl-playlist-lang-selector-box {
+  margin-top: 10px;
+}
+
+.vinyl-playlist-lang-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.vinyl-lang-pill {
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e4e4e7;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.vinyl-lang-pill:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.vinyl-lang-pill.is-active {
+  background: #ffd166;
+  border-color: #ffd166;
+  color: #111;
+  font-weight: 700;
+}

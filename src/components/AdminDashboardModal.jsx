@@ -42,8 +42,11 @@ import {
   Mail,
   Activity,
   RotateCcw,
-  MonitorPlay
+  MonitorPlay,
+  ListMusic,
+  Lock
 } from 'lucide-react';
+import { PLAYLIST_LANGUAGES, normalizePlaylistLang, getUnifiedMusiclyPlaylists } from '../utils/publicPlaylistsDB';
 
 import { GENRES, LANGUAGES, getAvailableSections, getAvailableGenres, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
 import { extractYouTubeId, extractYouTubeStartTime } from '../utils/youtubePlayer';
@@ -109,10 +112,26 @@ export default function AdminDashboardModal({
   onSelectScene,
   onApplyWebappTheme,
   onResetWebappTheme,
-  onOpenAirAiDashboard
+  onOpenAirAiDashboard,
+  publicPlaylists = [],
+  onPublishPublicPlaylist,
+  onUpdatePublicPlaylist,
+  onDeletePublicPlaylist,
+  allTracks = []
 }) {
-  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'upload' | 'scenes'
+  const [activeTab, setActiveTab] = useState('list'); // 'list' | 'upload' | 'scenes' | 'playlists'
   const [searchQuery, setSearchQuery] = useState('');
+
+  // 🎵 Playlist Management States
+  const [playlistSearchQuery, setPlaylistSearchQuery] = useState('');
+  const [playlistLangFilter, setPlaylistLangFilter] = useState('All'); // 'All' | 'English' | 'Hindi' | 'Bengali' | 'Other'
+  const [isCreatingPl, setIsCreatingPl] = useState(false);
+  const [newPlTitle, setNewPlTitle] = useState('');
+  const [newPlLang, setNewPlLang] = useState('All');
+  const [newPlSelectedTrackIds, setNewPlSelectedTrackIds] = useState([]);
+  const [plTrackSearch, setPlTrackSearch] = useState('');
+  const [managingPl, setManagingPl] = useState(null); // Playlist being edited for songs
+  const [editingPlId, setEditingPlId] = useState(null);
 
   // 🔴 Live Stream AI Agent States
   const [isLiveAgentActive, setIsLiveAgentActive] = useState(false);
@@ -1250,6 +1269,55 @@ export default function AdminDashboardModal({
     reader.readAsDataURL(file);
   };
 
+  // 🎵 Public Playlists Management Handlers
+  const handleCreatePublicPlaylist = async (e) => {
+    e?.preventDefault?.();
+    if (!newPlTitle.trim()) return;
+    try {
+      const allAvailableTracks = [...publicTracks, ...(allTracks || [])];
+      const cover = newPlSelectedTrackIds.length > 0
+        ? (allAvailableTracks.find(t => t.id === newPlSelectedTrackIds[0])?.cover)
+        : null;
+
+      await onPublishPublicPlaylist?.({
+        title: newPlTitle.trim(),
+        trackIds: newPlSelectedTrackIds,
+        image: cover,
+        language: newPlLang || 'All'
+      });
+      setIsCreatingPl(false);
+      setNewPlTitle('');
+      setNewPlLang('All');
+      setNewPlSelectedTrackIds([]);
+      playTingSound();
+    } catch (err) {
+      alert(err.message || "Failed to create public playlist");
+    }
+  };
+
+  const handleUpdatePlaylistLanguage = async (playlistId, newLanguage) => {
+    try {
+      await onUpdatePublicPlaylist?.(playlistId, { language: newLanguage });
+      playClickSound('light');
+    } catch (err) {
+      alert(err.message || "Failed to update playlist language");
+    }
+  };
+
+  const handleToggleSongInPublicPlaylist = async (playlist, trackId) => {
+    try {
+      const currentIds = Array.isArray(playlist.trackIds) ? playlist.trackIds : [];
+      const newIds = currentIds.includes(trackId)
+        ? currentIds.filter(id => id !== trackId)
+        : [...currentIds, trackId];
+
+      await onUpdatePublicPlaylist?.(playlist.id, { trackIds: newIds });
+      playClickSound('light');
+    } catch (err) {
+      alert(err.message || "Failed to update playlist songs");
+    }
+  };
+
   return (
     <div className="modal-overlay admin-modal-overlay" onClick={onClose}>
       <div className="glass-modal-panel admin-dashboard-panel" onClick={(e) => e.stopPropagation()}>
@@ -1295,6 +1363,12 @@ export default function AdminDashboardModal({
             onClick={() => setActiveTab('scenes')}
           >
             <Sparkles size={15} /> Room Themes ({customScenes.length})
+          </button>
+          <button 
+            className={`admin-nav-btn ${activeTab === 'playlists' ? 'active' : ''}`}
+            onClick={() => setActiveTab('playlists')}
+          >
+            <ListMusic size={15} /> Playlists ({publicPlaylists.length})
           </button>
           <button 
             className={`admin-nav-btn ${activeTab === 'wallpapers' ? 'active' : ''}`}
@@ -3002,6 +3076,382 @@ export default function AdminDashboardModal({
                 })}
               </div>
             )}
+          </div>
+        )}
+
+        {/* TAB: Official Playlists Management */}
+        {activeTab === 'playlists' && (
+          <div className="admin-tab-content admin-playlists-tab">
+            {/* Top Toolbar: Search, Language Filter, and Create Action */}
+            <div className="admin-search-and-stats">
+              <div className="admin-search-bar">
+                <Search size={15} />
+                <input 
+                  type="text" 
+                  placeholder="Search official playlists by name or language..." 
+                  value={playlistSearchQuery}
+                  onChange={(e) => setPlaylistSearchQuery(e.target.value)}
+                />
+                {playlistSearchQuery && (
+                  <button 
+                    type="button" 
+                    className="admin-search-clear-btn" 
+                    onClick={() => setPlaylistSearchQuery('')}
+                    title="Clear search"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              <button 
+                type="button" 
+                className="admin-create-playlist-btn"
+                onClick={() => {
+                  setIsCreatingPl(true);
+                  setNewPlTitle('');
+                  setNewPlLang('All');
+                  setNewPlSelectedTrackIds([]);
+                  setPlTrackSearch('');
+                  playClickSound('light');
+                }}
+              >
+                <Plus size={15} /> Create Official Playlist
+              </button>
+            </div>
+
+            {/* Language Filter Pills */}
+            <div className="admin-playlist-lang-filter-bar">
+              <span className="admin-pl-filter-lbl">Filter by Language:</span>
+              <div className="admin-pl-lang-filter-pills">
+                <button
+                  type="button"
+                  className={`admin-pl-filter-pill ${playlistLangFilter === 'All' ? 'active' : ''}`}
+                  onClick={() => setPlaylistLangFilter('All')}
+                >
+                  All Languages ({publicPlaylists.length})
+                </button>
+                {PLAYLIST_LANGUAGES.filter(l => l !== 'All').map(lang => {
+                  const count = publicPlaylists.filter(p => normalizePlaylistLang(p.language) === lang).length;
+                  return (
+                    <button
+                      key={lang}
+                      type="button"
+                      className={`admin-pl-filter-pill lang-${lang.toLowerCase()} ${playlistLangFilter === lang ? 'active' : ''}`}
+                      onClick={() => setPlaylistLangFilter(lang)}
+                    >
+                      {lang} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Helper Notice for Admin */}
+            <div className="admin-playlist-lang-notice">
+              <Sparkles size={14} className="text-amber-400" />
+              <span>
+                <strong>Language-Curated Visibility:</strong> When listeners select a language (English, Hindi, Bengali, Other, or All), only playlists curated for that specific language will appear across all scenes.
+              </span>
+            </div>
+
+            {/* Playlists Grid */}
+            {publicPlaylists.length === 0 ? (
+              <div className="admin-empty-playlists-box">
+                <ListMusic size={38} className="empty-icon" />
+                <h4>No Official Playlists Created Yet</h4>
+                <p>Create public playlists and designate them for English, Hindi, Bengali, Other, or All languages.</p>
+                <button 
+                  type="button" 
+                  className="admin-create-playlist-btn"
+                  onClick={() => setIsCreatingPl(true)}
+                >
+                  <Plus size={14} /> Create Your First Official Playlist
+                </button>
+              </div>
+            ) : (
+              <div className="admin-playlists-grid">
+                {publicPlaylists
+                  .filter(pl => {
+                    const matchesSearch = !playlistSearchQuery || 
+                      (pl.title || '').toLowerCase().includes(playlistSearchQuery.toLowerCase()) ||
+                      (pl.language || '').toLowerCase().includes(playlistSearchQuery.toLowerCase());
+                    const matchesLang = playlistLangFilter === 'All' || normalizePlaylistLang(pl.language) === playlistLangFilter;
+                    return matchesSearch && matchesLang;
+                  })
+                  .map(pl => {
+                    const allAvailableTracks = [...publicTracks, ...(allTracks || [])];
+                    const plTracks = (pl.trackIds || []).map(id => allAvailableTracks.find(t => t.id === id)).filter(Boolean);
+                    const cover = pl.image || plTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80';
+                    const currentLang = normalizePlaylistLang(pl.language || 'All');
+
+                    return (
+                      <div key={pl.id} className="admin-playlist-card">
+                        <div className="admin-pl-card-thumb-wrap">
+                          <img src={cover} alt={pl.title} className="admin-pl-card-thumb" />
+                          <span className={`admin-pl-card-lang-badge lang-${currentLang.toLowerCase()}`}>
+                            {currentLang}
+                          </span>
+                        </div>
+
+                        <div className="admin-pl-card-body">
+                          <div className="admin-pl-card-title-row">
+                            <h4 className="admin-pl-card-title">{pl.title}</h4>
+                            <span className="admin-pl-card-count">{plTracks.length} tracks</span>
+                          </div>
+
+                          <div className="admin-pl-lang-switch-box">
+                            <span className="admin-pl-switch-label">Target Language:</span>
+                            <div className="admin-pl-switch-pills">
+                              {PLAYLIST_LANGUAGES.map(lang => (
+                                <button
+                                  key={lang}
+                                  type="button"
+                                  className={`admin-pl-mini-lang-pill ${currentLang === lang ? 'active' : ''}`}
+                                  onClick={() => handleUpdatePlaylistLanguage(pl.id, lang)}
+                                  title={`Change target language to ${lang}`}
+                                >
+                                  {lang}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="admin-pl-card-footer">
+                            <button
+                              type="button"
+                              className="admin-pl-manage-songs-btn"
+                              onClick={() => {
+                                setManagingPl(pl);
+                                setPlTrackSearch('');
+                                playClickSound('light');
+                              }}
+                            >
+                              <Music size={13} /> Manage Songs ({pl.trackIds?.length || 0})
+                            </button>
+
+                            <button
+                              type="button"
+                              className="admin-action-icon-btn delete"
+                              onClick={() => {
+                                if (window.confirm(`Delete official playlist "${pl.title}"? This will remove it for all users worldwide.`)) {
+                                  onDeletePublicPlaylist?.(pl.id);
+                                }
+                              }}
+                              title="Delete official playlist"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* MODAL 1: Create New Official Playlist with Language Selection */}
+        {isCreatingPl && (
+          <div className="admin-submodal-overlay" onClick={() => setIsCreatingPl(false)}>
+            <div className="admin-submodal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
+              <div className="submodal-header">
+                <h4>Create Official Musicly Playlist</h4>
+                <button 
+                  className="glass-close-btn bookmark-close-btn" 
+                  onClick={() => setIsCreatingPl(false)} 
+                  title="Close" 
+                  aria-label="Close"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreatePublicPlaylist} className="submodal-body">
+                <div className="admin-form-group">
+                  <label>PLAYLIST NAME</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Hindi Retro Classics, Bengal Folk Sessions, English Lo-Fi..."
+                    value={newPlTitle}
+                    onChange={(e) => setNewPlTitle(e.target.value)}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <div className="admin-form-group">
+                  <label>TARGET LANGUAGE (SHOWN ONLY IN THIS LANGUAGE)</label>
+                  <p className="admin-form-help-text" style={{ fontSize: '12px', color: '#a1a1aa', marginBottom: '8px' }}>
+                    Select the language filter where this playlist should appear. English playlists show only in English, Hindi in Hindi, Bengali in Bengali, Other in Other, and All in All.
+                  </p>
+                  <div className="admin-chips-picker">
+                    {PLAYLIST_LANGUAGES.map(lang => {
+                      const isSel = newPlLang === lang;
+                      return (
+                        <button
+                          key={lang}
+                          type="button"
+                          className={`admin-picker-chip lang-${lang.toLowerCase()} ${isSel ? 'selected' : ''}`}
+                          onClick={() => setNewPlLang(lang)}
+                        >
+                          {isSel && <Check size={12} />} {lang}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="admin-form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ margin: 0 }}>SELECT SONGS ({newPlSelectedTrackIds.length} chosen)</label>
+                    <span style={{ fontSize: '11px', color: '#38bdf8' }}>Optional - add songs now or later</span>
+                  </div>
+                  
+                  <input
+                    type="text"
+                    placeholder="Search songs to include..."
+                    value={plTrackSearch}
+                    onChange={(e) => setPlTrackSearch(e.target.value)}
+                    style={{ marginBottom: '8px' }}
+                  />
+
+                  <div className="admin-song-picker-list" style={{ maxHeight: '220px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '6px' }}>
+                    {[...publicTracks, ...(allTracks || [])]
+                      .filter(t => !plTrackSearch || (t.title || '').toLowerCase().includes(plTrackSearch.toLowerCase()) || (t.artist || '').toLowerCase().includes(plTrackSearch.toLowerCase()))
+                      .slice(0, 50)
+                      .map(track => {
+                        const isChosen = newPlSelectedTrackIds.includes(track.id);
+                        return (
+                          <div
+                            key={track.id}
+                            className={`admin-song-picker-row ${isChosen ? 'selected' : ''}`}
+                            onClick={() => {
+                              setNewPlSelectedTrackIds(prev => 
+                                isChosen ? prev.filter(id => id !== track.id) : [...prev, track.id]
+                              );
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '10px',
+                              padding: '6px 8px',
+                              cursor: 'pointer',
+                              borderRadius: '6px',
+                              background: isChosen ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                              marginBottom: '3px'
+                            }}
+                          >
+                            <input type="checkbox" checked={isChosen} readOnly style={{ pointerEvents: 'none' }} />
+                            <img src={track.cover} alt={track.title} style={{ width: '28px', height: '28px', borderRadius: '4px', objectFit: 'cover' }} />
+                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                              <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
+                              <div style={{ fontSize: '11px', color: '#a1a1aa' }}>{track.artist} • {track.language || 'Global'}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                <div className="submodal-actions">
+                  <button type="button" className="admin-cancel-btn" onClick={() => setIsCreatingPl(false)}>
+                    Cancel
+                  </button>
+                  <button type="submit" className="admin-save-btn">
+                    <Check size={14} /> Publish Official Playlist
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL 2: Manage Songs in Existing Official Playlist */}
+        {managingPl && (
+          <div className="admin-submodal-overlay" onClick={() => setManagingPl(null)}>
+            <div className="admin-submodal-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '640px' }}>
+              <div className="submodal-header">
+                <div>
+                  <h4>Manage Songs: {managingPl.title}</h4>
+                  <span style={{ fontSize: '12px', color: '#a1a1aa' }}>
+                    Language: <strong style={{ color: '#38bdf8' }}>{managingPl.language || 'All'}</strong> • {managingPl.trackIds?.length || 0} songs in playlist
+                  </span>
+                </div>
+                <button 
+                  className="glass-close-btn bookmark-close-btn" 
+                  onClick={() => setManagingPl(null)} 
+                  title="Close" 
+                  aria-label="Close"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="submodal-body">
+                <input
+                  type="text"
+                  placeholder="Search tracks to add or remove..."
+                  value={plTrackSearch}
+                  onChange={(e) => setPlTrackSearch(e.target.value)}
+                  style={{ marginBottom: '10px' }}
+                />
+
+                <div className="admin-song-picker-list" style={{ maxHeight: '320px', overflowY: 'auto', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '6px' }}>
+                  {[...publicTracks, ...(allTracks || [])]
+                    .filter(t => !plTrackSearch || (t.title || '').toLowerCase().includes(plTrackSearch.toLowerCase()) || (t.artist || '').toLowerCase().includes(plTrackSearch.toLowerCase()))
+                    .slice(0, 80)
+                    .map(track => {
+                      const isIncluded = (managingPl.trackIds || []).includes(track.id);
+                      return (
+                        <div
+                          key={track.id}
+                          className={`admin-song-picker-row ${isIncluded ? 'selected' : ''}`}
+                          onClick={() => {
+                            handleToggleSongInPublicPlaylist(managingPl, track.id);
+                            // Also update local state so UI toggles immediately
+                            setManagingPl(prev => {
+                              if (!prev) return null;
+                              const current = Array.isArray(prev.trackIds) ? prev.trackIds : [];
+                              const updated = current.includes(track.id)
+                                ? current.filter(id => id !== track.id)
+                                : [...current, track.id];
+                              return { ...prev, trackIds: updated };
+                            });
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '7px 10px',
+                            cursor: 'pointer',
+                            borderRadius: '6px',
+                            background: isIncluded ? 'rgba(56, 189, 248, 0.15)' : 'transparent',
+                            marginBottom: '3px'
+                          }}
+                        >
+                          <input type="checkbox" checked={isIncluded} readOnly style={{ pointerEvents: 'none' }} />
+                          <img src={track.cover} alt={track.title} style={{ width: '32px', height: '32px', borderRadius: '4px', objectFit: 'cover' }} />
+                          <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{track.title}</div>
+                            <div style={{ fontSize: '11px', color: '#a1a1aa' }}>{track.artist} • {track.language || 'Global'}</div>
+                          </div>
+                          <span style={{ fontSize: '11px', color: isIncluded ? '#38bdf8' : '#71717a' }}>
+                            {isIncluded ? 'In Playlist' : 'Click to Add'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                <div className="submodal-actions">
+                  <button type="button" className="admin-save-btn" onClick={() => setManagingPl(null)}>
+                    <Check size={14} /> Done
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

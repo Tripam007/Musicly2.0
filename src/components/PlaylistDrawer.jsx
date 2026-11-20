@@ -29,6 +29,7 @@ import {
   saveUserPersonalSongIds
 } from '../utils/userPlaylistsDB';
 import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections, isTrackInLanguages } from '../data/tracks';
+import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang } from '../utils/publicPlaylistsDB';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
 
 const AVAILABLE_SECTIONS = GENRES.filter(g => g !== 'All');
@@ -70,6 +71,10 @@ export default function PlaylistDrawer({
   onUpdateTrackGenres,
   onDownloadTrack,
   isAdmin = false,
+  publicPlaylists = [],
+  onPublishPublicPlaylist = null,
+  onUpdatePublicPlaylist = null,
+  onDeletePublicPlaylist = null,
   onOpenAdminDashboard = null,
   onOpenAuthModal = null,
   autoFocusSearch = false
@@ -86,6 +91,8 @@ export default function PlaylistDrawer({
   const [userPlaylists, setUserPlaylists] = useState(() => getLocalUserPlaylists(user));
   const [isCreatingPlaylist, setIsCreatingPlaylist] = useState(false);
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
+  const [newPlaylistTarget, setNewPlaylistTarget] = useState('user'); // 'user' | 'musicly'
+  const [newPlaylistLanguage, setNewPlaylistLanguage] = useState('All');
   const [playlistMenuTrackId, setPlaylistMenuTrackId] = useState(null);
   const clickTimerRef = useRef(null);
   const popoverRef = useRef(null);
@@ -198,51 +205,10 @@ export default function PlaylistDrawer({
   // When without login, show all official Musicly tracks (Public Library & Curated Catalog)
   const visibleTracks = tracks.filter(t => isAuthed ? (!t.isCustom || isOfflineTrack(t) || t.isCustom) : (!t.isCustom || !!t.isPublic));
 
-  // Curated Official Musicly Playlists
+  // Curated Official Musicly Playlists (Unified across all scenes and strictly language-curated)
   const musiclyPlaylists = useMemo(() => {
-    const list = [];
-    const official = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
-
-    const makePl = (id, title, plTracks, defaultImg) => ({
-      id,
-      title,
-      tracks: plTracks,
-      trackIds: plTracks.map(t => t.id),
-      image: plTracks[0]?.cover || defaultImg,
-      isCustom: false,
-      isMusiclyOfficial: true
-    });
-
-    // 1. Vintage Hi-Fi & 80s
-    const retro = official.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro'))));
-    if (retro.length > 0) list.push(makePl('vintage_retro', 'Vintage Hi-Fi & 80s', retro, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80'));
-
-    // 2. Late Night Lo-Fi
-    const lofi = official.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi'))));
-    if (lofi.length > 0) list.push(makePl('latenight_lofi', 'Late Night Lo-Fi', lofi, 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'));
-
-    // 3. Country Roads & Roots
-    const country = official.filter(t => (t.genre || '').toLowerCase().includes('country') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country'))));
-    if (country.length > 0) list.push(makePl('country_roots', 'Country Roads & Roots', country, 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=300&auto=format&fit=crop&q=80'));
-
-    // 4. Indie Acoustic Sessions
-    const indie = official.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie'))));
-    if (indie.length > 0) list.push(makePl('indie_warmth', 'Indie Acoustic Sessions', indie, 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80'));
-
-    // 5. Timeless Ghazals
-    const ghazals = official.filter(t => (t.genre || '').toLowerCase().includes('ghazal') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal'))));
-    if (ghazals.length > 0) list.push(makePl('timeless_ghazals', 'Timeless Ghazals & Mehfil', ghazals, 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80'));
-
-    // 6. Rabindra Sangeet & Folk
-    const bengali = official.filter(t => (t.genre || '').toLowerCase().includes('rabindra') || (t.title || '').toLowerCase().includes('majhe'));
-    if (bengali.length > 0) list.push(makePl('bengali_classics', 'Rabindra Sangeet & Folk', bengali, 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg'));
-
-    // 7. Peace
-    const peace = official.filter(t => (t.genre || '').toLowerCase().includes('peace') || (t.title || '').toLowerCase().includes('peace'));
-    if (peace.length > 0) list.push(makePl('peace_playlist', 'Peace', peace, 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80'));
-
-    return list;
-  }, [visibleTracks]);
+    return getUnifiedMusiclyPlaylists(tracks, publicPlaylists, selectedLanguages, selectedLanguage);
+  }, [tracks, publicPlaylists, selectedLanguages, selectedLanguage]);
 
   // Enriched User Playlists with resolved track objects
   const enrichedUserPlaylists = useMemo(() => {
@@ -397,11 +363,31 @@ export default function PlaylistDrawer({
     playClickSound('light');
   };
 
-  // Playlist management actions (strictly private to user)
-  const handleCreateNewPlaylist = (e) => {
+  // Playlist management actions (Admin can create Public Official with Language; User creates Private)
+  const handleCreateNewPlaylist = async (e) => {
     e?.preventDefault?.();
     const title = newPlaylistTitle.trim();
     if (!title) return;
+
+    if (isAdmin && newPlaylistTarget === 'musicly') {
+      try {
+        if (onPublishPublicPlaylist) {
+          await onPublishPublicPlaylist({
+            title,
+            trackIds: [],
+            language: newPlaylistLanguage || 'All'
+          });
+        }
+        setIsCreatingPlaylist(false);
+        setNewPlaylistTitle('');
+        setNewPlaylistLanguage('All');
+        playPeacefulLikeSound();
+      } catch (err) {
+        alert(err.message || 'Failed to publish official playlist');
+      }
+      return;
+    }
+
     const newPl = {
       id: 'playlist_' + Date.now(),
       title,
@@ -677,7 +663,7 @@ export default function PlaylistDrawer({
           /* SHOW ONLY THE PLAYLIST'S NAMES HERE */
           <div className="drawer-track-list" ref={trackListRef}>
             <div className="drawer-playlists-cards-list">
-              {mainSource === 'user' && (
+              {(mainSource === 'user' || (mainSource === 'musicly' && isAdmin)) && (
                 <div className="drawer-new-playlist-row">
                   {!isCreatingPlaylist ? (
                     <button
@@ -685,6 +671,7 @@ export default function PlaylistDrawer({
                       className="drawer-create-playlist-card"
                       onClick={() => {
                         setIsCreatingPlaylist(true);
+                        setNewPlaylistTarget(mainSource === 'musicly' && isAdmin ? 'musicly' : 'user');
                         playClickSound('light');
                       }}
                     >
@@ -692,28 +679,73 @@ export default function PlaylistDrawer({
                         <Plus size={16} />
                       </div>
                       <div className="drawer-create-pl-text">
-                        <span className="drawer-create-pl-title">+ Create New Playlist</span>
-                        <span className="drawer-create-pl-desc">Build your personal private tracklist</span>
+                        <span className="drawer-create-pl-title">
+                          {mainSource === 'musicly' && isAdmin ? '+ Create Official Musicly Playlist' : '+ Create New Playlist'}
+                        </span>
+                        <span className="drawer-create-pl-desc">
+                          {mainSource === 'musicly' && isAdmin ? 'Publish public playlist curated by language' : 'Build your personal private tracklist'}
+                        </span>
                       </div>
                     </button>
                   ) : (
                     <form onSubmit={handleCreateNewPlaylist} className="drawer-new-playlist-box full-width">
-                      <input
-                        type="text"
-                        placeholder="New private playlist name..."
-                        value={newPlaylistTitle}
-                        onChange={(e) => setNewPlaylistTitle(e.target.value)}
-                        autoFocus
-                        className="drawer-new-playlist-input"
-                      />
-                      <button type="submit" className="drawer-new-playlist-btn submit">Create</button>
-                      <button 
-                        type="button" 
-                        className="drawer-new-playlist-btn cancel" 
-                        onClick={() => { setIsCreatingPlaylist(false); setNewPlaylistTitle(''); }}
-                      >
-                        Cancel
-                      </button>
+                      {isAdmin && (
+                        <div className="drawer-pl-type-toggle">
+                          <button
+                            type="button"
+                            className={`drawer-type-toggle-btn ${newPlaylistTarget === 'musicly' ? 'active' : ''}`}
+                            onClick={() => setNewPlaylistTarget('musicly')}
+                          >
+                            <Globe size={12} /> Official Public
+                          </button>
+                          <button
+                            type="button"
+                            className={`drawer-type-toggle-btn ${newPlaylistTarget === 'user' ? 'active' : ''}`}
+                            onClick={() => setNewPlaylistTarget('user')}
+                          >
+                            Personal Private
+                          </button>
+                        </div>
+                      )}
+
+                      {isAdmin && newPlaylistTarget === 'musicly' && (
+                        <div className="drawer-new-playlist-lang-row">
+                          <span className="drawer-new-pl-lang-label">Show in Language:</span>
+                          <div className="drawer-new-pl-lang-pills">
+                            {PLAYLIST_LANGUAGES.map(lang => (
+                              <button
+                                key={lang}
+                                type="button"
+                                className={`drawer-lang-pill ${newPlaylistLanguage === lang ? 'active' : ''}`}
+                                onClick={() => setNewPlaylistLanguage(lang)}
+                              >
+                                {lang}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="drawer-new-pl-input-row">
+                        <input
+                          type="text"
+                          placeholder={newPlaylistTarget === 'musicly' ? 'Official playlist name (e.g. Hindi Chill, Lo-Fi Beat)...' : 'New private playlist name...'}
+                          value={newPlaylistTitle}
+                          onChange={(e) => setNewPlaylistTitle(e.target.value)}
+                          autoFocus
+                          className="drawer-new-playlist-input"
+                        />
+                        <button type="submit" className="drawer-new-playlist-btn submit">
+                          {newPlaylistTarget === 'musicly' ? 'Publish' : 'Create'}
+                        </button>
+                        <button 
+                          type="button" 
+                          className="drawer-new-playlist-btn cancel" 
+                          onClick={() => { setIsCreatingPlaylist(false); setNewPlaylistTitle(''); }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </form>
                   )}
                 </div>
@@ -725,7 +757,7 @@ export default function PlaylistDrawer({
                   <p>
                     {mainSource === 'user'
                       ? 'No private playlists found. Click "+ Create New Playlist" above!'
-                      : 'No playlists match your search.'}
+                      : 'No playlists match your active language filter.'}
                   </p>
                 </div>
               ) : (
@@ -757,6 +789,11 @@ export default function PlaylistDrawer({
                           {isThisPlaying && (
                             <span className="drawer-pl-playing-tag">PLAYING</span>
                           )}
+                          {pl.language && (
+                            <span className={`drawer-playlist-lang-pill lang-${pl.language.toLowerCase()}`}>
+                              {pl.language}
+                            </span>
+                          )}
                         </div>
                         <span className="drawer-pl-count">
                           {count} {count === 1 ? 'song' : 'songs'} {pl.isCustom ? '• Mine' : '• Curated by Musicly'}
@@ -764,6 +801,21 @@ export default function PlaylistDrawer({
                       </div>
 
                       <div className="drawer-pl-card-actions" onClick={(e) => e.stopPropagation()}>
+                        {isAdmin && pl.isMusiclyOfficial && pl.createdBy && (
+                          <button
+                            type="button"
+                            className="drawer-pl-card-delete-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Delete official playlist "${pl.title}"?`)) {
+                                onDeletePublicPlaylist?.(pl.id);
+                              }
+                            }}
+                            title="Delete official playlist"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="drawer-pl-card-play-btn"
@@ -800,6 +852,11 @@ export default function PlaylistDrawer({
                   <div className="drawer-drilldown-info">
                     <div className="drawer-playlist-badge">
                       {activeDrilldownPlaylist.isCustom ? "MINE PLAYLIST" : "OFFICIAL MUSICLY PLAYLIST"}
+                      {activeDrilldownPlaylist.language && (
+                        <span className={`drawer-drilldown-lang-tag lang-${activeDrilldownPlaylist.language.toLowerCase()}`}>
+                          {activeDrilldownPlaylist.language}
+                        </span>
+                      )}
                     </div>
                     <h3 className="drawer-drilldown-title">{activeDrilldownPlaylist.title}</h3>
                     <span className="drawer-drilldown-meta">

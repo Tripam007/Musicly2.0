@@ -2798,6 +2798,10 @@ export default function App() {
             tracks={allTracks}
             user={user}
             isAdmin={isAdmin}
+            publicPlaylists={publicPlaylists}
+            onPublishPublicPlaylist={(pl) => publishPublicPlaylist(pl, user)}
+            onUpdatePublicPlaylist={(id, upd) => updatePublicPlaylist(id, upd, user)}
+            onDeletePublicPlaylist={(id) => deletePublicPlaylist(id, user)}
             activePlayingPlaylistId={activePlayingPlaylistId}
             onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
             onOpenAdminDashboard={() => {
@@ -2986,6 +2990,11 @@ export default function App() {
         customScenes={customScenes}
         onAddScene={handleAddScene}
         onDeleteScene={handleDeleteScene}
+        publicPlaylists={publicPlaylists}
+        onPublishPublicPlaylist={(pl) => publishPublicPlaylist(pl, user)}
+        onUpdatePublicPlaylist={(id, upd) => updatePublicPlaylist(id, upd, user)}
+        onDeletePublicPlaylist={(id) => deletePublicPlaylist(id, user)}
+        allTracks={allTracks}
         onSelectScene={(sc) => {
           if (sc.id === 'afterglow') {
             setAfterglowMode('film');

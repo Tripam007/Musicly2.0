@@ -22314,3 +22314,453 @@ body, html, #root {
   color: #6ee7b7;
   transform: translateY(-1px);
 }
+
+
+/* Drawer Playlist Language Pills & Tags */
+.drawer-playlist-lang-pill {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.drawer-playlist-lang-pill.lang-english {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.drawer-playlist-lang-pill.lang-hindi {
+  background: rgba(251, 146, 60, 0.16);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.35);
+}
+
+.drawer-playlist-lang-pill.lang-bengali {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.drawer-playlist-lang-pill.lang-other {
+  background: rgba(192, 132, 252, 0.16);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.35);
+}
+
+.drawer-playlist-lang-pill.lang-all {
+  background: rgba(245, 158, 11, 0.16);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+.drawer-drilldown-lang-tag {
+  display: inline-block;
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
+.drawer-drilldown-lang-tag.lang-english {
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.drawer-drilldown-lang-tag.lang-hindi {
+  background: rgba(251, 146, 60, 0.2);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.4);
+}
+
+.drawer-drilldown-lang-tag.lang-bengali {
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.drawer-drilldown-lang-tag.lang-other {
+  background: rgba(192, 132, 252, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.4);
+}
+
+.drawer-drilldown-lang-tag.lang-all {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.drawer-pl-card-delete-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drawer-pl-card-delete-btn:hover {
+  background: #ef4444;
+  color: #fff;
+  transform: scale(1.06);
+}
+
+.drawer-pl-type-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.drawer-type-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drawer-type-toggle-btn.active {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.drawer-new-playlist-lang-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.drawer-new-pl-lang-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.drawer-new-pl-lang-pills {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.drawer-lang-pill {
+  padding: 2px 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d4d4d8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.drawer-lang-pill:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.drawer-lang-pill.active {
+  background: #38bdf8;
+  border-color: #38bdf8;
+  color: #0b0f19;
+  font-weight: 700;
+}
+
+/* Admin Dashboard Playlists Tab Styles */
+.admin-playlists-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-create-playlist-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #38bdf8, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+}
+
+.admin-create-playlist-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(56, 189, 248, 0.35);
+}
+
+.admin-playlist-lang-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.admin-pl-filter-lbl {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.admin-pl-lang-filter-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-pl-filter-pill {
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #d4d4d8;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-pl-filter-pill:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.admin-pl-filter-pill.active {
+  background: #38bdf8;
+  border-color: #38bdf8;
+  color: #0b0f19;
+  font-weight: 700;
+}
+
+.admin-playlist-lang-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #fef3c7;
+}
+
+.admin-playlists-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.admin-playlist-card {
+  display: flex;
+  flex-direction: column;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.admin-playlist-card:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px);
+}
+
+.admin-pl-card-thumb-wrap {
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background: #18181b;
+}
+
+.admin-pl-card-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-pl-card-lang-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+}
+
+.admin-pl-card-lang-badge.lang-english {
+  background: rgba(56, 189, 248, 0.35);
+  color: #bae6fd;
+  border: 1px solid #38bdf8;
+}
+
+.admin-pl-card-lang-badge.lang-hindi {
+  background: rgba(251, 146, 60, 0.35);
+  color: #fed7aa;
+  border: 1px solid #fb923c;
+}
+
+.admin-pl-card-lang-badge.lang-bengali {
+  background: rgba(52, 211, 153, 0.35);
+  color: #a7f3d0;
+  border: 1px solid #34d399;
+}
+
+.admin-pl-card-lang-badge.lang-other {
+  background: rgba(192, 132, 252, 0.35);
+  color: #e9d5ff;
+  border: 1px solid #c084fc;
+}
+
+.admin-pl-card-lang-badge.lang-all {
+  background: rgba(245, 158, 11, 0.35);
+  color: #fde68a;
+  border: 1px solid #f59e0b;
+}
+
+.admin-pl-card-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-pl-card-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.admin-pl-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-pl-card-count {
+  font-size: 11px;
+  color: #a1a1aa;
+  flex-shrink: 0;
+}
+
+.admin-pl-lang-switch-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-pl-switch-label {
+  font-size: 10.5px;
+  color: #71717a;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.admin-pl-switch-pills {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.admin-pl-mini-lang-pill {
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-pl-mini-lang-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.admin-pl-mini-lang-pill.active {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.admin-pl-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-pl-manage-songs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-pl-manage-songs-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.admin-empty-playlists-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  gap: 10px;
+  color: #a1a1aa;
+}

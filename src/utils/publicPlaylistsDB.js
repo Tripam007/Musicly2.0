@@ -10,6 +10,129 @@ import { checkIsAdmin } from './userModel';
 
 const PLAYLISTS_CACHE_KEY = 'musicly_public_playlists_cache';
 
+export const PLAYLIST_LANGUAGES = ['All', 'English', 'Hindi', 'Bengali', 'Other'];
+
+export function normalizePlaylistLang(lang) {
+  if (!lang) return 'All';
+  const l = String(lang).trim().toLowerCase();
+  if (l === 'all' || l === '') return 'All';
+  if (l === 'eng' || l.startsWith('eng')) return 'English';
+  if (l === 'hin' || l.startsWith('hin')) return 'Hindi';
+  if (l === 'ben' || l.startsWith('ben')) return 'Bengali';
+  if (l === 'oth' || l.startsWith('oth') || l.includes('other')) return 'Other';
+  return lang.trim();
+}
+
+/**
+ * Filter playlists strictly by the currently selected language:
+ * - english playlists -> shown only when english is selected
+ * - hindi playlists -> shown only when hindi is selected
+ * - bengali playlists -> shown only when bengali is selected
+ * - other playlists -> shown only when other is selected
+ * - all playlists -> shown only when all is selected (or default state)
+ */
+export function isPlaylistMatchingLanguage(playlistLang, selectedLanguages = [], selectedLanguage = null) {
+  const pLang = normalizePlaylistLang(playlistLang);
+
+  let active = [];
+  if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
+    active = selectedLanguages.filter(l => l && l !== 'Hinglish').map(normalizePlaylistLang);
+  } else if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
+    active = [normalizePlaylistLang(selectedLanguage)];
+  }
+
+  // When "All" is active (or no specific language filter is active)
+  if (active.length === 0 || active.includes('All')) {
+    return pLang === 'All';
+  }
+
+  // When a specific language is selected: show ONLY playlists matching that language
+  return active.includes(pLang);
+}
+
+/**
+ * Get unified official Musicly playlists (built-in + admin created)
+ * Filtered uniformly across ALL scenes by the active language filter.
+ */
+export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [], selectedLanguages = [], selectedLanguage = null) {
+  const list = [];
+  const tracks = Array.isArray(allTracks) ? allTracks : [];
+  const officialTracks = tracks.filter(t => !t?.isCustom || !!t?.isPublic);
+
+  const makePl = (id, title, plTracks, defaultImg, language) => ({
+    id,
+    title,
+    subtitle: `${plTracks.length} song${plTracks.length === 1 ? '' : 's'} in this list`,
+    tracks: plTracks,
+    trackIds: plTracks.map(t => t.id),
+    image: plTracks[0]?.cover || defaultImg,
+    isCustom: false,
+    isMusiclyOfficial: true,
+    language: normalizePlaylistLang(language),
+    count: plTracks.length
+  });
+
+  // 1. Vintage Hi-Fi & 80s (English)
+  const retro = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro'))));
+  if (retro.length > 0) list.push(makePl('vintage_retro', 'Vintage Hi-Fi & 80s', retro, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'English'));
+
+  // 2. Late Night Lo-Fi (All)
+  const lofi = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi'))));
+  if (lofi.length > 0) list.push(makePl('latenight_lofi', 'Late Night Lo-Fi', lofi, 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80', 'All'));
+
+  // 3. Country Roads & Roots (English)
+  const country = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('country') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country'))));
+  if (country.length > 0) list.push(makePl('country_roots', 'Country Roads & Roots', country, 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=300&auto=format&fit=crop&q=80', 'English'));
+
+  // 4. Indie Acoustic Sessions (English)
+  const indie = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie'))));
+  if (indie.length > 0) list.push(makePl('indie_warmth', 'Indie Acoustic Sessions', indie, 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80', 'English'));
+
+  // 5. Timeless Ghazals & Mehfil (Hindi)
+  const ghazals = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('ghazal') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal'))));
+  if (ghazals.length > 0) list.push(makePl('timeless_ghazals', 'Timeless Ghazals & Mehfil', ghazals, 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80', 'Hindi'));
+
+  // 6. Rabindra Sangeet & Folk (Bengali)
+  const bengali = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('rabindra') || (t.title || '').toLowerCase().includes('majhe'));
+  if (bengali.length > 0) list.push(makePl('bengali_classics', 'Rabindra Sangeet & Folk', bengali, 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg', 'Bengali'));
+
+  // 7. Peace (All)
+  const peace = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('peace') || (t.title || '').toLowerCase().includes('peace'));
+  if (peace.length > 0) list.push(makePl('peace_playlist', 'Peace', peace, 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80', 'All'));
+
+  // 8. Global & Other Melodies (Other)
+  const otherTracks = officialTracks.filter(t => {
+    const lang = (t.language || '').toLowerCase();
+    return lang === 'other' || (!['english', 'hindi', 'bengali'].includes(lang) && Boolean(t.language));
+  });
+  if (otherTracks.length > 0) list.push(makePl('global_other_melodies', 'Global & Other Melodies', otherTracks, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'Other'));
+
+  // 9. Admin Created Official Public Playlists (synced worldwide)
+  if (Array.isArray(publicPlaylists)) {
+    publicPlaylists.forEach(pp => {
+      const plTracks = (pp.trackIds || []).map(id => tracks.find(t => t.id === id)).filter(Boolean);
+      list.push({
+        id: pp.id,
+        title: pp.title,
+        subtitle: `${plTracks.length} song${plTracks.length === 1 ? '' : 's'} in this list`,
+        tracks: plTracks,
+        trackIds: pp.trackIds || [],
+        image: pp.image || plTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+        isCustom: false,
+        isMusiclyOfficial: true,
+        language: normalizePlaylistLang(pp.language || 'All'),
+        createdBy: pp.createdBy || 'Musicly Admin',
+        createdAt: pp.createdAt || Date.now(),
+        count: plTracks.length
+      });
+    });
+  }
+
+  // Filter strictly by the active language filter:
+  // eng -> eng only, hindi -> hindi only, beng -> beng only, other -> other only, all -> all only
+  return list.filter(pl => isPlaylistMatchingLanguage(pl.language, selectedLanguages, selectedLanguage));
+}
+
 /**
  * Load public Musicly playlists from local cache (0ms) + Firestore cloud sync
  * (Accessible to all users worldwide)
@@ -82,6 +205,7 @@ export async function publishPublicPlaylist(playlistData, user) {
     title: playlistData.title.trim(),
     trackIds: Array.isArray(playlistData.trackIds) ? playlistData.trackIds : [],
     image: playlistData.image || null,
+    language: normalizePlaylistLang(playlistData.language || 'All'),
     createdBy: user?.email || 'admin',
     createdAt: Date.now(),
     isMusiclyOfficial: true,
@@ -125,12 +249,16 @@ export async function updatePublicPlaylist(playlistId, updates, user) {
   }
 
   let updatedPlaylist = null;
+  const safeUpdates = { ...updates };
+  if (safeUpdates.language) {
+    safeUpdates.language = normalizePlaylistLang(safeUpdates.language);
+  }
 
   try {
     const existing = JSON.parse(localStorage.getItem(PLAYLISTS_CACHE_KEY) || '[]');
     const updated = existing.map(p => {
       if (p.id === playlistId) {
-        updatedPlaylist = { ...p, ...updates, updatedAt: Date.now() };
+        updatedPlaylist = { ...p, ...safeUpdates, updatedAt: Date.now() };
         return updatedPlaylist;
       }
       return p;

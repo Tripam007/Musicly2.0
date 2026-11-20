@@ -45,6 +45,7 @@ import { LANGUAGES, LANGUAGE_LABELS, isTrackInLanguages, formatGenrePill } from 
 import { fetchLyrics } from '../utils/lyricsService';
 import { audioEngine } from '../utils/audioEngine';
 import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../utils/userPlaylistsDB';
+import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang } from '../utils/publicPlaylistsDB';
 import PixelCat from './PixelCat';
 import SweatDropletsOverlay from './SweatDropletsOverlay';
 import '../styles/vinylScene.css';
@@ -346,6 +347,7 @@ export default function VinylScene({
   // Form states for creating new playlist
   // Admin can choose between 'musicly' (Official Public Playlist) and 'user' (Personal Private Playlist)
   const [newPlaylistTarget, setNewPlaylistTarget] = useState('user');
+  const [newPlaylistLanguage, setNewPlaylistLanguage] = useState('All');
   const [newPlaylistTitle, setNewPlaylistTitle] = useState('');
   const [selectedTrackIdsForNew, setSelectedTrackIdsForNew] = useState([]);
   const [songSearchQuery, setSongSearchQuery] = useState('');
@@ -382,12 +384,14 @@ export default function VinylScene({
           await onPublishPublicPlaylist({
             title: newPlaylistTitle.trim(),
             trackIds: selectedTrackIdsForNew,
-            image: coverImg
+            image: coverImg,
+            language: newPlaylistLanguage || 'All'
           });
         }
         setIsCreatePlaylistOpen(false);
         setNewPlaylistTitle('');
         setSelectedTrackIdsForNew([]);
+        setNewPlaylistLanguage('All');
         playPeacefulLikeSound();
       } catch (err) {
         alert(err.message || "Failed to create public playlist");
@@ -1183,160 +1187,18 @@ export default function VinylScene({
       count: liked.length,
       tracks: liked,
       trackIds: liked.map(t => t.id),
-      image: liked[0]?.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80'
+      image: liked[0]?.cover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80',
+      isCustom: true,
+      isMusiclyOfficial: false
     });
 
-    // 2. Vintage Vinyl & 80s Classics
-    const retroTracks = getFilteredPlaylistTracks('vintage_retro', allTracks.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro')))));
-    playlists.push({
-      id: 'vintage_retro',
-      title: 'Vintage Hi-Fi & 80s',
-      subtitle: `${retroTracks.length} song${retroTracks.length === 1 ? '' : 's'} in this list`,
-      count: retroTracks.length,
-      tracks: retroTracks,
-      trackIds: retroTracks.map(t => t.id),
-      image: retroTracks[0]?.cover || '/assets/images/retro_scene.jpg',
-      isCustom: false,
-      isMusiclyOfficial: true
+    // 2. Official Musicly Playlists (Unified across all scenes & strictly language-curated)
+    const unifiedMusicly = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists, activeLanguages, selectedLanguage);
+    unifiedMusicly.forEach(upl => {
+      playlists.push(upl);
     });
 
-    // 3. Late Night Lo-Fi
-    const lofiTracks = getFilteredPlaylistTracks('latenight_lofi', allTracks.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi')))));
-    playlists.push({
-      id: 'latenight_lofi',
-      title: 'Late Night Lo-Fi',
-      subtitle: `${lofiTracks.length} song${lofiTracks.length === 1 ? '' : 's'} in this list`,
-      count: lofiTracks.length,
-      tracks: lofiTracks,
-      trackIds: lofiTracks.map(t => t.id),
-      image: lofiTracks[0]?.cover || '/assets/images/lofi_scene.jpg',
-      isCustom: false,
-      isMusiclyOfficial: true
-    });
-
-    // Language-Specific Featured Playlists
-    const isEnglishOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'english';
-    const isHindiOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'hindi';
-    const isBengaliOnly = activeLanguages.length === 1 && (activeLanguages[0].toLowerCase() === 'bengali' || activeLanguages[0].toLowerCase() === 'bangla');
-    const isOtherOnly = activeLanguages.length === 1 && activeLanguages[0].toLowerCase() === 'other';
-
-    if (isOtherOnly || activeLanguages.length === 0) {
-      const otherTracks = getFilteredPlaylistTracks('global_other_melodies', allTracks.filter(t => {
-        const lang = (t.language || '').toLowerCase();
-        return lang === 'other' || (!['english', 'hindi', 'bengali'].includes(lang) && Boolean(t.language));
-      }));
-      if (otherTracks.length > 0) {
-        playlists.push({
-          id: 'global_other_melodies',
-          title: 'Global & Other Melodies',
-          subtitle: `${otherTracks.length} song${otherTracks.length === 1 ? '' : 's'} in this list`,
-          count: otherTracks.length,
-          tracks: otherTracks,
-          trackIds: otherTracks.map(t => t.id),
-          image: otherTracks[0]?.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80',
-          isCustom: false,
-          isMusiclyOfficial: true
-        });
-      }
-    }
-
-    if (isEnglishOnly || activeLanguages.length === 0) {
-      const countryTracks = getFilteredPlaylistTracks('country_roots', allTracks.filter(t =>
-        (t.genre || '').toLowerCase().includes('country') ||
-        (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country')))
-      ));
-      if (countryTracks.length > 0) {
-        playlists.push({
-          id: 'country_roots',
-          title: 'Country Roads & Roots',
-          subtitle: `${countryTracks.length} song${countryTracks.length === 1 ? '' : 's'} in this list`,
-          count: countryTracks.length,
-          tracks: countryTracks,
-          trackIds: countryTracks.map(t => t.id),
-          image: countryTracks[0]?.cover || 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=300&auto=format&fit=crop&q=80',
-          isCustom: false,
-          isMusiclyOfficial: true
-        });
-      }
-    }
-
-    if (isHindiOnly || activeLanguages.length === 0) {
-      const ghazalTracks = getFilteredPlaylistTracks('timeless_ghazals', allTracks.filter(t =>
-        (t.genre || '').toLowerCase().includes('ghazal') ||
-        (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal')))
-      ));
-      if (ghazalTracks.length > 0) {
-        playlists.push({
-          id: 'timeless_ghazals',
-          title: 'Timeless Ghazals & Mehfil',
-          subtitle: `${ghazalTracks.length} song${ghazalTracks.length === 1 ? '' : 's'} in this list`,
-          count: ghazalTracks.length,
-          tracks: ghazalTracks,
-          trackIds: ghazalTracks.map(t => t.id),
-          image: ghazalTracks[0]?.cover || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80',
-          isCustom: false,
-          isMusiclyOfficial: true
-        });
-      }
-    }
-
-    if (isBengaliOnly) {
-      const bengaliClassics = getFilteredPlaylistTracks('bengali_classics', allTracks.filter(t =>
-        (t.genre || '').toLowerCase().includes('rabindra') ||
-        (t.title || '').toLowerCase().includes('majhe') ||
-        (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('rabindra')))
-      ));
-      if (bengaliClassics.length > 0) {
-        playlists.push({
-          id: 'bengali_classics',
-          title: 'Rabindra Sangeet & Folk',
-          subtitle: `${bengaliClassics.length} song${bengaliClassics.length === 1 ? '' : 's'} in this list`,
-          count: bengaliClassics.length,
-          tracks: bengaliClassics,
-          trackIds: bengaliClassics.map(t => t.id),
-          image: bengaliClassics[0]?.cover || 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg',
-          isCustom: false,
-          isMusiclyOfficial: true
-        });
-      }
-    }
-
-    // 4. Indie Warmth & Acoustic ("Indie Acoustic Sessions")
-    const indieTracks = getFilteredPlaylistTracks('indie_warmth', allTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie')))));
-    playlists.push({
-      id: 'indie_warmth',
-      title: 'Indie Acoustic Sessions',
-      subtitle: `${indieTracks.length} song${indieTracks.length === 1 ? '' : 's'} in this list`,
-      count: indieTracks.length,
-      tracks: indieTracks,
-      trackIds: indieTracks.map(t => t.id),
-      image: indieTracks[0]?.cover || 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80',
-      isCustom: false,
-      isMusiclyOfficial: true
-    });
-
-    // 5. Official Public Musicly Playlists (Admin Created, Public Worldwide)
-    if (Array.isArray(publicPlaylists)) {
-      publicPlaylists.forEach(pp => {
-        const rawTracks = allTracks.filter(t => (pp.trackIds || []).includes(t.id));
-        const ppTracks = getFilteredPlaylistTracks(pp.id, rawTracks);
-        playlists.push({
-          id: pp.id,
-          title: pp.title,
-          subtitle: `${ppTracks.length} song${ppTracks.length === 1 ? '' : 's'} in this list`,
-          count: ppTracks.length,
-          tracks: ppTracks,
-          trackIds: pp.trackIds || [],
-          image: pp.image || ppTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
-          isCustom: false,
-          isMusiclyOfficial: true,
-          createdBy: pp.createdBy || 'Musicly Admin',
-          createdAt: pp.createdAt
-        });
-      });
-    }
-
-    // 6. User's Own Playlists (Strictly Private to the logged-in User's Account)
+    // 3. User's Own Playlists (Strictly Private to the logged-in User's Account)
     if (Array.isArray(customPlaylists)) {
       customPlaylists.forEach(cp => {
         const trackMap = new Map(allTracks.map(t => [t.id, t]));
@@ -1357,7 +1219,7 @@ export default function VinylScene({
     }
 
     return playlists.filter(p => !deletedPlaylistIds.includes(p.id));
-  }, [allTracks, favorites, activeLanguages, customPlaylists, publicPlaylists, filterTracksByLang, deletedPlaylistIds, excludedTrackIdsByPlaylist, playlistTrackOrders, sortTracksByCustomOrder]);
+  }, [allTracks, favorites, activeLanguages, selectedLanguage, customPlaylists, publicPlaylists, filterTracksByLang, deletedPlaylistIds, playlistTrackOrders, sortTracksByCustomOrder]);
 
   // Playlist Source Choice: 'musicly' (default) | 'custom' | 'all'
   const [playlistSourceMode, setPlaylistSourceMode] = useState('musicly');
@@ -1858,6 +1720,11 @@ export default function VinylScene({
                   PRIVATE
                 </span>
               )}
+              {playlist.language && (
+                <span className={`vinyl-playlist-lang-badge lang-${playlist.language.toLowerCase()}`}>
+                  {playlist.language}
+                </span>
+              )}
               {isPlaylistPlaying && (
                 <span className="vinyl-playlist-playing-badge" title="Playing on Turntable">
                   <span className="mini-equalizer-bar bar-1" />
@@ -1871,26 +1738,43 @@ export default function VinylScene({
           </div>
         </div>
 
-        {/* Circular Play Button: Loads playlist tracks into turntable queue */}
-        <button
-          className={`vinyl-playlist-play-btn ${isPlaylistPlaying ? 'is-playing' : ''}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (playlistClickTimerRef.current) {
-              clearTimeout(playlistClickTimerRef.current);
-              playlistClickTimerRef.current = null;
-            }
-            handlePlayPlaylist(playlist, e);
-          }}
-          title={isPlaylistPlaying ? `Pause "${playlist.title}"` : `Play "${playlist.title}" on turntable and queue all songs`}
-          aria-label={isPlaylistPlaying ? `Pause ${playlist.title}` : `Play ${playlist.title}`}
-        >
-          {isPlaylistPlaying ? (
-            <Pause size={16} fill="#0d0d0f" />
-          ) : (
-            <Play size={16} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
+        <div className="vinyl-playlist-actions-row" onClick={(e) => e.stopPropagation()}>
+          {effectiveIsAdmin && !playlist.isCustom && playlist.createdBy && (
+            <button
+              type="button"
+              className="vinyl-playlist-admin-delete-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm(`Delete official playlist "${playlist.title}"?`)) {
+                  onDeletePublicPlaylist?.(playlist.id);
+                }
+              }}
+              title="Delete official public playlist"
+            >
+              <Trash2 size={13} />
+            </button>
           )}
-        </button>
+          {/* Circular Play Button: Loads playlist tracks into turntable queue */}
+          <button
+            className={`vinyl-playlist-play-btn ${isPlaylistPlaying ? 'is-playing' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (playlistClickTimerRef.current) {
+                clearTimeout(playlistClickTimerRef.current);
+                playlistClickTimerRef.current = null;
+              }
+              handlePlayPlaylist(playlist, e);
+            }}
+            title={isPlaylistPlaying ? `Pause "${playlist.title}"` : `Play "${playlist.title}" on turntable and queue all songs`}
+            aria-label={isPlaylistPlaying ? `Pause ${playlist.title}` : `Play ${playlist.title}`}
+          >
+            {isPlaylistPlaying ? (
+              <Pause size={16} fill="#0d0d0f" />
+            ) : (
+              <Play size={16} fill="#0d0d0f" style={{ marginLeft: '2px' }} />
+            )}
+          </button>
+        </div>
       </div>
     );
   };
@@ -3798,6 +3682,24 @@ export default function VinylScene({
                     <p className="vinyl-private-notice-desc">
                       This playlist is private and viewable/playable only by your account. Official Musicly playlists are curated exclusively by Admins.
                     </p>
+                  </div>
+                )}
+
+                {effectiveIsAdmin && newPlaylistTarget === 'musicly' && (
+                  <div className="vinyl-playlist-lang-selector-box">
+                    <label className="vinyl-playlist-input-label">LANGUAGE (SHOWN ONLY WHEN THIS LANGUAGE IS ACTIVE)</label>
+                    <div className="vinyl-playlist-lang-pills">
+                      {PLAYLIST_LANGUAGES.map(lang => (
+                        <button
+                          key={lang}
+                          type="button"
+                          className={`vinyl-lang-pill ${newPlaylistLanguage === lang ? 'is-active' : ''}`}
+                          onClick={() => setNewPlaylistLanguage(lang)}
+                        >
+                          {lang}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
