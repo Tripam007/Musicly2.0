@@ -18530,14 +18530,17 @@ body, html, #root {
   z-index: 2;
 }
 
-/* Back Face: Synchronized Lyrics inside this exact box */
+/* Back Face: Full-Box Synchronized Lyrics inside this exact box */
 .ref-island-back {
   background: #1c1d27;
-  padding: 16px 18px 14px 18px;
+  padding: 0;
   display: flex;
   flex-direction: column;
   transform: rotateX(180deg) translateZ(1px);
   z-index: 1;
+  overflow: hidden;
+  position: absolute;
+  inset: 0;
 }
 
 /* Prevent pointer event interference between flipped faces */
@@ -18610,93 +18613,75 @@ body, html, #root {
   display: inline-block;
 }
 
-/* Lyrics Header on Back Face */
-.ref-island-lyrics-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.ref-island-lyrics-title {
-  font-family: 'Outfit', sans-serif;
-  font-size: 0.74rem;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.ref-studio-lyrics-synced-pill {
-  font-size: 0.58rem;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(244, 160, 0, 0.18);
-  color: var(--ref-accent, #f4a000);
-  border: 1px solid rgba(244, 160, 0, 0.35);
-  letter-spacing: 0.06em;
-}
-
-.ref-island-flipback-circle-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: none;
-  width: 22px;
-  height: 22px;
+/* Subtle Floating Corner Close Button for Lyrics (zero header height overhead) */
+.ref-island-lyrics-floating-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 25;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  color: rgba(255, 255, 255, 0.7);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.72);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.ref-island-flipback-circle-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+.ref-island-lyrics-floating-close:hover {
+  background: rgba(255, 255, 255, 0.22);
   color: #ffffff;
   transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
-/* Scrollable Lyrics Inside the Flipped Box */
+/* Full-Box Scrollable Lyrics Inside the Flipped Box */
 .ref-island-lyrics-content {
   flex: 1;
+  height: 100%;
+  width: 100%;
   overflow-y: auto;
-  margin-top: 6px;
+  margin-top: 0;
   display: flex;
   flex-direction: column;
   scroll-behavior: smooth;
-  padding-right: 4px;
+  padding: 12px 14px 14px 14px;
+  box-sizing: border-box;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
 }
 
 .ref-island-lyrics-stream {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 4px 2px 24px 2px;
+  gap: 6px;
+  padding: 26px 4px 38px 4px;
 }
 
 .ref-island-lyric-line {
   position: relative;
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.40);
-  padding: 6px 8px;
+  padding: 6px 10px;
   border-radius: 8px;
   cursor: pointer;
   border-left: 3px solid transparent;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 
 .ref-island-lyric-line:hover {
-  color: rgba(255, 255, 255, 0.90);
-  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .ref-island-lyric-line.is-passed {
@@ -18705,16 +18690,16 @@ body, html, #root {
 
 /* Crystal-clear vivid active line highlight without circle dot */
 .ref-island-lyric-line.is-active {
-  font-size: 0.88rem;
+  font-size: 0.90rem;
   font-weight: 800;
   color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.14);
   border-left: 3.5px solid var(--ref-accent, #f4a000) !important;
-  padding-left: 10px;
+  padding-left: 12px;
   box-shadow: 
     0 4px 14px rgba(0, 0, 0, 0.45), 
-    inset 0 1px 1px rgba(255, 255, 255, 0.2),
-    0 0 12px var(--ref-accent-glow, rgba(244, 160, 0, 0.25));
+    inset 0 1px 1px rgba(255, 255, 255, 0.22),
+    0 0 14px var(--ref-accent-glow, rgba(244, 160, 0, 0.3));
   text-shadow: 0 0 10px var(--ref-accent-glow, rgba(244, 160, 0, 0.6));
   transform: translateX(2px) scale(1.02);
   transform-origin: left center;

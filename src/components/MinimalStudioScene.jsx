@@ -764,25 +764,41 @@ export default function MinimalStudioScene({
   const [isLyricsOpen, setIsLyricsOpen] = useState(false);
   const [livePlayTime, setLivePlayTime] = useState(currentTime || 0);
   const activeLineRef = useRef(null);
+  const lyricsContainerRef = useRef(null);
   const isUserScrollingRef = useRef(false);
   const userScrollTimeoutRef = useRef(null);
+  const lastTimeRef = useRef(currentTime || 0);
 
-  // Sync initial live play time with currentTime prop
+  // Sync initial live play time with currentTime prop and detect user seeks
   useEffect(() => {
-    setLivePlayTime(currentTime || 0);
+    const cur = currentTime || 0;
+    const diff = Math.abs(cur - lastTimeRef.current);
+    if (diff > 0.8) {
+      // User scrubbed or seeked: clear scroll-lock immediately so auto-scroll resumes
+      isUserScrollingRef.current = false;
+      if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
+    }
+    lastTimeRef.current = cur;
+    setLivePlayTime(cur);
   }, [currentTime]);
 
   // Subscribe directly to audioEngine for real-time engine-level TIME_UPDATE events
   useEffect(() => {
     const unsub = audioEngine.subscribe((event) => {
       if (event.type === 'TIME_UPDATE' && typeof event.currentTime === 'number') {
+        const diff = Math.abs(event.currentTime - lastTimeRef.current);
+        if (diff > 0.8) {
+          isUserScrollingRef.current = false;
+          if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
+        }
+        lastTimeRef.current = event.currentTime;
         setLivePlayTime(event.currentTime);
       }
     });
     return () => unsub();
   }, []);
 
-  // Continuous 60fps micro-interpolation for frame-accurate lyrics synchronization (Native & YouTube)
+  // Frame-accurate micro-interpolation for synchronized lyrics (Native & YouTube) with seek immunity
   useEffect(() => {
     if (!isPlaying) {
       setLivePlayTime(currentTime || 0);
@@ -790,16 +806,22 @@ export default function MinimalStudioScene({
     }
 
     let animId;
-    const pollLiveTime = () => {
-      let t = currentTime || 0;
-      if (audioEngine.playbackMode === 'native' && audioEngine.audio && !isNaN(audioEngine.audio.currentTime)) {
-        t = audioEngine.audio.currentTime;
-      } else if (audioEngine.currentTime !== undefined && !isNaN(audioEngine.currentTime) && audioEngine.currentTime > 0) {
-        t = audioEngine.currentTime;
-      } else if (audioElement && !isNaN(audioElement.currentTime)) {
-        t = audioElement.currentTime;
+    let lastPoll = 0;
+    const pollLiveTime = (now) => {
+      if (now - lastPoll >= 75) {
+        lastPoll = now;
+        let t = currentTime || 0;
+        if (audioEngine.isSeeking) {
+          t = audioEngine.currentTime !== undefined ? audioEngine.currentTime : (currentTime || 0);
+        } else if (audioEngine.playbackMode === 'native' && audioEngine.audio && !isNaN(audioEngine.audio.currentTime)) {
+          t = audioEngine.audio.currentTime;
+        } else if (audioEngine.currentTime !== undefined && !isNaN(audioEngine.currentTime) && audioEngine.currentTime > 0) {
+          t = audioEngine.currentTime;
+        } else if (audioElement && !isNaN(audioElement.currentTime)) {
+          t = audioElement.currentTime;
+        }
+        setLivePlayTime(t);
       }
-      setLivePlayTime(t);
       animId = requestAnimationFrame(pollLiveTime);
     };
 
@@ -817,6 +839,8 @@ export default function MinimalStudioScene({
     }
     let isMounted = true;
     setIsLyricsLoading(true);
+    isUserScrollingRef.current = false;
+    if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
     fetchLyrics(activeTrack, duration || activeTrack.duration || 180)
       .then((data) => {
         if (isMounted) {
@@ -868,13 +892,19 @@ export default function MinimalStudioScene({
     return 0;
   }, [lyricsData, livePlayTime, currentTime, duration, activeTrack?.duration]);
 
-  // Handle user manual scroll with auto-scroll resume timer
+  // Handle user manual scroll with auto-scroll resume timer that automatically re-centers
   const handleLyricsManualScroll = useCallback(() => {
     isUserScrollingRef.current = true;
     if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
     userScrollTimeoutRef.current = setTimeout(() => {
       isUserScrollingRef.current = false;
-    }, 2500);
+      if (activeLineRef.current) {
+        activeLineRef.current.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }
+    }, 1800);
   }, []);
 
   // Smooth auto-scroll following the active synced line
@@ -1094,7 +1124,12 @@ export default function MinimalStudioScene({
     const rect = waveformRef.current.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const pct = Math.max(0, Math.min(1, clickX / rect.width));
-    if (onSeek) onSeek(pct * duration);
+    const targetTime = pct * duration;
+    isUserScrollingRef.current = false;
+    if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
+    lastTimeRef.current = targetTime;
+    setLivePlayTime(targetTime);
+    if (onSeek) onSeek(targetTime);
   }, [duration, onSeek]);
 
   const progressPercent = duration ? (currentTime / duration) * 100 : 0;
@@ -1521,8 +1556,9 @@ export default function MinimalStudioScene({
                   </div>
                 </div>
 
-                {/* BACK FACE: Synchronized Lyrics in this exact box */}
+                {/* BACK FACE: Full-Box Synchronized Lyrics inside this exact box */}
                 <div className="ref-island-face ref-island-back">
+                  {/* Floating Flip-Back to Info Button (above box) */}
                   <button 
                     type="button"
                     className="ref-lyrics-toggle-btn is-active"
@@ -1536,26 +1572,24 @@ export default function MinimalStudioScene({
                     <span className="ref-lyrics-text">Info</span>
                   </button>
 
-                  <div className="ref-island-lyrics-header">
-                    <span className="ref-island-lyrics-title">Lyrics</span>
-                    {lyricsData?.isSynced && (
-                      <span className="ref-studio-lyrics-synced-pill">SYNCED</span>
-                    )}
-                    <button 
-                      type="button"
-                      className="ref-island-flipback-circle-btn"
-                      onClick={() => {
-                        setIsLyricsOpen(false);
-                        playClickSound('light');
-                      }}
-                      title="Flip back to Song Info"
-                    >
-                      <CloseIcon size={12} />
-                    </button>
-                  </div>
+                  {/* Sleek Floating Corner Close Button (zero vertical footprint) */}
+                  <button 
+                    type="button"
+                    className="ref-island-lyrics-floating-close"
+                    onClick={() => {
+                      setIsLyricsOpen(false);
+                      playClickSound('light');
+                    }}
+                    title="Close Lyrics & Flip back to Song Info"
+                    aria-label="Close Lyrics"
+                  >
+                    <CloseIcon size={12} />
+                  </button>
 
+                  {/* Full-Box Lyrics Container */}
                   <div 
-                    className="ref-island-lyrics-content"
+                    ref={lyricsContainerRef}
+                    className="ref-island-lyrics-content is-full-box"
                     onScroll={handleLyricsManualScroll}
                   >
                     {isLyricsLoading ? (
@@ -1579,8 +1613,23 @@ export default function MinimalStudioScene({
                               ref={isActive ? activeLineRef : null}
                               className={`ref-island-lyric-line ${isActive ? 'is-active' : ''} ${isPassed ? 'is-passed' : ''}`}
                               onClick={() => {
-                                if (lyricsData.isSynced && onSeek && line.time !== undefined) {
-                                  onSeek(line.time);
+                                const targetTime = line.time !== undefined
+                                  ? line.time
+                                  : (lyricsData?.lines?.length > 0 ? (idx / lyricsData.lines.length) * (duration || 180) : undefined);
+                                if (targetTime !== undefined && onSeek) {
+                                  isUserScrollingRef.current = false;
+                                  if (userScrollTimeoutRef.current) clearTimeout(userScrollTimeoutRef.current);
+                                  lastTimeRef.current = targetTime;
+                                  setLivePlayTime(targetTime);
+                                  onSeek(targetTime);
+                                  setTimeout(() => {
+                                    if (activeLineRef.current) {
+                                      activeLineRef.current.scrollIntoView({
+                                        behavior: 'smooth',
+                                        block: 'center'
+                                      });
+                                    }
+                                  }, 20);
                                 }
                               }}
                             >
