@@ -10,6 +10,130 @@ import { checkIsAdmin } from './userModel';
 
 const SCENES_CACHE_KEY = 'musicly_custom_scenes_cache';
 const SCENE_OVERRIDES_CACHE_KEY = 'musicly_scene_overrides_cache';
+const SCENE_VISUALS_STORE_KEY = 'musicly_scene_visuals_store_v1';
+
+/**
+ * Curated default visuals for scenes matching the user's uploaded screenshot & local assets
+ */
+export const DEFAULT_STUDIO_VISUALS = [
+  { id: 'vis_gojo', url: '/assets/wallpapers/gojo_satoru.jpg', type: 'image' },
+  { id: 'vis_red_eclipse', url: '/assets/wallpapers/red_eclipse_crown.png', type: 'image' },
+  { id: 'vis_astronaut', url: '/assets/wallpapers/astronaut_neon.png', type: 'image' },
+  { id: 'vis_lone_knight', url: '/assets/wallpapers/lone_knight.png', type: 'image' },
+  { id: 'vis_luffy', url: '/assets/wallpapers/luffy_anime.jpg', type: 'image' },
+  { id: 'vis_gold_crown', url: '/assets/wallpapers/gold_crown_dark.png', type: 'image' },
+  { id: 'vis_brad_pitt', url: '/assets/wallpapers/brad_pitt.jpg', type: 'image' },
+  { id: 'vis_your_name', url: '/assets/wallpapers/your_name.jpg', type: 'image' },
+  { id: 'vis_zenitsu', url: '/assets/wallpapers/zenitsu.png', type: 'image' },
+  { id: 'vis_route66', url: '/assets/wallpapers/route_66.png', type: 'image' },
+  { id: 'vis_pirate_live', url: '/assets/about/pirate_bg.mp4', type: 'video' }
+];
+
+/**
+ * Check whether a visual URL is an animated or live video wallpaper (mp4, webm, etc.)
+ */
+export function isLiveVisual(url) {
+  if (!url || typeof url !== 'string') return false;
+  const clean = url.toLowerCase().split('?')[0];
+  return (
+    clean.endsWith('.mp4') ||
+    clean.endsWith('.webm') ||
+    clean.endsWith('.mov') ||
+    clean.endsWith('.ogg') ||
+    url.startsWith('data:video/') ||
+    url.startsWith('blob:')
+  );
+}
+
+/**
+ * Load available visuals for a given scene from local cache (0ms) + Firestore cloud sync
+ */
+export async function loadSceneVisuals(sceneId) {
+  if (!sceneId) return [...DEFAULT_STUDIO_VISUALS];
+
+  let store = {};
+  try {
+    const raw = localStorage.getItem(SCENE_VISUALS_STORE_KEY);
+    if (raw) store = JSON.parse(raw);
+  } catch (e) {
+    console.warn("Local scene visuals cache read notice:", e);
+  }
+
+  let visuals = store[sceneId];
+
+  if (firestore) {
+    try {
+      const snap = await Promise.race([
+        getDocs(collection(firestore, 'public_scene_visuals')),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000))
+      ]).catch(() => null);
+
+      if (snap && !snap.empty) {
+        snap.forEach(docSnap => {
+          if (docSnap.id === sceneId && docSnap.data()?.visuals) {
+            visuals = docSnap.data().visuals;
+          }
+        });
+      }
+    } catch (_e) {
+      console.warn("Firestore scene visuals load notice:", _e);
+    }
+  }
+
+  if (!visuals || visuals.length === 0) {
+    visuals = [...DEFAULT_STUDIO_VISUALS];
+    store[sceneId] = visuals;
+    try {
+      localStorage.setItem(SCENE_VISUALS_STORE_KEY, JSON.stringify(store));
+    } catch {}
+  }
+
+  return visuals;
+}
+
+/**
+ * Save available visuals list for a given scene
+ */
+export async function saveSceneVisuals(sceneId, visualsList, user) {
+  if (!sceneId) return visualsList;
+
+  let store = {};
+  try {
+    const raw = localStorage.getItem(SCENE_VISUALS_STORE_KEY);
+    if (raw) store = JSON.parse(raw);
+  } catch {}
+
+  store[sceneId] = visualsList;
+  try {
+    localStorage.setItem(SCENE_VISUALS_STORE_KEY, JSON.stringify(store));
+  } catch {}
+
+  if (firestore) {
+    try {
+      const docRef = doc(firestore, 'public_scene_visuals', sceneId);
+      await Promise.race([
+        setDoc(docRef, {
+          sceneId,
+          visuals: visualsList,
+          updatedAt: Date.now(),
+          updatedBy: user?.email || 'admin'
+        }, { merge: true }),
+        new Promise((resolve) => setTimeout(resolve, 1500))
+      ]);
+    } catch (err) {
+      console.warn("Firestore scene visuals save notice:", err);
+    }
+  }
+
+  return visualsList;
+}
+
+/**
+ * Reset available visuals for a scene back to defaults
+ */
+export async function resetSceneVisualsToDefault(sceneId, user) {
+  return saveSceneVisuals(sceneId, [...DEFAULT_STUDIO_VISUALS], user);
+}
 
 /**
  * Load scene image overrides from local cache (0ms) + Firestore cloud sync
@@ -71,7 +195,7 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
   let overrides = {};
   try {
     overrides = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
-  } catch (e) {}
+  } catch {}
   overrides[sceneId] = cleanImage;
   localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
 
@@ -83,7 +207,7 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
       const updated = customScenes.map(s => s.id === sceneId ? { ...s, image: cleanImage } : s);
       localStorage.setItem(SCENES_CACHE_KEY, JSON.stringify(updated));
     }
-  } catch (e) {}
+  } catch {}
 
   // 2. Persist to Firestore with safety race
   if (firestore) {
@@ -124,7 +248,7 @@ export async function removeSceneOverride(sceneId, user) {
   let overrides = {};
   try {
     overrides = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
-  } catch (e) {}
+  } catch {}
   delete overrides[sceneId];
   localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
 

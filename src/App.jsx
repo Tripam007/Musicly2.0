@@ -48,7 +48,7 @@ import { saveTrackToDB, loadSavedTracksFromDB, deleteTrackFromDB, updateTrackGen
 import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds } from './utils/publicLibraryDB';
 import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
-import { loadPublicScenes, publishPublicScene, deletePublicScene, loadSceneOverrides, saveSceneOverride, removeSceneOverride } from './utils/publicScenesDB';
+import { loadPublicScenes, publishPublicScene, deletePublicScene, loadSceneOverrides, saveSceneOverride, removeSceneOverride, isLiveVisual } from './utils/publicScenesDB';
 import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists, getUnifiedMusiclyPlaylists } from './utils/publicPlaylistsDB';
 import { getLocalUserPlaylists } from './utils/userPlaylistsDB';
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
@@ -2253,14 +2253,20 @@ export default function App() {
     }
   };
 
-  // 🔒 ADMIN ONLY: Change theme image for any scene (both built-in and custom)
+  // Change theme visual for any scene (Admin persists globally to cloud, users save locally)
   const handleUpdateSceneImage = async (sceneId, newImage) => {
-    if (!isAdmin) {
-      alert("Unauthorized: Only verified admins can customize scene theme images.");
-      return;
-    }
+    if (!sceneId || !newImage) return;
     try {
-      await saveSceneOverride(sceneId, newImage, user);
+      if (isAdmin) {
+        await saveSceneOverride(sceneId, newImage, user);
+      } else {
+        let overrides = {};
+        try {
+          overrides = JSON.parse(localStorage.getItem('musicly_scene_overrides_cache') || '{}');
+        } catch (e) {}
+        overrides[sceneId] = newImage;
+        localStorage.setItem('musicly_scene_overrides_cache', JSON.stringify(overrides));
+      }
       setSceneOverrides(prev => ({
         ...prev,
         [sceneId]: newImage
@@ -2495,14 +2501,30 @@ export default function App() {
 
   return (
     <main className={`app-viewport ${isRetroScene ? 'scene-is-retro' : ''} ${isAnyModalOpen ? 'app-modal-open' : ''} ${isDrawerOpen ? 'drawer-modal-open' : ''}`}>
-      {/* Background Wallpaper Image with Smooth Zoom, Brightness & Crossfade Animation */}
-      <div 
-        className={`scene-backdrop-layer ${isTransitioning ? 'transitioning' : ''} ${backdropImage?.includes('cozy_bedroom') ? 'cozy-backdrop' : ''} ${backdropImage?.includes('peace_scene') ? 'peace-backdrop' : ''} ${backdropImage?.includes('retro_scene') ? 'retro-backdrop' : ''} ${backdropImage?.includes('lofi_scene') ? 'lofi-backdrop' : ''} ${backdropImage?.includes('chill_sleep_scene') ? 'chill-backdrop' : ''} ${backdropImage?.includes('ghazals_bg') ? 'ghazal-backdrop' : ''} ${backdropImage?.includes('country_scene') ? 'country-backdrop' : ''}`}
-        style={{ 
-          backgroundImage: `url(${backdropImage})`,
-          filter: `brightness(${roomBrightness}) saturate(${roomBrightness < 0.6 ? 0.88 : 1.0})`
-        }}
-      />
+      {/* Background Wallpaper Image or Live Video Wallpaper with Smooth Crossfade & Filter */}
+      {isLiveVisual(backdropImage) ? (
+        <video
+          key={backdropImage}
+          src={backdropImage}
+          autoPlay
+          loop
+          muted
+          playsInline
+          className={`scene-backdrop-layer scene-backdrop-video ${isTransitioning ? 'transitioning' : ''}`}
+          style={{ 
+            filter: `brightness(${roomBrightness}) saturate(${roomBrightness < 0.6 ? 0.88 : 1.0})`,
+            objectFit: 'cover'
+          }}
+        />
+      ) : (
+        <div 
+          className={`scene-backdrop-layer ${isTransitioning ? 'transitioning' : ''} ${backdropImage?.includes('cozy_bedroom') ? 'cozy-backdrop' : ''} ${backdropImage?.includes('peace_scene') ? 'peace-backdrop' : ''} ${backdropImage?.includes('retro_scene') ? 'retro-backdrop' : ''} ${backdropImage?.includes('lofi_scene') ? 'lofi-backdrop' : ''} ${backdropImage?.includes('chill_sleep_scene') ? 'chill-backdrop' : ''} ${backdropImage?.includes('ghazals_bg') ? 'ghazal-backdrop' : ''} ${backdropImage?.includes('country_scene') ? 'country-backdrop' : ''}`}
+          style={{ 
+            backgroundImage: `url(${backdropImage})`,
+            filter: `brightness(${roomBrightness}) saturate(${roomBrightness < 0.6 ? 0.88 : 1.0})`
+          }}
+        />
+      )}
 
       {/* Dim & Lighting Overlay with dynamic room brightness attenuation */}
       <div 
