@@ -138,7 +138,7 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
 
   // 3. Country Roads & Roots (English)
   const country = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('country') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country'))));
-  if (country.length > 0) list.push(makePl('country_roots', 'Country Roads & Roots', country, 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=300&auto=format&fit=crop&q=80', 'English'));
+  if (country.length > 0) list.push(makePl('country_roots', 'Country Roads & Roots', country, '/assets/images/country_scene.jpg', 'English'));
 
   // 4. Indie Acoustic Sessions (English)
   const indie = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie'))));

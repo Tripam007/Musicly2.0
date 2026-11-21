@@ -86,7 +86,7 @@ const STUDIO_GENRES = [
   },
   {
     name: 'Country',
-    image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1200&auto=format&fit=crop&q=85',
+    image: '/assets/images/country_scene.jpg',
     accent: '#e67e22',
     subtitle: 'Acoustic Americana'
   },

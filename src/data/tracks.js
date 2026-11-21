@@ -112,7 +112,7 @@ export const getAvailableSections = (lang) => {
 export const GENRE_BACKDROPS = {
   'All': '/assets/images/cozy_bedroom.jpg',
   'Retro': '/assets/images/retro_scene.jpg',
-  'Country': 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1920&auto=format&fit=crop&q=85',
+  'Country': '/assets/images/country_scene.jpg',
   'Indie': 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=1920&auto=format&fit=crop&q=85',
   'Lo-Fi': '/assets/images/lofi_scene.jpg',
   'Ghazal': '/assets/images/ghazals_bg.png',
