@@ -3399,8 +3399,8 @@ body, html, #root {
 }
 
 .scene-check-badge.pos-left {
-  right: auto;
-  left: 8px;
+  right: 42px;
+  left: auto;
 }
 
 /* Premium Bookmark Ribbon Badge (Crown logo only, no text) */
@@ -3518,8 +3518,9 @@ body, html, #root {
   box-shadow: 0 0 16px rgba(255, 183, 3, 0.65);
 }
 
-.apple-glass-scene-card.is-selected .scene-admin-edit-badge {
-  left: 36px;
+.scene-admin-edit-badge.has-custom-override {
+  background: rgba(255, 183, 3, 0.22);
+  border-color: #ffb703;
 }
 
 /* Scene Theme Image Editor Modal Overlay */
