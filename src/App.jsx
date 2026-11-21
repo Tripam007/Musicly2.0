@@ -787,32 +787,26 @@ export default function App() {
     }
   }, [currentTrackId]);
 
+  // Ref tracking whether the current backdropImage was specifically applied by an active playlist
+  const isPlaylistBackdropAppliedRef = useRef(null);
+
   // When a particular playlist is played (e.g. Country Roads & Roots, Ghazals, etc.),
   // automatically change the current background backdrop to that playlist's theme!
-  // And restore the scene background once the user plays something else or exits from the playlist.
+  // And restore the scene/genre background once the user plays something else or exits from the playlist.
   useEffect(() => {
-    const defaultSceneBackdrop = (currentScene && (sceneOverrides[currentScene.id]?.image || sceneOverrides[currentScene.id])) || currentScene?.image || SCENES[0].image;
-
-    const isDynamicBackdrop = (img) => {
-      if (!img) return false;
-      return (
-        img.includes('country_scene') ||
-        img.includes('ghazals_bg') ||
-        img.includes('peace_scene') ||
-        img.includes('retro_scene') ||
-        img.includes('lofi_scene') ||
-        img.includes('chill_sleep_scene') ||
-        Object.values(GENRE_BACKDROPS).includes(img)
-      );
-    };
+    const defaultSceneImg = (currentScene && (sceneOverrides[currentScene.id]?.image || sceneOverrides[currentScene.id])) || currentScene?.image || SCENES[0].image;
+    const targetDefaultBackdrop = (selectedGenre && selectedGenre !== 'All' && GENRE_BACKDROPS[selectedGenre]) || defaultSceneImg;
 
     if (!activePlayingPlaylistId) {
-      if (backdropImage && backdropImage !== defaultSceneBackdrop && isDynamicBackdrop(backdropImage)) {
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setBackdropImage(defaultSceneBackdrop);
-          setTimeout(() => setIsTransitioning(false), 60);
-        }, 200);
+      if (isPlaylistBackdropAppliedRef.current) {
+        isPlaylistBackdropAppliedRef.current = null;
+        if (backdropImage !== targetDefaultBackdrop) {
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setBackdropImage(targetDefaultBackdrop);
+            setTimeout(() => setIsTransitioning(false), 60);
+          }, 200);
+        }
       }
       return;
     }
@@ -834,6 +828,7 @@ export default function App() {
     if (pl && isCurrentTrackInPl) {
       const targetBackdrop = getPlaylistBackdrop(pl, currentTrack);
       if (targetBackdrop && targetBackdrop !== backdropImage) {
+        isPlaylistBackdropAppliedRef.current = targetBackdrop;
         setIsTransitioning(true);
         setTimeout(() => {
           setBackdropImage(targetBackdrop);
@@ -846,15 +841,18 @@ export default function App() {
       try {
         localStorage.removeItem('musicly_active_playlist_id');
       } catch {}
-      if (backdropImage !== defaultSceneBackdrop && isDynamicBackdrop(backdropImage)) {
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setBackdropImage(defaultSceneBackdrop);
-          setTimeout(() => setIsTransitioning(false), 60);
-        }, 200);
+      if (isPlaylistBackdropAppliedRef.current) {
+        isPlaylistBackdropAppliedRef.current = null;
+        if (backdropImage !== targetDefaultBackdrop) {
+          setIsTransitioning(true);
+          setTimeout(() => {
+            setBackdropImage(targetDefaultBackdrop);
+            setTimeout(() => setIsTransitioning(false), 60);
+          }, 200);
+        }
       }
     }
-  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage, currentScene, sceneOverrides]);
+  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage, currentScene, sceneOverrides, selectedGenre]);
 
   // When active language(s) change, verify current track and queue strictly match selected language
   useEffect(() => {
@@ -1610,7 +1608,11 @@ export default function App() {
       }
     }
 
-    const nextBackdrop = GENRE_BACKDROPS[genre] || GENRE_BACKDROPS['All'];
+    if (isPlaylistBackdropAppliedRef.current) {
+      isPlaylistBackdropAppliedRef.current = null;
+    }
+    const defaultSceneImg = (currentScene && (sceneOverrides[currentScene.id]?.image || sceneOverrides[currentScene.id])) || currentScene?.image || SCENES[0].image;
+    const nextBackdrop = genre === 'All' ? defaultSceneImg : (GENRE_BACKDROPS[genre] || defaultSceneImg);
     if (nextBackdrop && nextBackdrop !== backdropImage) {
       setIsTransitioning(true);
       setTimeout(() => {
