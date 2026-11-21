@@ -9,11 +9,72 @@ import {
   Camera, 
   Upload, 
   Link, 
-  RotateCcw
+  RotateCcw,
+  Crop,
+  ZoomIn,
+  ZoomOut,
+  Move
 } from 'lucide-react';
 import { SCENES } from '../data/tracks';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
 import { playClickSound, playTingSound } from '../utils/audioSynth';
+
+/**
+ * Offscreen HTML5 canvas cropper that exports framed 16:9 image
+ */
+async function getCroppedImage(imageSrc, pan, zoom, containerW, containerH, naturalW, naturalH) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const targetW = 1920;
+        const targetH = 1080;
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          resolve(imageSrc);
+          return;
+        }
+
+        const nw = naturalW || img.naturalWidth || targetW;
+        const nh = naturalH || img.naturalHeight || targetH;
+        const cw = containerW || 600;
+        const ch = containerH || 337.5;
+
+        const baseScale = Math.max(cw / nw, ch / nh);
+        const currentScale = baseScale * zoom;
+
+        // Viewport dimensions in source image coordinates
+        const sw = Math.min(nw, cw / currentScale);
+        const sh = Math.min(nh, ch / currentScale);
+
+        // Viewport center in source image coordinates
+        const cx = (nw / 2) - (pan.x / currentScale);
+        const cy = (nh / 2) - (pan.y / currentScale);
+
+        let sx = cx - (sw / 2);
+        let sy = cy - (sh / 2);
+
+        // Clamping within source bounds
+        sx = Math.max(0, Math.min(Math.max(0, nw - sw), sx));
+        sy = Math.max(0, Math.min(Math.max(0, nh - sh), sy));
+
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+        const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+        resolve(croppedDataUrl);
+      } catch (err) {
+        console.warn('Canvas crop fallback to original:', err);
+        resolve(imageSrc);
+      }
+    };
+    img.onerror = () => resolve(imageSrc);
+    img.src = imageSrc;
+  });
+}
 
 export default function SceneSelector({
   isOpen,
@@ -30,6 +91,7 @@ export default function SceneSelector({
 }) {
   const scenesGridRef = useRef(null);
   const fileInputRef = useRef(null);
+  const viewportRef = useRef(null);
 
   // Admin Theme Image Editor State
   const [editingScene, setEditingScene] = useState(null);
@@ -37,6 +99,14 @@ export default function SceneSelector({
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Interactive Crop & Framing State
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDraggingPan, setIsDraggingPan] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [imgNaturalSize, setImgNaturalSize] = useState({ width: 0, height: 0 });
 
   if (!isOpen) return null;
 
@@ -59,11 +129,14 @@ export default function SceneSelector({
     setEditingScene(scene);
     setPreviewImage(scene.image || '');
     setImageUrlInput(scene.image && !scene.image.startsWith('data:') ? scene.image : '');
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    setIsDraggingFile(false);
+    setIsDraggingPan(false);
     setErrorMessage('');
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
+  const handleFile = (file) => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
@@ -76,17 +149,104 @@ export default function SceneSelector({
       const dataUrl = loadEvt.target.result;
       setPreviewImage(dataUrl);
       setImageUrlInput('');
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
       setErrorMessage('');
       playTingSound();
     };
     reader.readAsDataURL(file);
   };
 
+  const handlePointerDown = (e) => {
+    if (e.button !== 0) return;
+    setIsDraggingPan(true);
+    setDragStart({
+      x: e.clientX - pan.x,
+      y: e.clientY - pan.y
+    });
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {}
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDraggingPan) return;
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+
+    if (viewportRef.current && imgNaturalSize.width && imgNaturalSize.height) {
+      const cw = viewportRef.current.clientWidth;
+      const ch = viewportRef.current.clientHeight;
+      const baseScale = Math.max(cw / imgNaturalSize.width, ch / imgNaturalSize.height);
+      const currentScale = baseScale * zoom;
+      const renderW = imgNaturalSize.width * currentScale;
+      const renderH = imgNaturalSize.height * currentScale;
+      const maxPanX = Math.max(0, (renderW - cw) / 2);
+      const maxPanY = Math.max(0, (renderH - ch) / 2);
+
+      setPan({
+        x: Math.max(-maxPanX, Math.min(maxPanX, newX)),
+        y: Math.max(-maxPanY, Math.min(maxPanY, newY))
+      });
+    } else {
+      setPan({ x: newX, y: newY });
+    }
+  };
+
+  const handlePointerUp = (e) => {
+    setIsDraggingPan(false);
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId);
+    } catch {}
+  };
+
+  const handleZoomChange = (newZoom) => {
+    const clampedZoom = Math.max(1, Math.min(3, newZoom));
+    setZoom(clampedZoom);
+
+    if (viewportRef.current && imgNaturalSize.width && imgNaturalSize.height) {
+      const cw = viewportRef.current.clientWidth;
+      const ch = viewportRef.current.clientHeight;
+      const baseScale = Math.max(cw / imgNaturalSize.width, ch / imgNaturalSize.height);
+      const currentScale = baseScale * clampedZoom;
+      const renderW = imgNaturalSize.width * currentScale;
+      const renderH = imgNaturalSize.height * currentScale;
+      const maxPanX = Math.max(0, (renderW - cw) / 2);
+      const maxPanY = Math.max(0, (renderH - ch) / 2);
+
+      setPan((prev) => ({
+        x: Math.max(-maxPanX, Math.min(maxPanX, prev.x)),
+        y: Math.max(-maxPanY, Math.min(maxPanY, prev.y))
+      }));
+    }
+  };
+
+  const handleQuickAlign = (align) => {
+    if (!viewportRef.current || !imgNaturalSize.width || !imgNaturalSize.height) {
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+    const cw = viewportRef.current.clientWidth;
+    const ch = viewportRef.current.clientHeight;
+    const baseScale = Math.max(cw / imgNaturalSize.width, ch / imgNaturalSize.height);
+    const currentScale = baseScale * zoom;
+    const renderH = imgNaturalSize.height * currentScale;
+    const maxPanY = Math.max(0, (renderH - ch) / 2);
+
+    if (align === 'top') {
+      setPan((prev) => ({ ...prev, y: maxPanY }));
+    } else if (align === 'bottom') {
+      setPan((prev) => ({ ...prev, y: -maxPanY }));
+    } else {
+      setPan({ x: 0, y: 0 });
+    }
+  };
+
   const handleSaveThemeImage = async () => {
     if (!editingScene || !onUpdateSceneImage) return;
 
-    const finalImage = (previewImage || imageUrlInput || '').trim();
-    if (!finalImage) {
+    const rawImage = (previewImage || imageUrlInput || '').trim();
+    if (!rawImage) {
       setErrorMessage('Please provide an image file or direct image URL.');
       return;
     }
@@ -95,6 +255,23 @@ export default function SceneSelector({
     setErrorMessage('');
 
     try {
+      let finalImage = rawImage;
+
+      // When crop container exists, generate high-res cropped export
+      if (viewportRef.current && (zoom > 1.01 || Math.abs(pan.x) > 1 || Math.abs(pan.y) > 1 || rawImage.startsWith('data:'))) {
+        const cw = viewportRef.current.clientWidth || 600;
+        const ch = viewportRef.current.clientHeight || 337.5;
+        finalImage = await getCroppedImage(
+          rawImage,
+          pan,
+          zoom,
+          cw,
+          ch,
+          imgNaturalSize.width,
+          imgNaturalSize.height
+        );
+      }
+
       await onUpdateSceneImage(editingScene.id, finalImage);
       playTingSound();
       setEditingScene(null);
@@ -268,46 +445,63 @@ export default function SceneSelector({
               </button>
             </div>
 
-            {/* Live Visual Preview Card */}
-            <div className="scene-edit-preview-container">
-              <div className="scene-edit-preview-card">
-                <img 
-                  src={previewImage || editingScene.image} 
-                  alt="Preview" 
-                  className="scene-edit-preview-img"
-                  onError={(e) => {
-                    e.currentTarget.src = '/assets/images/cozy_bedroom.jpg';
-                  }}
-                />
-                <div className="scene-card-gradient-overlay" />
-                <div className="scene-apple-glass-titlebar">
-                  <span className="scene-apple-title">{editingScene.name}</span>
-                </div>
-              </div>
-              <span className="scene-edit-preview-note">Preview of how listeners will see this theme</span>
-            </div>
-
-            {/* Inputs: File Upload & URL */}
+            {/* Broad Drag & Drop Upload Zone + Direct Link */}
             <div className="scene-edit-form-body">
-              {/* Option 1: File Upload */}
-              <div className="scene-edit-upload-row">
+              {/* Option 1: Broad Drag & Drop Zone */}
+              <div
+                className={`scene-broad-dropzone ${isDraggingFile ? 'is-dragging' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingFile(true);
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingFile(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingFile(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingFile(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleFile(file);
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+              >
                 <input
                   type="file"
                   accept="image/png,image/jpeg,image/webp,image/jpg"
                   ref={fileInputRef}
-                  onChange={handleFileUpload}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFile(file);
+                    e.target.value = '';
+                  }}
                   style={{ display: 'none' }}
                 />
-                <button
-                  type="button"
-                  className="scene-browse-file-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isSaving}
-                >
-                  <Upload size={15} />
-                  <span>Browse Image from Device</span>
-                </button>
-                <span className="scene-file-hint">JPG, PNG, WebP up to 4K</span>
+                <div className="scene-dropzone-icon-wrap">
+                  <Upload size={22} className="scene-dropzone-icon" />
+                </div>
+                <div className="scene-dropzone-text-group">
+                  <p className="scene-dropzone-title">
+                    <strong>Drag & drop image here</strong>, or <span className="scene-dropzone-browse-text">Browse Device</span>
+                  </p>
+                  <p className="scene-dropzone-hint">Supports high-res JPG, PNG, WebP up to 4K</p>
+                </div>
               </div>
 
               <div className="scene-edit-separator">
@@ -328,10 +522,169 @@ export default function SceneSelector({
                   onChange={(e) => {
                     setImageUrlInput(e.target.value);
                     setPreviewImage(e.target.value);
+                    setZoom(1);
+                    setPan({ x: 0, y: 0 });
                   }}
                   disabled={isSaving}
                 />
               </div>
+
+              {/* Interactive Cropper & Framing Section */}
+              {previewImage && (
+                <div className="scene-crop-section">
+                  <div className="scene-crop-section-header">
+                    <div className="scene-crop-title-group">
+                      <Crop size={14} className="scene-crop-title-icon" />
+                      <span className="scene-crop-heading">Crop & Framing Position</span>
+                    </div>
+                    <div className="scene-crop-hint-badge">
+                      <Move size={11} />
+                      <span>Drag image to position • Slider to zoom</span>
+                    </div>
+                  </div>
+
+                  {/* 16:9 Viewport Frame */}
+                  <div
+                    ref={viewportRef}
+                    className={`scene-crop-viewport ${isDraggingPan ? 'is-panning' : ''}`}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                    title="Click and drag image to choose what part to show"
+                  >
+                    <img 
+                      src={previewImage} 
+                      alt="Crop Viewport" 
+                      className="scene-crop-img"
+                      draggable={false}
+                      style={{
+                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+                        transformOrigin: 'center center',
+                        transition: isDraggingPan ? 'none' : 'transform 0.15s ease-out'
+                      }}
+                      onLoad={(e) => {
+                        setImgNaturalSize({
+                          width: e.currentTarget.naturalWidth || 1920,
+                          height: e.currentTarget.naturalHeight || 1080
+                        });
+                      }}
+                      onError={(e) => {
+                        e.currentTarget.src = '/assets/images/cozy_bedroom.jpg';
+                      }}
+                    />
+
+                    {/* Rule of thirds grid guides */}
+                    <div className="scene-crop-grid-overlay">
+                      <div className="scene-crop-grid-line v1" />
+                      <div className="scene-crop-grid-line v2" />
+                      <div className="scene-crop-grid-line h1" />
+                      <div className="scene-crop-grid-line h2" />
+                    </div>
+
+                    {/* Corner viewfinder brackets */}
+                    <div className="scene-crop-corner tl" />
+                    <div className="scene-crop-corner tr" />
+                    <div className="scene-crop-corner bl" />
+                    <div className="scene-crop-corner br" />
+
+                    {/* 16:9 Aspect Badge */}
+                    <div className="scene-crop-aspect-badge">
+                      <span>16:9 Backdrop</span>
+                    </div>
+
+                    {/* Apple glass title overlay */}
+                    <div className="scene-apple-glass-titlebar">
+                      <span className="scene-apple-title">{editingScene.name}</span>
+                    </div>
+                  </div>
+
+                  {/* Crop & Zoom Controls Toolbar */}
+                  <div className="scene-crop-toolbar">
+                    {/* Zoom control */}
+                    <div className="scene-crop-zoom-group">
+                      <button
+                        type="button"
+                        className="scene-crop-zoom-btn"
+                        onClick={() => handleZoomChange(Math.max(1, +(zoom - 0.1).toFixed(2)))}
+                        title="Zoom out"
+                        disabled={zoom <= 1}
+                      >
+                        <ZoomOut size={13} />
+                      </button>
+                      <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.05"
+                        value={zoom}
+                        onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
+                        className="scene-crop-zoom-slider"
+                        title="Zoom to crop"
+                      />
+                      <button
+                        type="button"
+                        className="scene-crop-zoom-btn"
+                        onClick={() => handleZoomChange(Math.min(3, +(zoom + 0.1).toFixed(2)))}
+                        title="Zoom in"
+                        disabled={zoom >= 3}
+                      >
+                        <ZoomIn size={13} />
+                      </button>
+                      <span className="scene-crop-zoom-value">{Math.round(zoom * 100)}%</span>
+                    </div>
+
+                    {/* Quick Alignment Presets */}
+                    <div className="scene-crop-presets-group">
+                      <button
+                        type="button"
+                        className="scene-crop-preset-btn"
+                        onClick={() => {
+                          playClickSound('light');
+                          setPan({ x: 0, y: 0 });
+                        }}
+                        title="Center image"
+                      >
+                        Center
+                      </button>
+                      <button
+                        type="button"
+                        className="scene-crop-preset-btn"
+                        onClick={() => {
+                          playClickSound('light');
+                          handleQuickAlign('top');
+                        }}
+                        title="Align to top"
+                      >
+                        Top
+                      </button>
+                      <button
+                        type="button"
+                        className="scene-crop-preset-btn"
+                        onClick={() => {
+                          playClickSound('light');
+                          handleQuickAlign('bottom');
+                        }}
+                        title="Align to bottom"
+                      >
+                        Bottom
+                      </button>
+                      <button
+                        type="button"
+                        className="scene-crop-preset-btn reset"
+                        onClick={() => {
+                          playClickSound('light');
+                          setZoom(1);
+                          setPan({ x: 0, y: 0 });
+                        }}
+                        title="Reset framing"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {errorMessage && (
                 <div className="scene-edit-error-banner">
