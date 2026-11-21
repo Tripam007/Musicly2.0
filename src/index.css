@@ -156,6 +156,12 @@ body, html, #root {
   background-position: center center;
 }
 
+.scene-backdrop-layer.country-backdrop {
+  height: 100%;
+  top: 0;
+  background-position: center center;
+}
+
 .scene-backdrop-layer.transitioning {
   opacity: 0.2;
   transform: scale(1.035);

@@ -59,6 +59,7 @@ export default function PlaylistDrawer({
   isPlaying,
   activePlayingPlaylistId = null,
   onSetActivePlayingPlaylistId = null,
+  onSetCustomQueue = null,
   onSelectTrack,
   onTogglePlay,
   favorites,
@@ -342,6 +343,9 @@ export default function PlaylistDrawer({
       }
       if (typeof onSetActivePlayingPlaylistId === 'function') {
         onSetActivePlayingPlaylistId(playlist.id);
+      }
+      if (typeof onSetCustomQueue === 'function') {
+        onSetCustomQueue(plTracks.slice(1));
       }
       playPeacefulLikeSound();
     }
@@ -1005,7 +1009,18 @@ export default function PlaylistDrawer({
                     if (isSelected) {
                       onTogglePlay();
                     } else {
-                      onSelectTrack(track);
+                      if (activeDrilldownPlaylist) {
+                        onSelectTrack(track, true, true, activeDrilldownPlaylist.id);
+                        if (typeof onSetActivePlayingPlaylistId === 'function') {
+                          onSetActivePlayingPlaylistId(activeDrilldownPlaylist.id);
+                        }
+                        if (typeof onSetCustomQueue === 'function') {
+                          const remaining = sortedFilteredTracks.slice(idx + 1);
+                          onSetCustomQueue(remaining);
+                        }
+                      } else {
+                        onSelectTrack(track);
+                      }
                     }
                   }}
                 >

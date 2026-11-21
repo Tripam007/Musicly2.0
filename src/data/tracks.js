@@ -71,23 +71,8 @@ export const isRabindraSangeetLanguage = (lang) => {
   return l === 'bengali' || l === 'beng' || l === 'bangla';
 };
 
-export const getAvailableGenres = (lang) => {
-  const baseGenres = ['All', 'Retro', 'Indie', 'Lo-Fi', 'Synthwave', 'Peace', 'Chill/Sleep'];
-  const genres = [...baseGenres];
-
-  if (isCountryLanguage(lang)) {
-    genres.splice(3, 0, 'Country');
-  }
-
-  if (isGhazalLanguage(lang)) {
-    genres.splice(4, 0, 'Ghazal');
-  }
-
-  if (isRabindraSangeetLanguage(lang)) {
-    genres.splice(5, 0, 'Rabindra Sangeet');
-  }
-
-  return genres;
+export const getAvailableGenres = () => {
+  return ['All', 'Retro', 'Indie', 'Lo-Fi', 'Synthwave', 'Peace', 'Chill/Sleep'];
 };
 
 export const getAvailableSections = (lang) => {
@@ -121,6 +106,103 @@ export const GENRE_BACKDROPS = {
   'Peace': '/assets/images/peace_scene.jpg',
   'Chill/Sleep': '/assets/images/chill_sleep_scene.jpg'
 };
+
+/**
+ * Resolves the matching immersive background backdrop for any playing playlist.
+ * Handles official playlists, custom admin playlists, keyword matches (Ghazals, Country, Rabindra Sangeet, etc.),
+ * and track genres.
+ */
+export function getPlaylistBackdrop(playlist, track = null) {
+  if (!playlist && !track) return null;
+
+  const id = String(playlist?.id || '').toLowerCase();
+  const title = String(playlist?.title || playlist?.name || '').toLowerCase();
+
+  // 1. Direct ID matches for known official playlists
+  if (id === 'timeless_ghazals') return GENRE_BACKDROPS['Ghazal'];
+  if (id === 'country_roots') return GENRE_BACKDROPS['Country'];
+  if (id === 'bengali_classics') return GENRE_BACKDROPS['Rabindra Sangeet'];
+  if (id === 'vintage_retro') return GENRE_BACKDROPS['Retro'];
+  if (id === 'latenight_lofi') return GENRE_BACKDROPS['Lo-Fi'];
+  if (id === 'indie_warmth') return GENRE_BACKDROPS['Indie'];
+  if (id === 'peace_playlist') return GENRE_BACKDROPS['Peace'];
+
+  // 2. Keyword matching on playlist title or ID
+  if (title.includes('ghazal') || title.includes('mehfil') || id.includes('ghazal')) {
+    return GENRE_BACKDROPS['Ghazal'];
+  }
+  if (title.includes('country') || id.includes('country')) {
+    return GENRE_BACKDROPS['Country'];
+  }
+  if (title.includes('rabindra') || title.includes('tagore') || id.includes('rabindra') || id.includes('tagore')) {
+    return GENRE_BACKDROPS['Rabindra Sangeet'];
+  }
+  if (title.includes('retro') || title.includes('vintage') || title.includes('80s') || id.includes('retro')) {
+    return GENRE_BACKDROPS['Retro'];
+  }
+  if (title.includes('lo-fi') || title.includes('lofi') || id.includes('lofi')) {
+    return GENRE_BACKDROPS['Lo-Fi'];
+  }
+  if (title.includes('indie') || id.includes('indie')) {
+    return GENRE_BACKDROPS['Indie'];
+  }
+  if (title.includes('synthwave') || id.includes('synthwave') || id.includes('synth')) {
+    return GENRE_BACKDROPS['Synthwave'];
+  }
+  if (title.includes('peace') || title.includes('meditation') || title.includes('zen') || id.includes('peace')) {
+    return GENRE_BACKDROPS['Peace'];
+  }
+  if (title.includes('chill') || title.includes('sleep') || id.includes('sleep')) {
+    return GENRE_BACKDROPS['Chill/Sleep'];
+  }
+
+  // 3. Explicit playlist.genre property
+  if (playlist?.genre && GENRE_BACKDROPS[playlist.genre]) {
+    return GENRE_BACKDROPS[playlist.genre];
+  }
+
+  // 4. Inspection of tracks inside the playlist
+  const plTracks = Array.isArray(playlist?.tracks) ? playlist.tracks : [];
+  if (plTracks.length > 0) {
+    for (const t of plTracks) {
+      const g = (t?.genre || '').toLowerCase();
+      if (g.includes('ghazal')) return GENRE_BACKDROPS['Ghazal'];
+      if (g.includes('country')) return GENRE_BACKDROPS['Country'];
+      if (g.includes('rabindra')) return GENRE_BACKDROPS['Rabindra Sangeet'];
+    }
+    const genreCounts = {};
+    for (const t of plTracks) {
+      const g = t?.genre || '';
+      if (g) genreCounts[g] = (genreCounts[g] || 0) + 1;
+    }
+    let topGenre = null;
+    let topCount = 0;
+    for (const [g, count] of Object.entries(genreCounts)) {
+      if (count > topCount) {
+        topCount = count;
+        topGenre = g;
+      }
+    }
+    if (topGenre && GENRE_BACKDROPS[topGenre]) {
+      return GENRE_BACKDROPS[topGenre];
+    }
+  }
+
+  // 5. Currently playing track inspection
+  if (track) {
+    const tg = track.genre;
+    if (tg && GENRE_BACKDROPS[tg]) return GENRE_BACKDROPS[tg];
+    const tgLow = (tg || '').toLowerCase();
+    if (tgLow.includes('ghazal')) return GENRE_BACKDROPS['Ghazal'];
+    if (tgLow.includes('country')) return GENRE_BACKDROPS['Country'];
+    if (tgLow.includes('rabindra')) return GENRE_BACKDROPS['Rabindra Sangeet'];
+  }
+
+  // 6. Custom playlist backdrop if specified
+  if (playlist?.backdrop) return playlist.backdrop;
+
+  return null;
+}
 
 export const LANGUAGES = ['English', 'Hindi', 'Bengali', 'Other'];
 

@@ -1466,7 +1466,7 @@ export default function VinylScene({
 
     const [firstSong, ...remainingSongs] = finalTracks;
     if (firstSong) {
-      onSelectTrack?.(firstSong, true, true);
+      onSelectTrack?.(firstSong, true, true, playlist.id);
     }
     if (onSetCustomQueue) {
       onSetCustomQueue(remainingSongs);
@@ -3981,9 +3981,9 @@ export default function VinylScene({
                             }
                             setIsGymPlaylistPlayingAsWhole(false);
                             setIsGymModeActive(false);
-                            setActivePlayingPlaylistId(null);
+                            setActivePlayingPlaylistId(selectedCustomPlaylist.id);
                             const remaining = filterTracksByLang(selectedCustomPlaylist.tracks.slice(idx + 1));
-                            onSelectTrack?.(track, true, false);
+                            onSelectTrack?.(track, true, true, selectedCustomPlaylist.id);
                             if (onSetCustomQueue) {
                               onSetCustomQueue(remaining);
                             }

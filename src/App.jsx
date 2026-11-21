@@ -40,7 +40,7 @@ import './styles/airControls.css';
 import { VoiceControlManager, MUSICLY_ACTIONS } from './voice';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useButtonTactileFeedback } from './hooks/useButtonTactileFeedback';
-import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage, isCountryLanguage, LANGUAGES, isTrackInLanguages } from './data/tracks';
+import { TRACKS, SCENES, GENRE_BACKDROPS, getPlaylistBackdrop, isGhazalLanguage, isCountryLanguage, LANGUAGES, isTrackInLanguages } from './data/tracks';
 import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/audioSynth';
 import { audioEngine } from './utils/audioEngine';
 import { ytEngine, extractYouTubeId } from './utils/youtubePlayer';
@@ -49,7 +49,8 @@ import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTr
 import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
 import { loadPublicScenes, publishPublicScene, deletePublicScene } from './utils/publicScenesDB';
-import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists } from './utils/publicPlaylistsDB';
+import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists, getUnifiedMusiclyPlaylists } from './utils/publicPlaylistsDB';
+import { getLocalUserPlaylists } from './utils/userPlaylistsDB';
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
 import { resolveOriginalTrack, resolveTrackAudioStreamAsync, isDirectPlayableAudio } from './utils/originalTrackResolver';
 import { deduplicateTracks, findDuplicateTrack } from './utils/trackDeduplicator';
@@ -699,6 +700,34 @@ export default function App() {
       playedShuffleTrackIdsRef.current.add(currentTrackId);
     }
   }, [currentTrackId]);
+
+  // When a particular playlist is played (e.g. Ghazals, Country, Rabindra Sangeet, etc.),
+  // automatically change the current background backdrop to that playlist's theme!
+  useEffect(() => {
+    if (!activePlayingPlaylistId) return;
+
+    const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
+    let pl = unified.find(p => p.id === activePlayingPlaylistId);
+    if (!pl) {
+      const userPls = getLocalUserPlaylists(user);
+      const foundUser = userPls.find(p => p.id === activePlayingPlaylistId);
+      if (foundUser) {
+        const plTracks = (foundUser.trackIds || []).map(tId => allTracks.find(t => t.id === tId)).filter(Boolean);
+        pl = { ...foundUser, tracks: plTracks };
+      }
+    }
+
+    if (pl) {
+      const targetBackdrop = getPlaylistBackdrop(pl, currentTrack);
+      if (targetBackdrop && targetBackdrop !== backdropImage) {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setBackdropImage(targetBackdrop);
+          setTimeout(() => setIsTransitioning(false), 60);
+        }, 200);
+      }
+    }
+  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage]);
 
   // When active language(s) change, verify current track and queue strictly match selected language
   useEffect(() => {
@@ -1416,15 +1445,11 @@ export default function App() {
 
   // Genre filter selection + Animated Dynamic Backdrop Switch
   const handleSelectGenre = (genre) => {
-    if (genre && genre.toLowerCase() === 'ghazal' && !isGhazalLanguage(selectedLanguage)) {
-      setSelectedGenre('All');
-      return;
-    }
-    if (genre && genre.toLowerCase() === 'country' && !isCountryLanguage(selectedLanguage)) {
-      setSelectedGenre('All');
-      return;
-    }
     setSelectedGenre(genre);
+    setActivePlayingPlaylistId(null);
+    try {
+      localStorage.removeItem('musicly_active_playlist_id');
+    } catch {}
 
     // If NOT playing, cue up the first song of the newly selected section
     // If IS playing, keep the current song playing completely uninterrupted!
@@ -2335,7 +2360,7 @@ export default function App() {
     <main className={`app-viewport ${isRetroScene ? 'scene-is-retro' : ''} ${isAnyModalOpen ? 'app-modal-open' : ''} ${isDrawerOpen ? 'drawer-modal-open' : ''}`}>
       {/* Background Wallpaper Image with Smooth Zoom, Brightness & Crossfade Animation */}
       <div 
-        className={`scene-backdrop-layer ${isTransitioning ? 'transitioning' : ''} ${backdropImage?.includes('cozy_bedroom') ? 'cozy-backdrop' : ''} ${backdropImage?.includes('peace_scene') ? 'peace-backdrop' : ''} ${backdropImage?.includes('retro_scene') ? 'retro-backdrop' : ''} ${backdropImage?.includes('lofi_scene') ? 'lofi-backdrop' : ''} ${backdropImage?.includes('chill_sleep_scene') ? 'chill-backdrop' : ''} ${backdropImage?.includes('ghazals_bg') ? 'ghazal-backdrop' : ''}`}
+        className={`scene-backdrop-layer ${isTransitioning ? 'transitioning' : ''} ${backdropImage?.includes('cozy_bedroom') ? 'cozy-backdrop' : ''} ${backdropImage?.includes('peace_scene') ? 'peace-backdrop' : ''} ${backdropImage?.includes('retro_scene') ? 'retro-backdrop' : ''} ${backdropImage?.includes('lofi_scene') ? 'lofi-backdrop' : ''} ${backdropImage?.includes('chill_sleep_scene') ? 'chill-backdrop' : ''} ${backdropImage?.includes('ghazals_bg') ? 'ghazal-backdrop' : ''} ${backdropImage?.includes('country_scene') ? 'country-backdrop' : ''}`}
         style={{ 
           backgroundImage: `url(${backdropImage})`,
           filter: `brightness(${roomBrightness}) saturate(${roomBrightness < 0.6 ? 0.88 : 1.0})`
@@ -2664,7 +2689,7 @@ export default function App() {
           onSetCustomQueue={setCustomQueue}
           activePlayingPlaylistId={activePlayingPlaylistId}
           onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
-          onSelectTrack={(track, shouldPlay, isFromPlaylist = false) => {
+          onSelectTrack={(track, shouldPlay, isFromPlaylist = false, playlistId = null) => {
             if (!track) return;
             setCurrentTrackId(track.id);
             setCurrentTime(0);
@@ -2673,7 +2698,12 @@ export default function App() {
               setIsPlaying(shouldPlay);
             }
             setCustomQueue(prev => prev.filter(t => t.id !== track.id));
-            if (!isFromPlaylist) {
+            if (isFromPlaylist && playlistId) {
+              setActivePlayingPlaylistId(playlistId);
+              try {
+                localStorage.setItem('musicly_active_playlist_id', playlistId);
+              } catch {}
+            } else if (!isFromPlaylist) {
               setActivePlayingPlaylistId(null);
               try {
                 localStorage.removeItem('musicly_active_playlist_id');
@@ -2805,6 +2835,7 @@ export default function App() {
             onDeletePublicPlaylist={(id) => deletePublicPlaylist(id, user)}
             activePlayingPlaylistId={activePlayingPlaylistId}
             onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
+            onSetCustomQueue={setCustomQueue}
             onOpenAdminDashboard={() => {
               setIsDrawerOpen(false);
               setIsAdminDashboardOpen(true);
