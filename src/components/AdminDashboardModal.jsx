@@ -57,6 +57,7 @@ import { extractPaletteFromImage } from '../utils/aiThemeGenerator';
 import { loadSongRequests, updateSongRequestStatus, deleteSongRequest, updateSongRequestAdminNote, updateSongRequestAudio, updateSongRequestDetails } from '../utils/songRequestsDB';
 import { loadSavedFeedback, deleteFeedback } from '../utils/feedbackDB';
 import { fetchLiveStreamRecommendations, LIVE_STREAM_PRESETS } from '../utils/youtubeLiveAgent';
+import { filterAndRankTracks, scoreSearchMatch } from '../utils/fuzzySearch';
 import { 
   getStudioBackgrounds, 
   saveStudioBackgrounds, 
@@ -150,11 +151,9 @@ export default function AdminDashboardModal({
 
   const streamAbortControllerRef = useRef(null);
 
-  // Auto-fetch real-time YouTube recommendations when AI Agent is active or query changes
+  // Auto-fetch real-time YouTube recommendations when search query changes
   // Optimized for instant as-you-type letter search with AbortController
   React.useEffect(() => {
-    if (!isLiveAgentActive) return;
-
     const trimmed = searchQuery.trim();
     if (!trimmed) {
       setLiveRecommendations(LIVE_STREAM_PRESETS);
@@ -193,51 +192,36 @@ export default function AdminDashboardModal({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [isLiveAgentActive, searchQuery]);
+  }, [searchQuery]);
 
-  // Instant As-You-Type Stream Results (0ms responsiveness)
+  // Instant As-You-Type Stream Results with Phonetic Soundex & Single-Letter Fuzzy Matching
   const displayedStreams = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
+    const q = searchQuery.trim();
     if (!q) return LIVE_STREAM_PRESETS;
 
-    // 1. Check if recommendations match current query
-    const matchingRecs = liveRecommendations.filter(item => {
-      if (!item) return false;
-      const t = (item.title || '').toLowerCase();
-      const a = (item.artist || '').toLowerCase();
-      const g = (item.genre || '').toLowerCase();
-      const raw = (item.rawTitle || '').toLowerCase();
-      return t.includes(q) || a.includes(q) || g.includes(q) || raw.includes(q);
-    });
-
-    if (matchingRecs.length > 0) {
-      return matchingRecs;
+    // 1. Phonetic & Fuzzy Search on Live Recommendations
+    const rankedRecs = filterAndRankTracks(liveRecommendations, q);
+    if (rankedRecs.length > 0) {
+      return rankedRecs;
     }
 
     // 2. Instant local search from publicTracks catalog
-    const localMatches = publicTracks
-      .filter(t => {
-        const title = (t.title || '').toLowerCase();
-        const artist = (t.artist || '').toLowerCase();
-        const genre = (t.genre || '').toLowerCase();
-        return title.includes(q) || artist.includes(q) || genre.includes(q);
-      })
-      .map(t => ({
-        id: `pub-${t.id}`,
-        youtubeId: t.youtubeId || null,
-        title: t.title,
-        artist: t.artist,
-        duration: t.duration || 220,
-        durationText: `${Math.floor((t.duration || 220) / 60)}:${((t.duration || 220) % 60).toString().padStart(2, '0')}`,
-        cover: t.cover,
-        audioUrl: t.audioUrl,
-        isLive: false,
-        isYouTube: !!t.isYouTube,
-        genre: t.genre || 'Indie',
-        genres: t.genres || [t.genre || 'Indie'],
-        language: t.language || 'English',
-        isPublic: true
-      }));
+    const localMatches = filterAndRankTracks(publicTracks, q).map(t => ({
+      id: `pub-${t.id}`,
+      youtubeId: t.youtubeId || null,
+      title: t.title,
+      artist: t.artist,
+      duration: t.duration || 220,
+      durationText: `${Math.floor((t.duration || 220) / 60)}:${((t.duration || 220) % 60).toString().padStart(2, '0')}`,
+      cover: t.cover,
+      audioUrl: t.audioUrl,
+      isLive: false,
+      isYouTube: !!t.isYouTube,
+      genre: t.genre || 'Indie',
+      genres: t.genres || [t.genre || 'Indie'],
+      language: t.language || 'English',
+      isPublic: true
+    }));
 
     return localMatches;
   }, [searchQuery, liveRecommendations, publicTracks]);
@@ -555,38 +539,12 @@ export default function AdminDashboardModal({
     }
   }, [isOpen]);
 
-  // Instant As-You-Type Filter for public songs directory
+  // Instant As-You-Type Filter for public songs directory with Phonetic & Fuzzy Search
   const filteredPublicTracks = useMemo(() => {
     if (!publicTracks || !Array.isArray(publicTracks)) return [];
-    const q = searchQuery.toLowerCase().trim();
+    const q = searchQuery.trim();
     if (!q) return publicTracks;
-    const tokens = q.split(/\s+/).filter(Boolean);
-    const scored = publicTracks.map(t => {
-      const title = (t.title || '').toLowerCase();
-      const artist = (t.artist || '').toLowerCase();
-      const genre = (t.genre || '').toLowerCase();
-      const genresStr = Array.isArray(t.genres) ? t.genres.join(' ').toLowerCase() : '';
-      const combined = `${title} ${artist} ${genre} ${genresStr}`;
-
-      let matchesAll = true;
-      for (const tok of tokens) {
-        if (!combined.includes(tok)) {
-          matchesAll = false;
-          break;
-        }
-      }
-      if (!matchesAll) return null;
-
-      let score = 0;
-      if (title.startsWith(q)) score += 2000;
-      if (artist.startsWith(q)) score += 1800;
-      if (title.includes(q)) score += 1000;
-      if (artist.includes(q)) score += 800;
-      return { track: t, score };
-    }).filter(Boolean);
-
-    scored.sort((a, b) => b.score - a.score);
-    return scored.map(s => s.track);
+    return filterAndRankTracks(publicTracks, q);
   }, [publicTracks, searchQuery]);
 
   if (!isOpen) return null;
@@ -3183,8 +3141,8 @@ export default function AdminDashboardModal({
                 {publicPlaylists
                   .filter(pl => {
                     const matchesSearch = !playlistSearchQuery || 
-                      (pl.title || '').toLowerCase().includes(playlistSearchQuery.toLowerCase()) ||
-                      (pl.language || '').toLowerCase().includes(playlistSearchQuery.toLowerCase());
+                      scoreSearchMatch(playlistSearchQuery, pl.title) > 0 ||
+                      scoreSearchMatch(playlistSearchQuery, pl.language) > 0;
                     const matchesLang = playlistLangFilter === 'All' || normalizePlaylistLang(pl.language) === playlistLangFilter;
                     return matchesSearch && matchesLang;
                   })

@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import FloatingWaveformScrubber from './FloatingWaveformScrubber';
 import { isTrackInLanguages } from '../data/tracks';
+import { filterAndRankTracks } from '../utils/fuzzySearch';
 
 const LANGUAGE_OPTIONS = [
   { id: 'English', label: 'English', native: null, icon: null },
@@ -314,13 +315,10 @@ function ChooseYourVibeScene({
       }
     }
 
-    if (!searchQuery.trim()) return base;
-    const q = searchQuery.toLowerCase().trim();
-    const matched = base.filter(t => 
-      (t.title || '').toLowerCase().includes(q) || 
-      (t.artist || '').toLowerCase().includes(q)
-    );
-    return matched.length > 0 ? matched : base;
+    if (searchQuery.trim()) {
+      return filterAndRankTracks(sourcePool, searchQuery);
+    }
+    return base;
   }, [selectedVibe, tracks, searchQuery, activeLangs, musicSource, favorites, currentTrack]);
 
   const vibeSongsRef = useRef(vibeSongs);

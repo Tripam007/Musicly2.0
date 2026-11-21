@@ -7,6 +7,7 @@
 import { parseYouTubeTitle } from './trackParser.js';
 import { extractYouTubeId } from './youtubePlayer.js';
 import { detectSongLanguage, detectSongSections } from './languageDetector.js';
+import { filterAndRankTracks } from './fuzzySearch.js';
 
 // Curated high-fidelity 24/7 Live Stream fallbacks & presets
 export const LIVE_STREAM_PRESETS = [
@@ -249,26 +250,13 @@ export async function fetchLiveStreamRecommendations(query = '', signal = null) 
     }
   }
 
-  // 4. Tertiary Fallback: Check curated presets for partial word match
+  // 4. Tertiary Fallback: Check curated presets with phonetic and fuzzy ranking
   if (finalResults.length === 0) {
-    const scoredPresets = LIVE_STREAM_PRESETS.map(p => {
-      let score = 0;
-      const t = p.title.toLowerCase();
-      const a = p.artist.toLowerCase();
-      if (a.startsWith(qKey)) score += 2000;
-      if (t.startsWith(qKey)) score += 1800;
-      if (a.includes(qKey)) score += 800;
-      if (t.includes(qKey)) score += 600;
-      if (p.genre.toLowerCase().includes(qKey)) score += 500;
-      return {
-        ...p,
-        score,
-        isTopMatch: score >= 1200
-      };
-    });
-
-    finalResults = scoredPresets.filter(p => p.score > 0);
-    finalResults.sort((a, b) => b.score - a.score);
+    const scored = filterAndRankTracks(LIVE_STREAM_PRESETS, cleanQ);
+    finalResults = scored.map(p => ({
+      ...p,
+      isTopMatch: (p._searchScore || 0) >= 1200
+    }));
   }
 
   // NEVER return unrelated presets when the user provided a search query!

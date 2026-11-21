@@ -48,6 +48,7 @@ import { getLocalUserPlaylists, loadUserPlaylists, saveUserPlaylists } from '../
 import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang, isSongMatchingPlaylistLang } from '../utils/publicPlaylistsDB';
 import PixelCat from './PixelCat';
 import SweatDropletsOverlay from './SweatDropletsOverlay';
+import { filterAndRankTracks } from '../utils/fuzzySearch';
 import '../styles/vinylScene.css';
 
 // Curated Category Filters inspired by the reference image
@@ -390,12 +391,7 @@ export default function VinylScene({
 
     const basePool = (allTracks || []).filter(t => isSongMatchingPlaylistLang(t, targetLang));
     if (!songSearchQuery.trim()) return basePool.slice(0, 80);
-    const q = songSearchQuery.toLowerCase();
-    return basePool.filter(t =>
-      (t.title || '').toLowerCase().includes(q) ||
-      (t.artist || '').toLowerCase().includes(q) ||
-      (t.genre || '').toLowerCase().includes(q)
-    );
+    return filterAndRankTracks(basePool, songSearchQuery);
   }, [allTracks, songSearchQuery, isAddSongsToExistingOpen, selectedCustomPlaylist, newPlaylistTarget, newPlaylistLanguage]);
 
   // Create Playlist Handler (Public Official for Admin if chosen, or Private Personal)
@@ -1185,12 +1181,7 @@ export default function VinylScene({
     }
 
     if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(t =>
-        (t.title || '').toLowerCase().includes(q) ||
-        (t.artist || '').toLowerCase().includes(q) ||
-        (t.genre || '').toLowerCase().includes(q)
-      );
+      return filterAndRankTracks(allTracks, searchQuery).slice(0, 18);
     }
 
     return list.slice(0, 12);

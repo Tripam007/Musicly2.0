@@ -1,6 +1,8 @@
 // Vercel Serverless Function: /api/youtube-search
 // High-performance YouTube Audio Stream & Search Recommendations Engine
 
+import { scoreSearchMatch } from '../src/utils/fuzzySearch.js';
+
 const KNOWN_ARTISTS = new Set([
   'divine', 'farak', 'arijit singh', 'arijit', 'neha kakkar', 'jubin nautiyal', 'jubin', 'darshan raval', 
   'atif aslam', 'atif', 'sonu nigam', 'shreya ghoshal', 'lata mangeshkar', 'kishore kumar', 'mohammed rafi', 
@@ -303,6 +305,10 @@ async function handleSearch(searchQuery, userRawQuery, res) {
         let score = 0;
 
         if (qClean) {
+          // Comprehensive Phonetic Soundex & Fuzzy matching score (matches sound-alikes & single letters)
+          const fuzzyBonus = scoreSearchMatch(qClean, `${candidateTitle} ${cleanArtist} ${rawTitle}`);
+          score += fuzzyBonus;
+
           // Exact matches
           if (artistLower === qClean) score += 3000;
           if (titleLower === qClean) score += 2500;

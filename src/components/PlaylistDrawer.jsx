@@ -31,6 +31,7 @@ import {
 import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections, isTrackInLanguages } from '../data/tracks';
 import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang, isSongMatchingPlaylistLang } from '../utils/publicPlaylistsDB';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
+import { filterAndRankTracks } from '../utils/fuzzySearch';
 
 const AVAILABLE_SECTIONS = GENRES.filter(g => g !== 'All');
 
@@ -245,27 +246,23 @@ export default function PlaylistDrawer({
   }, [currentPlaylists, drilldownPlaylistId]);
 
   const displayedPlaylists = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
+    const q = searchQuery.trim();
     if (!q) return currentPlaylists;
-    return currentPlaylists.filter(p => p.title.toLowerCase().includes(q));
+    return filterAndRankTracks(currentPlaylists, q);
   }, [currentPlaylists, searchQuery]);
 
   const sortedFilteredTracks = useMemo(() => {
+    const q = searchQuery.trim();
+
     if (viewMode === 'playlists') {
       if (!activeDrilldownPlaylist) return [];
       let baseList = activeDrilldownPlaylist.tracks || [];
-      if (activeLangs.length > 0) {
+      // Only filter by active language when not searching, so search finds any song
+      if (!q && activeLangs.length > 0) {
         baseList = baseList.filter(t => isTrackInLanguages(t.language, activeLangs));
       }
-      const q = searchQuery.toLowerCase().trim();
-      return baseList.filter((track) => {
-        if (!q) return true;
-        return (
-          track.title.toLowerCase().includes(q) ||
-          track.artist.toLowerCase().includes(q) ||
-          track.genre.toLowerCase().includes(q)
-        );
-      });
+      if (!q) return baseList;
+      return filterAndRankTracks(baseList, q);
     }
 
     let baseList = [];
@@ -277,22 +274,15 @@ export default function PlaylistDrawer({
       baseList = visibleTracks.filter(t => favorites.includes(t.id));
     }
 
-    if (activeLangs.length > 0 && mainSource === 'musicly') {
+    // When NOT searching, filter by active language; when searching, search across all songs!
+    if (!q && activeLangs.length > 0 && mainSource === 'musicly') {
       baseList = baseList.filter(t => isTrackInLanguages(t.language, activeLangs));
     }
 
-    const q = searchQuery.toLowerCase().trim();
-    return baseList.filter((track) => {
-      if (q) {
-        const matchesSearch = 
-          track.title.toLowerCase().includes(q) ||
-          track.artist.toLowerCase().includes(q) ||
-          track.genre.toLowerCase().includes(q);
-        if (!matchesSearch) return false;
-      }
+    if (!q) return baseList;
 
-      return true;
-    });
+    // Use phonetic & fuzzy matching across all tracks
+    return filterAndRankTracks(baseList, q);
   }, [viewMode, activeDrilldownPlaylist, mainSource, visibleTracks, userPersonalSongIds, favorites, searchQuery, activeLangs]);
 
   // Toggle personal song in user's collection (from clicking + in Musicly)
@@ -312,20 +302,14 @@ export default function PlaylistDrawer({
 
   // Candidate personal choice songs available to add into a custom playlist
   const candidateAddSongs = useMemo(() => {
-    const q = addSongSearchQuery.toLowerCase().trim();
+    const q = addSongSearchQuery.trim();
     const targetLang = activeDrilldownPlaylist?.language;
     const userPool = visibleTracks.filter(t => t.isCustom || userPersonalSongIds.includes(t.id));
     const pool = q ? visibleTracks : (userPool.length > 0 ? userPool : visibleTracks);
 
-    return pool.filter(t => {
-      if (!isSongMatchingPlaylistLang(t, targetLang)) return false;
-      if (!q) return true;
-      return (
-        t.title.toLowerCase().includes(q) ||
-        t.artist.toLowerCase().includes(q) ||
-        t.genre.toLowerCase().includes(q)
-      );
-    });
+    const langFiltered = pool.filter(t => isSongMatchingPlaylistLang(t, targetLang));
+    if (!q) return langFiltered;
+    return filterAndRankTracks(langFiltered, q);
   }, [visibleTracks, userPersonalSongIds, addSongSearchQuery, activeDrilldownPlaylist?.language]);
 
   // Toggle play / pause for entire playlist
