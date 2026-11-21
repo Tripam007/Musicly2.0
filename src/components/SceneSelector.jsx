@@ -9,23 +9,11 @@ import {
   Camera, 
   Upload, 
   Link, 
-  RotateCcw,
-  Palette
+  RotateCcw
 } from 'lucide-react';
 import { SCENES } from '../data/tracks';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
 import { playClickSound, playTingSound } from '../utils/audioSynth';
-
-const PRESET_THEMES = [
-  { name: 'Cozy Bedroom Studio', url: '/assets/images/cozy_bedroom.jpg' },
-  { name: 'Route 66 Sunset', url: '/assets/images/country_scene.jpg' },
-  { name: 'Vintage Hi-Fi Neon', url: '/assets/images/retro_scene.jpg' },
-  { name: 'Midnight Lo-Fi Studio', url: '/assets/images/lofi_scene.jpg' },
-  { name: 'Cyberpunk Rain City', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=1920&auto=format&fit=crop&q=85' },
-  { name: 'Tokyo Neon Alley', url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=1920&auto=format&fit=crop&q=85' },
-  { name: 'Peaceful Ocean Coast', url: '/assets/images/peace_scene.jpg' },
-  { name: 'Warm Sunset Horizon', url: 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=1920&auto=format&fit=crop&q=85' }
-];
 
 export default function SceneSelector({
   isOpen,
@@ -202,12 +190,12 @@ export default function SceneSelector({
                   {isAdmin && (
                     <button
                       type="button"
-                      className="scene-admin-edit-badge"
+                      className={`scene-admin-edit-badge ${hasOverride ? 'has-custom-override' : ''}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         openImageEditor(scene);
                       }}
-                      title={`Change Theme Image for "${scene.name}" (Admin)`}
+                      title={hasOverride ? `Edit Custom Theme Image for "${scene.name}" (Admin)` : `Change Theme Image for "${scene.name}" (Admin)`}
                       aria-label={`Change Theme Image for ${scene.name}`}
                     >
                       <Camera size={13} />
@@ -343,32 +331,6 @@ export default function SceneSelector({
                   }}
                   disabled={isSaving}
                 />
-              </div>
-
-              {/* Quick Preset Visuals */}
-              <div className="scene-preset-themes-section">
-                <label className="scene-field-label">
-                  <Palette size={13} />
-                  <span>Quick Preset Visuals</span>
-                </label>
-                <div className="scene-preset-pills-wrap">
-                  {PRESET_THEMES.map((theme) => (
-                    <button
-                      key={theme.name}
-                      type="button"
-                      className={`scene-preset-pill ${previewImage === theme.url ? 'active' : ''}`}
-                      onClick={() => {
-                        playClickSound('light');
-                        setPreviewImage(theme.url);
-                        setImageUrlInput(theme.url);
-                        setErrorMessage('');
-                      }}
-                      disabled={isSaving}
-                    >
-                      {theme.name}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               {errorMessage && (

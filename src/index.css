@@ -3705,47 +3705,6 @@ body, html, #root {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.scene-preset-themes-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.scene-preset-pills-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  max-height: 80px;
-  overflow-y: auto;
-}
-
-.scene-preset-pill {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.75);
-  padding: 4px 10px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.scene-preset-pill:hover {
-  background: rgba(255, 183, 3, 0.18);
-  border-color: rgba(255, 183, 3, 0.5);
-  color: #ffb703;
-}
-
-.scene-preset-pill.active {
-  background: #ffb703;
-  border-color: #ffb703;
-  color: #121214;
-  font-weight: 700;
-  box-shadow: 0 0 10px rgba(255, 183, 3, 0.4);
-}
-
 .scene-edit-error-banner {
   background: rgba(239, 68, 68, 0.18);
   border: 1px solid rgba(239, 68, 68, 0.4);
