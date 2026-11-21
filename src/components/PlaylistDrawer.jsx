@@ -864,9 +864,6 @@ export default function PlaylistDrawer({
                   className="drawer-back-to-playlists-btn"
                   onClick={() => {
                     setDrilldownPlaylistId(null);
-                    if (typeof onSetActivePlayingPlaylistId === 'function') {
-                      onSetActivePlayingPlaylistId(null);
-                    }
                     playClickSound('light');
                   }}
                   title="Back to all playlists"

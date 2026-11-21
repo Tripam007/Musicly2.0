@@ -791,18 +791,23 @@ export default function App() {
   // automatically change the current background backdrop to that playlist's theme!
   // And restore the scene background once the user plays something else or exits from the playlist.
   useEffect(() => {
-    const defaultSceneBackdrop = currentScene?.image || SCENES[0].image;
+    const defaultSceneBackdrop = (currentScene && (sceneOverrides[currentScene.id]?.image || sceneOverrides[currentScene.id])) || currentScene?.image || SCENES[0].image;
+
+    const isDynamicBackdrop = (img) => {
+      if (!img) return false;
+      return (
+        img.includes('country_scene') ||
+        img.includes('ghazals_bg') ||
+        img.includes('peace_scene') ||
+        img.includes('retro_scene') ||
+        img.includes('lofi_scene') ||
+        img.includes('chill_sleep_scene') ||
+        Object.values(GENRE_BACKDROPS).includes(img)
+      );
+    };
 
     if (!activePlayingPlaylistId) {
-      if (backdropImage && backdropImage !== defaultSceneBackdrop && (
-        backdropImage.includes('country_scene') ||
-        backdropImage.includes('ghazals_bg') ||
-        backdropImage.includes('peace_scene') ||
-        backdropImage.includes('retro_scene') ||
-        backdropImage.includes('lofi_scene') ||
-        backdropImage.includes('chill_sleep_scene') ||
-        Object.values(GENRE_BACKDROPS).includes(backdropImage)
-      )) {
+      if (backdropImage && backdropImage !== defaultSceneBackdrop && isDynamicBackdrop(backdropImage)) {
         setIsTransitioning(true);
         setTimeout(() => {
           setBackdropImage(defaultSceneBackdrop);
@@ -837,7 +842,11 @@ export default function App() {
       }
     } else if (pl && !isCurrentTrackInPl) {
       // User played something else outside this playlist
-      if (backdropImage !== defaultSceneBackdrop && Object.values(GENRE_BACKDROPS).includes(backdropImage)) {
+      setActivePlayingPlaylistId(null);
+      try {
+        localStorage.removeItem('musicly_active_playlist_id');
+      } catch {}
+      if (backdropImage !== defaultSceneBackdrop && isDynamicBackdrop(backdropImage)) {
         setIsTransitioning(true);
         setTimeout(() => {
           setBackdropImage(defaultSceneBackdrop);
@@ -845,7 +854,7 @@ export default function App() {
         }, 200);
       }
     }
-  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage, currentScene]);
+  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage, currentScene, sceneOverrides]);
 
   // When active language(s) change, verify current track and queue strictly match selected language
   useEffect(() => {
@@ -2815,12 +2824,21 @@ export default function App() {
           onTogglePlay={togglePlay}
           onNextTrack={handleNextTrack}
           onPrevTrack={handlePrevTrack}
-          onSelectTrack={(track, shouldPlay) => {
+          backdropImage={backdropImage}
+          activePlayingPlaylistId={activePlayingPlaylistId}
+          onSelectTrack={(track, shouldPlay, isFromPlaylist = false, playlistId = null) => {
             if (!track) return;
-            setActivePlayingPlaylistId(null);
-            try {
-              localStorage.removeItem('musicly_active_playlist_id');
-            } catch {}
+            if (isFromPlaylist && playlistId) {
+              setActivePlayingPlaylistId(playlistId);
+              try {
+                localStorage.setItem('musicly_active_playlist_id', playlistId);
+              } catch {}
+            } else if (!isFromPlaylist) {
+              setActivePlayingPlaylistId(null);
+              try {
+                localStorage.removeItem('musicly_active_playlist_id');
+              } catch {}
+            }
             setCurrentTrackId(track.id);
             setCurrentTime(0);
             currentTimeRef.current = 0;

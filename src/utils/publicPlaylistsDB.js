@@ -115,69 +115,114 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
   const tracks = Array.isArray(allTracks) ? allTracks : [];
   const officialTracks = tracks.filter(t => !t?.isCustom || !!t?.isPublic);
 
-  const makePl = (id, title, plTracks, defaultImg, language) => ({
-    id,
-    title,
-    subtitle: `${plTracks.length} song${plTracks.length === 1 ? '' : 's'} in this list`,
-    tracks: plTracks,
-    trackIds: plTracks.map(t => t.id),
-    image: plTracks[0]?.cover || defaultImg,
-    isCustom: false,
-    isMusiclyOfficial: true,
-    language: normalizePlaylistLang(language),
-    count: plTracks.length
-  });
+  // Check if admin has customized or added songs to any official playlist
+  const adminOverrides = new Map();
+  if (Array.isArray(publicPlaylists)) {
+    publicPlaylists.forEach(pp => {
+      if (pp && pp.id) {
+        adminOverrides.set(pp.id, pp);
+      }
+    });
+  }
+
+  const builtInIds = new Set([
+    'vintage_retro',
+    'latenight_lofi',
+    'country_roots',
+    'indie_warmth',
+    'timeless_ghazals',
+    'bengali_classics',
+    'peace_playlist',
+    'global_other_melodies'
+  ]);
+
+  const makePl = (id, title, plTracks, defaultImg, language) => {
+    // If admin has customized this official playlist (e.g. added/removed tracks or changed title)
+    if (adminOverrides.has(id)) {
+      const adminPl = adminOverrides.get(id);
+      const customTracks = (adminPl.trackIds || []).map(tId => tracks.find(t => t.id === tId)).filter(Boolean);
+      return {
+        id,
+        title: adminPl.title || title,
+        subtitle: `${customTracks.length} song${customTracks.length === 1 ? '' : 's'} in this list`,
+        tracks: customTracks,
+        trackIds: adminPl.trackIds || [],
+        image: adminPl.image || customTracks[0]?.cover || defaultImg,
+        isCustom: false,
+        isMusiclyOfficial: true,
+        language: normalizePlaylistLang(adminPl.language || language),
+        createdBy: adminPl.createdBy || 'Musicly Admin',
+        createdAt: adminPl.createdAt || Date.now(),
+        count: customTracks.length
+      };
+    }
+
+    return {
+      id,
+      title,
+      subtitle: `${plTracks.length} song${plTracks.length === 1 ? '' : 's'} in this list`,
+      tracks: plTracks,
+      trackIds: plTracks.map(t => t.id),
+      image: plTracks[0]?.cover || defaultImg,
+      isCustom: false,
+      isMusiclyOfficial: true,
+      language: normalizePlaylistLang(language),
+      count: plTracks.length
+    };
+  };
 
   // 1. Vintage Hi-Fi & 80s (English)
   const retro = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro')))) && isTrackInLanguages(t.language, ['English']));
-  if (retro.length > 0) list.push(makePl('vintage_retro', 'Vintage Hi-Fi & 80s', retro, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'English'));
+  if (retro.length > 0 || adminOverrides.has('vintage_retro')) list.push(makePl('vintage_retro', 'Vintage Hi-Fi & 80s', retro, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'English'));
 
   // 2. Late Night Lo-Fi (All)
   const lofi = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('lo-fi') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('lo-fi'))));
-  if (lofi.length > 0) list.push(makePl('latenight_lofi', 'Late Night Lo-Fi', lofi, 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80', 'All'));
+  if (lofi.length > 0 || adminOverrides.has('latenight_lofi')) list.push(makePl('latenight_lofi', 'Late Night Lo-Fi', lofi, 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80', 'All'));
 
   // 3. Country Roads & Roots (English)
   const country = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('country') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country')))) && isTrackInLanguages(t.language, ['English']));
-  if (country.length > 0) list.push(makePl('country_roots', 'Country Roads & Roots', country, '/assets/images/country_scene.jpg', 'English'));
+  if (country.length > 0 || adminOverrides.has('country_roots')) list.push(makePl('country_roots', 'Country Roads & Roots', country, '/assets/images/country_scene.jpg', 'English'));
 
   // 4. Indie Acoustic Sessions (English)
   const indie = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie')))) && isTrackInLanguages(t.language, ['English']));
-  if (indie.length > 0) list.push(makePl('indie_warmth', 'Indie Acoustic Sessions', indie, 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80', 'English'));
+  if (indie.length > 0 || adminOverrides.has('indie_warmth')) list.push(makePl('indie_warmth', 'Indie Acoustic Sessions', indie, 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80', 'English'));
 
   // 5. Timeless Ghazals & Mehfil (Hindi)
   const ghazals = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('ghazal') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal')))) && isTrackInLanguages(t.language, ['Hindi']));
-  if (ghazals.length > 0) list.push(makePl('timeless_ghazals', 'Timeless Ghazals & Mehfil', ghazals, 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80', 'Hindi'));
+  if (ghazals.length > 0 || adminOverrides.has('timeless_ghazals')) list.push(makePl('timeless_ghazals', 'Timeless Ghazals & Mehfil', ghazals, 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80', 'Hindi'));
 
   // 6. Rabindra Sangeet & Folk (Bengali)
   const bengali = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('rabindra') || (t.title || '').toLowerCase().includes('majhe')) && isTrackInLanguages(t.language, ['Bengali']));
-  if (bengali.length > 0) list.push(makePl('bengali_classics', 'Rabindra Sangeet & Folk', bengali, 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg', 'Bengali'));
+  if (bengali.length > 0 || adminOverrides.has('bengali_classics')) list.push(makePl('bengali_classics', 'Rabindra Sangeet & Folk', bengali, 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg', 'Bengali'));
 
   // 7. Peace (All)
   const peace = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('peace') || (t.title || '').toLowerCase().includes('peace'));
-  if (peace.length > 0) list.push(makePl('peace_playlist', 'Peace', peace, 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80', 'All'));
+  if (peace.length > 0 || adminOverrides.has('peace_playlist')) list.push(makePl('peace_playlist', 'Peace', peace, 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80', 'All'));
 
   // 8. Global & Other Melodies (Other)
   const otherTracks = officialTracks.filter(t => isTrackInLanguages(t.language, ['Other']));
-  if (otherTracks.length > 0) list.push(makePl('global_other_melodies', 'Global & Other Melodies', otherTracks, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'Other'));
+  if (otherTracks.length > 0 || adminOverrides.has('global_other_melodies')) list.push(makePl('global_other_melodies', 'Global & Other Melodies', otherTracks, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'Other'));
 
-  // 9. Admin Created Official Public Playlists (synced worldwide)
+  // 9. Admin Created Official Public Playlists (synced worldwide, excluding built-ins already processed)
   if (Array.isArray(publicPlaylists)) {
     publicPlaylists.forEach(pp => {
-      const plTracks = (pp.trackIds || []).map(id => tracks.find(t => t.id === id)).filter(Boolean);
-      list.push({
-        id: pp.id,
-        title: pp.title,
-        subtitle: `${plTracks.length} song${plTracks.length === 1 ? '' : 's'} in this list`,
-        tracks: plTracks,
-        trackIds: pp.trackIds || [],
-        image: pp.image || plTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
-        isCustom: false,
-        isMusiclyOfficial: true,
-        language: normalizePlaylistLang(pp.language || 'All'),
-        createdBy: pp.createdBy || 'Musicly Admin',
-        createdAt: pp.createdAt || Date.now(),
-        count: plTracks.length
-      });
+      if (pp && pp.id && !builtInIds.has(pp.id)) {
+        const plTracks = (pp.trackIds || []).map(id => tracks.find(t => t.id === id)).filter(Boolean);
+        list.push({
+          id: pp.id,
+          title: pp.title,
+          subtitle: `${plTracks.length} song${plTracks.length === 1 ? '' : 's'} in this list`,
+          tracks: plTracks,
+          trackIds: pp.trackIds || [],
+          image: pp.image || plTracks[0]?.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80',
+          isCustom: false,
+          isMusiclyOfficial: true,
+          language: normalizePlaylistLang(pp.language || 'All'),
+          createdBy: pp.createdBy || 'Musicly Admin',
+          createdAt: pp.createdAt || Date.now(),
+          count: plTracks.length
+        });
+      }
     });
   }
 

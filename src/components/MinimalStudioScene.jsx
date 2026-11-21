@@ -263,7 +263,9 @@ export default function MinimalStudioScene({
   audioOutputMode = 'speaker',
   onToggleAudioOutputMode,
   customQueue = [],
-  onSetCustomQueue
+  onSetCustomQueue,
+  backdropImage = null,
+  activePlayingPlaylistId = null
 }) {
   const isUserAdmin = isAdmin || checkIsAdmin(user);
 
@@ -357,13 +359,26 @@ export default function MinimalStudioScene({
   }, []);
 
   const currentStudioBgUrl = useMemo(() => {
+    // If a playlist with a dedicated theme backdrop is actively playing (e.g. Country Roads & Roots Route 66),
+    // display that backdrop in the studio's main visual!
+    if (activePlayingPlaylistId && backdropImage && (
+      backdropImage.includes('country_scene') ||
+      backdropImage.includes('ghazals_bg') ||
+      backdropImage.includes('peace_scene') ||
+      backdropImage.includes('retro_scene') ||
+      backdropImage.includes('lofi_scene') ||
+      backdropImage.includes('chill_sleep_scene')
+    )) {
+      return backdropImage;
+    }
+
     if (!studioBackgrounds || studioBackgrounds.length === 0) {
       return '/assets/images/zenitsu_clean_wallpaper.jpg';
     }
     const safeIdx = mediaPhotoIndex % studioBackgrounds.length;
     const item = studioBackgrounds[safeIdx];
     return typeof item === 'string' ? item : (item?.url || '/assets/images/zenitsu_clean_wallpaper.jpg');
-  }, [studioBackgrounds, mediaPhotoIndex]);
+  }, [studioBackgrounds, mediaPhotoIndex, activePlayingPlaylistId, backdropImage]);
 
   // When user explicitly selects any curated or custom theme, manual selection is active
   const handleSelectTheme = useCallback((theme) => {
