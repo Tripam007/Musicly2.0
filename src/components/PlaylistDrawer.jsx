@@ -253,7 +253,10 @@ export default function PlaylistDrawer({
   const sortedFilteredTracks = useMemo(() => {
     if (viewMode === 'playlists') {
       if (!activeDrilldownPlaylist) return [];
-      const baseList = activeDrilldownPlaylist.tracks || [];
+      let baseList = activeDrilldownPlaylist.tracks || [];
+      if (activeLangs.length > 0) {
+        baseList = baseList.filter(t => isTrackInLanguages(t.language, activeLangs));
+      }
       const q = searchQuery.toLowerCase().trim();
       return baseList.filter((track) => {
         if (!q) return true;
@@ -274,6 +277,10 @@ export default function PlaylistDrawer({
       baseList = visibleTracks.filter(t => favorites.includes(t.id));
     }
 
+    if (activeLangs.length > 0 && mainSource === 'musicly') {
+      baseList = baseList.filter(t => isTrackInLanguages(t.language, activeLangs));
+    }
+
     const q = searchQuery.toLowerCase().trim();
     return baseList.filter((track) => {
       if (q) {
@@ -282,10 +289,6 @@ export default function PlaylistDrawer({
           track.artist.toLowerCase().includes(q) ||
           track.genre.toLowerCase().includes(q);
         if (!matchesSearch) return false;
-      }
-
-      if (activeLangs.length > 0 && mainSource === 'musicly' && viewMode === 'single') {
-        if (!isTrackInLanguages(track.language, activeLangs)) return false;
       }
 
       return true;
@@ -543,7 +546,7 @@ export default function PlaylistDrawer({
               className="drawer-musicly-tab-icon"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            <span>Musicly ({musiclyPlaylists.reduce((acc, p) => acc + (p.tracks?.length || 0), 0) > 0 ? (visibleTracks.filter(t => !t.isCustom || !!t.isPublic).length) : 0})</span>
+            <span>Musicly ({musiclyPlaylists.reduce((acc, p) => acc + (p.tracks?.length || 0), 0) > 0 ? (visibleTracks.filter(t => (!t.isCustom || !!t.isPublic) && (activeLangs.length === 0 || isTrackInLanguages(t.language, activeLangs))).length) : 0})</span>
           </button>
 
           {/* 2. Mine Playlist (Only accessed and seen by the user respectively) */}

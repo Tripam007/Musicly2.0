@@ -294,17 +294,18 @@ function ChooseYourVibeScene({
     if (filtered.length === 0) {
       filtered = sourcePool.filter(t => (t.fallbackType || '').toLowerCase() === genre);
     }
-    // Language filtering: prefer songs matching chosen language(s)
+    // Language filtering: strictly filter songs by chosen language(s)
     if (activeLangs.length > 0) {
-      const langMatches = filtered.filter(t => isTrackInLanguages(t.language, activeLangs));
-      if (langMatches.length > 0) {
-        filtered = langMatches;
-      }
+      filtered = filtered.filter(t => isTrackInLanguages(t.language, activeLangs));
     }
-    const base = filtered.length > 0 ? [...filtered] : [...sourcePool.slice(0, 6)];
+    const base = filtered.length > 0 
+      ? [...filtered] 
+      : (activeLangs.length > 0 
+          ? sourcePool.filter(t => isTrackInLanguages(t.language, activeLangs)).slice(0, 6) 
+          : [...sourcePool.slice(0, 6)]);
 
-    // Ensure currently playing track is present in base if belonging to this vibe
-    if (currentTrack && !base.some(t => t.id === currentTrack.id)) {
+    // Ensure currently playing track is present in base if belonging to this vibe AND matches activeLangs
+    if (currentTrack && (!activeLangs.length || isTrackInLanguages(currentTrack.language, activeLangs)) && !base.some(t => t.id === currentTrack.id)) {
       const matchesGenre = Array.isArray(currentTrack.genres)
         ? currentTrack.genres.some(g => g.toLowerCase() === genre)
         : (currentTrack.genre || '').toLowerCase().includes(genre);

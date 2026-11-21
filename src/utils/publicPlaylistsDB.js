@@ -7,7 +7,7 @@ import {
   deleteDoc 
 } from 'firebase/firestore';
 import { checkIsAdmin } from './userModel';
-import { isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
+import { isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, isTrackInLanguages } from '../data/tracks';
 
 const PLAYLISTS_CACHE_KEY = 'musicly_public_playlists_cache';
 
@@ -129,7 +129,7 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
   });
 
   // 1. Vintage Hi-Fi & 80s (English)
-  const retro = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro'))));
+  const retro = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('retro') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('retro')))) && isTrackInLanguages(t.language, ['English']));
   if (retro.length > 0) list.push(makePl('vintage_retro', 'Vintage Hi-Fi & 80s', retro, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'English'));
 
   // 2. Late Night Lo-Fi (All)
@@ -137,19 +137,19 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
   if (lofi.length > 0) list.push(makePl('latenight_lofi', 'Late Night Lo-Fi', lofi, 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=300&auto=format&fit=crop&q=80', 'All'));
 
   // 3. Country Roads & Roots (English)
-  const country = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('country') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country'))));
+  const country = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('country') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('country')))) && isTrackInLanguages(t.language, ['English']));
   if (country.length > 0) list.push(makePl('country_roots', 'Country Roads & Roots', country, '/assets/images/country_scene.jpg', 'English'));
 
   // 4. Indie Acoustic Sessions (English)
-  const indie = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie'))));
+  const indie = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('indie') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('indie')))) && isTrackInLanguages(t.language, ['English']));
   if (indie.length > 0) list.push(makePl('indie_warmth', 'Indie Acoustic Sessions', indie, 'https://images.unsplash.com/photo-1510784722466-f2aa9c52fff6?w=300&auto=format&fit=crop&q=80', 'English'));
 
   // 5. Timeless Ghazals & Mehfil (Hindi)
-  const ghazals = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('ghazal') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal'))));
+  const ghazals = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('ghazal') || (Array.isArray(t.genres) && t.genres.some(g => (g || '').toLowerCase().includes('ghazal')))) && isTrackInLanguages(t.language, ['Hindi']));
   if (ghazals.length > 0) list.push(makePl('timeless_ghazals', 'Timeless Ghazals & Mehfil', ghazals, 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&auto=format&fit=crop&q=80', 'Hindi'));
 
   // 6. Rabindra Sangeet & Folk (Bengali)
-  const bengali = officialTracks.filter(t => (t.genre || '').toLowerCase().includes('rabindra') || (t.title || '').toLowerCase().includes('majhe'));
+  const bengali = officialTracks.filter(t => ((t.genre || '').toLowerCase().includes('rabindra') || (t.title || '').toLowerCase().includes('majhe')) && isTrackInLanguages(t.language, ['Bengali']));
   if (bengali.length > 0) list.push(makePl('bengali_classics', 'Rabindra Sangeet & Folk', bengali, 'https://is1-ssl.mzstatic.com/image/thumb/Music122/v4/80/d6/d8/80d6d8ef-03fd-991a-4f6c-e2e979355bb7/840123905307.png/600x600bb.jpg', 'Bengali'));
 
   // 7. Peace (All)
@@ -157,10 +157,7 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
   if (peace.length > 0) list.push(makePl('peace_playlist', 'Peace', peace, 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80', 'All'));
 
   // 8. Global & Other Melodies (Other)
-  const otherTracks = officialTracks.filter(t => {
-    const lang = (t.language || '').toLowerCase();
-    return lang === 'other' || (!['english', 'hindi', 'bengali'].includes(lang) && Boolean(t.language));
-  });
+  const otherTracks = officialTracks.filter(t => isTrackInLanguages(t.language, ['Other']));
   if (otherTracks.length > 0) list.push(makePl('global_other_melodies', 'Global & Other Melodies', otherTracks, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'Other'));
 
   // 9. Admin Created Official Public Playlists (synced worldwide)
@@ -186,7 +183,26 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
 
   // Filter strictly by the active language filter:
   // eng -> eng only, hindi -> hindi only, beng -> beng only, other -> other only, all -> all only
-  return list.filter(pl => isPlaylistMatchingLanguage(pl.language, selectedLanguages, selectedLanguage));
+  const filteredLists = list.filter(pl => isPlaylistMatchingLanguage(pl.language, selectedLanguages, selectedLanguage));
+
+  // If a specific language is selected, strictly filter internal tracks of every playlist as well
+  let effectiveLangs = [];
+  if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
+    effectiveLangs = selectedLanguages.filter(l => l && l !== 'Hinglish');
+  } else if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
+    effectiveLangs = [selectedLanguage];
+  }
+
+  if (effectiveLangs.length > 0) {
+    filteredLists.forEach(pl => {
+      pl.tracks = pl.tracks.filter(t => isTrackInLanguages(t.language, effectiveLangs));
+      pl.trackIds = pl.tracks.map(t => t.id);
+      pl.count = pl.tracks.length;
+      pl.subtitle = `${pl.tracks.length} song${pl.tracks.length === 1 ? '' : 's'} in this list`;
+    });
+  }
+
+  return filteredLists;
 }
 
 /**

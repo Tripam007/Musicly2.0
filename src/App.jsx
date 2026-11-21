@@ -393,22 +393,47 @@ export default function App() {
 
   // Multi-select / single-select / deselect toggle handler
   const handleSelectLanguage = (langOrLangs) => {
+    let nextLangs = [];
     if (!langOrLangs || langOrLangs === 'All') {
-      setSelectedLanguages([]);
-      return;
-    }
-    if (Array.isArray(langOrLangs)) {
-      setSelectedLanguages(langOrLangs.filter(l => l && l !== 'Hinglish' && LANGUAGES.includes(l)));
-      return;
-    }
-    // Single language toggle: tapping an active single language resets to All,
-    // selecting another language switches exclusively to that language
-    setSelectedLanguages(prev => {
-      if (prev.length === 1 && prev[0].toLowerCase() === langOrLangs.toLowerCase()) {
-        return [];
+      nextLangs = [];
+    } else if (Array.isArray(langOrLangs)) {
+      nextLangs = langOrLangs.filter(l => l && l !== 'Hinglish' && LANGUAGES.includes(l));
+    } else {
+      // Single language toggle: tapping an active single language resets to All,
+      // selecting another language switches exclusively to that language
+      if (selectedLanguages.length === 1 && selectedLanguages[0].toLowerCase() === langOrLangs.toLowerCase()) {
+        nextLangs = [];
+      } else {
+        nextLangs = [langOrLangs];
       }
-      return [langOrLangs];
-    });
+    }
+    setSelectedLanguages(nextLangs);
+
+    // If a specific language is selected, immediately cue / switch to a track in that language!
+    if (nextLangs.length > 0) {
+      const curr = currentTrackRef.current;
+      if (!curr || !isTrackInLanguages(curr.language, nextLangs)) {
+        const target = selectedGenre.toLowerCase();
+        const genreTracks = (selectedGenre === 'All')
+          ? allTracks
+          : allTracks.filter(track => {
+              const matchGenre = track.genre?.toLowerCase() === target;
+              const matchArray = Array.isArray(track.genres) && track.genres.some(g => g && g.toLowerCase() === target);
+              const matchSplit = typeof track.genre === 'string' && track.genre.split(',').map(s => s.trim().toLowerCase()).includes(target);
+              return matchGenre || matchArray || matchSplit;
+            });
+        const match = genreTracks.find(t => isTrackInLanguages(t.language, nextLangs))
+          || allTracks.find(t => isTrackInLanguages(t.language, nextLangs));
+        if (match) {
+          setCurrentTrackId(match.id);
+          setCurrentTime(0);
+          currentTimeRef.current = 0;
+          if (isPlayingRef.current) {
+            audioEngine.playTrack(match, 0);
+          }
+        }
+      }
+    }
   };
 
   // Backwards-compatible single string representation
@@ -639,10 +664,31 @@ export default function App() {
 
   const currentTrack = useMemo(() => {
     if (previewTrack && previewTrack.id === currentTrackId) {
-      return previewTrack;
+      if (!selectedLanguages || selectedLanguages.length === 0 || isTrackInLanguages(previewTrack.language, selectedLanguages)) {
+        return previewTrack;
+      }
     }
-    return allTracks.find(t => t.id === currentTrackId) || activePlaylist[0] || allTracks[0] || TRACKS[0];
-  }, [allTracks, currentTrackId, activePlaylist, previewTrack]);
+    // Check if currentTrackId matches both ID AND selectedLanguages
+    const found = allTracks.find(t => t.id === currentTrackId);
+    if (found && (!selectedLanguages || selectedLanguages.length === 0 || isTrackInLanguages(found.language, selectedLanguages))) {
+      return found;
+    }
+    // Strict fallback: ONLY pick tracks matching selectedLanguages
+    if (selectedLanguages && selectedLanguages.length > 0) {
+      const activeMatch = (activePlaylist || []).find(t => isTrackInLanguages(t.language, selectedLanguages));
+      if (activeMatch) return activeMatch;
+      const anyLangMatch = allTracks.find(t => isTrackInLanguages(t.language, selectedLanguages));
+      if (anyLangMatch) return anyLangMatch;
+    }
+    return activePlaylist[0] || allTracks[0] || TRACKS[0];
+  }, [allTracks, currentTrackId, activePlaylist, previewTrack, selectedLanguages]);
+
+  // Keep currentTrackId in sync with currentTrack so UI and audio are 100% consistent with active language
+  useEffect(() => {
+    if (currentTrack && currentTrack.id !== currentTrackId) {
+      setCurrentTrackId(currentTrack.id);
+    }
+  }, [currentTrack, currentTrackId]);
 
   // Persist the last played track ID so the app resumes from where user left off (only for saved library tracks)
   useEffect(() => {
@@ -740,7 +786,7 @@ export default function App() {
     });
 
     // Check if current playing track matches the selected language
-    const curr = currentTrackRef.current;
+    const curr = allTracks.find(t => t.id === currentTrackId) || currentTrackRef.current;
     if (curr) {
       if (!isTrackInLanguages(curr.language, selectedLanguages)) {
         const match = (activePlaylistRef.current || []).find(t => isTrackInLanguages(t.language, selectedLanguages))
@@ -755,7 +801,7 @@ export default function App() {
         }
       }
     }
-  }, [selectedLanguages, allTracks]);
+  }, [selectedLanguages, allTracks, currentTrackId]);
 
   // Reset or initialize shuffle pool when shuffle mode toggles
   useEffect(() => {
@@ -1454,7 +1500,7 @@ export default function App() {
     // If NOT playing, cue up the first song of the newly selected section
     // If IS playing, keep the current song playing completely uninterrupted!
     if (!isPlaying) {
-      const genrePlaylist = (genre === 'All')
+      let genrePlaylist = (genre === 'All')
         ? allTracks
         : allTracks.filter(track => {
             const matchGenre = track.genre?.toLowerCase() === genre.toLowerCase();
@@ -1462,6 +1508,13 @@ export default function App() {
             const matchSplit = typeof track.genre === 'string' && track.genre.split(',').map(s => s.trim().toLowerCase()).includes(genre.toLowerCase());
             return matchGenre || matchArray || matchSplit;
           });
+      // Strictly enforce active language filter if present
+      if (selectedLanguages && selectedLanguages.length > 0) {
+        const langMatches = genrePlaylist.filter(track => isTrackInLanguages(track.language, selectedLanguages));
+        genrePlaylist = langMatches.length > 0
+          ? langMatches
+          : allTracks.filter(track => isTrackInLanguages(track.language, selectedLanguages));
+      }
       const firstTrack = genrePlaylist[0] || allTracks[0];
       if (firstTrack) {
         setCurrentTrackId(firstTrack.id);
@@ -2447,12 +2500,12 @@ export default function App() {
               : (t.genre || '').toLowerCase().includes(genre.toLowerCase());
             if (!matchesGenre) return false;
             return isTrackInLanguages(t.language, selectedLanguages);
-          }) || allTracks.find(t => {
+          }) || (selectedLanguages && selectedLanguages.length > 0 ? null : allTracks.find(t => {
             if (Array.isArray(t.genres)) {
               return t.genres.some(g => g.toLowerCase() === genre.toLowerCase());
             }
             return (t.genre || '').toLowerCase().includes(genre.toLowerCase());
-          });
+          }));
           if (match) {
             setCurrentTime(0);
             currentTimeRef.current = 0;
