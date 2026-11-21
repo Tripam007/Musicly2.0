@@ -343,6 +343,8 @@ export default function PlaylistDrawer({
     }
   };
 
+  const handlePlayEntirePlaylist = handlePlaylistTogglePlay;
+
   // Single-click (play/pause) vs Double-click (just open songs) handler
   const handlePlaylistRowClick = (playlist) => {
     if (clickTimerRef.current) {
@@ -862,6 +864,9 @@ export default function PlaylistDrawer({
                   className="drawer-back-to-playlists-btn"
                   onClick={() => {
                     setDrilldownPlaylistId(null);
+                    if (typeof onSetActivePlayingPlaylistId === 'function') {
+                      onSetActivePlayingPlaylistId(null);
+                    }
                     playClickSound('light');
                   }}
                   title="Back to all playlists"
@@ -1048,6 +1053,9 @@ export default function PlaylistDrawer({
                         }
                       } else {
                         onSelectTrack(track);
+                        if (typeof onSetActivePlayingPlaylistId === 'function') {
+                          onSetActivePlayingPlaylistId(null);
+                        }
                       }
                     }
                   }}

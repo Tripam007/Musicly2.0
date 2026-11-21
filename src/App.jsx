@@ -787,10 +787,30 @@ export default function App() {
     }
   }, [currentTrackId]);
 
-  // When a particular playlist is played (e.g. Ghazals, Country, Rabindra Sangeet, etc.),
+  // When a particular playlist is played (e.g. Country Roads & Roots, Ghazals, etc.),
   // automatically change the current background backdrop to that playlist's theme!
+  // And restore the scene background once the user plays something else or exits from the playlist.
   useEffect(() => {
-    if (!activePlayingPlaylistId) return;
+    const defaultSceneBackdrop = currentScene?.image || SCENES[0].image;
+
+    if (!activePlayingPlaylistId) {
+      if (backdropImage && backdropImage !== defaultSceneBackdrop && (
+        backdropImage.includes('country_scene') ||
+        backdropImage.includes('ghazals_bg') ||
+        backdropImage.includes('peace_scene') ||
+        backdropImage.includes('retro_scene') ||
+        backdropImage.includes('lofi_scene') ||
+        backdropImage.includes('chill_sleep_scene') ||
+        Object.values(GENRE_BACKDROPS).includes(backdropImage)
+      )) {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setBackdropImage(defaultSceneBackdrop);
+          setTimeout(() => setIsTransitioning(false), 60);
+        }, 200);
+      }
+      return;
+    }
 
     const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
     let pl = unified.find(p => p.id === activePlayingPlaylistId);
@@ -803,7 +823,10 @@ export default function App() {
       }
     }
 
-    if (pl) {
+    // Verify current playing track belongs to this active playlist
+    const isCurrentTrackInPl = pl && Array.isArray(pl.tracks) && currentTrack && pl.tracks.some(t => t.id === currentTrack.id);
+
+    if (pl && isCurrentTrackInPl) {
       const targetBackdrop = getPlaylistBackdrop(pl, currentTrack);
       if (targetBackdrop && targetBackdrop !== backdropImage) {
         setIsTransitioning(true);
@@ -812,8 +835,17 @@ export default function App() {
           setTimeout(() => setIsTransitioning(false), 60);
         }, 200);
       }
+    } else if (pl && !isCurrentTrackInPl) {
+      // User played something else outside this playlist
+      if (backdropImage !== defaultSceneBackdrop && Object.values(GENRE_BACKDROPS).includes(backdropImage)) {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setBackdropImage(defaultSceneBackdrop);
+          setTimeout(() => setIsTransitioning(false), 60);
+        }, 200);
+      }
     }
-  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage]);
+  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage, currentScene]);
 
   // When active language(s) change, verify current track and queue strictly match selected language
   useEffect(() => {
