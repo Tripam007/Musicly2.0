@@ -12,6 +12,101 @@ const SCENES_CACHE_KEY = 'musicly_custom_scenes_cache';
 const SCENE_OVERRIDES_CACHE_KEY = 'musicly_scene_overrides_cache';
 const SCENE_VISUALS_STORE_KEY = 'musicly_scene_visuals_store_v1';
 
+// IndexedDB configuration for permanent, quota-free storage of 4K wallpapers and video loops
+const IDB_NAME = 'MusiclyVisualsDB';
+const IDB_VERSION = 1;
+const STORE_SCENE_VISUALS = 'scene_visuals';
+const STORE_SCENE_OVERRIDES = 'scene_overrides';
+const STORE_CUSTOM_POOL = 'custom_visuals_pool';
+
+function openVisualsDB() {
+  return new Promise((resolve) => {
+    if (typeof indexedDB === 'undefined') {
+      resolve(null);
+      return;
+    }
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(STORE_SCENE_VISUALS)) {
+        db.createObjectStore(STORE_SCENE_VISUALS, { keyPath: 'sceneId' });
+      }
+      if (!db.objectStoreNames.contains(STORE_SCENE_OVERRIDES)) {
+        db.createObjectStore(STORE_SCENE_OVERRIDES, { keyPath: 'sceneId' });
+      }
+      if (!db.objectStoreNames.contains(STORE_CUSTOM_POOL)) {
+        db.createObjectStore(STORE_CUSTOM_POOL, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = () => resolve(null);
+  });
+}
+
+async function getIdbItem(storeName, key) {
+  try {
+    const db = await openVisualsDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function getAllIdbItems(storeName) {
+  try {
+    const db = await openVisualsDB();
+    if (!db) return [];
+    return new Promise((resolve) => {
+      const tx = db.transaction(storeName, 'readonly');
+      const store = tx.objectStore(storeName);
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
+
+async function putIdbItem(storeName, value) {
+  try {
+    const db = await openVisualsDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      store.put(value);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}
+
+async function deleteIdbItem(storeName, key) {
+  try {
+    const db = await openVisualsDB();
+    if (!db) return false;
+    return new Promise((resolve) => {
+      const tx = db.transaction(storeName, 'readwrite');
+      const store = tx.objectStore(storeName);
+      store.delete(key);
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Curated default visuals for scenes matching the user's uploaded screenshot & local assets
  */
@@ -46,21 +141,29 @@ export function isLiveVisual(url) {
 }
 
 /**
- * Load available visuals for a given scene from local cache (0ms) + Firestore cloud sync
+ * Load available visuals for a given scene from IndexedDB (0ms quota-free) + local cache + Firestore
  */
 export async function loadSceneVisuals(sceneId) {
   if (!sceneId) return [...DEFAULT_STUDIO_VISUALS];
 
-  let store = {};
-  try {
-    const raw = localStorage.getItem(SCENE_VISUALS_STORE_KEY);
-    if (raw) store = JSON.parse(raw);
-  } catch (e) {
-    console.warn("Local scene visuals cache read notice:", e);
+  // 1. Try reading from permanent IndexedDB (no 5MB quota ceiling, holds full 4K & videos)
+  const idbRecord = await getIdbItem(STORE_SCENE_VISUALS, sceneId);
+  let visuals = idbRecord?.visuals;
+
+  // 2. Fallback to localStorage cache if IndexedDB didn't have it yet
+  if (!visuals || visuals.length === 0) {
+    try {
+      const raw = localStorage.getItem(SCENE_VISUALS_STORE_KEY);
+      if (raw) {
+        const store = JSON.parse(raw);
+        if (store[sceneId] && store[sceneId].length > 0) {
+          visuals = store[sceneId];
+        }
+      }
+    } catch {}
   }
 
-  let visuals = store[sceneId];
-
+  // 3. Firestore cloud sync (if available)
   if (firestore) {
     try {
       const snap = await Promise.race([
@@ -70,7 +173,7 @@ export async function loadSceneVisuals(sceneId) {
 
       if (snap && !snap.empty) {
         snap.forEach(docSnap => {
-          if (docSnap.id === sceneId && docSnap.data()?.visuals) {
+          if (docSnap.id === sceneId && docSnap.data()?.visuals && docSnap.data().visuals.length > 0) {
             visuals = docSnap.data().visuals;
           }
         });
@@ -80,46 +183,82 @@ export async function loadSceneVisuals(sceneId) {
     }
   }
 
+  // 4. Always retain and merge any custom visuals ever uploaded by the admin from the master pool
+  const customPool = await getAllIdbItems(STORE_CUSTOM_POOL);
+  if (customPool && customPool.length > 0) {
+    if (!visuals || visuals.length === 0) {
+      visuals = [...DEFAULT_STUDIO_VISUALS];
+    }
+    const existingUrls = new Set(visuals.map(v => v.url));
+    const missingCustom = customPool.filter(c => !existingUrls.has(c.url));
+    if (missingCustom.length > 0) {
+      visuals = [...missingCustom, ...visuals];
+    }
+  }
+
+  // 5. Initial boot fallback if brand new browser session with 0 configured items
   if (!visuals || visuals.length === 0) {
     visuals = [...DEFAULT_STUDIO_VISUALS];
-    store[sceneId] = visuals;
-    try {
-      localStorage.setItem(SCENE_VISUALS_STORE_KEY, JSON.stringify(store));
-    } catch {}
   }
+
+  // Persist back to IndexedDB so it is permanently cached forever
+  await putIdbItem(STORE_SCENE_VISUALS, { sceneId, visuals, updatedAt: Date.now() });
 
   return visuals;
 }
 
 /**
- * Save available visuals list for a given scene
+ * Save available visuals list for a given scene permanently into IndexedDB and Cloud
  */
 export async function saveSceneVisuals(sceneId, visualsList, user) {
   if (!sceneId) return visualsList;
 
-  let store = {};
+  // 1. Permanently save to IndexedDB (virtually unlimited capacity, never wiped by quota)
+  await putIdbItem(STORE_SCENE_VISUALS, { sceneId, visuals: visualsList, updatedAt: Date.now() });
+
+  // 2. Identify custom visuals and record into the master pool
+  const defaultUrls = new Set(DEFAULT_STUDIO_VISUALS.map(v => v.url));
+  for (const v of visualsList) {
+    if (!defaultUrls.has(v.url)) {
+      await putIdbItem(STORE_CUSTOM_POOL, {
+        id: v.id || v.url,
+        url: v.url,
+        type: v.type || (isLiveVisual(v.url) ? 'video' : 'image'),
+        addedAt: Date.now()
+      });
+    }
+  }
+
+  // 3. LocalStorage safety cache (store only small references or URLs to prevent QuotaExceededError)
   try {
     const raw = localStorage.getItem(SCENE_VISUALS_STORE_KEY);
-    if (raw) store = JSON.parse(raw);
-  } catch {}
-
-  store[sceneId] = visualsList;
-  try {
+    const store = raw ? JSON.parse(raw) : {};
+    const safeList = visualsList.map(v => {
+      if (v.url && v.url.length > 200000) {
+        return { ...v, url: v.url.slice(0, 100) + '...[idb_cached]' };
+      }
+      return v;
+    });
+    store[sceneId] = safeList;
     localStorage.setItem(SCENE_VISUALS_STORE_KEY, JSON.stringify(store));
   } catch {}
 
+  // 4. Persist to Firestore if small enough (<500KB per doc)
   if (firestore) {
     try {
-      const docRef = doc(firestore, 'public_scene_visuals', sceneId);
-      await Promise.race([
-        setDoc(docRef, {
-          sceneId,
-          visuals: visualsList,
-          updatedAt: Date.now(),
-          updatedBy: user?.email || 'admin'
-        }, { merge: true }),
-        new Promise((resolve) => setTimeout(resolve, 1500))
-      ]);
+      const firestoreSafeList = visualsList.filter(v => typeof v.url === 'string' && v.url.length < 500000);
+      if (firestoreSafeList.length > 0) {
+        const docRef = doc(firestore, 'public_scene_visuals', sceneId);
+        await Promise.race([
+          setDoc(docRef, {
+            sceneId,
+            visuals: firestoreSafeList,
+            updatedAt: Date.now(),
+            updatedBy: user?.email || 'admin'
+          }, { merge: true }),
+          new Promise((resolve) => setTimeout(resolve, 1500))
+        ]);
+      }
     } catch (err) {
       console.warn("Firestore scene visuals save notice:", err);
     }
@@ -129,26 +268,91 @@ export async function saveSceneVisuals(sceneId, visualsList, user) {
 }
 
 /**
- * Reset available visuals for a scene back to defaults
+ * Manually delete a visual (ONLY called when admin explicitly clicks the trash icon)
  */
-export async function resetSceneVisualsToDefault(sceneId, user) {
-  return saveSceneVisuals(sceneId, [...DEFAULT_STUDIO_VISUALS], user);
+export async function deleteSceneVisual(sceneId, visualIdOrUrl, updatedList, user) {
+  if (!sceneId) return updatedList;
+
+  // 1. Update scene visuals in IndexedDB
+  await putIdbItem(STORE_SCENE_VISUALS, { sceneId, visuals: updatedList, updatedAt: Date.now() });
+
+  // 2. Remove specifically from custom pool in IndexedDB
+  await deleteIdbItem(STORE_CUSTOM_POOL, visualIdOrUrl);
+  const allCustom = await getAllIdbItems(STORE_CUSTOM_POOL);
+  for (const c of allCustom) {
+    if (c.id === visualIdOrUrl || c.url === visualIdOrUrl) {
+      await deleteIdbItem(STORE_CUSTOM_POOL, c.id);
+    }
+  }
+
+  // 3. Save to localStorage
+  try {
+    const raw = localStorage.getItem(SCENE_VISUALS_STORE_KEY);
+    const store = raw ? JSON.parse(raw) : {};
+    store[sceneId] = updatedList;
+    localStorage.setItem(SCENE_VISUALS_STORE_KEY, JSON.stringify(store));
+  } catch {}
+
+  // 4. Update Firestore if connected
+  if (firestore) {
+    try {
+      const docRef = doc(firestore, 'public_scene_visuals', sceneId);
+      const firestoreSafeList = updatedList.filter(v => typeof v.url === 'string' && v.url.length < 500000);
+      await Promise.race([
+        setDoc(docRef, {
+          sceneId,
+          visuals: firestoreSafeList,
+          updatedAt: Date.now(),
+          updatedBy: user?.email || 'admin'
+        }, { merge: true }),
+        new Promise((resolve) => setTimeout(resolve, 1500))
+      ]);
+    } catch (err) {
+      console.warn("Firestore scene visuals delete sync notice:", err);
+    }
+  }
+
+  return updatedList;
 }
 
 /**
- * Load scene image overrides from local cache (0ms) + Firestore cloud sync
+ * Reset available visuals for a scene back to defaults (while preserving custom uploaded visuals)
+ */
+export async function resetSceneVisualsToDefault(sceneId, user) {
+  const customPool = await getAllIdbItems(STORE_CUSTOM_POOL);
+  const preservedCustom = customPool && customPool.length > 0 ? customPool : [];
+  const merged = [...preservedCustom, ...DEFAULT_STUDIO_VISUALS];
+  return saveSceneVisuals(sceneId, merged, user);
+}
+
+/**
+ * Load scene image overrides from IndexedDB + local cache (0ms) + Firestore cloud sync
  */
 export async function loadSceneOverrides() {
   let overrides = {};
+
+  // 1. Read from permanent IndexedDB
+  const allOverrides = await getAllIdbItems(STORE_SCENE_OVERRIDES);
+  if (allOverrides && allOverrides.length > 0) {
+    allOverrides.forEach(item => {
+      if (item.sceneId && item.image) {
+        overrides[item.sceneId] = item.image;
+      }
+    });
+  }
+
+  // 2. Also read localStorage
   try {
     const cached = localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY);
     if (cached) {
-      overrides = JSON.parse(cached);
+      const parsed = JSON.parse(cached);
+      overrides = { ...parsed, ...overrides };
     }
   } catch (e) {
     console.warn("Local scene overrides cache read notice:", e);
   }
 
+  // 3. Firestore cloud sync
   if (firestore) {
     try {
       const colRef = collection(firestore, 'public_scene_overrides');
@@ -165,7 +369,6 @@ export async function loadSceneOverrides() {
           }
         });
         overrides = { ...overrides, ...cloudOverrides };
-        localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
       }
     } catch (e) {
       console.warn("Firestore scene overrides load notice:", e);
@@ -191,13 +394,20 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
 
   const cleanImage = imageUrl.trim();
 
-  // 1. Instant local persistence
+  // 1. Permanent IndexedDB storage (handles massive 4K data URLs without quota error)
+  await putIdbItem(STORE_SCENE_OVERRIDES, { sceneId, image: cleanImage, updatedAt: Date.now() });
+
+  // 2. Local storage cache (safely catching quota limits)
   let overrides = {};
   try {
     overrides = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
   } catch {}
-  overrides[sceneId] = cleanImage;
-  localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+  try {
+    if (cleanImage.length < 500000) {
+      overrides[sceneId] = cleanImage;
+      localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+    }
+  } catch {}
 
   // Also update custom scenes local cache if applicable
   try {
@@ -209,26 +419,27 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
     }
   } catch {}
 
-  // 2. Persist to Firestore with safety race
+  // 3. Persist to Firestore with safety race
   if (firestore) {
     try {
-      const docRef = doc(firestore, 'public_scene_overrides', sceneId);
-      await Promise.race([
-        setDoc(docRef, { 
-          sceneId, 
-          image: cleanImage, 
-          updatedAt: Date.now(), 
-          updatedBy: user.email || 'admin' 
-        }, { merge: true }),
-        new Promise((resolve) => setTimeout(resolve, 1500))
-      ]);
+      if (cleanImage.length < 500000) {
+        const docRef = doc(firestore, 'public_scene_overrides', sceneId);
+        await Promise.race([
+          setDoc(docRef, { 
+            sceneId, 
+            image: cleanImage, 
+            updatedAt: Date.now(), 
+            updatedBy: user.email || 'admin' 
+          }, { merge: true }),
+          new Promise((resolve) => setTimeout(resolve, 1500))
+        ]);
 
-      // If it is in public_scenes (custom scene), update there as well
-      const customDocRef = doc(firestore, 'public_scenes', sceneId);
-      await Promise.race([
-        setDoc(customDocRef, { image: cleanImage }, { merge: true }),
-        new Promise((resolve) => setTimeout(resolve, 1200))
-      ]).catch(() => {});
+        const customDocRef = doc(firestore, 'public_scenes', sceneId);
+        await Promise.race([
+          setDoc(customDocRef, { image: cleanImage }, { merge: true }),
+          new Promise((resolve) => setTimeout(resolve, 1200))
+        ]).catch(() => {});
+      }
     } catch (err) {
       console.warn("Firestore scene override save notice:", err);
     }
@@ -245,12 +456,18 @@ export async function removeSceneOverride(sceneId, user) {
     throw new Error("Unauthorized: Only verified admin can reset room theme images.");
   }
 
+  // 1. Remove from IndexedDB
+  await deleteIdbItem(STORE_SCENE_OVERRIDES, sceneId);
+
+  // 2. Remove from localStorage
   let overrides = {};
   try {
     overrides = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
   } catch {}
   delete overrides[sceneId];
-  localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+  try {
+    localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+  } catch {}
 
   if (firestore) {
     try {

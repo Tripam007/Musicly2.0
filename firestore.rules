@@ -25,6 +25,20 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // 🖼️ STUDIO BACKGROUND VISUALS & LIVE WALLPAPERS
+    // Readable by all listeners; published and managed exclusively by admin
+    match /public_scene_visuals/{sceneId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // 🎨 ACTIVE SCENE THEME IMAGE OVERRIDES
+    // Readable by all listeners; saved and managed exclusively by admin
+    match /public_scene_overrides/{sceneId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // 👤 USER PROFILES
     // Each user can manage their own profile; admins can manage roles
     match /users/{userId} {

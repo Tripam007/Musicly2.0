@@ -25,6 +25,7 @@ import { playClickSound, playTingSound } from '../utils/audioSynth';
 import { 
   loadSceneVisuals, 
   saveSceneVisuals, 
+  deleteSceneVisual,
   resetSceneVisualsToDefault, 
   isLiveVisual, 
   DEFAULT_STUDIO_VISUALS 
@@ -206,7 +207,7 @@ export default function SceneSelector({
     const updated = sceneVisuals.filter(v => v.id !== visualId && v.url !== visualId);
     setSceneVisuals(updated);
     try {
-      await saveSceneVisuals(visualsModalScene.id, updated, null);
+      await deleteSceneVisual(visualsModalScene.id, visualId, updated, null);
       const activeUrl = sceneOverrides[visualsModalScene.id] || visualsModalScene.image;
       if (activeUrl === visualId && updated[0] && onUpdateSceneImage) {
         await onUpdateSceneImage(visualsModalScene.id, updated[0].url);
@@ -250,8 +251,27 @@ export default function SceneSelector({
       return;
     }
     const reader = new FileReader();
-    reader.onload = (loadEvt) => {
+    reader.onload = async (loadEvt) => {
       const dataUrl = loadEvt.target.result;
+
+      // 1. Instantly register in visual list & save to IndexedDB so it is NEVER lost
+      const newVisual = {
+        id: 'vis_' + Date.now(),
+        url: dataUrl,
+        type: 'image'
+      };
+      const updated = [newVisual, ...sceneVisuals.filter(v => v.url !== dataUrl)];
+      setSceneVisuals(updated);
+      try {
+        await saveSceneVisuals(visualsModalScene.id, updated, null);
+        if (onUpdateSceneImage) {
+          await onUpdateSceneImage(visualsModalScene.id, dataUrl);
+        }
+      } catch (err) {
+        console.warn("Immediate visual persist notice:", err);
+      }
+
+      // 2. Open 16:9 crop framing editor to let admin adjust if desired
       setPreviewImage(dataUrl);
       setImageUrlInput('');
       setEditingScene(visualsModalScene);
