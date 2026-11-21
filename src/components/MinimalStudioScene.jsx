@@ -359,10 +359,23 @@ export default function MinimalStudioScene({
   }, []);
 
   const currentStudioBgUrl = useMemo(() => {
-    // If a playlist with a dedicated theme backdrop is actively playing (e.g. Country Roads & Roots Route 66),
+    // Check if Country playlist or Country track is actively playing
+    const isCountryTrackOrPlaylist = Boolean(
+      (activePlayingPlaylistId && (activePlayingPlaylistId === 'country_roots' || String(activePlayingPlaylistId).toLowerCase().includes('country'))) ||
+      (backdropImage && backdropImage.includes('country_scene')) ||
+      (currentTrack && (
+        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
+        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country')))
+      ))
+    );
+
+    if (isCountryTrackOrPlaylist) {
+      return '/assets/images/country_scene.jpg';
+    }
+
+    // If a playlist with a dedicated theme backdrop is actively playing (e.g. Ghazals, Retro, Lo-Fi, etc.),
     // display that backdrop in the studio's main visual!
     if (activePlayingPlaylistId && backdropImage && (
-      backdropImage.includes('country_scene') ||
       backdropImage.includes('ghazals_bg') ||
       backdropImage.includes('peace_scene') ||
       backdropImage.includes('retro_scene') ||
@@ -378,7 +391,7 @@ export default function MinimalStudioScene({
     const safeIdx = mediaPhotoIndex % studioBackgrounds.length;
     const item = studioBackgrounds[safeIdx];
     return typeof item === 'string' ? item : (item?.url || '/assets/images/zenitsu_clean_wallpaper.jpg');
-  }, [studioBackgrounds, mediaPhotoIndex, activePlayingPlaylistId, backdropImage]);
+  }, [studioBackgrounds, mediaPhotoIndex, activePlayingPlaylistId, backdropImage, currentTrack]);
 
   // When user explicitly selects any curated or custom theme, manual selection is active
   const handleSelectTheme = useCallback((theme) => {

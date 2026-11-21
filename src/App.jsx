@@ -797,59 +797,74 @@ export default function App() {
     const defaultSceneImg = (currentScene && (sceneOverrides[currentScene.id]?.image || sceneOverrides[currentScene.id])) || currentScene?.image || SCENES[0].image;
     const targetDefaultBackdrop = (selectedGenre && selectedGenre !== 'All' && GENRE_BACKDROPS[selectedGenre]) || defaultSceneImg;
 
-    if (!activePlayingPlaylistId) {
-      if (isPlaylistBackdropAppliedRef.current) {
-        isPlaylistBackdropAppliedRef.current = null;
-        if (backdropImage !== targetDefaultBackdrop) {
-          setIsTransitioning(true);
-          setTimeout(() => {
-            setBackdropImage(targetDefaultBackdrop);
-            setTimeout(() => setIsTransitioning(false), 60);
-          }, 200);
-        }
+    // Check if Country playlist or Country track is actively playing
+    const isCurrentTrackCountry = Boolean(
+      currentTrack && (
+        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
+        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country')))
+      )
+    );
+
+    const isCountryPlaylistPlaying = Boolean(
+      (activePlayingPlaylistId && (
+        activePlayingPlaylistId === 'country_roots' ||
+        String(activePlayingPlaylistId).toLowerCase().includes('country')
+      )) ||
+      (isCurrentTrackCountry && (!selectedGenre || selectedGenre === 'All' || selectedGenre === 'Country'))
+    );
+
+    if (isCountryPlaylistPlaying) {
+      const countryBackdrop = '/assets/images/country_scene.jpg';
+      if (backdropImage !== countryBackdrop) {
+        isPlaylistBackdropAppliedRef.current = countryBackdrop;
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setBackdropImage(countryBackdrop);
+          setTimeout(() => setIsTransitioning(false), 60);
+        }, 200);
       }
       return;
     }
 
-    const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
-    let pl = unified.find(p => p.id === activePlayingPlaylistId);
-    if (!pl) {
-      const userPls = getLocalUserPlaylists(user);
-      const foundUser = userPls.find(p => p.id === activePlayingPlaylistId);
-      if (foundUser) {
-        const plTracks = (foundUser.trackIds || []).map(tId => allTracks.find(t => t.id === tId)).filter(Boolean);
-        pl = { ...foundUser, tracks: plTracks };
+    // For other active playlists (Ghazals, Lo-Fi, Peace, etc.)
+    if (activePlayingPlaylistId) {
+      const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
+      let pl = unified.find(p => p.id === activePlayingPlaylistId);
+      if (!pl) {
+        const userPls = getLocalUserPlaylists(user);
+        const foundUser = userPls.find(p => p.id === activePlayingPlaylistId);
+        if (foundUser) {
+          const plTracks = (foundUser.trackIds || []).map(tId => allTracks.find(t => t.id === tId)).filter(Boolean);
+          pl = { ...foundUser, tracks: plTracks };
+        }
       }
-    }
 
-    // Verify current playing track belongs to this active playlist
-    const isCurrentTrackInPl = pl && Array.isArray(pl.tracks) && currentTrack && pl.tracks.some(t => t.id === currentTrack.id);
+      const isCurrentTrackInPl = pl && Array.isArray(pl.tracks) && currentTrack && pl.tracks.some(t => t.id === currentTrack.id || (t.title && currentTrack.title && t.title.toLowerCase() === currentTrack.title.toLowerCase()));
 
-    if (pl && isCurrentTrackInPl) {
-      const targetBackdrop = getPlaylistBackdrop(pl, currentTrack);
-      if (targetBackdrop && targetBackdrop !== backdropImage) {
-        isPlaylistBackdropAppliedRef.current = targetBackdrop;
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setBackdropImage(targetBackdrop);
-          setTimeout(() => setIsTransitioning(false), 60);
-        }, 200);
-      }
-    } else if (pl && !isCurrentTrackInPl) {
-      // User played something else outside this playlist
-      setActivePlayingPlaylistId(null);
-      try {
-        localStorage.removeItem('musicly_active_playlist_id');
-      } catch {}
-      if (isPlaylistBackdropAppliedRef.current) {
-        isPlaylistBackdropAppliedRef.current = null;
-        if (backdropImage !== targetDefaultBackdrop) {
+      if (pl && isCurrentTrackInPl) {
+        const targetBackdrop = getPlaylistBackdrop(pl, currentTrack);
+        if (targetBackdrop && targetBackdrop !== backdropImage) {
+          isPlaylistBackdropAppliedRef.current = targetBackdrop;
           setIsTransitioning(true);
           setTimeout(() => {
-            setBackdropImage(targetDefaultBackdrop);
+            setBackdropImage(targetBackdrop);
             setTimeout(() => setIsTransitioning(false), 60);
           }, 200);
         }
+        return;
+      }
+    }
+
+    // When the user plays something else (outside the country playlist or active playlist),
+    // restore the scene or genre background
+    if (isPlaylistBackdropAppliedRef.current) {
+      isPlaylistBackdropAppliedRef.current = null;
+      if (backdropImage !== targetDefaultBackdrop) {
+        setIsTransitioning(true);
+        setTimeout(() => {
+          setBackdropImage(targetDefaultBackdrop);
+          setTimeout(() => setIsTransitioning(false), 60);
+        }, 200);
       }
     }
   }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage, currentScene, sceneOverrides, selectedGenre]);
