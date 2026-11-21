@@ -2755,7 +2755,9 @@ export default function App() {
         <TopBar
           selectedGenre={selectedGenre}
           onSelectGenre={handleSelectGenre}
-          selectedLanguage={selectedLanguages}
+          selectedLanguage={selectedLanguage}
+          selectedLanguages={selectedLanguages}
+          onSelectLanguage={handleSelectLanguage}
           onOpenAmbient={() => setIsAmbientOpen(true)}
           activeAmbientCount={activeAmbientCount}
           onOpenSceneModal={() => setIsSceneOpen(true)}

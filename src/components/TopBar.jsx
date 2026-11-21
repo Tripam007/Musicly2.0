@@ -12,9 +12,11 @@ import {
   Crown,
   Keyboard,
   Hand,
-  Mic
+  Mic,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
-import { GENRES, getAvailableGenres } from '../data/tracks';
+import { GENRES, getAvailableGenres, LANGUAGES } from '../data/tracks';
 import { VoiceControlUI } from '../voice/VoiceControlUI';
 import { playClickSound } from '../utils/audioSynth';
 
@@ -36,6 +38,8 @@ export default function TopBar({
   onOpenAdminDashboard,
   onLogout,
   selectedLanguage,
+  selectedLanguages = [],
+  onSelectLanguage,
   voiceManager,
   onOpenCinematicIntro
 }) {
@@ -84,11 +88,30 @@ export default function TopBar({
     });
   };
 
-  // Fluid Flowing Slider Indicator Logic (matches redpipe ok.mp4 sliding pill physics)
+  // TopBar Flip Mode: 'language' (Face 1) <-> 'genre' (Face 2)
+  const [topBarMode, setTopBarMode] = useState('language');
+
+  const TOP_LANGUAGES = useMemo(() => ['All', ...LANGUAGES], []);
+
+  // Fluid Flowing Slider Indicator Logic for Genre Face (matches redpipe ok.mp4 sliding pill physics)
   const navRef = useRef(null);
   const pillRefs = useRef({});
   const [hoveredGenre, setHoveredGenre] = useState(null);
   const [indicatorStyle, setIndicatorStyle] = useState({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+    opacity: 0,
+    isReady: false,
+    skipTransition: true
+  });
+
+  // Fluid Flowing Slider Indicator Logic for Language Face
+  const langNavRef = useRef(null);
+  const langPillRefs = useRef({});
+  const [hoveredLang, setHoveredLang] = useState(null);
+  const [langIndicatorStyle, setLangIndicatorStyle] = useState({
     left: 0,
     top: 0,
     width: 0,
@@ -107,8 +130,17 @@ export default function TopBar({
     return availableGenres[0] || 'All';
   }, [availableGenres, selectedGenre]);
 
+  const effectiveActiveLang = useMemo(() => {
+    if (!selectedLanguages || selectedLanguages.length === 0) return 'All';
+    const found = TOP_LANGUAGES.find(l => selectedLanguages.some(sl => sl.toLowerCase() === l.toLowerCase()));
+    return found || 'All';
+  }, [selectedLanguages, TOP_LANGUAGES]);
+
   const currentTargetGenre = hoveredGenre || effectiveActiveGenre;
   const isHoveringOther = Boolean(hoveredGenre && hoveredGenre !== effectiveActiveGenre);
+
+  const currentTargetLang = hoveredLang || effectiveActiveLang;
+  const isLangHoveringOther = Boolean(hoveredLang && hoveredLang !== effectiveActiveLang);
 
   const updateIndicatorPosition = useCallback((target = currentTargetGenre, isImmediate = false) => {
     const nav = navRef.current;
@@ -137,18 +169,62 @@ export default function TopBar({
     }
   }, [currentTargetGenre, effectiveActiveGenre, availableGenres]);
 
-  // Update position on target genre or language changes
+  const updateLangIndicatorPosition = useCallback((target = currentTargetLang, isImmediate = false) => {
+    const nav = langNavRef.current;
+    if (!nav) return;
+    const pill = langPillRefs.current[target] || langPillRefs.current[effectiveActiveLang] || langPillRefs.current['All'];
+    if (!pill) return;
+
+    const navRect = nav.getBoundingClientRect();
+    const pillRect = pill.getBoundingClientRect();
+
+    const left = pillRect.left - navRect.left + nav.scrollLeft;
+    const top = pillRect.top - navRect.top + nav.scrollTop;
+    const width = pillRect.width;
+    const height = pillRect.height;
+
+    if (width > 0 && height > 0) {
+      setLangIndicatorStyle(prev => ({
+        left,
+        top,
+        width,
+        height,
+        opacity: 1,
+        isReady: true,
+        skipTransition: !prev.isReady || isImmediate
+      }));
+    }
+  }, [currentTargetLang, effectiveActiveLang]);
+
+  // Update positions on state changes
   useEffect(() => {
     updateIndicatorPosition(currentTargetGenre, !indicatorStyle.isReady);
   }, [currentTargetGenre, updateIndicatorPosition, indicatorStyle.isReady]);
 
+  useEffect(() => {
+    updateLangIndicatorPosition(currentTargetLang, !langIndicatorStyle.isReady);
+  }, [currentTargetLang, updateLangIndicatorPosition, langIndicatorStyle.isReady]);
+
+  // Handle re-aligning active indicator whenever topBarMode switches
+  useEffect(() => {
+    if (topBarMode === 'genre') {
+      updateIndicatorPosition(currentTargetGenre, false);
+      const t1 = setTimeout(() => updateIndicatorPosition(currentTargetGenre, false), 120);
+      const t2 = setTimeout(() => updateIndicatorPosition(currentTargetGenre, false), 450);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    } else {
+      updateLangIndicatorPosition(currentTargetLang, false);
+      const t1 = setTimeout(() => updateLangIndicatorPosition(currentTargetLang, false), 120);
+      const t2 = setTimeout(() => updateLangIndicatorPosition(currentTargetLang, false), 450);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [topBarMode, currentTargetGenre, currentTargetLang, updateIndicatorPosition, updateLangIndicatorPosition]);
+
   // Window resize, ResizeObserver, and font load observers
   useEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-
     const handleResize = () => {
       updateIndicatorPosition(currentTargetGenre, false);
+      updateLangIndicatorPosition(currentTargetLang, false);
     };
 
     window.addEventListener('resize', handleResize);
@@ -157,18 +233,22 @@ export default function TopBar({
     if (typeof ResizeObserver !== 'undefined') {
       resizeObserver = new ResizeObserver(() => {
         updateIndicatorPosition(currentTargetGenre, false);
+        updateLangIndicatorPosition(currentTargetLang, false);
       });
-      resizeObserver.observe(nav);
+      if (navRef.current) resizeObserver.observe(navRef.current);
+      if (langNavRef.current) resizeObserver.observe(langNavRef.current);
     }
 
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(() => {
         updateIndicatorPosition(currentTargetGenre, true);
+        updateLangIndicatorPosition(currentTargetLang, true);
       }).catch(() => {});
     }
 
     const timer = setTimeout(() => {
       updateIndicatorPosition(currentTargetGenre, true);
+      updateLangIndicatorPosition(currentTargetLang, true);
     }, 120);
 
     return () => {
@@ -176,18 +256,113 @@ export default function TopBar({
       if (resizeObserver) resizeObserver.disconnect();
       clearTimeout(timer);
     };
-  }, [currentTargetGenre, updateIndicatorPosition]);
+  }, [currentTargetGenre, currentTargetLang, updateIndicatorPosition, updateLangIndicatorPosition]);
 
-  // Track horizontal scroll inside navbar on compact screens
+  // Direct wheel scrolling over the top nav bar (scroll down -> genre, scroll up -> language)
+  const handleNavWheel = useCallback((e) => {
+    if (Math.abs(e.deltaY) < 12) return;
+    if (e.deltaY > 0) {
+      if (topBarMode !== 'genre') {
+        playClickSound('light');
+        setTopBarMode('genre');
+      }
+    } else {
+      if (topBarMode !== 'language') {
+        playClickSound('light');
+        setTopBarMode('language');
+      }
+    }
+  }, [topBarMode]);
+
+  // Window wheel listener: scrolling up shows language, scrolling down shows genre
   useEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-    const handleScroll = () => {
-      updateIndicatorPosition(currentTargetGenre, true);
+    let lastWheelTime = 0;
+
+    const handleWindowWheel = (e) => {
+      const now = Date.now();
+      if (now - lastWheelTime < 240) return;
+
+      // Ignore if user is scrolling inside a modal or drawer
+      if (e.target.closest?.('.app-modal, .vinyl-playlist-modal, .drawer-container, .dialog-content, .lyrics-container, .queue-list')) {
+        return;
+      }
+
+      if (e.deltaY > 32) {
+        setTopBarMode(prev => {
+          if (prev !== 'genre') {
+            playClickSound('light');
+            return 'genre';
+          }
+          return prev;
+        });
+        lastWheelTime = now;
+      } else if (e.deltaY < -32) {
+        setTopBarMode(prev => {
+          if (prev !== 'language') {
+            playClickSound('light');
+            return 'language';
+          }
+          return prev;
+        });
+        lastWheelTime = now;
+      }
     };
-    nav.addEventListener('scroll', handleScroll, { passive: true });
-    return () => nav.removeEventListener('scroll', handleScroll);
-  }, [currentTargetGenre, updateIndicatorPosition]);
+
+    window.addEventListener('wheel', handleWindowWheel, { passive: true });
+    return () => window.removeEventListener('wheel', handleWindowWheel);
+  }, []);
+
+  // Window touch listener for mobile swipe
+  useEffect(() => {
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    const handleTouchStart = (e) => {
+      if (e.touches && e.touches[0]) {
+        touchStartY = e.touches[0].clientY;
+        touchStartTime = Date.now();
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      if (!e.changedTouches || !e.changedTouches[0]) return;
+      const deltaY = e.changedTouches[0].clientY - touchStartY;
+      const duration = Date.now() - touchStartTime;
+
+      if (e.target.closest?.('.app-modal, .vinyl-playlist-modal, .drawer-container, .dialog-content, .lyrics-container, .queue-list')) {
+        return;
+      }
+
+      if (duration < 500 && Math.abs(deltaY) > 40) {
+        if (deltaY < -40) {
+          // Swiped up -> scroll down -> genre
+          setTopBarMode('genre');
+        } else if (deltaY > 40) {
+          // Swiped down -> scroll up -> language
+          setTopBarMode('language');
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, []);
+
+  // When user clicks a language pill: selects language & turns smoothly to genre view
+  const handleLanguageClick = (lang) => {
+    playClickSound('light');
+    if (onSelectLanguage) {
+      onSelectLanguage(lang);
+    }
+    // After choosing language, make it turn with a smooth 3D transition to the genre section!
+    setTimeout(() => {
+      setTopBarMode('genre');
+    }, 280);
+  };
 
   return (
     <header className="top-bar-container">
@@ -230,64 +405,163 @@ export default function TopBar({
         </button>
       </div>
 
-      {/* Center: Genre / Mood pills with fluid sliding flow indicator */}
-      <nav
-        ref={navRef}
-        className={`genre-pills-nav ${isAdmin ? 'admin-layout' : ''}`}
-        aria-label="Genre Selection"
-        onMouseLeave={() => setHoveredGenre(null)}
+      {/* Center: Dual-face 3D Turn Container (Language <-> Genre) */}
+      <div 
+        className={`topbar-nav-flip-container ${isAdmin ? 'admin-layout' : ''}`}
+        onWheel={handleNavWheel}
       >
-        {/* Flowing Floating Sliding Indicator (ok.mp4 effect) */}
-        <div
-          className={`genre-sliding-indicator ${isHoveringOther ? 'is-hover' : 'is-active'} ${indicatorStyle.isReady ? 'is-ready' : ''}`}
-          style={{
-            transform: `translate3d(${indicatorStyle.left}px, ${indicatorStyle.top}px, 0)`,
-            width: `${indicatorStyle.width}px`,
-            height: `${indicatorStyle.height}px`,
-            opacity: indicatorStyle.opacity,
-            transition: indicatorStyle.skipTransition
-              ? 'none'
-              : 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1), background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, opacity 0.2s ease',
-          }}
-          aria-hidden="true"
-        />
+        <div className={`topbar-nav-flip-stage mode-${topBarMode}`}>
+          {/* Face 1: Language Selection Bar */}
+          <nav
+            ref={langNavRef}
+            className="topbar-nav-face face-language"
+            aria-label="Language Selection"
+            onMouseLeave={() => setHoveredLang(null)}
+          >
+            {/* Sliding Flow Indicator for Language Face */}
+            <div
+              className={`genre-sliding-indicator ${isLangHoveringOther ? 'is-hover' : 'is-active'} ${langIndicatorStyle.isReady ? 'is-ready' : ''}`}
+              style={{
+                transform: `translate3d(${langIndicatorStyle.left}px, ${langIndicatorStyle.top}px, 0)`,
+                width: `${langIndicatorStyle.width}px`,
+                height: `${langIndicatorStyle.height}px`,
+                opacity: langIndicatorStyle.opacity,
+                transition: langIndicatorStyle.skipTransition
+                  ? 'none'
+                  : 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1), background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, opacity 0.2s ease',
+              }}
+              aria-hidden="true"
+            />
 
-        {availableGenres.map((genre) => {
-          const isActive = effectiveActiveGenre === genre;
-          const isHovered = hoveredGenre === genre;
-          return (
-            <button
-              key={genre}
-              ref={(el) => {
-                if (el) pillRefs.current[genre] = el;
-                else delete pillRefs.current[genre];
-              }}
-              id={`genre-${genre.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
-              className={`genre-pill ${isActive ? 'active' : ''} ${isHovered ? 'hovered' : ''}`}
-              onClick={() => {
-                onSelectGenre(genre);
-                playClickSound('light');
-              }}
-              onMouseEnter={() => setHoveredGenre(genre)}
-              title={`Switch vibe to ${genre}`}
-            >
-              {isActive && <span className="pill-dot" />}
-              <span className="rolling-text" aria-label={genre}>
-                {genre.split('').map((char, i) => (
-                  <span
-                    key={i}
-                    className="letter-roller"
-                    style={{ '--char-index': i }}
-                  >
-                    <span className="letter-char letter-primary">{char === ' ' ? '\u00A0' : char}</span>
-                    <span className="letter-char letter-secondary" aria-hidden="true">{char === ' ' ? '\u00A0' : char}</span>
+            {TOP_LANGUAGES.map((lang) => {
+              const isAll = lang === 'All';
+              const isActive = isAll
+                ? (!selectedLanguages || selectedLanguages.length === 0)
+                : (selectedLanguages && selectedLanguages.some(l => l.toLowerCase() === lang.toLowerCase()));
+              const isHovered = hoveredLang === lang;
+              const displayLabel = lang.toUpperCase();
+
+              return (
+                <button
+                  key={lang}
+                  ref={(el) => {
+                    if (el) langPillRefs.current[lang] = el;
+                    else delete langPillRefs.current[lang];
+                  }}
+                  id={`topbar-lang-${lang.toLowerCase()}`}
+                  className={`genre-pill ${isActive ? 'active' : ''} ${isHovered ? 'hovered' : ''}`}
+                  onClick={() => handleLanguageClick(lang)}
+                  onMouseEnter={() => setHoveredLang(lang)}
+                  title={`Filter songs by ${lang} language (then auto-turns to genres)`}
+                >
+                  {isActive && <span className="pill-dot" />}
+                  <span className="rolling-text" aria-label={displayLabel}>
+                    {displayLabel.split('').map((char, i) => (
+                      <span
+                        key={i}
+                        className="letter-roller"
+                        style={{ '--char-index': i }}
+                      >
+                        <span className="letter-char letter-primary">{char === ' ' ? '\u00A0' : char}</span>
+                        <span className="letter-char letter-secondary" aria-hidden="true">{char === ' ' ? '\u00A0' : char}</span>
+                      </span>
+                    ))}
                   </span>
-                ))}
-              </span>
+                </button>
+              );
+            })}
+
+            {/* Quick turn button to Genre */}
+            <button
+              type="button"
+              className="topbar-nav-flip-hint-btn"
+              onClick={() => {
+                playClickSound('light');
+                setTopBarMode('genre');
+              }}
+              title="Turn to Genre section (or scroll down)"
+              aria-label="Switch to Genres"
+            >
+              <span>GENRES</span>
+              <ChevronDown size={12} />
             </button>
-          );
-        })}
-      </nav>
+          </nav>
+
+          {/* Face 2: Genre Selection Bar */}
+          <nav
+            ref={navRef}
+            className="topbar-nav-face face-genre"
+            aria-label="Genre Selection"
+            onMouseLeave={() => setHoveredGenre(null)}
+          >
+            {/* Flowing Floating Sliding Indicator for Genre Face */}
+            <div
+              className={`genre-sliding-indicator ${isHoveringOther ? 'is-hover' : 'is-active'} ${indicatorStyle.isReady ? 'is-ready' : ''}`}
+              style={{
+                transform: `translate3d(${indicatorStyle.left}px, ${indicatorStyle.top}px, 0)`,
+                width: `${indicatorStyle.width}px`,
+                height: `${indicatorStyle.height}px`,
+                opacity: indicatorStyle.opacity,
+                transition: indicatorStyle.skipTransition
+                  ? 'none'
+                  : 'transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1), background 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease, opacity 0.2s ease',
+              }}
+              aria-hidden="true"
+            />
+
+            {availableGenres.map((genre) => {
+              const isActive = effectiveActiveGenre === genre;
+              const isHovered = hoveredGenre === genre;
+              return (
+                <button
+                  key={genre}
+                  ref={(el) => {
+                    if (el) pillRefs.current[genre] = el;
+                    else delete pillRefs.current[genre];
+                  }}
+                  id={`genre-${genre.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
+                  className={`genre-pill ${isActive ? 'active' : ''} ${isHovered ? 'hovered' : ''}`}
+                  onClick={() => {
+                    onSelectGenre(genre);
+                    playClickSound('light');
+                  }}
+                  onMouseEnter={() => setHoveredGenre(genre)}
+                  title={`Switch vibe to ${genre}`}
+                >
+                  {isActive && <span className="pill-dot" />}
+                  <span className="rolling-text" aria-label={genre}>
+                    {genre.split('').map((char, i) => (
+                      <span
+                        key={i}
+                        className="letter-roller"
+                        style={{ '--char-index': i }}
+                      >
+                        <span className="letter-char letter-primary">{char === ' ' ? '\u00A0' : char}</span>
+                        <span className="letter-char letter-secondary" aria-hidden="true">{char === ' ' ? '\u00A0' : char}</span>
+                      </span>
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
+
+            {/* Quick turn button to Language */}
+            <button
+              type="button"
+              className="topbar-nav-flip-hint-btn"
+              onClick={() => {
+                playClickSound('light');
+                setTopBarMode('language');
+              }}
+              title="Turn to Language section (or scroll up)"
+              aria-label="Switch to Languages"
+            >
+              <span>LANG</span>
+              <ChevronUp size={12} />
+            </button>
+          </nav>
+        </div>
+      </div>
 
       {/* Right side: Action controls */}
       <div className="top-right-section">
