@@ -245,6 +245,8 @@ export default function PlaylistDrawer({
     return currentPlaylists.find(p => p.id === drilldownPlaylistId) || null;
   }, [currentPlaylists, drilldownPlaylistId]);
 
+  const canEditDrilldown = Boolean(activeDrilldownPlaylist && (activeDrilldownPlaylist.isCustom || isAdmin));
+
   const displayedPlaylists = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return currentPlaylists;
@@ -300,17 +302,20 @@ export default function PlaylistDrawer({
     playPeacefulLikeSound();
   };
 
-  // Candidate personal choice songs available to add into a custom playlist
+  // Candidate songs available to add into the playlist
   const candidateAddSongs = useMemo(() => {
+    if (!activeDrilldownPlaylist) return [];
+    const isPublic = !activeDrilldownPlaylist.isCustom;
     const q = addSongSearchQuery.trim();
-    const targetLang = activeDrilldownPlaylist?.language;
+    const targetLang = activeDrilldownPlaylist?.language || 'All';
     const userPool = visibleTracks.filter(t => t.isCustom || userPersonalSongIds.includes(t.id));
-    const pool = q ? visibleTracks : (userPool.length > 0 ? userPool : visibleTracks);
+    // For official playlists or when searching or when personal pool is empty: choose from all visible songs
+    const pool = (isPublic || q || userPool.length === 0) ? visibleTracks : userPool;
 
     const langFiltered = pool.filter(t => isSongMatchingPlaylistLang(t, targetLang));
     if (!q) return langFiltered;
     return filterAndRankTracks(langFiltered, q);
-  }, [visibleTracks, userPersonalSongIds, addSongSearchQuery, activeDrilldownPlaylist?.language]);
+  }, [visibleTracks, userPersonalSongIds, addSongSearchQuery, activeDrilldownPlaylist]);
 
   // Toggle play / pause for entire playlist
   const handlePlaylistTogglePlay = (playlist) => {
@@ -409,7 +414,22 @@ export default function PlaylistDrawer({
     playPeacefulLikeSound();
   };
 
-  const handleToggleSongInPlaylist = (playlistId, trackId) => {
+  const handleToggleSongInPlaylist = async (playlistId, trackId) => {
+    // 1. If this is an official Musicly playlist and admin is editing
+    if (activeDrilldownPlaylist && !activeDrilldownPlaylist.isCustom) {
+      if (onUpdatePublicPlaylist) {
+        const curIds = Array.isArray(activeDrilldownPlaylist.trackIds) ? activeDrilldownPlaylist.trackIds : [];
+        const isAlreadyIn = curIds.includes(trackId);
+        const newIds = isAlreadyIn 
+          ? curIds.filter(id => id !== trackId)
+          : [...curIds, trackId];
+        await onUpdatePublicPlaylist(playlistId, { trackIds: newIds });
+        playPeacefulLikeSound();
+      }
+      return;
+    }
+
+    // 2. Custom User Playlist
     const target = userPlaylists.find(p => p.id === playlistId);
     if (!target) return;
     const currentIds = Array.isArray(target.trackIds) ? target.trackIds : [];
@@ -434,7 +454,20 @@ export default function PlaylistDrawer({
     playPeacefulLikeSound();
   };
 
-  const handleDeletePlaylist = (playlistId) => {
+  const handleDeletePlaylist = async (playlistId) => {
+    // 1. If this is an official Musicly playlist
+    if (activeDrilldownPlaylist && !activeDrilldownPlaylist.isCustom) {
+      if (isAdmin && onDeletePublicPlaylist) {
+        if (window.confirm(`Delete official playlist "${activeDrilldownPlaylist.title}"? It will be removed worldwide.`)) {
+          await onDeletePublicPlaylist(playlistId);
+          setDrilldownPlaylistId(null);
+          playClickSound();
+        }
+      }
+      return;
+    }
+
+    // 2. Custom User Playlist
     const target = userPlaylists.find(p => p.id === playlistId);
     if (!target) return;
     if (window.confirm(`Delete private playlist "${target.title}"?`)) {
@@ -444,6 +477,7 @@ export default function PlaylistDrawer({
       if (drilldownPlaylistId === playlistId) {
         setDrilldownPlaylistId(null);
       }
+      playClickSound();
     }
   };
 
@@ -856,7 +890,7 @@ export default function PlaylistDrawer({
                         <Play size={12} fill="currentColor" /> Play All
                       </button>
                     )}
-                    {activeDrilldownPlaylist.isCustom && (
+                    {canEditDrilldown && (
                       <>
                         <button
                           type="button"
@@ -866,7 +900,7 @@ export default function PlaylistDrawer({
                             setAddSongSearchQuery('');
                             playClickSound('light');
                           }}
-                          title="Add personal choice songs to this playlist"
+                          title={activeDrilldownPlaylist.isCustom ? "Add personal choice songs to this playlist" : "Add songs to this official playlist"}
                         >
                           <Plus size={12} /> {isAddSongsToPlaylistOpen ? 'Close Picker' : 'Add Songs'}
                         </button>
@@ -875,9 +909,8 @@ export default function PlaylistDrawer({
                           className="drawer-pl-action-btn delete"
                           onClick={() => {
                             handleDeletePlaylist(activeDrilldownPlaylist.id);
-                            setDrilldownPlaylistId(null);
                           }}
-                          title="Delete this private playlist"
+                          title={activeDrilldownPlaylist.isCustom ? "Delete this private playlist" : "Delete this official playlist"}
                           aria-label="Delete playlist"
                         >
                           <Trash2 size={13} />
@@ -889,13 +922,17 @@ export default function PlaylistDrawer({
               </div>
             )}
 
-            {/* If Add Songs picker is open for this custom playlist */}
-            {viewMode === 'playlists' && activeDrilldownPlaylist?.isCustom && isAddSongsToPlaylistOpen && (
+            {/* If Add Songs picker is open for this playlist */}
+            {viewMode === 'playlists' && canEditDrilldown && isAddSongsToPlaylistOpen && (
               <div className="drawer-add-songs-box">
                 <div className="drawer-add-songs-box-header">
                   <div className="drawer-add-songs-box-info">
                     <span className="drawer-add-songs-box-title">Add Songs to "{activeDrilldownPlaylist.title}"</span>
-                    <span className="drawer-add-songs-box-sub">Choose from your personal choice songs</span>
+                    <span className="drawer-add-songs-box-sub">
+                      {activeDrilldownPlaylist.isCustom 
+                        ? "Choose from your personal choice songs or search all tracks" 
+                        : "Choose from all available Musicly songs"}
+                    </span>
                   </div>
                   <button
                     type="button"
@@ -909,7 +946,7 @@ export default function PlaylistDrawer({
                   <Search size={13} className="search-icon" />
                   <input
                     type="text"
-                    placeholder="Search personal choice songs..."
+                    placeholder="Search songs to add..."
                     value={addSongSearchQuery}
                     onChange={(e) => setAddSongSearchQuery(e.target.value)}
                     autoFocus
@@ -923,7 +960,11 @@ export default function PlaylistDrawer({
                 <div className="drawer-add-songs-box-list">
                   {candidateAddSongs.length === 0 ? (
                     <div className="drawer-add-songs-empty">
-                      <p>No songs found. Click the + icon on songs in Musicly to add them here first!</p>
+                      <p>
+                        {addSongSearchQuery 
+                          ? `No songs matching "${addSongSearchQuery}" found.` 
+                          : 'No songs available to add in this language.'}
+                      </p>
                     </div>
                   ) : (
                     candidateAddSongs.map(t => {
@@ -959,14 +1000,14 @@ export default function PlaylistDrawer({
                   {mainSource === 'favorites'
                     ? 'No liked songs yet. Click the heart icon on any song to add it to your favorites!'
                     : viewMode === 'playlists' && activeDrilldownPlaylist
-                    ? (activeDrilldownPlaylist.isCustom 
-                        ? `No songs in "${activeDrilldownPlaylist.title}" yet. Click "+ Add Songs" above to add your personal choice songs!`
+                    ? (canEditDrilldown 
+                        ? `No songs in "${activeDrilldownPlaylist.title}" yet. Click "+ Add Songs" below to add songs!`
                         : `No songs found in "${activeDrilldownPlaylist.title}".`)
                     : mainSource === 'user' && viewMode === 'single'
                     ? 'No personal choice songs added yet. In the Musicly tab, click the + icon on any song to add it here!'
                     : 'No songs found'}
                 </p>
-                {viewMode === 'playlists' && activeDrilldownPlaylist?.isCustom && !isAddSongsToPlaylistOpen && (
+                {viewMode === 'playlists' && canEditDrilldown && !isAddSongsToPlaylistOpen && (
                   <button
                     type="button"
                     className="drawer-empty-add-songs-btn"
@@ -977,7 +1018,7 @@ export default function PlaylistDrawer({
                     }}
                   >
                     <Plus size={13} />
-                    <span>Add Personal Choice Songs</span>
+                    <span>Add Songs to Playlist</span>
                   </button>
                 )}
               </div>
@@ -1090,8 +1131,8 @@ export default function PlaylistDrawer({
                       </button>
                     )}
 
-                    {/* Remove from this playlist button when in custom playlist mode */}
-                    {viewMode === 'playlists' && activeDrilldownPlaylist && activeDrilldownPlaylist.isCustom && (
+                    {/* Remove from this playlist button when in playlist drilldown mode */}
+                    {viewMode === 'playlists' && activeDrilldownPlaylist && canEditDrilldown && (
                       <button 
                         type="button"
                         className="row-remove-pl-btn"

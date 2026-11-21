@@ -6,7 +6,7 @@ import {
   getDocs, 
   deleteDoc 
 } from 'firebase/firestore';
-import { checkIsAdmin } from './userModel';
+import { checkIsAdmin, getCachedUserRole } from './userModel';
 import { isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, isTrackInLanguages } from '../data/tracks';
 
 const PLAYLISTS_CACHE_KEY = 'musicly_public_playlists_cache';
@@ -316,7 +316,7 @@ export async function publishPublicPlaylist(playlistData, user) {
  * Update an official Musicly Playlist (Admin Only)
  */
 export async function updatePublicPlaylist(playlistId, updates, user) {
-  if (!checkIsAdmin(user)) {
+  if (!checkIsAdmin(user) && !(user?.uid && getCachedUserRole(user.uid) === 'admin')) {
     throw new Error("Unauthorized: Only verified admin can update official Musicly playlists.");
   }
 
@@ -328,13 +328,32 @@ export async function updatePublicPlaylist(playlistId, updates, user) {
 
   try {
     const existing = JSON.parse(localStorage.getItem(PLAYLISTS_CACHE_KEY) || '[]');
+    let found = false;
     const updated = existing.map(p => {
       if (p.id === playlistId) {
+        found = true;
         updatedPlaylist = { ...p, ...safeUpdates, updatedAt: Date.now() };
         return updatedPlaylist;
       }
       return p;
     });
+
+    if (!found) {
+      updatedPlaylist = {
+        id: playlistId,
+        title: safeUpdates.title || playlistId,
+        trackIds: safeUpdates.trackIds || [],
+        language: safeUpdates.language || 'All',
+        isMusiclyOfficial: true,
+        isPublic: true,
+        isCustom: false,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        ...safeUpdates
+      };
+      updated.push(updatedPlaylist);
+    }
+
     localStorage.setItem(PLAYLISTS_CACHE_KEY, JSON.stringify(updated));
   } catch (e) {
     console.warn("Local public playlists cache update notice:", e);
@@ -361,7 +380,7 @@ export async function updatePublicPlaylist(playlistId, updates, user) {
  * Delete an official Musicly Playlist (Admin Only)
  */
 export async function deletePublicPlaylist(playlistId, user) {
-  if (!checkIsAdmin(user)) {
+  if (!checkIsAdmin(user) && !(user?.uid && getCachedUserRole(user.uid) === 'admin')) {
     throw new Error("Unauthorized: Only verified admin can delete official Musicly playlists.");
   }
 
