@@ -276,15 +276,17 @@ export default function AdminDashboardModal({
 
   // Play audio only of live recommendation stream
   const handlePlayLiveStreamAudio = (streamTrack) => {
+    const isYt = Boolean(streamTrack.youtubeId || (streamTrack.audioUrl && (streamTrack.audioUrl.includes('youtube.com') || streamTrack.audioUrl.includes('youtu.be'))));
+    const ytId = streamTrack.youtubeId || (isYt ? extractYouTubeId(streamTrack.audioUrl) : null);
     const playableTrack = {
       id: streamTrack.id,
       title: streamTrack.title,
       artist: streamTrack.artist,
       duration: streamTrack.duration || 240,
       cover: streamTrack.cover,
-      audioUrl: streamTrack.audioUrl,
-      isYouTube: true,
-      youtubeId: streamTrack.youtubeId,
+      audioUrl: streamTrack.audioUrl || (ytId ? `https://www.youtube.com/watch?v=${ytId}` : ''),
+      isYouTube: isYt,
+      youtubeId: ytId,
       genre: streamTrack.genre || 'Lo-Fi',
       genres: streamTrack.genres || ['Lo-Fi'],
       language: streamTrack.language || 'English',

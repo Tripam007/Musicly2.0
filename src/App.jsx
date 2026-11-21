@@ -704,17 +704,16 @@ export default function App() {
   const lastUiUpdateRef = useRef(0);
 
   const currentTrack = useMemo(() => {
+    // 1. Explicitly requested preview track (e.g. YouTube search stream or live recommendation)
     if (previewTrack && previewTrack.id === currentTrackId) {
-      if (!selectedLanguages || selectedLanguages.length === 0 || isTrackInLanguages(previewTrack.language, selectedLanguages)) {
-        return previewTrack;
-      }
+      return previewTrack;
     }
-    // Check if currentTrackId matches both ID AND selectedLanguages
+    // 2. Check if currentTrackId matches an existing track in library
     const found = allTracks.find(t => t.id === currentTrackId);
-    if (found && (!selectedLanguages || selectedLanguages.length === 0 || isTrackInLanguages(found.language, selectedLanguages))) {
+    if (found) {
       return found;
     }
-    // Strict fallback: ONLY pick tracks matching selectedLanguages
+    // 3. Fallback when currentTrackId is empty/invalid: pick strictly from selectedLanguages
     if (selectedLanguages && selectedLanguages.length > 0) {
       const activeMatch = (activePlaylist || []).find(t => isTrackInLanguages(t.language, selectedLanguages));
       if (activeMatch) return activeMatch;
@@ -827,12 +826,15 @@ export default function App() {
     });
 
     // Check if current playing track matches the selected language
-    const curr = allTracks.find(t => t.id === currentTrackId) || currentTrackRef.current;
+    const curr = (previewTrack && previewTrack.id === currentTrackId) 
+      ? previewTrack 
+      : (allTracks.find(t => t.id === currentTrackId) || currentTrackRef.current);
     if (curr) {
       if (!isTrackInLanguages(curr.language, selectedLanguages)) {
         const match = (activePlaylistRef.current || []).find(t => isTrackInLanguages(t.language, selectedLanguages))
           || allTracks.find(t => isTrackInLanguages(t.language, selectedLanguages));
         if (match) {
+          setPreviewTrack(null);
           setCurrentTrackId(match.id);
           setCurrentTime(0);
           currentTimeRef.current = 0;
@@ -842,7 +844,7 @@ export default function App() {
         }
       }
     }
-  }, [selectedLanguages, allTracks, currentTrackId]);
+  }, [selectedLanguages]);
 
   // Reset or initialize shuffle pool when shuffle mode toggles
   useEffect(() => {
@@ -1068,6 +1070,9 @@ export default function App() {
       } catch {}
     }
     setPreviewTrack(null);
+    if (track.language && selectedLanguages && selectedLanguages.length > 0 && !isTrackInLanguages(track.language, selectedLanguages)) {
+      setSelectedLanguages([track.language]);
+    }
     setCurrentTrackId(track.id);
     setCurrentTime(0);
     currentTimeRef.current = 0;
@@ -3173,6 +3178,9 @@ export default function App() {
         onPlayTrack={(track) => {
           if (!track) return;
           setPreviewTrack(track);
+          if (track.language && selectedLanguages && selectedLanguages.length > 0 && !isTrackInLanguages(track.language, selectedLanguages)) {
+            setSelectedLanguages([track.language]);
+          }
           if (currentTrackId === track.id) {
             togglePlay();
           } else {
@@ -3180,6 +3188,7 @@ export default function App() {
             currentTimeRef.current = 0;
             setCurrentTrackId(track.id);
             setIsPlaying(true);
+            audioEngine.playTrack(track, 0);
           }
         }}
         currentTrackId={currentTrackId}
