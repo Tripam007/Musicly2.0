@@ -1224,7 +1224,8 @@ export const SCENES = [
   {
     id: 'minimal_studio',
     name: 'Minimal',
-    image: '/assets/images/vibe_room_background.jpg',
+    image: '/assets/wallpapers/minimal_live_loop.mp4',
+    poster: '/assets/wallpapers/minimal_live_poster.jpg',
     desc: 'Calm, architectural, editorial music workstation with tactile asymmetric composition',
     isInteractive: true,
     isTheme: true,

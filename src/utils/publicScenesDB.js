@@ -16,6 +16,7 @@ const SCENE_VISUALS_STORE_KEY = 'musicly_scene_visuals_store_v1';
  * Curated default visuals for scenes matching the user's uploaded screenshot & local assets
  */
 export const DEFAULT_STUDIO_VISUALS = [
+  { id: 'vis_minimal_live', url: '/assets/wallpapers/minimal_live_loop.mp4', poster: '/assets/wallpapers/minimal_live_poster.jpg', type: 'video' },
   { id: 'vis_gojo', url: '/assets/wallpapers/gojo_satoru.jpg', type: 'image' },
   { id: 'vis_red_eclipse', url: '/assets/wallpapers/red_eclipse_crown.png', type: 'image' },
   { id: 'vis_astronaut', url: '/assets/wallpapers/astronaut_neon.png', type: 'image' },
