@@ -198,7 +198,7 @@ export default function SceneSelector({
                   {/* Subtle dark gradient scrim for contrast */}
                   <div className="scene-card-gradient-overlay" />
 
-                  {/* Admin Change Theme Image Trigger Badge */}
+                  {/* Admin Change Theme Image Trigger Badge (Icon Only) */}
                   {isAdmin && (
                     <button
                       type="button"
@@ -207,10 +207,10 @@ export default function SceneSelector({
                         e.stopPropagation();
                         openImageEditor(scene);
                       }}
-                      title="Change Theme Image for this scene (Admin)"
+                      title={`Change Theme Image for "${scene.name}" (Admin)`}
+                      aria-label={`Change Theme Image for ${scene.name}`}
                     >
-                      <Camera size={11} />
-                      <span>{hasOverride ? 'Custom' : 'Change'}</span>
+                      <Camera size={13} />
                     </button>
                   )}
 
