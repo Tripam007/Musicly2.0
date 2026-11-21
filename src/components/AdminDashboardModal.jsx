@@ -740,7 +740,7 @@ export default function AdminDashboardModal({
     try {
       const updatedFields = {
         title: editReqTitle.trim(),
-        artist: editReqArtist.trim() || 'Unknown Artist',
+        artist: editReqArtist.trim() || 'Unknown',
         sections: editReqSections,
         genre: editReqSections.join(', '),
         language: editReqLanguage || 'English'
@@ -1007,7 +1007,7 @@ export default function AdminDashboardModal({
 
       const chosenSections = selectedSections.length > 0 ? selectedSections : ['Lo-Fi'];
       const finalTitle = title.trim() || (isYt ? 'Public YouTube Song' : (fileObject ? fileObject.name : 'Public Track'));
-      const finalArtist = artist.trim() || 'Musicly Public';
+      const finalArtist = artist.trim() || 'Unknown';
 
       const trackPayload = {
         id: `public-${Date.now()}`,
@@ -1111,7 +1111,7 @@ export default function AdminDashboardModal({
         const trackPayload = {
           id: `public-${Date.now()}`,
           title: editTitle.trim() || streamItem.title,
-          artist: editArtist.trim() || streamItem.artist || 'YouTube Artist',
+          artist: editArtist.trim() || 'Unknown',
           genre: chosen.join(', '),
           genres: chosen,
           language: editLanguage || 'English',
@@ -1136,7 +1136,7 @@ export default function AdminDashboardModal({
 
       await onUpdateTrack(editingTrack.id, {
         title: editTitle.trim() || editingTrack.title,
-        artist: editArtist.trim() || editingTrack.artist,
+        artist: editArtist.trim() || 'Unknown',
         genres: chosen,
         genre: chosen.join(', '),
         language: editLanguage,
@@ -3459,6 +3459,7 @@ export default function AdminDashboardModal({
                   <label>Artist</label>
                   <input 
                     type="text" 
+                    placeholder="Unknown"
                     value={editArtist} 
                     onChange={(e) => setEditArtist(e.target.value)} 
                   />

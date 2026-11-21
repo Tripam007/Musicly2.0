@@ -218,7 +218,7 @@ export default function UploadModal({
       ? (artist ? `${artist} Track` : `YouTube Track (${ytId})`) 
       : (fileObject ? fileObject.name.replace(/\.[^/.]+$/, "") : 'My Custom Track');
     const finalTitle = (title && title.trim()) || fallbackTitle;
-    const finalArtist = (artist && artist.trim()) || (isYt ? 'YouTube Stream' : 'Unknown Artist');
+    const finalArtist = (artist && artist.trim()) || (isYt ? 'YouTube Stream' : 'Unknown');
 
     // Duplicate Check: Verify if same URL, YouTube ID, or title/artist already exists
     const duplicate = findDuplicateTrack({
