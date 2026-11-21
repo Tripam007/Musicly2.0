@@ -138,6 +138,7 @@ const FUNNY_GUY_QUOTES = [
 export default function InteractiveBackdropHotspots({
   activeBackdrop,
   currentScene,
+  selectedGenre,
   onPlayTrack,
   roomBrightness = 1.0,
   onSetRoomBrightness,
@@ -162,7 +163,15 @@ export default function InteractiveBackdropHotspots({
 
   const customHotspots = Array.isArray(currentScene?.interactiveHotspots) ? currentScene.interactiveHotspots : [];
   const hasCustomHotspots = customHotspots.length > 0;
-  const isCozyBedroom = currentScene?.id === 'cozy_bedroom' || (!currentScene?.id && (!activeBackdrop || activeBackdrop.includes('cozy_bedroom')));
+
+  // The cozy bedroom wall posters (Coldplay, Radiohead, Oasis) and room elements belong exclusively
+  // to the Cozy Bedroom backdrop (which is active when the 'All' genre is selected).
+  // They should NOT appear on hover when switching to other genres (e.g. Indie, Retro, Lo-Fi, Peace).
+  const isBackdropCozyBedroom = Boolean(
+    activeBackdrop && (activeBackdrop.includes('cozy_bedroom') || activeBackdrop.includes('cozy-bedroom'))
+  );
+  const isGenreAll = !selectedGenre || String(selectedGenre).toLowerCase() === 'all';
+  const isCozyBedroom = (currentScene?.id === 'cozy_bedroom' || !currentScene?.id) && isBackdropCozyBedroom && isGenreAll;
 
   const handleDynamicSpotClick = (e, spot) => {
     e.stopPropagation();

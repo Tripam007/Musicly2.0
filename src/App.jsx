@@ -2358,6 +2358,7 @@ export default function App() {
       <InteractiveBackdropHotspots 
         activeBackdrop={backdropImage} 
         currentScene={currentScene}
+        selectedGenre={selectedGenre}
         onPlayTrack={handlePlayPosterTrack}
         roomBrightness={roomBrightness}
         onSetRoomBrightness={setRoomBrightness}
