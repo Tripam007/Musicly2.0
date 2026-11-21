@@ -11,8 +11,6 @@ import {
   Link, 
   RotateCcw,
   Crop,
-  ZoomIn,
-  ZoomOut,
   Move
 } from 'lucide-react';
 import { SCENES } from '../data/tracks';
@@ -20,17 +18,23 @@ import AppleGlassScrollbar from './AppleGlassScrollbar';
 import { playClickSound, playTingSound } from '../utils/audioSynth';
 
 /**
- * Offscreen HTML5 canvas cropper that exports framed 16:9 image
+ * Offscreen HTML5 canvas cropper that extracts the user's selected crop box
+ * from the uncropped original image and exports it at high-res 16:9 (or selected ratio)
  */
-async function getCroppedImage(imageSrc, pan, zoom, containerW, containerH, naturalW, naturalH) {
+async function getCroppedImage(imageSrc, crop, naturalW, naturalH) {
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        const canvas = document.createElement('canvas');
+        const nw = naturalW || img.naturalWidth || 1920;
+        const nh = naturalH || img.naturalHeight || 1080;
+
         const targetW = 1920;
-        const targetH = 1080;
+        const aspect = (crop.w * nw) / Math.max(1, crop.h * nh);
+        const targetH = Math.round(targetW / aspect) || 1080;
+
+        const canvas = document.createElement('canvas');
         canvas.width = targetW;
         canvas.height = targetH;
         const ctx = canvas.getContext('2d');
@@ -40,28 +44,10 @@ async function getCroppedImage(imageSrc, pan, zoom, containerW, containerH, natu
           return;
         }
 
-        const nw = naturalW || img.naturalWidth || targetW;
-        const nh = naturalH || img.naturalHeight || targetH;
-        const cw = containerW || 600;
-        const ch = containerH || 337.5;
-
-        const baseScale = Math.max(cw / nw, ch / nh);
-        const currentScale = baseScale * zoom;
-
-        // Viewport dimensions in source image coordinates
-        const sw = Math.min(nw, cw / currentScale);
-        const sh = Math.min(nh, ch / currentScale);
-
-        // Viewport center in source image coordinates
-        const cx = (nw / 2) - (pan.x / currentScale);
-        const cy = (nh / 2) - (pan.y / currentScale);
-
-        let sx = cx - (sw / 2);
-        let sy = cy - (sh / 2);
-
-        // Clamping within source bounds
-        sx = Math.max(0, Math.min(Math.max(0, nw - sw), sx));
-        sy = Math.max(0, Math.min(Math.max(0, nh - sh), sy));
+        const sx = Math.max(0, Math.min(nw, crop.x * nw));
+        const sy = Math.max(0, Math.min(nh, crop.y * nh));
+        const sw = Math.max(1, Math.min(nw - sx, crop.w * nw));
+        const sh = Math.max(1, Math.min(nh - sy, crop.h * nh));
 
         ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
         const croppedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
@@ -91,7 +77,7 @@ export default function SceneSelector({
 }) {
   const scenesGridRef = useRef(null);
   const fileInputRef = useRef(null);
-  const viewportRef = useRef(null);
+  const stageRef = useRef(null);
 
   // Admin Theme Image Editor State
   const [editingScene, setEditingScene] = useState(null);
@@ -100,11 +86,10 @@ export default function SceneSelector({
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Interactive Crop & Framing State
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDraggingPan, setIsDraggingPan] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  // Interactive Crop on Original Image State
+  const [selectedRatio, setSelectedRatio] = useState('16:9');
+  const [cropBox, setCropBox] = useState({ x: 0, y: 0, w: 1, h: 0.5625 });
+  const [activeDrag, setActiveDrag] = useState(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [imgNaturalSize, setImgNaturalSize] = useState({ width: 0, height: 0 });
 
@@ -124,15 +109,53 @@ export default function SceneSelector({
     onChangeOpacity(newOpacity);
   };
 
+  const calculateDefaultCrop = (nw, nh, ratioKey = selectedRatio) => {
+    if (!nw || !nh) return { x: 0, y: 0, w: 1, h: 0.5625 };
+    if (ratioKey === 'free') {
+      return { x: 0.05, y: 0.05, w: 0.9, h: 0.9 };
+    }
+    const targetR = ratioKey === '16:9' ? 16 / 9 : ratioKey === '4:3' ? 4 / 3 : 1;
+    const imgR = nw / nh;
+    let w, h;
+    if (imgR >= targetR) {
+      h = 1;
+      w = (nh * targetR) / nw;
+    } else {
+      w = 1;
+      h = nw / (nh * targetR);
+    }
+    return {
+      x: Math.max(0, (1 - w) / 2),
+      y: Math.max(0, (1 - h) / 2),
+      w,
+      h
+    };
+  };
+
+  const handleImageLoad = (e) => {
+    const nw = e.currentTarget.naturalWidth || 1920;
+    const nh = e.currentTarget.naturalHeight || 1080;
+    setImgNaturalSize({ width: nw, height: nh });
+    setCropBox(calculateDefaultCrop(nw, nh, selectedRatio));
+  };
+
+  const changeRatio = (ratioKey) => {
+    playClickSound('light');
+    setSelectedRatio(ratioKey);
+    const nw = imgNaturalSize.width || 1920;
+    const nh = imgNaturalSize.height || 1080;
+    setCropBox(calculateDefaultCrop(nw, nh, ratioKey));
+  };
+
   const openImageEditor = (scene) => {
     playClickSound('light');
     setEditingScene(scene);
     setPreviewImage(scene.image || '');
     setImageUrlInput(scene.image && !scene.image.startsWith('data:') ? scene.image : '');
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
+    setSelectedRatio('16:9');
+    setCropBox({ x: 0, y: 0, w: 1, h: 0.5625 });
     setIsDraggingFile(false);
-    setIsDraggingPan(false);
+    setActiveDrag(null);
     setErrorMessage('');
   };
 
@@ -149,20 +172,24 @@ export default function SceneSelector({
       const dataUrl = loadEvt.target.result;
       setPreviewImage(dataUrl);
       setImageUrlInput('');
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
       setErrorMessage('');
       playTingSound();
     };
     reader.readAsDataURL(file);
   };
 
-  const handlePointerDown = (e) => {
-    if (e.button !== 0) return;
-    setIsDraggingPan(true);
-    setDragStart({
-      x: e.clientX - pan.x,
-      y: e.clientY - pan.y
+  const handlePointerDown = (e, action) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!stageRef.current) return;
+    const rect = stageRef.current.getBoundingClientRect();
+    setActiveDrag({
+      action,
+      startX: e.clientX,
+      startY: e.clientY,
+      stageW: rect.width,
+      stageH: rect.height,
+      initCrop: { ...cropBox }
     });
     try {
       e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -170,75 +197,87 @@ export default function SceneSelector({
   };
 
   const handlePointerMove = (e) => {
-    if (!isDraggingPan) return;
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
+    if (!activeDrag) return;
+    const { action, startX, startY, stageW, stageH, initCrop } = activeDrag;
+    if (!stageW || !stageH) return;
 
-    if (viewportRef.current && imgNaturalSize.width && imgNaturalSize.height) {
-      const cw = viewportRef.current.clientWidth;
-      const ch = viewportRef.current.clientHeight;
-      const baseScale = Math.max(cw / imgNaturalSize.width, ch / imgNaturalSize.height);
-      const currentScale = baseScale * zoom;
-      const renderW = imgNaturalSize.width * currentScale;
-      const renderH = imgNaturalSize.height * currentScale;
-      const maxPanX = Math.max(0, (renderW - cw) / 2);
-      const maxPanY = Math.max(0, (renderH - ch) / 2);
+    const dx = (e.clientX - startX) / stageW;
+    const dy = (e.clientY - startY) / stageH;
 
-      setPan({
-        x: Math.max(-maxPanX, Math.min(maxPanX, newX)),
-        y: Math.max(-maxPanY, Math.min(maxPanY, newY))
-      });
-    } else {
-      setPan({ x: newX, y: newY });
+    const nw = imgNaturalSize.width || stageW;
+    const nh = imgNaturalSize.height || stageH;
+    const targetR = selectedRatio === '16:9' ? 16 / 9 : selectedRatio === '4:3' ? 4 / 3 : selectedRatio === '1:1' ? 1 : null;
+    const rNorm = targetR ? targetR * (nh / nw) : null;
+
+    if (action === 'move') {
+      const newX = Math.max(0, Math.min(1 - initCrop.w, initCrop.x + dx));
+      const newY = Math.max(0, Math.min(1 - initCrop.h, initCrop.y + dy));
+      setCropBox((prev) => ({ ...prev, x: newX, y: newY }));
+    } else if (action === 'resize-br') {
+      let newW = Math.max(0.1, Math.min(1 - initCrop.x, initCrop.w + dx));
+      let newH;
+      if (rNorm) {
+        newH = newW / rNorm;
+        if (newH > 1 - initCrop.y) {
+          newH = 1 - initCrop.y;
+          newW = newH * rNorm;
+        }
+      } else {
+        newH = Math.max(0.1, Math.min(1 - initCrop.y, initCrop.h + dy));
+      }
+      setCropBox((prev) => ({ ...prev, w: newW, h: newH }));
+    } else if (action === 'resize-tl') {
+      let newW = Math.max(0.1, Math.min(initCrop.x + initCrop.w, initCrop.w - dx));
+      let newH;
+      if (rNorm) {
+        newH = newW / rNorm;
+        if (newH > initCrop.y + initCrop.h) {
+          newH = initCrop.y + initCrop.h;
+          newW = newH * rNorm;
+        }
+      } else {
+        newH = Math.max(0.1, Math.min(initCrop.y + initCrop.h, initCrop.h - dy));
+      }
+      const newX = initCrop.x + (initCrop.w - newW);
+      const newY = initCrop.y + (initCrop.h - newH);
+      setCropBox({ x: newX, y: newY, w: newW, h: newH });
+    } else if (action === 'resize-tr') {
+      let newW = Math.max(0.1, Math.min(1 - initCrop.x, initCrop.w + dx));
+      let newH;
+      if (rNorm) {
+        newH = newW / rNorm;
+        if (newH > initCrop.y + initCrop.h) {
+          newH = initCrop.y + initCrop.h;
+          newW = newH * rNorm;
+        }
+      } else {
+        newH = Math.max(0.1, Math.min(initCrop.y + initCrop.h, initCrop.h - dy));
+      }
+      const newY = initCrop.y + (initCrop.h - newH);
+      setCropBox((prev) => ({ ...prev, y: newY, w: newW, h: newH }));
+    } else if (action === 'resize-bl') {
+      let newW = Math.max(0.1, Math.min(initCrop.x + initCrop.w, initCrop.w - dx));
+      let newH;
+      if (rNorm) {
+        newH = newW / rNorm;
+        if (newH > 1 - initCrop.y) {
+          newH = 1 - initCrop.y;
+          newW = newH * rNorm;
+        }
+      } else {
+        newH = Math.max(0.1, Math.min(initCrop.y + initCrop.h, initCrop.h - dy));
+      }
+      const newX = initCrop.x + (initCrop.w - newW);
+      setCropBox((prev) => ({ ...prev, x: newX, w: newW, h: newH }));
     }
   };
 
   const handlePointerUp = (e) => {
-    setIsDraggingPan(false);
-    try {
-      e.currentTarget.releasePointerCapture?.(e.pointerId);
-    } catch {}
-  };
-
-  const handleZoomChange = (newZoom) => {
-    const clampedZoom = Math.max(1, Math.min(3, newZoom));
-    setZoom(clampedZoom);
-
-    if (viewportRef.current && imgNaturalSize.width && imgNaturalSize.height) {
-      const cw = viewportRef.current.clientWidth;
-      const ch = viewportRef.current.clientHeight;
-      const baseScale = Math.max(cw / imgNaturalSize.width, ch / imgNaturalSize.height);
-      const currentScale = baseScale * clampedZoom;
-      const renderW = imgNaturalSize.width * currentScale;
-      const renderH = imgNaturalSize.height * currentScale;
-      const maxPanX = Math.max(0, (renderW - cw) / 2);
-      const maxPanY = Math.max(0, (renderH - ch) / 2);
-
-      setPan((prev) => ({
-        x: Math.max(-maxPanX, Math.min(maxPanX, prev.x)),
-        y: Math.max(-maxPanY, Math.min(maxPanY, prev.y))
-      }));
-    }
-  };
-
-  const handleQuickAlign = (align) => {
-    if (!viewportRef.current || !imgNaturalSize.width || !imgNaturalSize.height) {
-      setPan({ x: 0, y: 0 });
-      return;
-    }
-    const cw = viewportRef.current.clientWidth;
-    const ch = viewportRef.current.clientHeight;
-    const baseScale = Math.max(cw / imgNaturalSize.width, ch / imgNaturalSize.height);
-    const currentScale = baseScale * zoom;
-    const renderH = imgNaturalSize.height * currentScale;
-    const maxPanY = Math.max(0, (renderH - ch) / 2);
-
-    if (align === 'top') {
-      setPan((prev) => ({ ...prev, y: maxPanY }));
-    } else if (align === 'bottom') {
-      setPan((prev) => ({ ...prev, y: -maxPanY }));
-    } else {
-      setPan({ x: 0, y: 0 });
+    if (activeDrag) {
+      setActiveDrag(null);
+      try {
+        e.currentTarget.releasePointerCapture?.(e.pointerId);
+      } catch {}
     }
   };
 
@@ -256,17 +295,10 @@ export default function SceneSelector({
 
     try {
       let finalImage = rawImage;
-
-      // When crop container exists, generate high-res cropped export
-      if (viewportRef.current && (zoom > 1.01 || Math.abs(pan.x) > 1 || Math.abs(pan.y) > 1 || rawImage.startsWith('data:'))) {
-        const cw = viewportRef.current.clientWidth || 600;
-        const ch = viewportRef.current.clientHeight || 337.5;
+      if (cropBox) {
         finalImage = await getCroppedImage(
           rawImage,
-          pan,
-          zoom,
-          cw,
-          ch,
+          cropBox,
           imgNaturalSize.width,
           imgNaturalSize.height
         );
@@ -522,165 +554,178 @@ export default function SceneSelector({
                   onChange={(e) => {
                     setImageUrlInput(e.target.value);
                     setPreviewImage(e.target.value);
-                    setZoom(1);
-                    setPan({ x: 0, y: 0 });
                   }}
                   disabled={isSaving}
                 />
               </div>
 
-              {/* Interactive Cropper & Framing Section */}
+              {/* Original Image Canvas with Interactive Crop Selection Frame */}
               {previewImage && (
                 <div className="scene-crop-section">
                   <div className="scene-crop-section-header">
                     <div className="scene-crop-title-group">
                       <Crop size={14} className="scene-crop-title-icon" />
-                      <span className="scene-crop-heading">Crop & Framing Position</span>
+                      <span className="scene-crop-heading">Crop Frame on Original Image</span>
                     </div>
-                    <div className="scene-crop-hint-badge">
-                      <Move size={11} />
-                      <span>Drag image to position • Slider to zoom</span>
-                    </div>
-                  </div>
-
-                  {/* 16:9 Viewport Frame */}
-                  <div
-                    ref={viewportRef}
-                    className={`scene-crop-viewport ${isDraggingPan ? 'is-panning' : ''}`}
-                    onPointerDown={handlePointerDown}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    title="Click and drag image to choose what part to show"
-                  >
-                    <img 
-                      src={previewImage} 
-                      alt="Crop Viewport" 
-                      className="scene-crop-img"
-                      draggable={false}
-                      style={{
-                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                        transformOrigin: 'center center',
-                        transition: isDraggingPan ? 'none' : 'transform 0.15s ease-out'
-                      }}
-                      onLoad={(e) => {
-                        setImgNaturalSize({
-                          width: e.currentTarget.naturalWidth || 1920,
-                          height: e.currentTarget.naturalHeight || 1080
-                        });
-                      }}
-                      onError={(e) => {
-                        e.currentTarget.src = '/assets/images/cozy_bedroom.jpg';
-                      }}
-                    />
-
-                    {/* Rule of thirds grid guides */}
-                    <div className="scene-crop-grid-overlay">
-                      <div className="scene-crop-grid-line v1" />
-                      <div className="scene-crop-grid-line v2" />
-                      <div className="scene-crop-grid-line h1" />
-                      <div className="scene-crop-grid-line h2" />
-                    </div>
-
-                    {/* Corner viewfinder brackets */}
-                    <div className="scene-crop-corner tl" />
-                    <div className="scene-crop-corner tr" />
-                    <div className="scene-crop-corner bl" />
-                    <div className="scene-crop-corner br" />
-
-                    {/* 16:9 Aspect Badge */}
-                    <div className="scene-crop-aspect-badge">
-                      <span>16:9 Backdrop</span>
-                    </div>
-
-                    {/* Apple glass title overlay */}
-                    <div className="scene-apple-glass-titlebar">
-                      <span className="scene-apple-title">{editingScene.name}</span>
-                    </div>
-                  </div>
-
-                  {/* Crop & Zoom Controls Toolbar */}
-                  <div className="scene-crop-toolbar">
-                    {/* Zoom control */}
-                    <div className="scene-crop-zoom-group">
+                    <div className="scene-crop-ratio-pills">
                       <button
                         type="button"
-                        className="scene-crop-zoom-btn"
-                        onClick={() => handleZoomChange(Math.max(1, +(zoom - 0.1).toFixed(2)))}
-                        title="Zoom out"
-                        disabled={zoom <= 1}
+                        className={`scene-ratio-pill ${selectedRatio === '16:9' ? 'active' : ''}`}
+                        onClick={() => changeRatio('16:9')}
                       >
-                        <ZoomOut size={13} />
+                        16:9 Backdrop
                       </button>
-                      <input
-                        type="range"
-                        min="1"
-                        max="3"
-                        step="0.05"
-                        value={zoom}
-                        onChange={(e) => handleZoomChange(parseFloat(e.target.value))}
-                        className="scene-crop-zoom-slider"
-                        title="Zoom to crop"
+                      <button
+                        type="button"
+                        className={`scene-ratio-pill ${selectedRatio === '4:3' ? 'active' : ''}`}
+                        onClick={() => changeRatio('4:3')}
+                      >
+                        4:3
+                      </button>
+                      <button
+                        type="button"
+                        className={`scene-ratio-pill ${selectedRatio === '1:1' ? 'active' : ''}`}
+                        onClick={() => changeRatio('1:1')}
+                      >
+                        1:1
+                      </button>
+                      <button
+                        type="button"
+                        className={`scene-ratio-pill ${selectedRatio === 'free' ? 'active' : ''}`}
+                        onClick={() => changeRatio('free')}
+                      >
+                        Free
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Stage: Original Image displayed in full, uncropped */}
+                  <div className="scene-crop-stage-wrapper">
+                    <div 
+                      ref={stageRef}
+                      className="scene-crop-stage"
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={handlePointerUp}
+                      onPointerCancel={handlePointerUp}
+                    >
+                      <img
+                        src={previewImage}
+                        alt="Original Full View"
+                        className="scene-crop-stage-img"
+                        onLoad={handleImageLoad}
+                        draggable={false}
+                        onError={(e) => {
+                          e.currentTarget.src = '/assets/images/cozy_bedroom.jpg';
+                        }}
                       />
-                      <button
-                        type="button"
-                        className="scene-crop-zoom-btn"
-                        onClick={() => handleZoomChange(Math.min(3, +(zoom + 0.1).toFixed(2)))}
-                        title="Zoom in"
-                        disabled={zoom >= 3}
+
+                      {/* Movable & Resizable 16:9 Crop Selection Box */}
+                      <div
+                        className="scene-crop-box"
+                        style={{
+                          left: `${cropBox.x * 100}%`,
+                          top: `${cropBox.y * 100}%`,
+                          width: `${cropBox.w * 100}%`,
+                          height: `${cropBox.h * 100}%`
+                        }}
+                        onPointerDown={(e) => handlePointerDown(e, 'move')}
+                        title="Drag to reposition crop area"
                       >
-                        <ZoomIn size={13} />
-                      </button>
-                      <span className="scene-crop-zoom-value">{Math.round(zoom * 100)}%</span>
+                        {/* Rule of thirds grid lines */}
+                        <div className="scene-crop-grid-line v1" />
+                        <div className="scene-crop-grid-line v2" />
+                        <div className="scene-crop-grid-line h1" />
+                        <div className="scene-crop-grid-line h2" />
+
+                        {/* Center drag helper badge */}
+                        <div className="scene-crop-move-badge">
+                          <Move size={12} />
+                          <span>Drag Box</span>
+                        </div>
+
+                        {/* 4 Corner Resize Handles */}
+                        <div
+                          className="scene-crop-handle tl"
+                          onPointerDown={(e) => handlePointerDown(e, 'resize-tl')}
+                          title="Drag to resize crop area"
+                        />
+                        <div
+                          className="scene-crop-handle tr"
+                          onPointerDown={(e) => handlePointerDown(e, 'resize-tr')}
+                          title="Drag to resize crop area"
+                        />
+                        <div
+                          className="scene-crop-handle bl"
+                          onPointerDown={(e) => handlePointerDown(e, 'resize-bl')}
+                          title="Drag to resize crop area"
+                        />
+                        <div
+                          className="scene-crop-handle br"
+                          onPointerDown={(e) => handlePointerDown(e, 'resize-br')}
+                          title="Drag to resize crop area"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Resulting Card & Backdrop Preview */}
+                  <div className="scene-crop-preview-row">
+                    <div className="scene-crop-preview-info">
+                      <p className="scene-crop-preview-title">
+                        <strong>Resulting Scene Box Preview</strong>
+                      </p>
+                      <p className="scene-crop-preview-sub">
+                        Showing how your selected crop region fits into the scene card and ambient backdrop
+                      </p>
+                      <div className="scene-crop-action-shortcuts">
+                        <button
+                          type="button"
+                          className="scene-crop-action-pill"
+                          onClick={() => {
+                            playClickSound('light');
+                            setCropBox((prev) => ({
+                              ...prev,
+                              x: Math.max(0, (1 - prev.w) / 2),
+                              y: Math.max(0, (1 - prev.h) / 2)
+                            }));
+                          }}
+                        >
+                          Center Crop
+                        </button>
+                        <button
+                          type="button"
+                          className="scene-crop-action-pill"
+                          onClick={() => {
+                            playClickSound('light');
+                            setCropBox(calculateDefaultCrop(imgNaturalSize.width, imgNaturalSize.height, selectedRatio));
+                          }}
+                        >
+                          Max Fit
+                        </button>
+                      </div>
                     </div>
 
-                    {/* Quick Alignment Presets */}
-                    <div className="scene-crop-presets-group">
-                      <button
-                        type="button"
-                        className="scene-crop-preset-btn"
-                        onClick={() => {
-                          playClickSound('light');
-                          setPan({ x: 0, y: 0 });
-                        }}
-                        title="Center image"
-                      >
-                        Center
-                      </button>
-                      <button
-                        type="button"
-                        className="scene-crop-preset-btn"
-                        onClick={() => {
-                          playClickSound('light');
-                          handleQuickAlign('top');
-                        }}
-                        title="Align to top"
-                      >
-                        Top
-                      </button>
-                      <button
-                        type="button"
-                        className="scene-crop-preset-btn"
-                        onClick={() => {
-                          playClickSound('light');
-                          handleQuickAlign('bottom');
-                        }}
-                        title="Align to bottom"
-                      >
-                        Bottom
-                      </button>
-                      <button
-                        type="button"
-                        className="scene-crop-preset-btn reset"
-                        onClick={() => {
-                          playClickSound('light');
-                          setZoom(1);
-                          setPan({ x: 0, y: 0 });
-                        }}
-                        title="Reset framing"
-                      >
-                        Reset
-                      </button>
+                    <div className="scene-crop-preview-card-wrap">
+                      <div className="scene-crop-live-card">
+                        <img
+                          src={previewImage}
+                          alt="Live Crop Preview"
+                          className="scene-crop-live-img"
+                          style={{
+                            width: `${(1 / Math.max(0.01, cropBox.w)) * 100}%`,
+                            height: `${(1 / Math.max(0.01, cropBox.h)) * 100}%`,
+                            position: 'absolute',
+                            left: `-${(cropBox.x / Math.max(0.01, cropBox.w)) * 100}%`,
+                            top: `-${(cropBox.y / Math.max(0.01, cropBox.h)) * 100}%`,
+                            maxWidth: 'none',
+                            maxHeight: 'none'
+                          }}
+                        />
+                        <div className="scene-card-gradient-overlay" />
+                        <div className="scene-apple-glass-titlebar">
+                          <span className="scene-apple-title">{editingScene.name}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
