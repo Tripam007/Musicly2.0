@@ -48,7 +48,7 @@ import { saveTrackToDB, loadSavedTracksFromDB, deleteTrackFromDB, updateTrackGen
 import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds } from './utils/publicLibraryDB';
 import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
-import { loadPublicScenes, publishPublicScene, deletePublicScene } from './utils/publicScenesDB';
+import { loadPublicScenes, publishPublicScene, deletePublicScene, loadSceneOverrides, saveSceneOverride, removeSceneOverride } from './utils/publicScenesDB';
 import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists, getUnifiedMusiclyPlaylists } from './utils/publicPlaylistsDB';
 import { getLocalUserPlaylists } from './utils/userPlaylistsDB';
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
@@ -223,6 +223,31 @@ export default function App() {
       }
     }
     initPublicScenes();
+    return () => { isMounted = false; };
+  }, []);
+
+  // Scene Image Overrides (Allows Admin to customize theme images for any scene)
+  const [sceneOverrides, setSceneOverrides] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('musicly_scene_overrides_cache') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function initSceneOverrides() {
+      try {
+        const loaded = await loadSceneOverrides();
+        if (isMounted && loaded && Object.keys(loaded).length > 0) {
+          setSceneOverrides(loaded);
+        }
+      } catch (e) {
+        console.warn("Scene overrides load warning:", e);
+      }
+    }
+    initSceneOverrides();
     return () => { isMounted = false; };
   }, []);
 
@@ -578,7 +603,23 @@ export default function App() {
   const [backdropImage, setBackdropImage] = useState(GENRE_BACKDROPS['All']);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [overlayOpacity, setOverlayOpacity] = useState(0.45);
-  const allScenes = useMemo(() => [...SCENES, ...customScenes], [customScenes]);
+  const allScenes = useMemo(() => {
+    const mergedDefault = SCENES.map(sc => {
+      const overrideImg = sceneOverrides[sc.id]?.image || sceneOverrides[sc.id];
+      if (overrideImg) {
+        return { ...sc, image: overrideImg, isOverridden: true };
+      }
+      return sc;
+    });
+    const mergedCustom = customScenes.map(sc => {
+      const overrideImg = sceneOverrides[sc.id]?.image || sceneOverrides[sc.id];
+      if (overrideImg) {
+        return { ...sc, image: overrideImg, isOverridden: true };
+      }
+      return sc;
+    });
+    return [...mergedDefault, ...mergedCustom];
+  }, [customScenes, sceneOverrides]);
 
   // Afterglow Experience State ('film' | 'classic')
   const [afterglowMode, setAfterglowMode] = useState('film');
@@ -2212,6 +2253,49 @@ export default function App() {
     }
   };
 
+  // 🔒 ADMIN ONLY: Change theme image for any scene (both built-in and custom)
+  const handleUpdateSceneImage = async (sceneId, newImage) => {
+    if (!isAdmin) {
+      alert("Unauthorized: Only verified admins can customize scene theme images.");
+      return;
+    }
+    try {
+      await saveSceneOverride(sceneId, newImage, user);
+      setSceneOverrides(prev => ({
+        ...prev,
+        [sceneId]: newImage
+      }));
+      if (currentScene?.id === sceneId) {
+        setCurrentScene(prev => ({ ...prev, image: newImage }));
+        setBackdropImage(newImage);
+      }
+    } catch (err) {
+      console.error("Failed to update scene theme image:", err);
+      throw err;
+    }
+  };
+
+  // 🔒 ADMIN ONLY: Reset theme image for a scene back to original default
+  const handleResetSceneImage = async (sceneId) => {
+    if (!isAdmin) return;
+    try {
+      await removeSceneOverride(sceneId, user);
+      setSceneOverrides(prev => {
+        const next = { ...prev };
+        delete next[sceneId];
+        return next;
+      });
+      const original = SCENES.find(s => s.id === sceneId);
+      if (original && currentScene?.id === sceneId) {
+        setCurrentScene(prev => ({ ...prev, image: original.image }));
+        setBackdropImage(original.image);
+      }
+    } catch (err) {
+      console.error("Failed to reset scene theme image:", err);
+      throw err;
+    }
+  };
+
   // Delete any track (custom or default) from library permanently
   const handleDeleteTrack = async (trackId) => {
     // 1. Immediately remove from active React state
@@ -3000,6 +3084,10 @@ export default function App() {
         overlayOpacity={overlayOpacity}
         onChangeOpacity={setOverlayOpacity}
         scenes={allScenes}
+        isAdmin={isAdmin}
+        onUpdateSceneImage={handleUpdateSceneImage}
+        onResetSceneImage={handleResetSceneImage}
+        sceneOverrides={sceneOverrides}
       />
 
       {/* Custom Music Upload Modal */}
@@ -3075,6 +3163,10 @@ export default function App() {
         currentTrackId={currentTrackId}
         isPlaying={isPlaying}
         customScenes={customScenes}
+        allScenes={allScenes}
+        onUpdateSceneImage={handleUpdateSceneImage}
+        onResetSceneImage={handleResetSceneImage}
+        sceneOverrides={sceneOverrides}
         onAddScene={handleAddScene}
         onDeleteScene={handleDeleteScene}
         publicPlaylists={publicPlaylists}

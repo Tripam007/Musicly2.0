@@ -9,6 +9,139 @@ import {
 import { checkIsAdmin } from './userModel';
 
 const SCENES_CACHE_KEY = 'musicly_custom_scenes_cache';
+const SCENE_OVERRIDES_CACHE_KEY = 'musicly_scene_overrides_cache';
+
+/**
+ * Load scene image overrides from local cache (0ms) + Firestore cloud sync
+ */
+export async function loadSceneOverrides() {
+  let overrides = {};
+  try {
+    const cached = localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY);
+    if (cached) {
+      overrides = JSON.parse(cached);
+    }
+  } catch (e) {
+    console.warn("Local scene overrides cache read notice:", e);
+  }
+
+  if (firestore) {
+    try {
+      const colRef = collection(firestore, 'public_scene_overrides');
+      const snap = await Promise.race([
+        getDocs(colRef),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500))
+      ]);
+      if (snap && !snap.empty) {
+        const cloudOverrides = {};
+        snap.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data && data.image) {
+            cloudOverrides[docSnap.id] = data.image;
+          }
+        });
+        overrides = { ...overrides, ...cloudOverrides };
+        localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+      }
+    } catch (e) {
+      console.warn("Firestore scene overrides load notice:", e);
+    }
+  }
+
+  return overrides;
+}
+
+/**
+ * Save theme image override for any scene (Admin Only)
+ */
+export async function saveSceneOverride(sceneId, imageUrl, user) {
+  if (!checkIsAdmin(user)) {
+    throw new Error("Unauthorized: Only verified admin can change room theme images.");
+  }
+  if (!sceneId) {
+    throw new Error("Scene ID is required.");
+  }
+  if (!imageUrl || !imageUrl.trim()) {
+    throw new Error("Valid image URL or file is required.");
+  }
+
+  const cleanImage = imageUrl.trim();
+
+  // 1. Instant local persistence
+  let overrides = {};
+  try {
+    overrides = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
+  } catch (e) {}
+  overrides[sceneId] = cleanImage;
+  localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+
+  // Also update custom scenes local cache if applicable
+  try {
+    const customScenes = JSON.parse(localStorage.getItem(SCENES_CACHE_KEY) || '[]');
+    const hasCustom = customScenes.some(s => s.id === sceneId);
+    if (hasCustom) {
+      const updated = customScenes.map(s => s.id === sceneId ? { ...s, image: cleanImage } : s);
+      localStorage.setItem(SCENES_CACHE_KEY, JSON.stringify(updated));
+    }
+  } catch (e) {}
+
+  // 2. Persist to Firestore with safety race
+  if (firestore) {
+    try {
+      const docRef = doc(firestore, 'public_scene_overrides', sceneId);
+      await Promise.race([
+        setDoc(docRef, { 
+          sceneId, 
+          image: cleanImage, 
+          updatedAt: Date.now(), 
+          updatedBy: user.email || 'admin' 
+        }, { merge: true }),
+        new Promise((resolve) => setTimeout(resolve, 1500))
+      ]);
+
+      // If it is in public_scenes (custom scene), update there as well
+      const customDocRef = doc(firestore, 'public_scenes', sceneId);
+      await Promise.race([
+        setDoc(customDocRef, { image: cleanImage }, { merge: true }),
+        new Promise((resolve) => setTimeout(resolve, 1200))
+      ]).catch(() => {});
+    } catch (err) {
+      console.warn("Firestore scene override save notice:", err);
+    }
+  }
+
+  return cleanImage;
+}
+
+/**
+ * Reset theme image for a scene back to default (Admin Only)
+ */
+export async function removeSceneOverride(sceneId, user) {
+  if (!checkIsAdmin(user)) {
+    throw new Error("Unauthorized: Only verified admin can reset room theme images.");
+  }
+
+  let overrides = {};
+  try {
+    overrides = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
+  } catch (e) {}
+  delete overrides[sceneId];
+  localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+
+  if (firestore) {
+    try {
+      const docRef = doc(firestore, 'public_scene_overrides', sceneId);
+      await Promise.race([
+        deleteDoc(docRef),
+        new Promise((resolve) => setTimeout(resolve, 1500))
+      ]);
+    } catch (err) {
+      console.warn("Firestore scene override delete notice:", err);
+    }
+  }
+
+  return true;
+}
 
 /**
  * Load custom scenes from local cache (0ms) + Firestore cloud sync
