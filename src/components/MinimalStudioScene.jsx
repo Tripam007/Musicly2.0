@@ -35,7 +35,6 @@ import StudioNotificationsDropdown from './StudioNotificationsDropdown';
 import { STUDIO_THEMES, getSavedStudioTheme, saveStudioTheme, getIsAutoThemeEnabled, setIsAutoThemeEnabled } from '../data/studioThemes';
 import { LANGUAGES, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, isTrackInLanguages } from '../data/tracks';
 import { extractThemeFromImage, generateThemeFromHex } from '../utils/themeExtractor';
-import { isLiveVisual } from '../utils/publicScenesDB';
 import { fetchLyrics } from '../utils/lyricsService';
 import { playClickSound } from '../utils/audioSynth';
 import { 
@@ -1345,24 +1344,11 @@ export default function MinimalStudioScene({
            ------------------------------------------------------------------- */}
         <section className="ref-center-stage">
           <div className="ref-main-photo-frame">
-            {isLiveVisual(currentStudioBgUrl) ? (
-              <video 
-                src={currentStudioBgUrl}
-                poster="/assets/wallpapers/minimal_live_poster.jpg"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="ref-main-photo-img"
-                style={{ objectFit: 'cover' }}
-              />
-            ) : (
-              <img 
-                src={currentStudioBgUrl} 
-                alt={activeTrack.title || "Studio Visual"}
-                className="ref-main-photo-img"
-              />
-            )}
+            <img 
+              src={currentStudioBgUrl} 
+              alt={activeTrack.title || "Studio Visual"}
+              className="ref-main-photo-img"
+            />
 
             {/* Vertical Volume Slider on Edge ("from below") */}
             <EdgeVolumeSlider 

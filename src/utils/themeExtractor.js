@@ -389,19 +389,9 @@ export async function extractThemeFromImage(imageUrl) {
     return getObsidianTheme(true);
   }
 
-  // If video wallpaper, use poster image for color analysis
-  let targetUrl = imageUrl;
-  if (typeof imageUrl === 'string' && (imageUrl.endsWith('.mp4') || imageUrl.endsWith('.webm') || imageUrl.startsWith('data:video/'))) {
-    if (imageUrl.includes('minimal_live')) {
-      targetUrl = '/assets/wallpapers/minimal_live_poster.jpg';
-    } else {
-      return getObsidianTheme(true);
-    }
-  }
-
   // Check cache
-  if (themeExtractionCache.has(targetUrl)) {
-    return themeExtractionCache.get(targetUrl);
+  if (themeExtractionCache.has(imageUrl)) {
+    return themeExtractionCache.get(imageUrl);
   }
 
   return new Promise((resolve) => {

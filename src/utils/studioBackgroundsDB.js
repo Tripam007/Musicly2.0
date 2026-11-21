@@ -7,15 +7,6 @@ const KEY = 'current_gallery';
 
 export const DEFAULT_STUDIO_PHOTOS = [
   {
-    id: 'default-minimal-live',
-    url: '/assets/wallpapers/minimal_live_loop.mp4',
-    poster: '/assets/wallpapers/minimal_live_poster.jpg',
-    title: 'Minimal Live Aesthetic (Looped Motion)',
-    type: 'video',
-    isLive: true,
-    isDefault: true
-  },
-  {
     id: 'default-zenitsu',
     url: '/assets/images/zenitsu_clean_wallpaper.jpg',
     title: 'Agatsuma Zenitsu (Clean Anime Visual)',
@@ -83,8 +74,8 @@ function openDB() {
  */
 export async function getStudioBackgrounds() {
   try {
-    // Auto-migration: Purge any old cache so clean Minimal Live motion wallpaper takes effect immediately
-    const MIGRATION_KEY = 'musicly_studio_bg_v8_minimal_live_loop';
+    // Auto-migration: Purge any old mockup screenshots so clean 4K symmetrical Zenitsu visual takes effect immediately
+    const MIGRATION_KEY = 'musicly_studio_bg_v7_perfect_symmetric';
     if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
       try {
         localStorage.setItem(MIGRATION_KEY, 'true');
@@ -94,7 +85,7 @@ export async function getStudioBackgrounds() {
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         store.put(DEFAULT_STUDIO_PHOTOS, KEY);
-      } catch {}
+      } catch (e) {}
       return DEFAULT_STUDIO_PHOTOS;
     }
 
@@ -106,16 +97,6 @@ export async function getStudioBackgrounds() {
 
       req.onsuccess = () => {
         if (Array.isArray(req.result) && req.result.length > 0) {
-          // Ensure default minimal live wallpaper is present in list
-          const hasLive = req.result.some(b => 
-            (typeof b === 'string' && b.includes('minimal_live')) || 
-            (b?.url && b.url.includes('minimal_live'))
-          );
-          if (!hasLive) {
-            const merged = [DEFAULT_STUDIO_PHOTOS[0], ...req.result];
-            resolve(merged);
-            return;
-          }
           resolve(req.result);
         } else {
           // Check localStorage fallback
@@ -128,7 +109,7 @@ export async function getStudioBackgrounds() {
                 return;
               }
             }
-          } catch {}
+          } catch (e) {}
           resolve(DEFAULT_STUDIO_PHOTOS);
         }
       };

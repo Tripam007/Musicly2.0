@@ -53,5 +53,3 @@ Thumbs.db
 *.sw?
 *.mp4
 *.webm
-!public/assets/**/*.mp4
-!public/assets/**/*.webm
