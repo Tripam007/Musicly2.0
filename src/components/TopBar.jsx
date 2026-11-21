@@ -12,9 +12,7 @@ import {
   Crown,
   Keyboard,
   Hand,
-  Mic,
-  ChevronDown,
-  ChevronUp
+  Mic
 } from 'lucide-react';
 import { GENRES, getAvailableGenres, LANGUAGES } from '../data/tracks';
 import { VoiceControlUI } from '../voice/VoiceControlUI';
@@ -361,7 +359,7 @@ export default function TopBar({
     // After choosing language, make it turn with a smooth 3D transition to the genre section!
     setTimeout(() => {
       setTopBarMode('genre');
-    }, 280);
+    }, 450);
   };
 
   return (
@@ -470,21 +468,6 @@ export default function TopBar({
                 </button>
               );
             })}
-
-            {/* Quick turn button to Genre */}
-            <button
-              type="button"
-              className="topbar-nav-flip-hint-btn"
-              onClick={() => {
-                playClickSound('light');
-                setTopBarMode('genre');
-              }}
-              title="Turn to Genre section (or scroll down)"
-              aria-label="Switch to Genres"
-            >
-              <span>GENRES</span>
-              <ChevronDown size={12} />
-            </button>
           </nav>
 
           {/* Face 2: Genre Selection Bar */}
@@ -544,21 +527,6 @@ export default function TopBar({
                 </button>
               );
             })}
-
-            {/* Quick turn button to Language */}
-            <button
-              type="button"
-              className="topbar-nav-flip-hint-btn"
-              onClick={() => {
-                playClickSound('light');
-                setTopBarMode('language');
-              }}
-              title="Turn to Language section (or scroll up)"
-              aria-label="Switch to Languages"
-            >
-              <span>LANG</span>
-              <ChevronUp size={12} />
-            </button>
           </nav>
         </div>
       </div>

@@ -459,9 +459,9 @@ body, html, #root {
   backface-visibility: hidden;
   will-change: transform, opacity, filter;
   transition: 
-    transform 0.58s cubic-bezier(0.16, 1, 0.3, 1), 
-    opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), 
-    filter 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    transform 1.05s cubic-bezier(0.16, 1, 0.3, 1), 
+    opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), 
+    filter 0.75s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Face 1: Language */
@@ -512,31 +512,7 @@ body, html, #root {
   pointer-events: none;
 }
 
-/* Flip Hint Toggle button on the edge of each face */
-.topbar-nav-flip-hint-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.65);
-  padding: 4px 8px;
-  border-radius: 9999px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  margin-left: 4px;
-  transition: all 0.2s ease;
-  user-select: none;
-}
 
-.topbar-nav-flip-hint-btn:hover {
-  background: rgba(245, 158, 11, 0.2);
-  border-color: rgba(245, 158, 11, 0.6);
-  color: #ffb703;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
-}
 
 /* Genre Pills Navigation - Centered symmetrically at 50% for standard users & guests */
 .genre-pills-nav {
