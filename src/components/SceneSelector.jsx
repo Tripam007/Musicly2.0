@@ -186,10 +186,6 @@ export default function SceneSelector({
 
   const handleCameraClick = (e, scene) => {
     e.stopPropagation();
-    if (scene.id === 'minimal_studio') {
-      onSelectScene(scene);
-      return;
-    }
     openVisualsModal(scene);
   };
 
@@ -623,13 +619,9 @@ export default function SceneSelector({
                     onClick={(e) => handleCameraClick(e, scene)}
                     onDoubleClick={(e) => {
                       e.stopPropagation();
-                      if (scene.id === 'minimal_studio') {
-                        onSelectScene(scene);
-                        return;
-                      }
                       openVisualsModal(scene);
                     }}
-                    title={scene.id === 'minimal_studio' ? 'Launch Minimal Studio' : `Studio Background Visuals for "${scene.name}"`}
+                    title={`Studio Background Visuals for "${scene.name}" (Click to open)`}
                     aria-label={`Studio Background Visuals for ${scene.name}`}
                   >
                     <Camera size={13} />

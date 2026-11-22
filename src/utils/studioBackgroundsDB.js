@@ -76,21 +76,6 @@ function openDB() {
  */
 export async function getStudioBackgrounds() {
   try {
-    // Auto-migration: Purge any old mockup screenshots so clean 4K symmetrical Zenitsu visual takes effect immediately
-    const MIGRATION_KEY = 'musicly_studio_bg_v9_zenitsu_clean_default';
-    if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
-      try {
-        localStorage.setItem(MIGRATION_KEY, 'true');
-        localStorage.removeItem('musicly_studio_bg_gallery');
-        localStorage.setItem('musicly_studio_bg_index', '0');
-        const db = await openDB();
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        store.put(DEFAULT_STUDIO_PHOTOS, KEY);
-      } catch (e) {}
-      return DEFAULT_STUDIO_PHOTOS;
-    }
-
     const db = await openDB();
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
