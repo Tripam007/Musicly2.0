@@ -306,6 +306,12 @@ export default function MinimalStudioScene({
 
   const [mediaPhotoIndex, setMediaPhotoIndex] = useState(() => {
     try {
+      const MIGRATION = 'musicly_studio_bg_v9_zenitsu_clean_default';
+      if (!localStorage.getItem(MIGRATION)) {
+        localStorage.setItem(MIGRATION, 'true');
+        localStorage.setItem('musicly_studio_bg_index', '0');
+        return 0;
+      }
       const saved = localStorage.getItem('musicly_studio_bg_index');
       if (saved !== null) return parseInt(saved, 10) || 0;
     } catch (e) {}
@@ -330,6 +336,11 @@ export default function MinimalStudioScene({
   // Background gallery state initialized from localStorage/defaults
   const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
     try {
+      const MIGRATION = 'musicly_studio_bg_v9_zenitsu_clean_default';
+      if (!localStorage.getItem(MIGRATION)) {
+        localStorage.removeItem('musicly_studio_bg_gallery');
+        return DEFAULT_STUDIO_PHOTOS;
+      }
       const local = localStorage.getItem('musicly_studio_bg_gallery');
       if (local) {
         const parsed = JSON.parse(local);

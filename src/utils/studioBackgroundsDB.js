@@ -77,7 +77,7 @@ function openDB() {
 export async function getStudioBackgrounds() {
   try {
     // Auto-migration: Purge any old mockup screenshots so clean 4K symmetrical Zenitsu visual takes effect immediately
-    const MIGRATION_KEY = 'musicly_studio_bg_v7_perfect_symmetric';
+    const MIGRATION_KEY = 'musicly_studio_bg_v9_zenitsu_clean_default';
     if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
       try {
         localStorage.setItem(MIGRATION_KEY, 'true');
