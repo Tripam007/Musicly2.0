@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import TopBar from './components/TopBar';
 import Player from './components/Player';
 import PlaylistDrawer from './components/PlaylistDrawer';
-import AmbientMixer from './components/AmbientMixer';
+import AmbientMixer, { getScaledPresetVolumes } from './components/AmbientMixer';
 import AuthModal from './components/AuthModal';
 import SceneSelector from './components/SceneSelector';
 import UploadModal from './components/UploadModal';
@@ -1082,10 +1082,11 @@ export default function App() {
     }
   }, [currentTrack?.id, isPlaying]);
 
-  // Volume synchronization with AudioEngine
+  // Volume synchronization with AudioEngine and AmbientSoundEngine
   useEffect(() => {
     const safeVol = normalizeVolume(volume);
     audioEngine.setVolume(safeVol);
+    ambientEngine.setMasterVolume(safeVol);
   }, [volume]);
 
   // Authoritative Playback Toggle
@@ -1106,7 +1107,7 @@ export default function App() {
       if (currentTrack?.genre === 'Chill/Sleep' || selectedGenre === 'Chill/Sleep') {
         const isMuted = Object.values(ambientVolumes).every(v => v === 0);
         if (isMuted) {
-          const sleepVolumes = { rain: 0.20, bugs: 0.45, thunder: 0.15, fire: 0.15, vinyl: 0, cafe: 0, keyboard: 0 };
+          const sleepVolumes = getScaledPresetVolumes('sleep', volume);
           setAmbientVolumes(prev => ({ ...prev, ...sleepVolumes }));
           Object.entries(sleepVolumes).forEach(([ch, vol]) => ambientEngine.setVolume(ch, vol));
         }
@@ -3156,6 +3157,7 @@ export default function App() {
         ambientVolumes={ambientVolumes}
         onVolumeChange={handleAmbientVolumeChange}
         onResetAll={handleResetAmbient}
+        musicVolume={volume}
       />
 
       {/* Google Firebase Authentication Modal */}

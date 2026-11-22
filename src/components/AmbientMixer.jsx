@@ -51,12 +51,45 @@ export const PRESETS = {
   }
 };
 
+/**
+ * Scales preset atmosphere levels according to current song playback volume,
+ * ensuring the song is always the major/predominant audio element.
+ */
+export function getScaledPresetVolumes(presetKey, musicVolume = 0.8) {
+  const preset = PRESETS[presetKey];
+  if (!preset) return {};
+
+  const safeMusicVol = typeof musicVolume === 'number' && !isNaN(musicVolume) ? musicVolume : 0.8;
+  if (safeMusicVol <= 0) {
+    const silent = {};
+    Object.keys(preset.volumes).forEach(k => { silent[k] = 0; });
+    return silent;
+  }
+
+  // Atmospheric scaling factor: ambient audio stays gentle and subordinate
+  // so the song always sounds majorly (scaled proportionally to song volume)
+  const atmosphericFactor = Math.min(0.38, Math.max(0.16, safeMusicVol * 0.40));
+
+  const scaled = {};
+  Object.entries(preset.volumes).forEach(([channel, rawVol]) => {
+    if (rawVol <= 0) {
+      scaled[channel] = 0;
+    } else {
+      const targetVol = rawVol * atmosphericFactor;
+      scaled[channel] = Math.round(targetVol * 100) / 100;
+    }
+  });
+
+  return scaled;
+}
+
 export default function AmbientMixer({
   isOpen,
   onClose,
   ambientVolumes,
   onVolumeChange,
-  onResetAll
+  onResetAll,
+  musicVolume = 0.8
 }) {
   if (!isOpen) return null;
 
@@ -64,9 +97,10 @@ export default function AmbientMixer({
   const isPresetActive = (key) => {
     const p = PRESETS[key];
     if (!p) return false;
-    return Object.entries(p.volumes).every(([ch, expectedVol]) => {
+    const scaled = getScaledPresetVolumes(key, musicVolume);
+    return Object.entries(scaled).every(([ch, expectedVol]) => {
       const actual = ambientVolumes[ch] || 0;
-      return Math.abs(actual - expectedVol) < 0.05;
+      return Math.abs(actual - expectedVol) < 0.06;
     });
   };
 
@@ -75,8 +109,8 @@ export default function AmbientMixer({
       onResetAll();
     } else {
       onResetAll();
-      const target = PRESETS[key].volumes;
-      Object.entries(target).forEach(([ch, vol]) => {
+      const scaledTarget = getScaledPresetVolumes(key, musicVolume);
+      Object.entries(scaledTarget).forEach(([ch, vol]) => {
         onVolumeChange(ch, vol);
       });
     }

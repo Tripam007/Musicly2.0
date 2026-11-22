@@ -622,6 +622,27 @@ export class AmbientSoundEngine {
   constructor() {
     this.nodes = {};
     this.gains = {};
+    this.masterGainNode = null;
+    this.masterVolume = 1.0;
+  }
+
+  getMasterGain() {
+    const ctx = getAudioContext();
+    if (!this.masterGainNode) {
+      this.masterGainNode = ctx.createGain();
+      this.masterGainNode.gain.setValueAtTime(this.masterVolume, ctx.currentTime);
+      this.masterGainNode.connect(ctx.destination);
+    }
+    return this.masterGainNode;
+  }
+
+  setMasterVolume(vol) {
+    this.masterVolume = Math.max(0, Math.min(1, typeof vol === 'number' ? vol : 1.0));
+    try {
+      const ctx = getAudioContext();
+      const mg = this.getMasterGain();
+      mg.gain.setTargetAtTime(this.masterVolume, ctx.currentTime, 0.05);
+    } catch (e) {}
   }
 
   setVolume(type, volume) {
@@ -630,12 +651,12 @@ export class AmbientSoundEngine {
       this.startSound(type);
     }
     if (this.gains[type]) {
-      const mult = type === 'rain' ? 0.85 
-                 : type === 'thunder' ? 1.75 
-                 : type === 'fire' ? 0.9 
-                 : type === 'keyboard' ? 0.95 
-                 : type === 'cafe' ? 0.75 
-                 : type === 'bugs' ? 0.95
+      const mult = type === 'rain' ? 0.75 
+                 : type === 'thunder' ? 0.85 
+                 : type === 'fire' ? 0.80 
+                 : type === 'keyboard' ? 0.75 
+                 : type === 'cafe' ? 0.65 
+                 : type === 'bugs' ? 0.85
                  : 0.55;
       this.gains[type].gain.setTargetAtTime(volume * mult, ctx.currentTime, 0.08);
     }
@@ -645,7 +666,7 @@ export class AmbientSoundEngine {
     const ctx = getAudioContext();
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.001, ctx.currentTime);
-    gain.connect(ctx.destination);
+    gain.connect(this.getMasterGain());
     this.gains[type] = gain;
 
     if (type === 'rain') {
