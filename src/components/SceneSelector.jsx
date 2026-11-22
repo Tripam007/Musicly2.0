@@ -184,11 +184,6 @@ export default function SceneSelector({
     }
   };
 
-  const handleCameraClick = (e, scene) => {
-    e.stopPropagation();
-    openVisualsModal(scene);
-  };
-
   const handleSelectVisual = async (visual) => {
     if (!visualsModalScene || !onUpdateSceneImage) return;
     playClickSound('light');
@@ -611,21 +606,6 @@ export default function SceneSelector({
 
                   {/* Subtle dark gradient scrim for contrast */}
                   <div className="scene-card-gradient-overlay" />
-
-                  {/* Studio Visuals Gallery Camera Trigger Badge */}
-                  <button
-                    type="button"
-                    className={`scene-admin-edit-badge ${hasOverride ? 'has-custom-override' : ''}`}
-                    onClick={(e) => handleCameraClick(e, scene)}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      openVisualsModal(scene);
-                    }}
-                    title={`Studio Background Visuals for "${scene.name}" (Click to open)`}
-                    aria-label={`Studio Background Visuals for ${scene.name}`}
-                  >
-                    <Camera size={13} />
-                  </button>
 
                   {/* Premium Bookmark Ribbon Badge (Crown logo only) */}
                   {(scene.isPremium || scene.id === 'vibe_carousel') && (

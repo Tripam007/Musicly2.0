@@ -306,6 +306,12 @@ export default function MinimalStudioScene({
 
   const [mediaPhotoIndex, setMediaPhotoIndex] = useState(() => {
     try {
+      const MIGRATION = 'musicly_studio_bg_v9_zenitsu_clean_default';
+      if (!localStorage.getItem(MIGRATION)) {
+        localStorage.setItem(MIGRATION, 'true');
+        localStorage.setItem('musicly_studio_bg_index', '0');
+        return 0;
+      }
       const saved = localStorage.getItem('musicly_studio_bg_index');
       if (saved !== null) return parseInt(saved, 10) || 0;
     } catch (e) {}
@@ -330,6 +336,11 @@ export default function MinimalStudioScene({
   // Background gallery state initialized from localStorage/defaults
   const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
     try {
+      const MIGRATION = 'musicly_studio_bg_v9_zenitsu_clean_default';
+      if (!localStorage.getItem(MIGRATION)) {
+        localStorage.removeItem('musicly_studio_bg_gallery');
+        return DEFAULT_STUDIO_PHOTOS;
+      }
       const local = localStorage.getItem('musicly_studio_bg_gallery');
       if (local) {
         const parsed = JSON.parse(local);
@@ -1257,7 +1268,7 @@ export default function MinimalStudioScene({
 
   // Dynamic counter computations with real responsiveness
   const favCount = useMemo(() => 9977 + (isCurrentFav ? 1 : 0), [isCurrentFav]);
-  const starCount = useMemo(() => 7524 + (isRated ? 1 : 0), [isRated]);
+  const starCount = useMemo(() => 7523 + (isRated ? 1 : 0), [isRated]);
   const saveCount = useMemo(() => 4644 + (isSaved ? 1 : 0), [isSaved]);
   const likeCount = useMemo(() => 7 + (isLiked ? 1 : 0), [isLiked]);
   const thumbsCount = useMemo(() => 80 + (isThumbsUp ? 1 : 0), [isThumbsUp]);
@@ -1589,16 +1600,15 @@ export default function MinimalStudioScene({
                   className="ref-top-stat-col-btn"
                   onClick={(e) => {
                     e.stopPropagation();
-                    const nextLiked = !isLiked;
-                    setIsLiked(nextLiked);
+                    const nextFav = !isCurrentFav;
                     if (onToggleFavorite) onToggleFavorite(activeTrack);
-                    showToast(nextLiked ? "Added to Favorites (9978)" : "Removed from Favorites (9977)");
+                    showToast(nextFav ? "Added to Favorites (9978)" : "Removed from Favorites (9977)");
                   }}
                   title="Favorite Heart"
                 >
                   <Heart 
                     size={14} 
-                    fill={isLiked || isCurrentFav ? "#ff4d6d" : "none"} 
+                    fill={isCurrentFav ? "#ff4d6d" : "none"} 
                     color="#ff4d6d" 
                     strokeWidth={1.8}
                     className="ref-stat-icon-heart"
@@ -1608,7 +1618,7 @@ export default function MinimalStudioScene({
 
                 <span className="ref-stat-divider" aria-hidden="true">|</span>
 
-                {/* Star / Rating & Quick Wallpaper Gallery (7524) */}
+                {/* Star / Rating & Quick Wallpaper Gallery (7523) */}
                 <button 
                   type="button"
                   className={`ref-top-stat-col-btn ${isRated ? 'is-active-star' : ''}`}
@@ -1646,58 +1656,19 @@ export default function MinimalStudioScene({
                     e.stopPropagation();
                     const nextSaved = !isSaved;
                     setIsSaved(nextSaved);
-                    showToast(nextSaved ? "Saved to Collection (4645)" : "Removed from Collection (4644)");
+                    showToast(nextSaved ? "Track Saved to Collection (4645)" : "Removed from Collection (4644)");
                   }}
-                  title="Bookmark to Collection"
+                  title="Save Track to Collection"
                 >
                   <Bookmark 
                     size={14} 
-                    fill={isSaved ? "#fb923c" : "none"} 
-                    color="#fb923c" 
+                    fill={isSaved ? "var(--ref-accent, #f4a000)" : "none"} 
+                    color="var(--ref-accent, #f4a000)" 
                     strokeWidth={1.8}
                     className="ref-stat-icon-bookmark"
                   />
                   <span className="ref-stat-num">{saveCount}</span>
                 </button>
-
-                {/* Studio Notifications Bell */}
-                <div className="ref-bell-wrapper" style={{ position: 'relative' }}>
-                  <button 
-                    type="button"
-                    className={`ref-stat-bell ${isBellRinging ? 'ringing' : ''} ${unreadNotifCount > 0 ? 'has-unread' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsNotifOpen(prev => !prev);
-                      setIsBellRinging(true);
-                      setTimeout(() => setIsBellRinging(false), 600);
-                    }}
-                    title={unreadNotifCount > 0 ? `${unreadNotifCount} new studio changes! Click to view` : "Studio Updates & Notifications"}
-                  >
-                    <Bell size={14} fill="#fbbf24" color="#fbbf24" />
-                    <span className="ref-bell-badge">
-                      {unreadNotifCount > 0 ? (unreadNotifCount > 9 ? '9+' : unreadNotifCount) : '5'}
-                    </span>
-                  </button>
-
-                  <StudioNotificationsDropdown
-                    isOpen={isNotifOpen}
-                    onClose={() => setIsNotifOpen(false)}
-                    currentTheme={currentTheme}
-                    onSelectSong={(songTitle) => {
-                      showToast?.(`Selected: ${songTitle}`);
-                    }}
-                    onSelectBackground={(bgUrl) => {
-                      const foundIdx = studioBackgrounds.findIndex(b => (typeof b === 'string' ? b === bgUrl : b.url === bgUrl));
-                      if (foundIdx >= 0) {
-                        updateMediaPhotoIndex(foundIdx);
-                      } else {
-                        handleAddStudioBg({ url: bgUrl, title: 'Background Visual' });
-                      }
-                    }}
-                    onSelectTheme={handleSelectTheme}
-                    showToast={showToast}
-                  />
-                </div>
               </div>
 
               <button 

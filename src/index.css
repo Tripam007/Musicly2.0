@@ -19546,21 +19546,47 @@ body, html, #root {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: 10px;
-  background: rgba(18, 20, 30, 0.78);
-  backdrop-filter: blur(24px) saturate(190%);
-  -webkit-backdrop-filter: blur(24px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  padding: 5px 14px 6px 14px;
+  top: 0;
+  margin-top: -14px;
+  background: rgba(14, 18, 28, 0.45);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-top: none;
+  border-radius: 0 0 18px 18px;
+  padding: 13px 16px 11px 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  gap: 12px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   z-index: 22;
   transition: background 0.3s ease, border-color 0.3s ease;
   box-sizing: border-box;
+}
+
+.ref-top-stat-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  padding: 3px 6px;
+  border-radius: 8px;
+  transition: transform 0.18s ease, background 0.18s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+.ref-top-stat-btn:hover {
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.ref-top-stat-btn:active {
+  transform: scale(0.94);
 }
 
 .ref-top-stat-col-btn {
@@ -19606,45 +19632,16 @@ body, html, #root {
   transition: transform 0.2s ease, filter 0.2s ease;
 }
 
-.is-active-star .ref-stat-icon-star {
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.85));
-}
-
 .ref-stat-icon-bookmark {
   transition: transform 0.2s ease;
-}
-
-.ref-top-stat-btn {
-  background: none;
-  border: none;
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-  padding: 3px 6px;
-  border-radius: 8px;
-  transition: transform 0.18s ease, background 0.18s ease;
-  user-select: none;
-  line-height: 1;
-}
-
-.ref-top-stat-btn:hover {
-  transform: scale(1.08);
-  background: rgba(255, 255, 255, 0.08);
-}
-
-.ref-top-stat-btn:active {
-  transform: scale(0.94);
 }
 
 .ref-stat-num {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   font-size: 0.74rem;
-  font-weight: 800;
+  font-weight: 700;
   color: #ffffff;
   line-height: 1;
-  letter-spacing: -0.01em;
 }
 
 .ref-bell-wrapper {
@@ -19652,28 +19649,6 @@ body, html, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 2px;
-}
-
-.ref-bell-badge {
-  position: absolute;
-  top: -6px;
-  right: -7px;
-  background: #3d2c18;
-  border: 1px solid rgba(251, 191, 36, 0.6);
-  color: #fef08a;
-  font-family: 'Outfit', sans-serif;
-  font-size: 0.58rem;
-  font-weight: 800;
-  min-width: 15px;
-  height: 15px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 3px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
 }
 
 .ref-stat-bell {
@@ -21412,10 +21387,10 @@ body, html, #root {
     height: 100% !important;
     max-width: 100% !important;
     max-height: 100% !important;
-    grid-template-columns: 60px 1fr 185px !important;
-    gap: 8px !important;
-    padding: 8px 10px !important;
-    border-radius: 24px !important;
+    grid-template-columns: 66px 1fr 190px !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    border-radius: 26px !important;
     overflow: hidden !important;
   }
 
@@ -21442,24 +21417,11 @@ body, html, #root {
     border-radius: 20px;
   }
 
-  .ref-speech-bubble-island-container {
-    width: 215px !important;
-    height: 135px !important;
-  }
-
   .ref-frosted-artist-card {
     width: 210px !important;
-    max-width: 220px !important;
-    bottom: 12px !important;
-    right: 12px !important;
-    min-height: 100px !important;
-    padding: 10px 12px !important;
-    border-radius: 20px !important;
-  }
-
-  .ref-floating-hand-btn {
-    bottom: 16px !important;
-    left: 228px !important;
+    min-height: 110px !important;
+    padding: 12px 14px !important;
+    border-radius: 24px !important;
   }
 
   .ref-dps-quote-text {
@@ -21560,18 +21522,15 @@ body, html, #root {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    gap: 3px !important;
+    gap: 4px !important;
     z-index: 30 !important;
-    flex-wrap: nowrap !important;
   }
 
   .ref-badge-back-home {
-    padding: 4px 7px !important;
-    font-size: 0.60rem !important;
-    gap: 2px !important;
+    padding: 4px 8px !important;
+    font-size: 0.62rem !important;
+    gap: 3px !important;
     border-radius: 999px !important;
-    white-space: nowrap !important;
-    flex-shrink: 0 !important;
   }
 
   /* Center stats become compact inline pill on mobile */
@@ -21582,11 +21541,11 @@ body, html, #root {
     border-radius: 999px !important;
     border: 1px solid rgba(255, 255, 255, 0.2) !important;
     padding: 3px 6px !important;
-    gap: 3px !important;
-    background: rgba(14, 18, 28, 0.78) !important;
-    flex-shrink: 0 !important;
+    gap: 4px !important;
+    background: rgba(14, 18, 28, 0.75) !important;
   }
 
+  .ref-top-stat-btn,
   .ref-top-stat-col-btn {
     padding: 1px 3px !important;
     gap: 1px !important;
@@ -21603,31 +21562,14 @@ body, html, #root {
   }
 
   .ref-stat-num {
-    font-size: 0.56rem !important;
-  }
-
-  .ref-stat-bell svg {
-    width: 12px !important;
-    height: 12px !important;
-  }
-
-  .ref-bell-badge {
-    top: -5px !important;
-    right: -5px !important;
-    font-size: 0.50rem !important;
-    min-width: 13px !important;
-    height: 13px !important;
+    font-size: 0.58rem !important;
   }
 
   .ref-badge-next-song {
-    padding: 4px 6px !important;
-    font-size: 0.58rem !important;
-    max-width: 72px !important;
+    padding: 4px 8px !important;
+    font-size: 0.62rem !important;
+    max-width: 80px !important;
     border-radius: 999px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    flex-shrink: 1 !important;
   }
 
   .ref-badge-mobile-info {
@@ -21637,76 +21579,41 @@ body, html, #root {
     background: var(--ref-accent, #f4a000) !important;
     border: 1px solid rgba(255, 255, 255, 0.35) !important;
     border-radius: 999px !important;
-    padding: 4px 8px !important;
+    padding: 4px 9px !important;
     color: #0b0d14 !important;
     font-family: 'Outfit', sans-serif !important;
     font-weight: 800 !important;
-    font-size: 0.60rem !important;
+    font-size: 0.62rem !important;
     cursor: pointer !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
     user-select: none !important;
     transition: transform 0.2s ease !important;
-    flex-shrink: 0 !important;
   }
 
   .ref-badge-mobile-info:active {
     transform: scale(0.95);
   }
 
-  /* Speech Bubble Island Container on Mobile */
-  .ref-speech-bubble-island-container {
-    position: absolute !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    max-width: 220px !important;
-    height: 120px !important;
-    z-index: 15 !important;
-  }
-
-  .ref-island-face {
-    border-top-right-radius: 28px !important;
-    padding: 14px 14px 10px 14px !important;
-  }
-
-  .ref-island-title-row {
-    font-size: 0.82rem !important;
-    margin-bottom: 2px !important;
-  }
-
-  .ref-island-artist-row {
-    font-size: 0.68rem !important;
-  }
-
-  .ref-lyrics-toggle-btn {
-    top: -12px !important;
-    left: 14px !important;
-    padding: 3px 8px !important;
-    font-size: 0.58rem !important;
-  }
-
-  /* Floating Touch Play Action Button on Mobile */
+  /* Floating Touch Play Action Button */
   .ref-floating-hand-btn {
-    position: absolute !important;
-    bottom: 128px !important;
-    left: 10px !important;
-    width: 40px !important;
-    height: 40px !important;
+    bottom: 10px !important;
+    left: 8px !important;
+    width: 44px !important;
+    height: 44px !important;
     z-index: 25 !important;
   }
 
-  /* Frosted Glass Artist Card (with Dead Poets Society Quote) on Mobile: positioned on top right to avoid overlap */
+  /* Frosted Glass Artist Card (with Dead Poets Society Quote) on Mobile */
   .ref-frosted-artist-card {
     position: absolute !important;
-    top: 46px !important;
-    bottom: auto !important;
+    bottom: 8px !important;
     right: 6px !important;
-    width: calc(100% - 70px) !important;
-    max-width: 200px !important;
+    width: calc(100% - 66px) !important;
+    max-width: 250px !important;
     min-height: auto !important;
-    padding: 7px 9px 7px 9px !important;
-    border-radius: 14px !important;
-    background: rgba(18, 20, 30, 0.88) !important;
+    padding: 8px 10px 8px 10px !important;
+    border-radius: 18px !important;
+    background: rgba(18, 20, 30, 0.85) !important;
     backdrop-filter: blur(24px) saturate(190%) !important;
     -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
     z-index: 20 !important;
