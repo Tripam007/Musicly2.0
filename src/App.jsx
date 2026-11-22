@@ -599,8 +599,25 @@ export default function App() {
     setRoomBrightness(nextVal);
   };
 
-  // Scene / Visual state with smooth animated genre backdrops
-  const [currentScene, setCurrentScene] = useState(SCENES[0]);
+  // Scene / Visual state with smooth animated genre backdrops & persistence
+  const [currentScene, setCurrentScene] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const sceneParam = params.get('scene');
+        if (sceneParam) {
+          const match = SCENES.find(s => s.id.toLowerCase() === sceneParam.toLowerCase() || s.name.toLowerCase() === sceneParam.toLowerCase());
+          if (match) return match;
+        }
+        const savedSceneId = localStorage.getItem('musicly_selected_scene_id');
+        if (savedSceneId) {
+          const found = SCENES.find(s => s.id === savedSceneId);
+          if (found) return found;
+        }
+      }
+    } catch {}
+    return SCENES[0];
+  });
   const [backdropImage, setBackdropImage] = useState(GENRE_BACKDROPS['All']);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [overlayOpacity, setOverlayOpacity] = useState(0.45);
@@ -1366,6 +1383,9 @@ export default function App() {
     }
     setCurrentScene(scene);
     setBackdropImage(scene.image);
+    try {
+      localStorage.setItem('musicly_selected_scene_id', scene.id);
+    } catch {}
     if (scene.primaryColor || scene.isTheme) {
       applyWebappTheme({
         primaryColor: scene.primaryColor || '#ffb703',

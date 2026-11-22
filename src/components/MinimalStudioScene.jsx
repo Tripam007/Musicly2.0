@@ -530,6 +530,7 @@ export default function MinimalStudioScene({
   const [isThumbsUp, setIsThumbsUp] = useState(false);
   const [isBellRinging, setIsBellRinging] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
+  const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
   const [dpsQuote, setDpsQuote] = useState(() => getRandomDeadPoetsQuote());
 
   const handleNextDpsQuote = useCallback(() => {
@@ -1343,7 +1344,7 @@ export default function MinimalStudioScene({
       {/* =====================================================================
           MAIN CHASSIS CONTAINER (Exact match to reference photo)
          ===================================================================== */}
-      <div className="ref-chassis-card">
+      <div className={`ref-chassis-card ${isMobileInfoOpen ? 'mobile-info-active' : ''}`}>
         {/* -------------------------------------------------------------------
             COLUMN 1: LEFT VERTICAL SIDEBAR DOCK
            ------------------------------------------------------------------- */}
@@ -1597,42 +1598,95 @@ export default function MinimalStudioScene({
                 <span className="ref-badge-arrow">◀◀</span> Back to Home
               </button>
 
-              <div className="ref-badge-center-stats">
+              <div className="ref-badge-center-stats" title="Studio Track Stats • Double-click Star for Quick Wallpaper Gallery">
+                {/* Heart / Favorite (9977) */}
                 <button 
-                  className="ref-top-stat-btn"
-                  onClick={() => {
+                  type="button"
+                  className="ref-top-stat-col-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setIsLiked(prev => !prev);
-                    showToast(!isLiked ? "Hearted! (8)" : "Heart removed (7)");
+                    if (onToggleFavorite) onToggleFavorite(activeTrack);
+                    showToast(!isLiked ? "Added to Favorites (9978)" : "Removed from Favorites (9977)");
                   }}
                   title="Favorite Heart"
                 >
-                  <span className="ref-stat-num">{likeCount}</span>
-                  <Heart size={14} fill={isLiked ? "#ff4d6d" : "rgba(255, 77, 109, 0.45)"} color="#ff4d6d" />
+                  <Heart 
+                    size={14} 
+                    fill={isLiked ? "#ff4d6d" : "none"} 
+                    color={isLiked ? "#ff4d6d" : "#ff4d6d"} 
+                    strokeWidth={1.8}
+                    className="ref-stat-icon-heart"
+                  />
+                  <span className="ref-stat-num">{favCount}</span>
                 </button>
 
+                <span className="ref-stat-divider" aria-hidden="true">|</span>
+
+                {/* Star / Rating & Quick Wallpaper Gallery (7523) */}
                 <button 
-                  className="ref-top-stat-btn"
-                  onClick={() => {
-                    setIsThumbsUp(prev => !prev);
-                    showToast(!isThumbsUp ? "Thumbs up! (81)" : "Thumbs up removed (80)");
+                  type="button"
+                  className={`ref-top-stat-col-btn ${isRated ? 'is-active-star' : ''}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsRated(prev => !prev);
+                    setIsQuickBgPickerOpen(prev => !prev);
+                    showToast(!isQuickBgPickerOpen ? "Quick Studio Wallpaper Gallery" : "Closed Wallpaper Gallery");
                   }}
-                  title="Thumbs Up"
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    setIsQuickBgPickerOpen(prev => !prev);
+                    showToast("Quick Studio Wallpaper Gallery");
+                  }}
+                  title="Click or Double-Click: Open Quick Wallpaper Gallery"
                 >
-                  <span className="ref-stat-num">{thumbsCount}</span>
-                  <ThumbsUp size={14} fill={isThumbsUp ? "#38bdf8" : "rgba(56, 189, 248, 0.45)"} color="#38bdf8" />
+                  <Star 
+                    size={14} 
+                    fill={isRated ? "#ffffff" : "rgba(255, 255, 255, 0.45)"} 
+                    color="#ffffff" 
+                    strokeWidth={1.5}
+                    className="ref-stat-icon-star"
+                  />
+                  <span className="ref-stat-num">{starCount}</span>
                 </button>
 
-                <div className="ref-bell-wrapper" style={{ position: 'relative' }}>
+                <span className="ref-stat-divider" aria-hidden="true">|</span>
+
+                {/* Bookmark / Saved (4644) */}
+                <button 
+                  type="button"
+                  className="ref-top-stat-col-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsSaved(prev => !prev);
+                    showToast(!isSaved ? "Saved to Collection (4645)" : "Removed from Collection (4644)");
+                  }}
+                  title="Bookmark to Collection"
+                >
+                  <Bookmark 
+                    size={14} 
+                    fill={isSaved ? "#fb923c" : "none"} 
+                    color={isSaved ? "#fb923c" : "#e06c4b"} 
+                    strokeWidth={1.8}
+                    className="ref-stat-icon-bookmark"
+                  />
+                  <span className="ref-stat-num">{saveCount}</span>
+                </button>
+
+                {/* Studio Notifications Bell */}
+                <div className="ref-bell-wrapper" style={{ position: 'relative', marginLeft: '6px' }}>
                   <button 
+                    type="button"
                     className={`ref-stat-bell ${isBellRinging ? 'ringing' : ''} ${unreadNotifCount > 0 ? 'has-unread' : ''}`}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setIsNotifOpen(prev => !prev);
                       setIsBellRinging(true);
                       setTimeout(() => setIsBellRinging(false), 600);
                     }}
                     title={unreadNotifCount > 0 ? `${unreadNotifCount} new studio changes! Click to view` : "Studio Updates & Notifications"}
                   >
-                    <Bell size={14} fill={unreadNotifCount > 0 ? "#fbbf24" : (isBellRinging ? "#fbbf24" : "none")} color="#fbbf24" />
+                    <Bell size={13} fill={unreadNotifCount > 0 ? "#fbbf24" : (isBellRinging ? "#fbbf24" : "none")} color="#fbbf24" />
                     {unreadNotifCount > 0 && (
                       <span className="ref-bell-badge">
                         {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
@@ -1667,6 +1721,16 @@ export default function MinimalStudioScene({
                 title={`Next: ${nextTrack ? nextTrack.title : 'Next Track'}`}
               >
                 <span>{nextTrack ? (nextTrack.title.length > 14 ? `${nextTrack.title.substring(0, 13)}…` : nextTrack.title) : 'Next Track'}</span> <span className="ref-badge-arrow">▶▶</span>
+              </button>
+
+              {/* Mobile Info Column Toggle Button */}
+              <button 
+                type="button"
+                className="ref-badge-mobile-info"
+                onClick={() => setIsMobileInfoOpen(prev => !prev)}
+                title="Toggle Song Languages & Studio Info"
+              >
+                <span>{isMobileInfoOpen ? '◀ Studio' : 'Songs & Info ▶'}</span>
               </button>
             </div>
 
@@ -1879,6 +1943,17 @@ export default function MinimalStudioScene({
             COLUMN 3: RIGHT WIDGET STACK (Mini Player, Stats & Media)
            ------------------------------------------------------------------- */}
         <aside className="ref-right-column">
+          {/* Mobile Back to Visual Button */}
+          <div className="ref-mobile-close-info-row">
+            <button
+              type="button"
+              className="ref-mobile-close-info-btn"
+              onClick={() => setIsMobileInfoOpen(false)}
+            >
+              ◀ Return to Studio Visual
+            </button>
+          </div>
+
           {/* 1. Musicly Header & Song Language Pills */}
           <div className="ref-hometown-row">
             <div className="ref-musicly-top-meta">
