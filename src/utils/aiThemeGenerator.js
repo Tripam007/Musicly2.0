@@ -540,11 +540,28 @@ export function applyWebappTheme(theme) {
   if (!theme || !theme.primaryColor) return;
   const root = document.documentElement;
 
-  root.style.setProperty('--primary-glow', theme.primaryColor);
-  root.style.setProperty('--accent-amber', theme.secondaryColor || theme.primaryColor);
-  root.style.setProperty('--accent-gold', theme.primaryColor);
-  root.style.setProperty('--glass-border-glow', theme.glowColor || `${theme.primaryColor}55`);
-  root.style.setProperty('--shadow-glow', `0 0 25px ${theme.glowColor || theme.primaryColor}44`);
+  // Protect against overly dark or pitch-black colors that break glow visibility
+  const isColorTooDark = (color) => {
+    if (!color || typeof color !== 'string') return true;
+    const clean = color.replace('#', '').trim();
+    if (clean.length === 6) {
+      const r = parseInt(clean.substring(0, 2), 16);
+      const g = parseInt(clean.substring(2, 4), 16);
+      const b = parseInt(clean.substring(4, 6), 16);
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      return lum < 0.22;
+    }
+    return false;
+  };
+
+  const safePrimary = isColorTooDark(theme.primaryColor) ? '#ffb703' : theme.primaryColor;
+  const safeSecondary = isColorTooDark(theme.secondaryColor) ? '#fb8500' : (theme.secondaryColor || safePrimary);
+
+  root.style.setProperty('--primary-glow', safePrimary);
+  root.style.setProperty('--accent-amber', safeSecondary);
+  root.style.setProperty('--accent-gold', safePrimary);
+  root.style.setProperty('--glass-border-glow', theme.glowColor || `${safePrimary}55`);
+  root.style.setProperty('--shadow-glow', `0 0 25px ${theme.glowColor || safePrimary}44`);
 
   try {
     localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));

@@ -11,6 +11,8 @@
   inset: 0;
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
+  min-height: -webkit-fill-available;
   z-index: 99999;
   overflow: hidden;
   background-color: #06090e;
@@ -382,10 +384,74 @@
   left: 0;
   right: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   z-index: 10;
   pointer-events: auto;
+}
+
+/* 8. Subtle Preload Readiness Indicator */
+.train-preload-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 13px;
+  border-radius: 9999px;
+  background: rgba(12, 14, 22, 0.48);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-bottom: 2px;
+}
+
+.train-preload-badge.is-complete {
+  border-color: rgba(34, 197, 94, 0.28);
+  background: rgba(12, 22, 16, 0.42);
+}
+
+.train-preload-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: trainPreloadPulse 1.8s infinite ease-in-out;
+}
+
+.train-preload-badge.is-complete .train-preload-dot {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  animation: none;
+}
+
+.train-preload-text {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.62);
+  white-space: nowrap;
+}
+
+.train-preload-badge.is-complete .train-preload-text {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+@keyframes trainPreloadPulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
 
 .train-plain-arrow-btn {

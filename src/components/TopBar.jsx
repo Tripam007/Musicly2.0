@@ -407,7 +407,7 @@ export default function TopBar({
           onClick={() => setIs24Hour(!is24Hour)} 
           title="Click to toggle 12h/24h format"
         >
-          <Clock size={15} className="clock-icon" />
+          <Clock size={15} color="#ffb703" className="clock-icon" />
           <span>{formatTime()}</span>
         </button>
       </div>

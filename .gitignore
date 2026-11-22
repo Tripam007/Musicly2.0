@@ -31,6 +31,7 @@ credentials.json
 
 # Scratch & temporary files
 scratch/
+BG images/
 
 # Python & ML artifacts
 __pycache__/

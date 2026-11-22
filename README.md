@@ -2,12 +2,14 @@
 
 <img src="assets/musicly-banner.svg" alt="Musicly — A Cinematic Music Space" width="100%" />
 
-<br />
+<br /><br />
 
-![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)
-![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=FFD62E)
-![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=flat-square&logo=firebase&logoColor=black)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+[![Live on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://musicly2-0.vercel.app/)
+[![React](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-Bundler-646CFF?style=for-the-badge&logo=vite&logoColor=FFD62E)](https://vitejs.dev/)
+[![Firebase](https://img.shields.io/badge/Firebase-Backend-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+
+<br />
 
 ### A little less noise. A little more music.
 
@@ -17,9 +19,9 @@ An immersive music experience where sound, atmosphere, and visual storytelling c
 
 <br />
 
-<a href="https://musicly2-0.vercel.app/">🌐 **EXPLORE MUSICLY**</a>
+<a href="https://musicly2-0.vercel.app/">🌐 **EXPLORE LIVE MUSICLY APP**</a>
 &nbsp; · &nbsp;
-<a href="https://github.com/Tripam007/Musicly2.0">💻 **SOURCE CODE**</a>
+<a href="https://github.com/Tripam007/Musicly2.0">💻 **SOURCE CODE ON GITHUB**</a>
 
 </div>
 
@@ -76,14 +78,15 @@ Atmospheric visuals, layered music cards, and a cinematic scene built around the
 
 ## ✧ FEATURES
 
-- 🎵 **Mood-Based Listening** — Explore music through genres and moods.
-- 🌌 **Cinematic Scenes** — Change the visual atmosphere to suit your moment.
-- 🌧️ **Ambient Soundscapes** — Pair music with atmospheric sounds.
-- 🎧 **Personal Music Library** — Manage and enjoy your music collection.
-- 🎙️ **Voice Interaction** — Explore hands-free music control through voice commands.
-- 🖐️ **Gesture Controls** — Interact with music using supported hand gestures.
-- ☕ **Support Musicly** — Help keep the project growing through the built-in coffee donation feature.
-- ✨ **Immersive Interface** — Dark visuals, glass-inspired surfaces, subtle lighting, and smooth transitions.
+- 🎵 **Mood-Based Listening** — Explore music seamlessly through curated genres (Retro, Indie, Lo-Fi, Synthwave, Peace, Chill/Sleep).
+- 🚅 **Cinematic Opening & Instant Asset Preloader** — 5-chapter train journey intro that pre-caches and GPU-decodes all genre soundscapes, 4K wallpapers, and audio graphs for 0ms transitions.
+- 🎚️ **Tactile Ambient Sound Engine** — Multi-channel procedural ambient soundscapes (Rainfall, Night Crickets, Thunder, Campfire, Cozy Cafe, Vinyl, Mechanical Typing) with full 0%-100% manual sliders, 70% loudness warnings, and instant silence.
+- 🟢 **Live Real-time Active Listeners** — Genuine Firestore-backed presence tracker showing real-time listeners currently tuned in.
+- 📱 **Universal Cross-Device Responsiveness** — Pixel-perfect on mobile, tablet, laptop, and ultra-wide displays with dynamic viewport height (`100dvh`) and safe-area notch support.
+- 🌌 **Cinematic Scenes & 4K Wallpapers** — Switch visual atmospheres (Minimal Studio, Vinyl, After Hours, Cozy Bedroom) with persistent color themes.
+- 🎧 **Personal Music Library** — Manage personal playlists, favorites, and custom track uploads locally and via cloud.
+- 🎙️ **Voice Interaction & Air Gestures** — Hands-free playback control through voice commands and MediaPipe hand gesture recognition.
+- ☕ **Support Musicly** — Built-in coffee donation feature to help support independent development.
 
 ---
 

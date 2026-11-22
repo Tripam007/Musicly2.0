@@ -48,6 +48,7 @@ import { saveTrackToDB, loadSavedTracksFromDB, deleteTrackFromDB, updateTrackGen
 import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds } from './utils/publicLibraryDB';
 import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
+import { preloadMusiclyAssets } from './utils/assetPreloader';
 import { loadPublicScenes, publishPublicScene, deletePublicScene, loadSceneOverrides, saveSceneOverride, removeSceneOverride, isLiveVisual } from './utils/publicScenesDB';
 import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists, getUnifiedMusiclyPlaylists } from './utils/publicPlaylistsDB';
 import { getLocalUserPlaylists } from './utils/userPlaylistsDB';
@@ -654,6 +655,11 @@ export default function App() {
 
   // 🎬 Cinematic Opening Screen (Appears whenever website is opened or refreshed)
   const [showCinematicIntro, setShowCinematicIntro] = useState(true);
+
+  // Preload all genre pages, backdrops, scenes, and visual assets immediately on startup
+  useEffect(() => {
+    preloadMusiclyAssets();
+  }, []);
 
   const handleEnterCinematicIntro = useCallback(() => {
     setShowCinematicIntro(false);
