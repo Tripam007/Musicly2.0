@@ -1593,95 +1593,42 @@ export default function MinimalStudioScene({
                 <span className="ref-badge-arrow">◀◀</span> Back to Home
               </button>
 
-              <div className="ref-badge-center-stats" title="Studio Track Stats • Double-click Star for Quick Wallpaper Gallery">
-                {/* Heart / Favorite (9977) */}
+              <div className="ref-badge-center-stats">
                 <button 
-                  type="button"
-                  className="ref-top-stat-col-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  className="ref-top-stat-btn"
+                  onClick={() => {
                     setIsLiked(prev => !prev);
-                    if (onToggleFavorite) onToggleFavorite(activeTrack);
-                    showToast(!isLiked ? "Added to Favorites (9978)" : "Removed from Favorites (9977)");
+                    showToast(!isLiked ? "Hearted! (8)" : "Heart removed (7)");
                   }}
                   title="Favorite Heart"
                 >
-                  <Heart 
-                    size={14} 
-                    fill={isLiked ? "#ff4d6d" : "none"} 
-                    color={isLiked ? "#ff4d6d" : "#ff4d6d"} 
-                    strokeWidth={1.8}
-                    className="ref-stat-icon-heart"
-                  />
-                  <span className="ref-stat-num">{favCount}</span>
+                  <span className="ref-stat-num">{likeCount}</span>
+                  <Heart size={14} fill={isLiked ? "#ff4d6d" : "rgba(255, 77, 109, 0.45)"} color="#ff4d6d" />
                 </button>
 
-                <span className="ref-stat-divider" aria-hidden="true">|</span>
-
-                {/* Star / Rating & Quick Wallpaper Gallery (7523) */}
                 <button 
-                  type="button"
-                  className={`ref-top-stat-col-btn ${isRated ? 'is-active-star' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsRated(prev => !prev);
-                    setIsQuickBgPickerOpen(prev => !prev);
-                    showToast(!isQuickBgPickerOpen ? "Quick Studio Wallpaper Gallery" : "Closed Wallpaper Gallery");
+                  className="ref-top-stat-btn"
+                  onClick={() => {
+                    setIsThumbsUp(prev => !prev);
+                    showToast(!isThumbsUp ? "Thumbs up! (81)" : "Thumbs up removed (80)");
                   }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    setIsQuickBgPickerOpen(prev => !prev);
-                    showToast("Quick Studio Wallpaper Gallery");
-                  }}
-                  title="Click or Double-Click: Open Quick Wallpaper Gallery"
+                  title="Thumbs Up"
                 >
-                  <Star 
-                    size={14} 
-                    fill={isRated ? "#ffffff" : "rgba(255, 255, 255, 0.45)"} 
-                    color="#ffffff" 
-                    strokeWidth={1.5}
-                    className="ref-stat-icon-star"
-                  />
-                  <span className="ref-stat-num">{starCount}</span>
+                  <span className="ref-stat-num">{thumbsCount}</span>
+                  <ThumbsUp size={14} fill={isThumbsUp ? "#38bdf8" : "rgba(56, 189, 248, 0.45)"} color="#38bdf8" />
                 </button>
 
-                <span className="ref-stat-divider" aria-hidden="true">|</span>
-
-                {/* Bookmark / Saved (4644) */}
-                <button 
-                  type="button"
-                  className="ref-top-stat-col-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsSaved(prev => !prev);
-                    showToast(!isSaved ? "Saved to Collection (4645)" : "Removed from Collection (4644)");
-                  }}
-                  title="Bookmark to Collection"
-                >
-                  <Bookmark 
-                    size={14} 
-                    fill={isSaved ? "#fb923c" : "none"} 
-                    color={isSaved ? "#fb923c" : "#e06c4b"} 
-                    strokeWidth={1.8}
-                    className="ref-stat-icon-bookmark"
-                  />
-                  <span className="ref-stat-num">{saveCount}</span>
-                </button>
-
-                {/* Studio Notifications Bell */}
-                <div className="ref-bell-wrapper" style={{ position: 'relative', marginLeft: '6px' }}>
+                <div className="ref-bell-wrapper" style={{ position: 'relative' }}>
                   <button 
-                    type="button"
                     className={`ref-stat-bell ${isBellRinging ? 'ringing' : ''} ${unreadNotifCount > 0 ? 'has-unread' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       setIsNotifOpen(prev => !prev);
                       setIsBellRinging(true);
                       setTimeout(() => setIsBellRinging(false), 600);
                     }}
                     title={unreadNotifCount > 0 ? `${unreadNotifCount} new studio changes! Click to view` : "Studio Updates & Notifications"}
                   >
-                    <Bell size={13} fill={unreadNotifCount > 0 ? "#fbbf24" : (isBellRinging ? "#fbbf24" : "none")} color="#fbbf24" />
+                    <Bell size={14} fill={unreadNotifCount > 0 ? "#fbbf24" : (isBellRinging ? "#fbbf24" : "none")} color="#fbbf24" />
                     {unreadNotifCount > 0 && (
                       <span className="ref-bell-badge">
                         {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
