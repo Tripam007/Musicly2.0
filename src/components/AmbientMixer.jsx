@@ -185,16 +185,18 @@ export default function AmbientMixer({
                   </div>
                 </div>
 
-                <div className="fader-slider-side">
+                <div className="fader-slider-side" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
                   <input
                     type="range"
                     min="0"
                     max="1"
                     step="0.01"
                     value={vol}
+                    onInput={(e) => onVolumeChange(ch.id, parseFloat(e.target.value))}
                     onChange={(e) => onVolumeChange(ch.id, parseFloat(e.target.value))}
                     className={`ambient-range-input ${isTooLoud ? 'is-warning-slider' : ''}`}
                     style={{ background: trackBg }}
+                    aria-label={`${ch.name} volume`}
                   />
                   {isTooLoud && (
                     <div className="too-loud-hint">

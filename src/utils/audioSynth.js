@@ -646,20 +646,30 @@ export class AmbientSoundEngine {
   }
 
   setVolume(type, volume) {
-    const ctx = getAudioContext();
-    if (!this.nodes[type] && volume > 0) {
-      this.startSound(type);
-    }
-    if (this.gains[type]) {
-      const mult = type === 'rain' ? 0.70 
-                 : type === 'thunder' ? 0.75 
-                 : type === 'fire' ? 0.70 
-                 : type === 'keyboard' ? 0.65 
-                 : type === 'cafe' ? 0.60 
-                 : type === 'bugs' ? 0.75
-                 : type === 'vinyl' ? 0.55
-                 : 0.50;
-      this.gains[type].gain.setTargetAtTime(volume * mult, ctx.currentTime, 0.08);
+    try {
+      const ctx = getAudioContext();
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      const rawNum = typeof volume === 'number' ? volume : parseFloat(volume);
+      const safeVol = Math.max(0, Math.min(1, !isNaN(rawNum) ? rawNum : 0));
+
+      if (!this.nodes[type] && safeVol > 0) {
+        this.startSound(type);
+      }
+      if (this.gains[type]) {
+        const mult = type === 'rain' ? 0.70 
+                   : type === 'thunder' ? 0.75 
+                   : type === 'fire' ? 0.70 
+                   : type === 'keyboard' ? 0.65 
+                   : type === 'cafe' ? 0.60 
+                   : type === 'bugs' ? 0.75
+                   : type === 'vinyl' ? 0.55
+                   : 0.50;
+        this.gains[type].gain.setTargetAtTime(safeVol * mult, ctx.currentTime, 0.05);
+      }
+    } catch (e) {
+      console.warn('[AmbientSoundEngine.setVolume error]:', e);
     }
   }
 

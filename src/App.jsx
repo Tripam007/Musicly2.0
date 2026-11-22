@@ -1640,9 +1640,14 @@ export default function App() {
 
   // Ambient sound fader - allows full manual control (0% to 100%)
   const handleAmbientVolumeChange = (type, vol) => {
-    const safeVol = Math.max(0, Math.min(1, typeof vol === 'number' ? vol : 0));
+    const rawNum = typeof vol === 'number' ? vol : parseFloat(vol);
+    const safeVol = Math.max(0, Math.min(1, !isNaN(rawNum) ? rawNum : 0));
     setAmbientVolumes(prev => ({ ...prev, [type]: safeVol }));
-    ambientEngine.setVolume(type, safeVol);
+    try {
+      ambientEngine.setVolume(type, safeVol);
+    } catch (e) {
+      console.warn('[ambientEngine] setVolume error:', e);
+    }
   };
 
   const handleResetAmbient = () => {
