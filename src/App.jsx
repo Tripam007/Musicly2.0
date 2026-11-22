@@ -635,6 +635,7 @@ export default function App() {
     keyboard: 0,
     bugs: 0
   });
+  const userClearedAmbienceRef = useRef(false);
 
   // Modal Visibility states
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -1104,7 +1105,8 @@ export default function App() {
       audioEngine.resume(currentTrack, currentTimeRef.current || 0);
 
       // Auto-activate Chill/Sleep ambient soundscape when playing in Chill/Sleep section
-      if (currentTrack?.genre === 'Chill/Sleep' || selectedGenre === 'Chill/Sleep') {
+      // Only when ambience has not been explicitly cleared by the user
+      if (!userClearedAmbienceRef.current && (currentTrack?.genre === 'Chill/Sleep' || selectedGenre === 'Chill/Sleep')) {
         const isMuted = Object.values(ambientVolumes).every(v => v === 0);
         if (isMuted) {
           const sleepVolumes = getScaledPresetVolumes('sleep', volume);
@@ -1640,19 +1642,35 @@ export default function App() {
 
   // Ambient sound fader - allows full manual control (0% to 100%)
   const handleAmbientVolumeChange = (type, vol) => {
+    userClearedAmbienceRef.current = false;
     const rawNum = typeof vol === 'number' ? vol : parseFloat(vol);
     const safeVol = Math.max(0, Math.min(1, !isNaN(rawNum) ? rawNum : 0));
-    setAmbientVolumes(prev => ({ ...prev, [type]: safeVol }));
+    setAmbientVolumes(prev => {
+      const next = { ...prev, [type]: safeVol };
+      try {
+        localStorage.setItem('musicly_ambient_volumes', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
     try {
-      ambientEngine.setVolume(type, safeVol);
+      if (safeVol <= 0) {
+        ambientEngine.stopSound(type);
+      } else {
+        ambientEngine.setVolume(type, safeVol);
+      }
     } catch (e) {
       console.warn('[ambientEngine] setVolume error:', e);
     }
   };
 
   const handleResetAmbient = () => {
-    setAmbientVolumes({ rain: 0, thunder: 0, cafe: 0, fire: 0, vinyl: 0, keyboard: 0, bugs: 0 });
+    userClearedAmbienceRef.current = true;
+    const silent = { rain: 0, thunder: 0, cafe: 0, fire: 0, vinyl: 0, keyboard: 0, bugs: 0 };
+    setAmbientVolumes(silent);
     ambientEngine.stopAll();
+    try {
+      localStorage.setItem('musicly_ambient_volumes', JSON.stringify(silent));
+    } catch {}
   };
 
   const activeAmbientCount = Object.values(ambientVolumes).filter(v => v > 0).length;

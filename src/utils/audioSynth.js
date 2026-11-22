@@ -654,6 +654,11 @@ export class AmbientSoundEngine {
       const rawNum = typeof volume === 'number' ? volume : parseFloat(volume);
       const safeVol = Math.max(0, Math.min(1, !isNaN(rawNum) ? rawNum : 0));
 
+      if (safeVol <= 0) {
+        this.stopSound(type);
+        return;
+      }
+
       if (!this.nodes[type] && safeVol > 0) {
         this.startSound(type);
       }
@@ -1085,26 +1090,90 @@ export class AmbientSoundEngine {
     }
   }
 
+  stopSound(type) {
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+      if (this.gains[type]) {
+        try {
+          this.gains[type].gain.cancelScheduledValues(now);
+          this.gains[type].gain.setValueAtTime(0, now);
+          this.gains[type].disconnect();
+        } catch (e) {}
+        delete this.gains[type];
+      }
+      if (this.nodes[type]) {
+        const nodeObj = this.nodes[type];
+        if (nodeObj.noise) {
+          try { nodeObj.noise.stop(); nodeObj.noise.disconnect(); } catch (e) {}
+        }
+        if (nodeObj.ambSrc) {
+          try { nodeObj.ambSrc.stop(); nodeObj.ambSrc.disconnect(); } catch (e) {}
+        }
+        if (nodeObj.lfo) {
+          try { nodeObj.lfo.stop(); nodeObj.lfo.disconnect(); } catch (e) {}
+        }
+        if (nodeObj.filter) {
+          try { nodeObj.filter.disconnect(); } catch (e) {}
+        }
+        if (nodeObj.interval) {
+          clearInterval(nodeObj.interval);
+        }
+        if (nodeObj.timeout) {
+          clearTimeout(nodeObj.timeout);
+        }
+        delete this.nodes[type];
+      }
+    } catch (e) {}
+  }
+
   stopAll() {
-    Object.keys(this.nodes).forEach(key => {
-      if (this.nodes[key]?.noise) {
-        try { this.nodes[key].noise.stop(); } catch (e) {}
-      }
-      if (this.nodes[key]?.ambSrc) {
-        try { this.nodes[key].ambSrc.stop(); } catch (e) {}
-      }
-      if (this.nodes[key]?.lfo) {
-        try { this.nodes[key].lfo.stop(); } catch (e) {}
-      }
-      if (this.nodes[key]?.interval) {
-        clearInterval(this.nodes[key].interval);
-      }
-      if (this.nodes[key]?.timeout) {
-        clearTimeout(this.nodes[key].timeout);
-      }
-    });
-    this.nodes = {};
-    this.gains = {};
+    try {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+
+      // 1. Immediately zero out and disconnect all channel gains
+      Object.keys(this.gains).forEach(type => {
+        const g = this.gains[type];
+        if (g) {
+          try {
+            g.gain.cancelScheduledValues(now);
+            g.gain.setValueAtTime(0, now);
+            g.disconnect();
+          } catch (e) {}
+        }
+      });
+
+      // 2. Stop and disconnect every active oscillator, buffer source, and clear timers
+      Object.keys(this.nodes).forEach(key => {
+        const nodeObj = this.nodes[key];
+        if (!nodeObj) return;
+
+        if (nodeObj.noise) {
+          try { nodeObj.noise.stop(); nodeObj.noise.disconnect(); } catch (e) {}
+        }
+        if (nodeObj.ambSrc) {
+          try { nodeObj.ambSrc.stop(); nodeObj.ambSrc.disconnect(); } catch (e) {}
+        }
+        if (nodeObj.lfo) {
+          try { nodeObj.lfo.stop(); nodeObj.lfo.disconnect(); } catch (e) {}
+        }
+        if (nodeObj.filter) {
+          try { nodeObj.filter.disconnect(); } catch (e) {}
+        }
+        if (nodeObj.interval) {
+          clearInterval(nodeObj.interval);
+        }
+        if (nodeObj.timeout) {
+          clearTimeout(nodeObj.timeout);
+        }
+      });
+
+      this.nodes = {};
+      this.gains = {};
+    } catch (e) {
+      console.warn('[AmbientSoundEngine.stopAll error]:', e);
+    }
   }
 }
 

@@ -149,7 +149,16 @@ export default function AmbientMixer({
               </button>
             );
           })}
-          <button className="preset-chip reset-chip" onClick={onResetAll}>
+          <button 
+            type="button"
+            id="btn-clear-ambient"
+            className="preset-chip reset-chip" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onResetAll();
+            }}
+            title="Silence all ambient sounds"
+          >
             <RotateCcw size={12} /> Clear
           </button>
         </div>
