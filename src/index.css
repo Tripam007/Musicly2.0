@@ -18850,7 +18850,7 @@ body, html, #root {
 
 .ref-glass-bg-picker-flyout {
   position: absolute;
-  left: calc(100% + 14px);
+  left: calc(100% + 48px);
   top: 50%;
   transform: translateY(-50%);
   width: 224px;
@@ -18875,7 +18875,7 @@ body, html, #root {
 @keyframes refGlassFlyoutPop {
   from {
     opacity: 0;
-    transform: translateY(-50%) translateX(-8px) scale(0.95);
+    transform: translateY(-50%) translateX(-10px) scale(0.96);
   }
   to {
     opacity: 1;
