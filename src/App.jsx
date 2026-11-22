@@ -797,21 +797,26 @@ export default function App() {
     const defaultSceneImg = (currentScene && (sceneOverrides[currentScene.id]?.image || sceneOverrides[currentScene.id])) || currentScene?.image || SCENES[0].image;
     const targetDefaultBackdrop = (selectedGenre && selectedGenre !== 'All' && GENRE_BACKDROPS[selectedGenre]) || defaultSceneImg;
 
-    // Check if Country playlist or Country track is actively playing
-    const isCurrentTrackCountry = Boolean(
-      currentTrack && (
-        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
-        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country')))
+    // Check if Country Roads & Roots playlist is actively playing (ONLY for this playlist!)
+    const isCountryPlaylistId = Boolean(
+      activePlayingPlaylistId && (
+        activePlayingPlaylistId === 'country_roots' ||
+        String(activePlayingPlaylistId).toLowerCase().includes('country')
       )
     );
 
-    const isCountryPlaylistPlaying = Boolean(
-      (activePlayingPlaylistId && (
-        activePlayingPlaylistId === 'country_roots' ||
-        String(activePlayingPlaylistId).toLowerCase().includes('country')
-      )) ||
-      (isCurrentTrackCountry && (!selectedGenre || selectedGenre === 'All' || selectedGenre === 'Country'))
-    );
+    let isCountryPlaylistPlaying = false;
+    if (isCountryPlaylistId) {
+      const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
+      const countryPl = unified.find(p => p.id === activePlayingPlaylistId || p.id === 'country_roots');
+      if (countryPl && Array.isArray(countryPl.tracks) && countryPl.tracks.length > 0) {
+        if (!currentTrack || countryPl.tracks.some(t => t.id === currentTrack.id || (t.title && currentTrack.title && t.title.toLowerCase() === currentTrack.title.toLowerCase()))) {
+          isCountryPlaylistPlaying = true;
+        }
+      } else {
+        isCountryPlaylistPlaying = true;
+      }
+    }
 
     if (isCountryPlaylistPlaying) {
       const countryBackdrop = '/assets/images/country_scene.jpg';
@@ -857,7 +862,7 @@ export default function App() {
 
     // When the user plays something else (outside the country playlist or active playlist),
     // restore the scene or genre background
-    if (isPlaylistBackdropAppliedRef.current) {
+    if (isPlaylistBackdropAppliedRef.current || backdropImage === '/assets/images/country_scene.jpg') {
       isPlaylistBackdropAppliedRef.current = null;
       if (backdropImage !== targetDefaultBackdrop) {
         setIsTransitioning(true);

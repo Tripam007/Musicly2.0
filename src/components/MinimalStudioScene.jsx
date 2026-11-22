@@ -359,17 +359,15 @@ export default function MinimalStudioScene({
   }, []);
 
   const currentStudioBgUrl = useMemo(() => {
-    // Check if Country playlist or Country track is actively playing
-    const isCountryTrackOrPlaylist = Boolean(
-      (activePlayingPlaylistId && (activePlayingPlaylistId === 'country_roots' || String(activePlayingPlaylistId).toLowerCase().includes('country'))) ||
-      (backdropImage && backdropImage.includes('country_scene')) ||
-      (currentTrack && (
-        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
-        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country')))
-      ))
+    // Check if Country Roads & Roots playlist is actively playing (strictly for this playlist!)
+    const isCountryPlaylistPlaying = Boolean(
+      activePlayingPlaylistId && (
+        activePlayingPlaylistId === 'country_roots' ||
+        String(activePlayingPlaylistId).toLowerCase().includes('country')
+      )
     );
 
-    if (isCountryTrackOrPlaylist) {
+    if (isCountryPlaylistPlaying) {
       return '/assets/images/country_scene.jpg';
     }
 

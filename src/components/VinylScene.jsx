@@ -1330,7 +1330,7 @@ export default function VinylScene({
     if (!activePlayingPlaylistId || !currentTrack) return;
     const currentActive = favoritePlaylists.find(p => p.id === activePlayingPlaylistId);
     if (currentActive && currentActive.tracks && currentActive.tracks.length > 0) {
-      const belongs = currentActive.tracks.some(t => t.id === currentTrack.id);
+      const belongs = currentActive.tracks.some(t => t.id === currentTrack.id || (t.title && currentTrack.title && t.title.toLowerCase() === currentTrack.title.toLowerCase()));
       if (!belongs) {
         setActivePlayingPlaylistId(null);
         setIsGymPlaylistPlayingAsWhole(false);
