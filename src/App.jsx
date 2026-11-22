@@ -2844,6 +2844,7 @@ export default function App() {
           backdropImage={backdropImage}
           activePlayingPlaylistId={activePlayingPlaylistId}
           onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
+          publicPlaylists={publicPlaylists}
           onSelectTrack={(track, shouldPlay, isFromPlaylist = false, playlistId = null) => {
             if (!track) return;
             if (isFromPlaylist && playlistId) {

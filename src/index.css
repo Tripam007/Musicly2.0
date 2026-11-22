@@ -20569,6 +20569,63 @@ body, html, #root {
   font-size: 1.25rem;
 }
 
+/* Currently Playing Playlist Banner below transport controls */
+.ref-gadget-playlist-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--ref-s3, rgba(244, 160, 0, 0.35));
+  border-radius: 999px;
+  padding: 4px 10px;
+  margin-top: 4px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(8px);
+  user-select: none;
+}
+
+.ref-gadget-playlist-banner:hover {
+  background: rgba(244, 160, 0, 0.15);
+  border-color: var(--ref-accent, #f4a000);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.ref-gadget-playlist-banner:active {
+  transform: scale(0.97);
+}
+
+.ref-gadget-playlist-disc {
+  font-size: 0.72rem;
+  line-height: 1;
+  color: var(--ref-accent, #f4a000);
+  animation: spinSlow 6s linear infinite;
+  display: inline-block;
+}
+
+.ref-gadget-playlist-name {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ref-s5, #ffe6aa);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+  text-transform: uppercase;
+}
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Live Current Time & Year Box */
 .ref-years-active-box {
   display: flex;

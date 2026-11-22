@@ -52,6 +52,7 @@ import {
   getLocalUserPersonalSongIds, 
   loadUserPersonalSongIds 
 } from '../utils/userPlaylistsDB';
+import { getUnifiedMusiclyPlaylists } from '../utils/publicPlaylistsDB';
 
 const STUDIO_GENRES = [
   {
@@ -264,6 +265,7 @@ export default function MinimalStudioScene({
   onToggleAudioOutputMode,
   customQueue = [],
   onSetCustomQueue,
+  publicPlaylists = [],
   backdropImage = null,
   activePlayingPlaylistId = null,
   onSetActivePlayingPlaylistId = null
@@ -681,6 +683,57 @@ export default function MinimalStudioScene({
 
   // Backward compatibility alias for any existing references
   const ownTracks = mineTracks;
+
+  // Resolve active playing playlist name (for official curated playlists, custom playlists, or 'Mine Playlist')
+  const activePlayingPlaylistName = useMemo(() => {
+    if (playSource === 'own') {
+      return 'Mine Playlist';
+    }
+
+    if (!activePlayingPlaylistId) return null;
+
+    if (activePlayingPlaylistId === 'liked_songs') {
+      return 'Liked Songs';
+    }
+
+    const BUILTIN_NAMES = {
+      'country_roots': 'Country Roads & Roots',
+      'timeless_ghazals': 'Timeless Ghazals & Mehfil',
+      'vintage_retro': 'Vintage Retro Classics',
+      'latenight_lofi': 'Late Night Lo-Fi',
+      'indie_warmth': 'Indie Acoustic Sessions',
+      'bengali_classics': 'Rabindra Sangeet & Folk',
+      'peace_playlist': 'Peace',
+      'global_other_melodies': 'Global & Other Melodies'
+    };
+
+    if (BUILTIN_NAMES[activePlayingPlaylistId]) {
+      return BUILTIN_NAMES[activePlayingPlaylistId];
+    }
+
+    try {
+      const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
+      const foundPl = unified.find(p => p.id === activePlayingPlaylistId);
+      if (foundPl?.title || foundPl?.name) {
+        return foundPl.title || foundPl.name;
+      }
+    } catch (e) {}
+
+    try {
+      const foundUserPl = (userPlaylists || []).find(p => p.id === activePlayingPlaylistId);
+      if (foundUserPl?.title || foundUserPl?.name) {
+        return foundUserPl.title || foundUserPl.name;
+      }
+    } catch (e) {}
+
+    if (typeof activePlayingPlaylistId === 'string' && activePlayingPlaylistId.trim()) {
+      return activePlayingPlaylistId
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    return null;
+  }, [playSource, activePlayingPlaylistId, allTracks, publicPlaylists, userPlaylists]);
 
   // Dedicated next/prev song handlers that strictly isolate 'own' (Mine Playlist only) vs 'musicly'
   const handleNextSong = useCallback(() => {
@@ -1836,6 +1889,18 @@ export default function MinimalStudioScene({
                 ▶▶
               </button>
             </div>
+
+            {/* Currently Playing Playlist Badge */}
+            {activePlayingPlaylistName && (
+              <div 
+                className="ref-gadget-playlist-banner"
+                title={`Currently playing from: ${activePlayingPlaylistName} • Click to open playlist`}
+                onClick={onOpenPlaylistDrawer}
+              >
+                <span className="ref-gadget-playlist-disc">💿</span>
+                <span className="ref-gadget-playlist-name">{activePlayingPlaylistName}</span>
+              </div>
+            )}
           </div>
 
           {/* 3. Live Current Time & Year Clock Card */}
