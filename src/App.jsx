@@ -3017,6 +3017,7 @@ export default function App() {
       <div className={`app-content-shell ${currentScene?.id === 'vibe_carousel' ? 'vibe-scene-active-shell' : ''} ${currentScene?.id === 'afterglow' ? 'afterglow-scene-active-shell' : ''} ${currentScene?.id === 'minimal_studio' ? 'minimal-scene-active-shell' : ''} ${currentScene?.id === 'vinyl' ? 'vinyl-scene-active-shell' : ''}`}>
         {/* Top Navigation Bar */}
         <TopBar
+          isPlaying={isPlaying}
           selectedGenre={selectedGenre}
           onSelectGenre={handleSelectGenre}
           selectedLanguage={selectedLanguage}

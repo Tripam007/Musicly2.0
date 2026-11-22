@@ -379,8 +379,17 @@ body, html, #root {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 10px #22c55e;
+  background: #22c55e !important;
+  box-shadow: 0 0 10px #22c55e, 0 0 16px rgba(34, 197, 94, 0.7) !important;
+  display: inline-block;
+}
+
+.tuned-in-badge .live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e !important;
+  box-shadow: 0 0 10px #22c55e, 0 0 16px rgba(34, 197, 94, 0.7) !important;
   display: inline-block;
 }
 
@@ -4355,7 +4364,7 @@ body, html, #root {
   letter-spacing: 0.4px;
 }
 
-.live-dot {
+.studio-visual-live-pill .live-dot {
   width: 6px;
   height: 6px;
   background: #ffffff;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { subscribeRealtimeListeners, updateRealtimePresencePlaying } from '../utils/realtimeListeners';
 import { 
   Clock, 
   Users, 
@@ -39,11 +40,12 @@ export default function TopBar({
   selectedLanguages = [],
   onSelectLanguage,
   voiceManager,
-  onOpenCinematicIntro
+  onOpenCinematicIntro,
+  isPlaying = false
 }) {
   const [time, setTime] = useState(new Date());
   const [is24Hour, setIs24Hour] = useState(false);
-  const [listeners, setListeners] = useState(1);
+  const [listeners, setListeners] = useState(isPlaying ? 1 : 0);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileDropdownRef = useRef(null);
 
@@ -69,13 +71,20 @@ export default function TopBar({
     return () => clearInterval(timer);
   }, []);
 
-  // Simulated live listeners variance
+  // Real-time listener count tracking (true real-time active users playing songs via Firestore)
   useEffect(() => {
-    const interval = setInterval(() => {
-      setListeners(prev => Math.max(1, Math.min(28, prev + (Math.random() > 0.6 ? 1 : Math.random() > 0.4 ? -1 : 0))));
-    }, 12000);
-    return () => clearInterval(interval);
+    const tracker = subscribeRealtimeListeners(isPlaying, (count) => {
+      setListeners(count);
+    });
+    return () => {
+      tracker.cleanup();
+    };
   }, []);
+
+  // Update presence status immediately when local playback state changes
+  useEffect(() => {
+    updateRealtimePresencePlaying(isPlaying);
+  }, [isPlaying]);
 
   const formatTime = () => {
     return time.toLocaleTimeString([], { 
