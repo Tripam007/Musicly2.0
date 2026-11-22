@@ -29,10 +29,8 @@ import {
   Mic2,
   Music,
   Check,
-  X,
-  Quote
+  X
 } from 'lucide-react';
-import { getRandomDeadPoetsQuote } from '../data/deadPoetsQuotes';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
 import StudioNotificationsDropdown from './StudioNotificationsDropdown';
@@ -306,12 +304,6 @@ export default function MinimalStudioScene({
 
   const [mediaPhotoIndex, setMediaPhotoIndex] = useState(() => {
     try {
-      const MIGRATION = 'musicly_studio_bg_v9_zenitsu_clean_default';
-      if (!localStorage.getItem(MIGRATION)) {
-        localStorage.setItem(MIGRATION, 'true');
-        localStorage.setItem('musicly_studio_bg_index', '0');
-        return 0;
-      }
       const saved = localStorage.getItem('musicly_studio_bg_index');
       if (saved !== null) return parseInt(saved, 10) || 0;
     } catch (e) {}
@@ -336,11 +328,6 @@ export default function MinimalStudioScene({
   // Background gallery state initialized from localStorage/defaults
   const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
     try {
-      const MIGRATION = 'musicly_studio_bg_v9_zenitsu_clean_default';
-      if (!localStorage.getItem(MIGRATION)) {
-        localStorage.removeItem('musicly_studio_bg_gallery');
-        return DEFAULT_STUDIO_PHOTOS;
-      }
       const local = localStorage.getItem('musicly_studio_bg_gallery');
       if (local) {
         const parsed = JSON.parse(local);
@@ -541,12 +528,6 @@ export default function MinimalStudioScene({
   const [isThumbsUp, setIsThumbsUp] = useState(false);
   const [isBellRinging, setIsBellRinging] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
-  const [isMobileInfoOpen, setIsMobileInfoOpen] = useState(false);
-  const [dpsQuote, setDpsQuote] = useState(() => getRandomDeadPoetsQuote());
-
-  const handleNextDpsQuote = useCallback(() => {
-    setDpsQuote(getRandomDeadPoetsQuote());
-  }, []);
   const [isAdminGalleryOpen, setIsAdminGalleryOpen] = useState(false);
   const [isQuickBgPickerOpen, setIsQuickBgPickerOpen] = useState(false);
   const quickBgPickerRef = useRef(null);
@@ -565,12 +546,28 @@ export default function MinimalStudioScene({
 
   const handleCameraClick = (e) => {
     e.stopPropagation();
-    setIsQuickBgPickerOpen((prev) => !prev);
-    showToast(!isQuickBgPickerOpen ? "Studio Wallpaper Gallery" : "Closed Wallpaper Gallery");
+    if (cameraClickTimerRef.current) {
+      clearTimeout(cameraClickTimerRef.current);
+      cameraClickTimerRef.current = null;
+      return;
+    }
+    cameraClickTimerRef.current = setTimeout(() => {
+      cameraClickTimerRef.current = null;
+      if (isUserAdmin) {
+        setIsAdminGalleryOpen(true);
+      } else {
+        updateMediaPhotoIndex((prev) => (prev + 1) % studioBackgrounds.length);
+        showToast("Switched Studio Background");
+      }
+    }, 280);
   };
 
   const handleCameraDoubleClick = (e) => {
     e.stopPropagation();
+    if (cameraClickTimerRef.current) {
+      clearTimeout(cameraClickTimerRef.current);
+      cameraClickTimerRef.current = null;
+    }
     setIsQuickBgPickerOpen((prev) => !prev);
   };
 
@@ -1339,7 +1336,7 @@ export default function MinimalStudioScene({
       {/* =====================================================================
           MAIN CHASSIS CONTAINER (Exact match to reference photo)
          ===================================================================== */}
-      <div className={`ref-chassis-card ${isMobileInfoOpen ? 'mobile-info-active' : ''}`}>
+      <div className="ref-chassis-card">
         {/* -------------------------------------------------------------------
             COLUMN 1: LEFT VERTICAL SIDEBAR DOCK
            ------------------------------------------------------------------- */}
@@ -1402,17 +1399,43 @@ export default function MinimalStudioScene({
                 <div className="ref-glass-bg-picker-flyout">
                   <div className="ref-glass-bg-picker-header">
                     <span className="ref-glass-bg-picker-title">Visuals</span>
-                    <button 
-                      type="button"
-                      className="ref-glass-bg-picker-close" 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsQuickBgPickerOpen(false);
-                      }}
-                      title="Close"
-                    >
-                      <X size={12} />
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {isUserAdmin && (
+                        <button
+                          type="button"
+                          className="ref-glass-bg-picker-admin-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsQuickBgPickerOpen(false);
+                            setIsAdminGalleryOpen(true);
+                          }}
+                          title="Open 4K Background Admin Manager"
+                          style={{
+                            background: 'rgba(245, 158, 11, 0.2)',
+                            border: '1px solid rgba(245, 158, 11, 0.5)',
+                            borderRadius: '12px',
+                            color: '#f59e0b',
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            padding: '3px 8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Manage 4K
+                        </button>
+                      )}
+                      <button 
+                        type="button"
+                        className="ref-glass-bg-picker-close" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsQuickBgPickerOpen(false);
+                        }}
+                        title="Close"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
                   </div>
                   <div className="ref-glass-bg-picker-grid">
                     {studioBackgrounds.map((bg, idx) => {
@@ -1593,82 +1616,68 @@ export default function MinimalStudioScene({
                 <span className="ref-badge-arrow">◀◀</span> Back to Home
               </button>
 
-              <div className="ref-badge-center-stats" title="Studio Track Stats">
-                {/* Heart / Favorite (9977) */}
+              <div className="ref-badge-center-stats">
                 <button 
-                  type="button"
-                  className="ref-top-stat-col-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const nextFav = !isCurrentFav;
-                    if (onToggleFavorite) onToggleFavorite(activeTrack);
-                    showToast(nextFav ? "Added to Favorites (9978)" : "Removed from Favorites (9977)");
+                  className="ref-top-stat-btn"
+                  onClick={() => {
+                    setIsLiked(prev => !prev);
+                    showToast(!isLiked ? "Hearted! (8)" : "Heart removed (7)");
                   }}
                   title="Favorite Heart"
                 >
-                  <Heart 
-                    size={14} 
-                    fill={isCurrentFav ? "#ff4d6d" : "none"} 
-                    color="#ff4d6d" 
-                    strokeWidth={1.8}
-                    className="ref-stat-icon-heart"
-                  />
-                  <span className="ref-stat-num">{favCount}</span>
+                  <span className="ref-stat-num">{likeCount}</span>
+                  <Heart size={14} fill={isLiked ? "#ff4d6d" : "rgba(255, 77, 109, 0.45)"} color="#ff4d6d" />
                 </button>
 
-                <span className="ref-stat-divider" aria-hidden="true">|</span>
-
-                {/* Star / Rating & Quick Wallpaper Gallery (7523) */}
                 <button 
-                  type="button"
-                  className={`ref-top-stat-col-btn ${isRated ? 'is-active-star' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const nextRated = !isRated;
-                    setIsRated(nextRated);
-                    setIsQuickBgPickerOpen(prev => !prev);
-                    showToast(!isQuickBgPickerOpen ? "Quick Studio Wallpaper Gallery" : "Closed Wallpaper Gallery");
+                  className="ref-top-stat-btn"
+                  onClick={() => {
+                    setIsThumbsUp(prev => !prev);
+                    showToast(!isThumbsUp ? "Thumbs up! (81)" : "Thumbs up removed (80)");
                   }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    setIsQuickBgPickerOpen(prev => !prev);
-                    showToast("Quick Studio Wallpaper Gallery");
-                  }}
-                  title="Click: Wallpaper Gallery • Rating"
+                  title="Thumbs Up"
                 >
-                  <Star 
-                    size={14} 
-                    fill="#ffffff" 
-                    color="#ffffff" 
-                    strokeWidth={1.5}
-                    className="ref-stat-icon-star"
-                  />
-                  <span className="ref-stat-num">{starCount}</span>
+                  <span className="ref-stat-num">{thumbsCount}</span>
+                  <ThumbsUp size={14} fill={isThumbsUp ? "#38bdf8" : "rgba(56, 189, 248, 0.45)"} color="#38bdf8" />
                 </button>
 
-                <span className="ref-stat-divider" aria-hidden="true">|</span>
+                <div className="ref-bell-wrapper" style={{ position: 'relative' }}>
+                  <button 
+                    className={`ref-stat-bell ${isBellRinging ? 'ringing' : ''} ${unreadNotifCount > 0 ? 'has-unread' : ''}`}
+                    onClick={() => {
+                      setIsNotifOpen(prev => !prev);
+                      setIsBellRinging(true);
+                      setTimeout(() => setIsBellRinging(false), 600);
+                    }}
+                    title={unreadNotifCount > 0 ? `${unreadNotifCount} new studio changes! Click to view` : "Studio Updates & Notifications"}
+                  >
+                    <Bell size={14} fill={unreadNotifCount > 0 ? "#fbbf24" : (isBellRinging ? "#fbbf24" : "none")} color="#fbbf24" />
+                    {unreadNotifCount > 0 && (
+                      <span className="ref-bell-badge">
+                        {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                      </span>
+                    )}
+                  </button>
 
-                {/* Bookmark / Saved (4644) */}
-                <button 
-                  type="button"
-                  className="ref-top-stat-col-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const nextSaved = !isSaved;
-                    setIsSaved(nextSaved);
-                    showToast(nextSaved ? "Track Saved to Collection (4645)" : "Removed from Collection (4644)");
-                  }}
-                  title="Save Track to Collection"
-                >
-                  <Bookmark 
-                    size={14} 
-                    fill={isSaved ? "var(--ref-accent, #f4a000)" : "none"} 
-                    color="var(--ref-accent, #f4a000)" 
-                    strokeWidth={1.8}
-                    className="ref-stat-icon-bookmark"
+                  <StudioNotificationsDropdown
+                    isOpen={isNotifOpen}
+                    onClose={() => setIsNotifOpen(false)}
+                    currentTheme={currentTheme}
+                    onSelectSong={(songTitle) => {
+                      showToast?.(`Selected: ${songTitle}`);
+                    }}
+                    onSelectBackground={(bgUrl) => {
+                      const foundIdx = studioBackgrounds.findIndex(b => (typeof b === 'string' ? b === bgUrl : b.url === bgUrl));
+                      if (foundIdx >= 0) {
+                        updateMediaPhotoIndex(foundIdx);
+                      } else {
+                        handleAddStudioBg({ url: bgUrl, title: 'Background Visual' });
+                      }
+                    }}
+                    onSelectTheme={handleSelectTheme}
+                    showToast={showToast}
                   />
-                  <span className="ref-stat-num">{saveCount}</span>
-                </button>
+                </div>
               </div>
 
               <button 
@@ -1677,16 +1686,6 @@ export default function MinimalStudioScene({
                 title={`Next: ${nextTrack ? nextTrack.title : 'Next Track'}`}
               >
                 <span>{nextTrack ? (nextTrack.title.length > 14 ? `${nextTrack.title.substring(0, 13)}…` : nextTrack.title) : 'Next Track'}</span> <span className="ref-badge-arrow">▶▶</span>
-              </button>
-
-              {/* Mobile Info Column Toggle Button */}
-              <button 
-                type="button"
-                className="ref-badge-mobile-info"
-                onClick={() => setIsMobileInfoOpen(prev => !prev)}
-                title="Toggle Song Languages & Studio Info"
-              >
-                <span>{isMobileInfoOpen ? '◀ Studio' : 'Songs & Info ▶'}</span>
               </button>
             </div>
 
@@ -1732,19 +1731,46 @@ export default function MinimalStudioScene({
                 </button>
               </div>
 
-              {/* Dead Poets Society Literary Quote Pill */}
-              <div 
-                className="ref-dps-quote-pill"
-                onClick={handleNextDpsQuote}
-                title="Dead Poets Society — Click to inspire another verse"
-                role="button"
-                tabIndex={0}
-              >
-                <Quote size={13} className="ref-dps-quote-icon" style={{ color: currentTheme?.accent || '#f59e0b' }} />
-                <div className="ref-dps-quote-body">
-                  <p className="ref-dps-quote-text">"{dpsQuote?.quote || 'Carpe diem. Seize the day, boys.'}"</p>
-                  <span className="ref-dps-quote-author">— {dpsQuote?.author || 'Dead Poets Society'}</span>
-                </div>
+              <div className="ref-script-stats-pill">
+                <button 
+                  className="ref-sub-stat-col"
+                  onClick={() => {
+                    if (onToggleFavorite) onToggleFavorite(activeTrack);
+                    showToast(isCurrentFav ? "Removed from Favorites" : "Saved to Favorites!");
+                  }}
+                  title={isCurrentFav ? "Favorited" : "Add to Favorites"}
+                >
+                  <Heart size={14} fill={isCurrentFav ? currentTheme.accent : "none"} color={currentTheme.accent} />
+                  <span className="ref-stat-count">{favCount}</span>
+                </button>
+
+                <div className="ref-stat-pipe">|</div>
+
+                <button 
+                  className="ref-sub-stat-col"
+                  onClick={() => {
+                    setIsRated(prev => !prev);
+                    showToast(!isRated ? "Rated 5 stars!" : "Rating removed");
+                  }}
+                  title="Rating"
+                >
+                  <Star size={14} fill={isRated ? currentTheme.accent : "#ffffff"} color={isRated ? currentTheme.accent : "#ffffff"} />
+                  <span className="ref-stat-count">{starCount}</span>
+                </button>
+
+                <div className="ref-stat-pipe">|</div>
+
+                <button 
+                  className="ref-sub-stat-col"
+                  onClick={() => {
+                    setIsSaved(prev => !prev);
+                    showToast(!isSaved ? "Saved for later!" : "Removed from Saved");
+                  }}
+                  title={isSaved ? "Saved" : "Save for later"}
+                >
+                  <Bookmark size={14} fill={isSaved ? currentTheme.accent : "none"} color={currentTheme.accent} />
+                  <span className="ref-stat-count">{saveCount}</span>
+                </button>
               </div>
             </div>
 
@@ -1899,17 +1925,6 @@ export default function MinimalStudioScene({
             COLUMN 3: RIGHT WIDGET STACK (Mini Player, Stats & Media)
            ------------------------------------------------------------------- */}
         <aside className="ref-right-column">
-          {/* Mobile Back to Visual Button */}
-          <div className="ref-mobile-close-info-row">
-            <button
-              type="button"
-              className="ref-mobile-close-info-btn"
-              onClick={() => setIsMobileInfoOpen(false)}
-            >
-              ◀ Return to Studio Visual
-            </button>
-          </div>
-
           {/* 1. Musicly Header & Song Language Pills */}
           <div className="ref-hometown-row">
             <div className="ref-musicly-top-meta">

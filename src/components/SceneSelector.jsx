@@ -1,14 +1,14 @@
 import { useState, useRef } from 'react';
-import { 
-  X, 
-  Image as ImageIcon, 
-  Sun, 
-  Sparkles, 
-  Check, 
-  Crown, 
-  Camera, 
-  Upload, 
-  Link, 
+import {
+  X,
+  Image as ImageIcon,
+  Sun,
+  Sparkles,
+  Check,
+  Crown,
+  Camera,
+  Upload,
+  Link,
   RotateCcw,
   Crop,
   Move,
@@ -22,13 +22,13 @@ import {
 import { SCENES } from '../data/tracks';
 import AppleGlassScrollbar from './AppleGlassScrollbar';
 import { playClickSound, playTingSound } from '../utils/audioSynth';
-import { 
-  loadSceneVisuals, 
-  saveSceneVisuals, 
+import {
+  loadSceneVisuals,
+  saveSceneVisuals,
   deleteSceneVisual,
-  resetSceneVisualsToDefault, 
-  isLiveVisual, 
-  DEFAULT_STUDIO_VISUALS 
+  resetSceneVisualsToDefault,
+  isLiveVisual,
+  DEFAULT_STUDIO_VISUALS
 } from '../utils/publicScenesDB';
 
 /**
@@ -182,6 +182,11 @@ export default function SceneSelector({
     } catch {
       setSceneVisuals([...DEFAULT_STUDIO_VISUALS]);
     }
+  };
+
+  const handleCameraClick = (e, scene) => {
+    e.stopPropagation();
+    openVisualsModal(scene);
   };
 
   const handleSelectVisual = async (visual) => {
@@ -386,7 +391,7 @@ export default function SceneSelector({
     });
     try {
       e.currentTarget.setPointerCapture?.(e.pointerId);
-    } catch {}
+    } catch { }
   };
 
   const handlePointerMove = (e) => {
@@ -470,7 +475,7 @@ export default function SceneSelector({
       setActiveDrag(null);
       try {
         e.currentTarget.releasePointerCapture?.(e.pointerId);
-      } catch {}
+      } catch { }
     }
   };
 
@@ -504,7 +509,7 @@ export default function SceneSelector({
         const updated = [newVis, ...currentList.filter(v => v.url !== finalImage)];
         await saveSceneVisuals(editingScene.id, updated, null);
         setSceneVisuals(updated);
-      } catch {}
+      } catch { }
       playTingSound();
       setEditingScene(null);
     } catch (err) {
@@ -529,8 +534,8 @@ export default function SceneSelector({
   };
 
   return (
-    <div 
-      className="modal-overlay vibe-modal-no-wheel" 
+    <div
+      className="modal-overlay vibe-modal-no-wheel"
       onClick={(e) => {
         if (e.target === e.currentTarget && !editingScene) {
           onClose();
@@ -538,8 +543,8 @@ export default function SceneSelector({
       }}
       onWheel={(e) => e.stopPropagation()}
     >
-      <div 
-        className="glass-modal-panel scene-panel vibe-modal-no-wheel" 
+      <div
+        className="glass-modal-panel scene-panel vibe-modal-no-wheel"
         onClick={(e) => e.stopPropagation()}
         onWheel={(e) => e.stopPropagation()}
       >
@@ -607,13 +612,28 @@ export default function SceneSelector({
                   {/* Subtle dark gradient scrim for contrast */}
                   <div className="scene-card-gradient-overlay" />
 
+                  {/* Studio Visuals Gallery Camera Trigger Badge */}
+                  <button
+                    type="button"
+                    className={`scene-admin-edit-badge ${hasOverride ? 'has-custom-override' : ''}`}
+                    onClick={(e) => handleCameraClick(e, scene)}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      openVisualsModal(scene);
+                    }}
+                    title={`Studio Background Visuals for "${scene.name}"`}
+                    aria-label={`Studio Background Visuals for ${scene.name}`}
+                  >
+                    <Camera size={13} />
+                  </button>
+
                   {/* Premium Bookmark Ribbon Badge (Crown logo only) */}
                   {(scene.isPremium || scene.id === 'vibe_carousel') && (
                     <div className="scene-premium-bookmark" title="Premium 3D Experience">
                       <Crown size={13} strokeWidth={2.4} className="scene-premium-crown" />
                     </div>
                   )}
-                  
+
                   {/* Selection checkmark */}
                   {isSelected && (
                     <div className={`scene-check-badge ${(scene.isPremium || scene.id === 'vibe_carousel') ? 'pos-left' : ''}`}>
@@ -643,13 +663,13 @@ export default function SceneSelector({
 
       {/* 🖼️ Admin Theme Image Editor Overlay Dialog */}
       {editingScene && (
-        <div 
+        <div
           className="scene-edit-overlay-backdrop"
           onClick={() => {
             if (!isSaving) setEditingScene(null);
           }}
         >
-          <div 
+          <div
             className="scene-edit-modal-box glass-modal-panel"
             onClick={(e) => e.stopPropagation()}
           >
@@ -663,9 +683,9 @@ export default function SceneSelector({
                   </p>
                 </div>
               </div>
-              <button 
-                type="button" 
-                className="drawer-close-btn" 
+              <button
+                type="button"
+                className="drawer-close-btn"
                 onClick={() => setEditingScene(null)}
                 disabled={isSaving}
               >
@@ -797,7 +817,7 @@ export default function SceneSelector({
 
                   {/* Stage: Original Image displayed in full, uncropped */}
                   <div className="scene-crop-stage-wrapper">
-                    <div 
+                    <div
                       ref={stageRef}
                       className="scene-crop-stage"
                       onPointerMove={handlePointerMove}
@@ -948,7 +968,7 @@ export default function SceneSelector({
                   <span>Reset to Default</span>
                 </button>
               )}
-              
+
               <div style={{ flex: 1 }} />
 
               <button
