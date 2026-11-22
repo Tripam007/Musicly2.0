@@ -27,7 +27,9 @@ import {
   Speaker,
   Headphones,
   Mic2,
-  Music
+  Music,
+  Check,
+  X
 } from 'lucide-react';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
@@ -527,6 +529,48 @@ export default function MinimalStudioScene({
   const [isBellRinging, setIsBellRinging] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const [isAdminGalleryOpen, setIsAdminGalleryOpen] = useState(false);
+  const [isQuickBgPickerOpen, setIsQuickBgPickerOpen] = useState(false);
+  const quickBgPickerRef = useRef(null);
+  const cameraClickTimerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isQuickBgPickerOpen) return;
+    const handleOutsideClick = (e) => {
+      if (quickBgPickerRef.current && !quickBgPickerRef.current.contains(e.target)) {
+        setIsQuickBgPickerOpen(false);
+      }
+    };
+    window.addEventListener('pointerdown', handleOutsideClick);
+    return () => window.removeEventListener('pointerdown', handleOutsideClick);
+  }, [isQuickBgPickerOpen]);
+
+  const handleCameraClick = (e) => {
+    e.stopPropagation();
+    if (cameraClickTimerRef.current) {
+      clearTimeout(cameraClickTimerRef.current);
+      cameraClickTimerRef.current = null;
+      return;
+    }
+    cameraClickTimerRef.current = setTimeout(() => {
+      cameraClickTimerRef.current = null;
+      if (isUserAdmin) {
+        setIsAdminGalleryOpen(true);
+      } else {
+        updateMediaPhotoIndex((prev) => (prev + 1) % studioBackgrounds.length);
+        showToast("Switched Studio Background");
+      }
+    }, 280);
+  };
+
+  const handleCameraDoubleClick = (e) => {
+    e.stopPropagation();
+    if (cameraClickTimerRef.current) {
+      clearTimeout(cameraClickTimerRef.current);
+      cameraClickTimerRef.current = null;
+    }
+    setIsQuickBgPickerOpen((prev) => !prev);
+  };
+
   const waveformRef = useRef(null);
 
   const showToast = useCallback((msg) => {
@@ -1341,20 +1385,79 @@ export default function MinimalStudioScene({
               <Star size={16} fill={isCurrentFav ? "#f4a000" : "none"} color={isCurrentFav ? "#f4a000" : "currentColor"} />
             </button>
 
-            <button 
-              className={`ref-side-btn ${isUserAdmin ? 'admin-camera-btn' : ''}`}
-              onClick={() => {
-                if (isUserAdmin) {
-                  setIsAdminGalleryOpen(true);
-                } else {
-                  setMediaPhotoIndex((prev) => (prev + 1) % studioBackgrounds.length);
-                  showToast("Switched Studio Background");
-                }
-              }}
-              title={isUserAdmin ? "Manage Studio Backgrounds (Admin)" : "Switch Studio Visual"}
-            >
-              <Camera size={16} />
-            </button>
+            <div className="ref-camera-btn-wrapper" ref={quickBgPickerRef}>
+              <button 
+                className={`ref-side-btn ${isUserAdmin ? 'admin-camera-btn' : ''} ${isQuickBgPickerOpen ? 'active' : ''}`}
+                onClick={handleCameraClick}
+                onDoubleClick={handleCameraDoubleClick}
+                title={isUserAdmin ? "Click: Admin Gallery | Double-click: Quick Wallpaper Gallery" : "Click: Next Visual | Double-click: Quick Wallpaper Gallery"}
+              >
+                <Camera size={16} />
+              </button>
+
+              {isQuickBgPickerOpen && (
+                <div className="ref-glass-bg-picker-flyout">
+                  <div className="ref-glass-bg-picker-header">
+                    <span className="ref-glass-bg-picker-title">Visuals</span>
+                    <button 
+                      type="button"
+                      className="ref-glass-bg-picker-close" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsQuickBgPickerOpen(false);
+                      }}
+                      title="Close"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                  <div className="ref-glass-bg-picker-grid">
+                    {studioBackgrounds.map((bg, idx) => {
+                      const bgUrl = typeof bg === 'string' ? bg : bg.url;
+                      const isSelected = (mediaPhotoIndex % (studioBackgrounds.length || 1)) === idx;
+                      const isVideo = (typeof bg === 'object' && bg.type === 'video') || isLiveVisual(bgUrl);
+
+                      return (
+                        <button
+                          key={bg.id || `quick-bg-${idx}`}
+                          type="button"
+                          className={`ref-glass-bg-thumb-btn ${isSelected ? 'selected' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectStudioBg(idx);
+                            showToast("Studio visual updated");
+                          }}
+                          title={`Select visual ${idx + 1}`}
+                        >
+                          {isVideo ? (
+                            <video 
+                              src={bgUrl} 
+                              autoPlay 
+                              loop 
+                              muted 
+                              playsInline 
+                              className="ref-glass-bg-thumb-media" 
+                            />
+                          ) : (
+                            <img 
+                              src={bgUrl} 
+                              alt="" 
+                              className="ref-glass-bg-thumb-media" 
+                              loading="lazy" 
+                            />
+                          )}
+                          {isSelected && (
+                            <div className="ref-glass-bg-thumb-check">
+                              <Check size={10} strokeWidth={3} />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button 
               className="ref-side-btn"
