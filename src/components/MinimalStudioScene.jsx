@@ -265,7 +265,8 @@ export default function MinimalStudioScene({
   customQueue = [],
   onSetCustomQueue,
   backdropImage = null,
-  activePlayingPlaylistId = null
+  activePlayingPlaylistId = null,
+  onSetActivePlayingPlaylistId = null
 }) {
   const isUserAdmin = isAdmin || checkIsAdmin(user);
 
@@ -359,13 +360,21 @@ export default function MinimalStudioScene({
   }, []);
 
   const currentStudioBgUrl = useMemo(() => {
-    // Check if Country Roads & Roots playlist is actively playing (strictly for this playlist!)
+    // 1. Verify whether the currently playing song actually belongs to Country Roads & Roots
+    const isCurrentTrackCountry = Boolean(
+      currentTrack && (
+        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
+        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country'))) ||
+        (Array.isArray(currentTrack.sections) && currentTrack.sections.some(s => (s || '').toLowerCase().includes('country')))
+      )
+    );
+
+    // 2. The Country Roads backdrop is strictly active ONLY while the Country playlist is active AND a Country track is playing
     const isCountryPlaylistPlaying = Boolean(
-      (activePlayingPlaylistId && (
+      activePlayingPlaylistId && (
         activePlayingPlaylistId === 'country_roots' ||
         String(activePlayingPlaylistId).toLowerCase().includes('country')
-      )) ||
-      (backdropImage && backdropImage.includes('country_scene') && activePlayingPlaylistId)
+      ) && isCurrentTrackCountry
     );
 
     if (isCountryPlaylistPlaying) {
@@ -391,6 +400,25 @@ export default function MinimalStudioScene({
     const item = studioBackgrounds[safeIdx];
     return typeof item === 'string' ? item : (item?.url || '/assets/images/zenitsu_clean_wallpaper.jpg');
   }, [studioBackgrounds, mediaPhotoIndex, activePlayingPlaylistId, backdropImage, currentTrack]);
+
+  // When the user plays something else (outside the country playlist), automatically clear country playlist state
+  useEffect(() => {
+    if (!activePlayingPlaylistId || !currentTrack) return;
+    const isCountryPl = activePlayingPlaylistId === 'country_roots' || String(activePlayingPlaylistId).toLowerCase().includes('country');
+    if (isCountryPl) {
+      const isCountry = Boolean(
+        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
+        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country'))) ||
+        (Array.isArray(currentTrack.sections) && currentTrack.sections.some(s => (s || '').toLowerCase().includes('country')))
+      );
+      if (!isCountry) {
+        onSetActivePlayingPlaylistId?.(null);
+        try {
+          localStorage.removeItem('musicly_active_playlist_id');
+        } catch {}
+      }
+    }
+  }, [currentTrack, activePlayingPlaylistId, onSetActivePlayingPlaylistId]);
 
   // When user explicitly selects any curated or custom theme, manual selection is active
   const handleSelectTheme = useCallback((theme) => {

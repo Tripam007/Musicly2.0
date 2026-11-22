@@ -798,11 +798,19 @@ export default function App() {
     const targetDefaultBackdrop = (selectedGenre && selectedGenre !== 'All' && GENRE_BACKDROPS[selectedGenre]) || defaultSceneImg;
 
     // Check if Country Roads & Roots playlist is actively playing (ONLY for this playlist!)
+    const isCurrentTrackCountry = Boolean(
+      currentTrack && (
+        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
+        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country'))) ||
+        (Array.isArray(currentTrack.sections) && currentTrack.sections.some(s => (s || '').toLowerCase().includes('country')))
+      )
+    );
+
     const isCountryPlaylistPlaying = Boolean(
       activePlayingPlaylistId && (
         activePlayingPlaylistId === 'country_roots' ||
         String(activePlayingPlaylistId).toLowerCase().includes('country')
-      )
+      ) && isCurrentTrackCountry
     );
 
     if (isCountryPlaylistPlaying) {
@@ -2835,6 +2843,7 @@ export default function App() {
           onPrevTrack={handlePrevTrack}
           backdropImage={backdropImage}
           activePlayingPlaylistId={activePlayingPlaylistId}
+          onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
           onSelectTrack={(track, shouldPlay, isFromPlaylist = false, playlistId = null) => {
             if (!track) return;
             if (isFromPlaylist && playlistId) {
@@ -2842,7 +2851,7 @@ export default function App() {
               try {
                 localStorage.setItem('musicly_active_playlist_id', playlistId);
               } catch {}
-            } else if (!isFromPlaylist) {
+            } else {
               setActivePlayingPlaylistId(null);
               try {
                 localStorage.removeItem('musicly_active_playlist_id');
@@ -2932,7 +2941,7 @@ export default function App() {
               try {
                 localStorage.setItem('musicly_active_playlist_id', playlistId);
               } catch {}
-            } else if (!isFromPlaylist) {
+            } else {
               setActivePlayingPlaylistId(null);
               try {
                 localStorage.removeItem('musicly_active_playlist_id');
