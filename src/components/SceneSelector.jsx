@@ -246,6 +246,7 @@ export default function SceneSelector({
 
   const handleAdminUploadFile = (file) => {
     if (!file || !visualsModalScene) return;
+    const targetScene = visualsModalScene;
     if (file.type.startsWith('video/')) {
       handleAdminUploadLiveVideo(file);
       return;
@@ -253,6 +254,7 @@ export default function SceneSelector({
     const reader = new FileReader();
     reader.onload = async (loadEvt) => {
       const dataUrl = loadEvt.target.result;
+      setVisualsModalScene(null);
 
       // 1. Instantly register in visual list & save to IndexedDB so it is NEVER lost
       const newVisual = {
@@ -263,9 +265,9 @@ export default function SceneSelector({
       const updated = [newVisual, ...sceneVisuals.filter(v => v.url !== dataUrl)];
       setSceneVisuals(updated);
       try {
-        await saveSceneVisuals(visualsModalScene.id, updated, null);
+        await saveSceneVisuals(targetScene.id, updated, null);
         if (onUpdateSceneImage) {
-          await onUpdateSceneImage(visualsModalScene.id, dataUrl);
+          await onUpdateSceneImage(targetScene.id, dataUrl);
         }
       } catch (err) {
         console.warn("Immediate visual persist notice:", err);
@@ -274,7 +276,7 @@ export default function SceneSelector({
       // 2. Open 16:9 crop framing editor to let admin adjust if desired
       setPreviewImage(dataUrl);
       setImageUrlInput('');
-      setEditingScene(visualsModalScene);
+      setEditingScene(targetScene);
       setSelectedRatio('16:9');
       setCropBox({ x: 0, y: 0, w: 1, h: 0.5625 });
       setErrorMessage('');
@@ -1001,6 +1003,7 @@ export default function SceneSelector({
         >
           <div
             className="studio-visuals-modal-box glass-modal-panel vibe-modal-no-wheel"
+            style={{ maxWidth: '560px', width: '92%' }}
             onClick={(e) => e.stopPropagation()}
             onWheel={(e) => e.stopPropagation()}
           >
@@ -1008,17 +1011,14 @@ export default function SceneSelector({
             <div className="studio-visuals-header">
               <div className="studio-visuals-title-group">
                 <div className="studio-visuals-icon-box">
-                  <ShieldCheck size={22} className="studio-visuals-shield-icon" />
+                  <Camera size={20} style={{ color: '#ffb703' }} />
                 </div>
                 <div>
                   <div className="studio-visuals-headline-row">
-                    <h4>Studio Background Visuals</h4>
-                    <span className={`studio-visuals-role-badge ${isAdmin ? 'admin' : 'user'}`}>
-                      {isAdmin ? 'ADMIN' : 'STUDIO VISUALS'}
-                    </span>
+                    <h4>Change Scene Image</h4>
                   </div>
                   <p className="studio-visuals-subtitle">
-                    Manage background visuals for <strong>{visualsModalScene.name}</strong>. Click any visual to activate{isAdmin ? ', remove unwanted items, or upload new live wallpapers.' : '.'}
+                    Select wallpaper for <strong>{visualsModalScene.name}</strong>
                   </p>
                 </div>
               </div>
@@ -1026,300 +1026,55 @@ export default function SceneSelector({
                 type="button"
                 className="drawer-close-btn"
                 onClick={() => setVisualsModalScene(null)}
+                aria-label="Close"
               >
                 <X size={18} />
               </button>
             </div>
 
-            {/* Section Header: Available Visuals Count + Hint */}
-            <div className="studio-visuals-subhead">
-              <span className="studio-visuals-count-label">
-                AVAILABLE VISUALS ({sceneVisuals.length})
-              </span>
-              <span className="studio-visuals-hint-label">
-                Click image to set as active
-              </span>
-            </div>
-
-            {/* Grid of Visuals (NO text names beneath cards!) */}
-            <div className="studio-visuals-grid">
-              {sceneVisuals.map((visual, idx) => {
-                const currentActiveUrl = sceneOverrides[visualsModalScene.id] || visualsModalScene.image;
-                const isActive = currentActiveUrl === visual.url;
-                const isVideo = visual.type === 'video' || isLiveVisual(visual.url);
-
-                return (
-                  <div
-                    key={visual.id || visual.url || idx}
-                    className={`studio-visual-card ${isActive ? 'is-active' : ''}`}
-                    onClick={() => handleSelectVisual(visual)}
-                    title={isVideo ? 'Click to activate Live Wallpaper' : 'Click to activate wallpaper'}
-                  >
-                    {isVideo ? (
-                      <video
-                        src={visual.url}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                        className="studio-visual-thumb-media"
-                      />
-                    ) : (
-                      <img
-                        src={visual.url}
-                        alt=""
-                        className="studio-visual-thumb-media"
-                        onError={(e) => {
-                          e.currentTarget.src = '/assets/images/cozy_bedroom.jpg';
-                        }}
-                      />
-                    )}
-
-                    {/* Dark subtle gradient overlay */}
-                    <div className="studio-visual-card-gradient" />
-
-                    {/* Active Badge */}
-                    {isActive && (
-                      <div className="studio-visual-active-pill">
-                        <Check size={11} strokeWidth={3} />
-                        <span>ACTIVE</span>
-                      </div>
-                    )}
-
-                    {/* Live Video Indicator Badge */}
-                    {isVideo && !isActive && (
-                      <div className="studio-visual-live-pill">
-                        <span className="live-dot" />
-                        <span>LIVE</span>
-                      </div>
-                    )}
-
-                    {/* Admin Trash Button */}
-                    {isAdmin && sceneVisuals.length > 1 && (
-                      <button
-                        type="button"
-                        className="studio-visual-delete-btn"
-                        onClick={(e) => handleDeleteVisual(e, visual.id || visual.url)}
-                        title="Remove this visual"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Admin Uploader Area: Images, Live Wallpapers, and URLs */}
-            {isAdmin && (
-              <div className="studio-admin-uploader-section">
-                {/* Tabs */}
-                <div className="studio-uploader-tabs">
-                  <button
-                    type="button"
-                    className={`studio-tab-btn ${adminUploadMode === 'image' ? 'active' : ''}`}
-                    onClick={() => setAdminUploadMode('image')}
-                  >
-                    <Upload size={13} />
-                    <span>Upload Image File</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`studio-tab-btn ${adminUploadMode === 'live' ? 'active' : ''}`}
-                    onClick={() => setAdminUploadMode('live')}
-                  >
-                    <Video size={13} />
-                    <span>Add Live Wallpaper</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`studio-tab-btn ${adminUploadMode === 'url' ? 'active' : ''}`}
-                    onClick={() => setAdminUploadMode('url')}
-                  >
-                    <Link size={13} />
-                    <span>Add by URL</span>
-                  </button>
-                </div>
-
-                {/* Mode 1: Image Upload (Triggers Cropper or Direct Add) */}
-                {adminUploadMode === 'image' && (
-                  <div
-                    className={`scene-broad-dropzone ${isDraggingFile ? 'is-dragging' : ''}`}
-                    onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
-                    onDragEnter={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
-                    onDragLeave={(e) => { e.preventDefault(); setIsDraggingFile(false); }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDraggingFile(false);
-                      const file = e.dataTransfer.files?.[0];
-                      if (file) handleAdminUploadFile(file);
-                    }}
-                    onClick={() => studioFileInputRef.current?.click()}
-                  >
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp,image/jpg"
-                      ref={studioFileInputRef}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleAdminUploadFile(file);
-                        e.target.value = '';
-                      }}
-                      style={{ display: 'none' }}
-                    />
-                    <div className="scene-dropzone-icon-wrap">
-                      <Upload size={22} className="scene-dropzone-icon" />
-                    </div>
-                    <div className="scene-dropzone-text-group">
-                      <p className="scene-dropzone-title">
-                        <strong>Click to Browse or Drag & Drop Wallpaper</strong>
-                      </p>
-                      <p className="scene-dropzone-hint">
-                        Supports PNG, JPEG, WebP. Opens 16:9 interactive cropper to fit perfectly.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Mode 2: Live Wallpaper Video Upload */}
-                {adminUploadMode === 'live' && (
-                  <div className="studio-live-video-uploader">
-                    <div
-                      className={`scene-broad-dropzone ${isDraggingFile ? 'is-dragging' : ''}`}
-                      onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
-                      onDragEnter={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
-                      onDragLeave={(e) => { e.preventDefault(); setIsDraggingFile(false); }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setIsDraggingFile(false);
-                        const file = e.dataTransfer.files?.[0];
-                        if (file) handleAdminUploadLiveVideo(file);
-                      }}
-                      onClick={() => studioVideoInputRef.current?.click()}
-                    >
-                      <input
-                        type="file"
-                        accept="video/mp4,video/webm,video/ogg,video/quicktime"
-                        ref={studioVideoInputRef}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleAdminUploadLiveVideo(file);
-                          e.target.value = '';
-                        }}
-                        style={{ display: 'none' }}
-                      />
-                      <div className="scene-dropzone-icon-wrap live">
-                        <Film size={22} className="scene-dropzone-icon" />
-                      </div>
-                      <div className="scene-dropzone-text-group">
-                        <p className="scene-dropzone-title">
-                          <strong>Click to Browse or Drop Live Wallpaper (MP4, WebM)</strong>
-                        </p>
-                        <p className="scene-dropzone-hint">
-                          Upload seamless looping video clips to turn this room into an animated live scene.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Direct video link input */}
-                    <div className="studio-video-url-row">
-                      <input
-                        type="url"
-                        className="scene-text-url-input"
-                        placeholder="Or enter direct live wallpaper video link (e.g. https://.../loop.mp4)"
-                        value={liveVideoUrlInput}
-                        onChange={(e) => setLiveVideoUrlInput(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        className="studio-btn-add-live"
-                        onClick={handleAddLiveVideoUrl}
-                        disabled={!liveVideoUrlInput.trim()}
-                      >
-                        <Plus size={14} />
-                        <span>Add Live</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Mode 3: Add by Direct Image / Video URL */}
-                {adminUploadMode === 'url' && (
-                  <div className="studio-url-uploader-row">
-                    <input
-                      type="url"
-                      className="scene-text-url-input"
-                      placeholder="https://images.unsplash.com/... or direct image/video URL"
-                      value={adminUrlInput}
-                      onChange={(e) => setAdminUrlInput(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="studio-btn-add-live"
-                      onClick={handleAddDirectUrl}
-                      disabled={!adminUrlInput.trim()}
-                    >
-                      <Plus size={14} />
-                      <span>Add Visual</span>
-                    </button>
-                  </div>
-                )}
+            {/* Upload Box: Click to Browse or Drag & Drop Wallpaper */}
+            <div
+              className={`scene-broad-dropzone ${isDraggingFile ? 'is-dragging' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
+              onDragEnter={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setIsDraggingFile(false); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDraggingFile(false);
+                const file = e.dataTransfer.files?.[0];
+                if (file) handleAdminUploadFile(file);
+              }}
+              onClick={() => studioFileInputRef.current?.click()}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  studioFileInputRef.current?.click();
+                }
+              }}
+            >
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/jpg"
+                ref={studioFileInputRef}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleAdminUploadFile(file);
+                  e.target.value = '';
+                }}
+                style={{ display: 'none' }}
+              />
+              <div className="scene-dropzone-icon-wrap">
+                <Upload size={22} className="scene-dropzone-icon" />
               </div>
-            )}
-
-            {/* Bottom Toolbar matching screenshot */}
-            <div className="studio-visuals-bottom-toolbar">
-              <div className="studio-toolbar-left">
-                <div className="studio-counter-pill">
-                  <span className="dot-green" />
-                  <span>
-                    Visual {
-                      (() => {
-                        const activeUrl = sceneOverrides[visualsModalScene.id] || visualsModalScene.image;
-                        const idx = sceneVisuals.findIndex(v => v.url === activeUrl);
-                        return idx >= 0 ? idx + 1 : 1;
-                      })()
-                    } of {sceneVisuals.length}
-                  </span>
-                </div>
-                <div className="studio-quality-pill">
-                  <Sparkles size={11} />
-                  <span>4K UHD • Lossless</span>
-                </div>
-              </div>
-
-              <div className="studio-toolbar-middle">
-                <button
-                  type="button"
-                  className="studio-shuffle-btn"
-                  onClick={handleShuffleVisual}
-                  title="Randomly pick a visual"
-                >
-                  <Shuffle size={13} />
-                  <span>Shuffle Visual</span>
-                </button>
-              </div>
-
-              <div className="studio-toolbar-right">
-                {isAdmin && (
-                  <button
-                    type="button"
-                    className="studio-reset-presets-btn"
-                    onClick={handleResetPresets}
-                    title="Reset to default curated visuals"
-                  >
-                    Reset Presets
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className="studio-apply-return-btn"
-                  onClick={() => setVisualsModalScene(null)}
-                >
-                  <Check size={14} strokeWidth={2.5} />
-                  <span>Apply & Return</span>
-                </button>
+              <div className="scene-dropzone-text-group">
+                <p className="scene-dropzone-title">
+                  <strong>Click to Browse or Drag & Drop Wallpaper</strong>
+                </p>
+                <p className="scene-dropzone-hint">
+                  Supports PNG, JPEG, WebP. Opens 16:9 interactive cropper to fit perfectly.
+                </p>
               </div>
             </div>
           </div>
