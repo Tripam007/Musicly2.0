@@ -602,21 +602,23 @@ export default function PlaylistDrawer({
               <Crown size={13} style={{ color: '#ffd166' }} /> Admin
             </button>
           )}
-          <button 
-            className="drawer-tab-btn add-btn"
-            onClick={() => {
-              if (!user || user.isAnonymous) {
-                if (typeof onOpenAuthModal === 'function') {
-                  onOpenAuthModal();
-                  return;
+          {mainSource !== 'musicly' && (
+            <button 
+              className="drawer-tab-btn add-btn"
+              onClick={() => {
+                if (!user || user.isAnonymous) {
+                  if (typeof onOpenAuthModal === 'function') {
+                    onOpenAuthModal();
+                    return;
+                  }
                 }
-              }
-              onOpenUpload?.();
-            }}
-            title="Add your own music"
-          >
-            <Plus size={13} /> Add
-          </button>
+                onOpenUpload?.();
+              }}
+              title="Add your own music"
+            >
+              <Plus size={13} /> Add
+            </button>
+          )}
           {!isAdmin && (
             <button 
               className="drawer-tab-btn request-btn"
