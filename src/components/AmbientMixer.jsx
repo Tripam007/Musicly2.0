@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  X, 
-  CloudRain, 
+import {
+  X,
+  CloudRain,
   Zap,
-  Flame, 
-  Disc, 
-  Keyboard, 
-  Coffee, 
-  Volume2, 
+  Flame,
+  Disc,
+  Keyboard,
+  Coffee,
+  Volume2,
   RotateCcw,
   Sparkles,
   Bug
@@ -27,56 +27,59 @@ export const PRESETS = {
   sleep: {
     name: '🌙 Chill / Sleep',
     color: '#818cf8',
-    volumes: { rain: 0.20, bugs: 0.45, thunder: 0.15, fire: 0.15, vinyl: 0, cafe: 0, keyboard: 0 }
+    volumes: { rain: 0.08, bugs: 0.12, thunder: 0.04, fire: 0.05, vinyl: 0, cafe: 0, keyboard: 0 }
   },
   storm: {
     name: 'Thunderstorm',
     color: '#c084fc',
-    volumes: { rain: 0.70, thunder: 0.85, bugs: 0, fire: 0, vinyl: 0, cafe: 0, keyboard: 0 }
+    volumes: { rain: 0.12, thunder: 0.09, bugs: 0, fire: 0, vinyl: 0, cafe: 0, keyboard: 0 }
   },
   coffee: {
     name: 'Rainy Cafe',
     color: '#facc15',
-    volumes: { cafe: 0.65, rain: 0.40, bugs: 0, thunder: 0, fire: 0, vinyl: 0, keyboard: 0 }
+    volumes: { cafe: 0.11, rain: 0.06, bugs: 0, thunder: 0, fire: 0, vinyl: 0, keyboard: 0 }
   },
   coding: {
     name: 'Late Night Code',
     color: '#4ade80',
-    volumes: { keyboard: 0.60, rain: 0.50, bugs: 0, thunder: 0, fire: 0, vinyl: 0, cafe: 0 }
+    volumes: { keyboard: 0.10, rain: 0.06, bugs: 0, thunder: 0, fire: 0, vinyl: 0, cafe: 0 }
   },
   cozy: {
     name: 'Cozy Fireplace',
     color: '#fb923c',
-    volumes: { fire: 0.70, vinyl: 0.50, rain: 0, bugs: 0, thunder: 0, cafe: 0, keyboard: 0 }
+    volumes: { fire: 0.12, vinyl: 0.07, rain: 0, bugs: 0, thunder: 0, cafe: 0, keyboard: 0 }
   }
 };
 
 /**
  * Scales preset atmosphere levels according to current song playback volume,
- * ensuring the song is always the major/predominant audio element.
+ * ensuring the sound bars stay low, gentle, and fit to the current song playing.
  */
 export function getScaledPresetVolumes(presetKey, musicVolume = 0.8) {
   const preset = PRESETS[presetKey];
   if (!preset) return {};
 
-  const safeMusicVol = typeof musicVolume === 'number' && !isNaN(musicVolume) ? musicVolume : 0.8;
+  const safeMusicVol = typeof musicVolume === 'number' && !isNaN(musicVolume) 
+    ? Math.max(0, Math.min(1, musicVolume)) 
+    : 0.8;
+
   if (safeMusicVol <= 0) {
     const silent = {};
     Object.keys(preset.volumes).forEach(k => { silent[k] = 0; });
     return silent;
   }
 
-  // Atmospheric scaling factor: ambient audio stays gentle and subordinate
-  // so the song always sounds majorly (scaled proportionally to song volume)
-  const atmosphericFactor = Math.min(0.38, Math.max(0.16, safeMusicVol * 0.40));
+  // Atmospheric scaling factor: scales sound bars directly with song volume
+  // keeping ambient bars low and subordinate to the song playing
+  const songScalingFactor = Math.min(1.0, Math.max(0.4, safeMusicVol));
 
   const scaled = {};
   Object.entries(preset.volumes).forEach(([channel, rawVol]) => {
     if (rawVol <= 0) {
       scaled[channel] = 0;
     } else {
-      const targetVol = rawVol * atmosphericFactor;
-      scaled[channel] = Math.round(targetVol * 100) / 100;
+      const targetVol = rawVol * songScalingFactor;
+      scaled[channel] = Math.max(0.01, Math.round(targetVol * 100) / 100);
     }
   });
 
@@ -93,6 +96,11 @@ export default function AmbientMixer({
 }) {
   if (!isOpen) return null;
 
+  const safeMusicVol = typeof musicVolume === 'number' && !isNaN(musicVolume) 
+    ? Math.max(0, Math.min(1, musicVolume)) 
+    : 0.8;
+  const maxAllowedVolume = Math.min(0.20, Math.max(0.06, Math.round(safeMusicVol * 0.22 * 100) / 100));
+
   // Check if a preset matches current volume mix
   const isPresetActive = (key) => {
     const p = PRESETS[key];
@@ -100,7 +108,7 @@ export default function AmbientMixer({
     const scaled = getScaledPresetVolumes(key, musicVolume);
     return Object.entries(scaled).every(([ch, expectedVol]) => {
       const actual = ambientVolumes[ch] || 0;
-      return Math.abs(actual - expectedVol) < 0.06;
+      return Math.abs(actual - expectedVol) < 0.04;
     });
   };
 
@@ -138,9 +146,9 @@ export default function AmbientMixer({
           {Object.entries(PRESETS).map(([key, p]) => {
             const active = isPresetActive(key);
             return (
-              <button 
-                key={key} 
-                className={`preset-chip ${active ? 'is-active' : ''}`} 
+              <button
+                key={key}
+                className={`preset-chip ${active ? 'is-active' : ''}`}
                 onClick={() => togglePreset(key)}
               >
                 {p.name}
@@ -176,9 +184,13 @@ export default function AmbientMixer({
                     type="range"
                     min="0"
                     max="1"
-                    step="0.02"
+                    step="0.01"
                     value={vol}
-                    onChange={(e) => onVolumeChange(ch.id, parseFloat(e.target.value))}
+                    onChange={(e) => {
+                      const raw = parseFloat(e.target.value);
+                      const safeVal = Math.min(raw, maxAllowedVolume);
+                      onVolumeChange(ch.id, safeVal);
+                    }}
                     className="ambient-range-input"
                     style={{
                       background: `linear-gradient(to right, ${ch.color} 0%, ${ch.color} ${vol * 100}%, rgba(255,255,255,0.1) ${vol * 100}%, rgba(255,255,255,0.1) 100%)`

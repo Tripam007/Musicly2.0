@@ -651,13 +651,14 @@ export class AmbientSoundEngine {
       this.startSound(type);
     }
     if (this.gains[type]) {
-      const mult = type === 'rain' ? 0.75 
-                 : type === 'thunder' ? 0.85 
-                 : type === 'fire' ? 0.80 
-                 : type === 'keyboard' ? 0.75 
-                 : type === 'cafe' ? 0.65 
-                 : type === 'bugs' ? 0.85
-                 : 0.55;
+      const mult = type === 'rain' ? 0.30 
+                 : type === 'thunder' ? 0.35 
+                 : type === 'fire' ? 0.25 
+                 : type === 'keyboard' ? 0.22 
+                 : type === 'cafe' ? 0.20 
+                 : type === 'bugs' ? 0.25
+                 : type === 'vinyl' ? 0.20
+                 : 0.20;
       this.gains[type].gain.setTargetAtTime(volume * mult, ctx.currentTime, 0.08);
     }
   }
@@ -684,14 +685,14 @@ export class AmbientSoundEngine {
         b0 = 0.99 * b0 + whiteL * 0.09;
         b1 = 0.95 * b1 + whiteL * 0.14;
         b2 = 0.82 * b2 + whiteL * 0.20;
-        const dropL = Math.random() > 0.992 ? (Math.random() * 2 - 1) * 0.5 : 0;
-        left[i] = (b0 + b1 + b2) * 0.7 + dropL;
+        const dropL = Math.random() > 0.992 ? (Math.random() * 2 - 1) * 0.25 : 0;
+        left[i] = (b0 + b1 + b2) * 0.35 + dropL;
 
         rb0 = 0.99 * rb0 + whiteR * 0.09;
         rb1 = 0.95 * rb1 + whiteR * 0.14;
         rb2 = 0.82 * rb2 + whiteR * 0.20;
-        const dropR = Math.random() > 0.992 ? (Math.random() * 2 - 1) * 0.5 : 0;
-        right[i] = (rb0 + rb1 + rb2) * 0.7 + dropR;
+        const dropR = Math.random() > 0.992 ? (Math.random() * 2 - 1) * 0.25 : 0;
+        right[i] = (rb0 + rb1 + rb2) * 0.35 + dropR;
       }
       const noise = ctx.createBufferSource();
       noise.buffer = buffer;
@@ -950,12 +951,12 @@ export class AmbientSoundEngine {
         l0 = 0.94 * l0 + whiteL * 0.16;
         l1 = 0.88 * l1 + whiteL * 0.24;
         l2 = 0.75 * l2 + whiteL * 0.20;
-        left[i] = (l0 + l1 * 0.7 + l2 * 0.5) * 0.75;
+        left[i] = (l0 + l1 * 0.7 + l2 * 0.5) * 0.35;
 
         r0 = 0.94 * r0 + whiteR * 0.16;
         r1 = 0.88 * r1 + whiteR * 0.24;
         r2 = 0.75 * r2 + whiteR * 0.20;
-        right[i] = (r0 + r1 * 0.7 + r2 * 0.5) * 0.75;
+        right[i] = (r0 + r1 * 0.7 + r2 * 0.5) * 0.35;
       }
       const noise = ctx.createBufferSource();
       noise.buffer = buffer;
@@ -988,7 +989,7 @@ export class AmbientSoundEngine {
           clinkOsc.type = 'sine';
           clinkOsc.frequency.setValueAtTime(freq, now);
 
-          const clinkVol = gain.gain.value * (0.4 + Math.random() * 0.4);
+          const clinkVol = gain.gain.value * (0.12 + Math.random() * 0.12);
           clinkGain.gain.setValueAtTime(clinkVol, now);
           clinkGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
 
