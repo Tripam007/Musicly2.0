@@ -29,8 +29,10 @@ import {
   Mic2,
   Music,
   Check,
-  X
+  X,
+  Quote
 } from 'lucide-react';
+import { getRandomDeadPoetsQuote } from '../data/deadPoetsQuotes';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
 import StudioNotificationsDropdown from './StudioNotificationsDropdown';
@@ -528,6 +530,11 @@ export default function MinimalStudioScene({
   const [isThumbsUp, setIsThumbsUp] = useState(false);
   const [isBellRinging, setIsBellRinging] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
+  const [dpsQuote, setDpsQuote] = useState(() => getRandomDeadPoetsQuote());
+
+  const handleNextDpsQuote = useCallback(() => {
+    setDpsQuote(getRandomDeadPoetsQuote());
+  }, []);
   const [isAdminGalleryOpen, setIsAdminGalleryOpen] = useState(false);
   const [isQuickBgPickerOpen, setIsQuickBgPickerOpen] = useState(false);
   const quickBgPickerRef = useRef(null);
@@ -1705,46 +1712,19 @@ export default function MinimalStudioScene({
                 </button>
               </div>
 
-              <div className="ref-script-stats-pill">
-                <button 
-                  className="ref-sub-stat-col"
-                  onClick={() => {
-                    if (onToggleFavorite) onToggleFavorite(activeTrack);
-                    showToast(isCurrentFav ? "Removed from Favorites" : "Saved to Favorites!");
-                  }}
-                  title={isCurrentFav ? "Favorited" : "Add to Favorites"}
-                >
-                  <Heart size={14} fill={isCurrentFav ? currentTheme.accent : "none"} color={currentTheme.accent} />
-                  <span className="ref-stat-count">{favCount}</span>
-                </button>
-
-                <div className="ref-stat-pipe">|</div>
-
-                <button 
-                  className="ref-sub-stat-col"
-                  onClick={() => {
-                    setIsRated(prev => !prev);
-                    showToast(!isRated ? "Rated 5 stars!" : "Rating removed");
-                  }}
-                  title="Rating"
-                >
-                  <Star size={14} fill={isRated ? currentTheme.accent : "#ffffff"} color={isRated ? currentTheme.accent : "#ffffff"} />
-                  <span className="ref-stat-count">{starCount}</span>
-                </button>
-
-                <div className="ref-stat-pipe">|</div>
-
-                <button 
-                  className="ref-sub-stat-col"
-                  onClick={() => {
-                    setIsSaved(prev => !prev);
-                    showToast(!isSaved ? "Saved for later!" : "Removed from Saved");
-                  }}
-                  title={isSaved ? "Saved" : "Save for later"}
-                >
-                  <Bookmark size={14} fill={isSaved ? currentTheme.accent : "none"} color={currentTheme.accent} />
-                  <span className="ref-stat-count">{saveCount}</span>
-                </button>
+              {/* Dead Poets Society Literary Quote Pill */}
+              <div 
+                className="ref-dps-quote-pill"
+                onClick={handleNextDpsQuote}
+                title="Dead Poets Society — Click to inspire another verse"
+                role="button"
+                tabIndex={0}
+              >
+                <Quote size={13} className="ref-dps-quote-icon" style={{ color: currentTheme?.accent || '#f59e0b' }} />
+                <div className="ref-dps-quote-body">
+                  <p className="ref-dps-quote-text">"{dpsQuote?.quote || 'Carpe diem. Seize the day, boys.'}"</p>
+                  <span className="ref-dps-quote-author">— {dpsQuote?.author || 'Dead Poets Society'}</span>
+                </div>
               </div>
             </div>
 

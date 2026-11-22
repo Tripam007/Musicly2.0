@@ -19834,6 +19834,82 @@ body, html, #root {
   user-select: none;
 }
 
+/* Dead Poets Society Literary Quote Pill */
+.ref-dps-quote-pill {
+  background: rgba(22, 25, 36, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.38);
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.ref-dps-quote-pill:hover {
+  background: rgba(30, 34, 48, 0.94);
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.45);
+}
+
+.ref-dps-quote-pill:active {
+  transform: scale(0.98);
+}
+
+.ref-dps-quote-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.ref-dps-quote-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ref-dps-quote-text {
+  font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  font-size: 0.82rem;
+  font-style: italic;
+  font-weight: 500;
+  line-height: 1.32;
+  color: #f1f3f9;
+  letter-spacing: 0.01em;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ref-dps-quote-author {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.48);
+  line-height: 1;
+}
+
+.ref-dps-quote-pill:hover .ref-dps-quote-author {
+  color: rgba(255, 255, 255, 0.78);
+}
+
 .ref-script-stats-pill {
   background: #252631;
   border: 1px solid rgba(255, 255, 255, 0.18);
