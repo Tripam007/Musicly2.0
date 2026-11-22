@@ -1082,38 +1082,11 @@ export default function App() {
     }
   }, [currentTrack?.id, isPlaying]);
 
-  // Volume synchronization with AudioEngine, AmbientSoundEngine, and Ambient Sound Bars
+  // Volume synchronization with AudioEngine and AmbientSoundEngine
   useEffect(() => {
     const safeVol = normalizeVolume(volume);
     audioEngine.setVolume(safeVol);
     ambientEngine.setMasterVolume(safeVol);
-
-    // Keep active ambient sound bars low and fitted to current song volume
-    // Ambient sound stays subordinate to the song (under ~18% max)
-    const maxSafeAmbient = Math.min(0.18, Math.max(0.04, Math.round(safeVol * 0.20 * 100) / 100));
-
-    setAmbientVolumes(prev => {
-      const activeEntries = Object.entries(prev).filter(([_, v]) => v > 0);
-      if (activeEntries.length === 0) return prev;
-
-      const highestVal = Math.max(...activeEntries.map(([_, v]) => v));
-      // If any active ambient sound bar exceeds the safe low threshold (such as previous 40% or 65%),
-      // automatically scale active sound bars down so they fit the volume of the song playing
-      if (highestVal > maxSafeAmbient) {
-        const ratio = maxSafeAmbient / highestVal;
-        const next = { ...prev };
-        let changed = false;
-        Object.keys(next).forEach(k => {
-          if (next[k] > 0) {
-            next[k] = Math.max(0.01, Math.round(next[k] * ratio * 100) / 100);
-            ambientEngine.setVolume(k, next[k]);
-            changed = true;
-          }
-        });
-        return changed ? next : prev;
-      }
-      return prev;
-    });
   }, [volume]);
 
   // Authoritative Playback Toggle
@@ -1665,11 +1638,9 @@ export default function App() {
     }
   };
 
-  // Ambient sound fader
+  // Ambient sound fader - allows full manual control (0% to 100%)
   const handleAmbientVolumeChange = (type, vol) => {
-    const safeSongVol = normalizeVolume(volume);
-    const maxSafeAmbient = Math.min(0.20, Math.max(0.06, Math.round(safeSongVol * 0.22 * 100) / 100));
-    const safeVol = Math.min(vol, maxSafeAmbient);
+    const safeVol = Math.max(0, Math.min(1, typeof vol === 'number' ? vol : 0));
     setAmbientVolumes(prev => ({ ...prev, [type]: safeVol }));
     ambientEngine.setVolume(type, safeVol);
   };

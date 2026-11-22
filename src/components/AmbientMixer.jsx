@@ -27,33 +27,33 @@ export const PRESETS = {
   sleep: {
     name: '🌙 Chill / Sleep',
     color: '#818cf8',
-    volumes: { rain: 0.08, bugs: 0.12, thunder: 0.04, fire: 0.05, vinyl: 0, cafe: 0, keyboard: 0 }
+    volumes: { rain: 0.25, bugs: 0.40, thunder: 0.18, fire: 0.18, vinyl: 0, cafe: 0, keyboard: 0 }
   },
   storm: {
     name: 'Thunderstorm',
     color: '#c084fc',
-    volumes: { rain: 0.12, thunder: 0.09, bugs: 0, fire: 0, vinyl: 0, cafe: 0, keyboard: 0 }
+    volumes: { rain: 0.55, thunder: 0.60, bugs: 0, fire: 0, vinyl: 0, cafe: 0, keyboard: 0 }
   },
   coffee: {
     name: 'Rainy Cafe',
     color: '#facc15',
-    volumes: { cafe: 0.11, rain: 0.06, bugs: 0, thunder: 0, fire: 0, vinyl: 0, keyboard: 0 }
+    volumes: { cafe: 0.50, rain: 0.30, bugs: 0, thunder: 0, fire: 0, vinyl: 0, keyboard: 0 }
   },
   coding: {
     name: 'Late Night Code',
     color: '#4ade80',
-    volumes: { keyboard: 0.10, rain: 0.06, bugs: 0, thunder: 0, fire: 0, vinyl: 0, cafe: 0 }
+    volumes: { keyboard: 0.45, rain: 0.30, bugs: 0, thunder: 0, fire: 0, vinyl: 0, cafe: 0 }
   },
   cozy: {
     name: 'Cozy Fireplace',
     color: '#fb923c',
-    volumes: { fire: 0.12, vinyl: 0.07, rain: 0, bugs: 0, thunder: 0, cafe: 0, keyboard: 0 }
+    volumes: { fire: 0.50, vinyl: 0.35, rain: 0, bugs: 0, thunder: 0, cafe: 0, keyboard: 0 }
   }
 };
 
 /**
  * Scales preset atmosphere levels according to current song playback volume,
- * ensuring the sound bars stay low, gentle, and fit to the current song playing.
+ * ensuring presets remain audible and comfortably below the 70% loud threshold.
  */
 export function getScaledPresetVolumes(presetKey, musicVolume = 0.8) {
   const preset = PRESETS[presetKey];
@@ -69,17 +69,16 @@ export function getScaledPresetVolumes(presetKey, musicVolume = 0.8) {
     return silent;
   }
 
-  // Atmospheric scaling factor: scales sound bars directly with song volume
-  // keeping ambient bars low and subordinate to the song playing
-  const songScalingFactor = Math.min(1.0, Math.max(0.4, safeMusicVol));
+  // Balanced scaling: keeps presets clear, audible, and comfortably under 70%
+  const scale = Math.min(1.0, Math.max(0.65, safeMusicVol));
 
   const scaled = {};
   Object.entries(preset.volumes).forEach(([channel, rawVol]) => {
     if (rawVol <= 0) {
       scaled[channel] = 0;
     } else {
-      const targetVol = rawVol * songScalingFactor;
-      scaled[channel] = Math.max(0.01, Math.round(targetVol * 100) / 100);
+      const targetVol = rawVol * scale;
+      scaled[channel] = Math.min(0.68, Math.round(targetVol * 100) / 100);
     }
   });
 
@@ -96,11 +95,6 @@ export default function AmbientMixer({
 }) {
   if (!isOpen) return null;
 
-  const safeMusicVol = typeof musicVolume === 'number' && !isNaN(musicVolume) 
-    ? Math.max(0, Math.min(1, musicVolume)) 
-    : 0.8;
-  const maxAllowedVolume = Math.min(0.20, Math.max(0.06, Math.round(safeMusicVol * 0.22 * 100) / 100));
-
   // Check if a preset matches current volume mix
   const isPresetActive = (key) => {
     const p = PRESETS[key];
@@ -108,7 +102,7 @@ export default function AmbientMixer({
     const scaled = getScaledPresetVolumes(key, musicVolume);
     return Object.entries(scaled).every(([ch, expectedVol]) => {
       const actual = ambientVolumes[ch] || 0;
-      return Math.abs(actual - expectedVol) < 0.04;
+      return Math.abs(actual - expectedVol) < 0.05;
     });
   };
 
@@ -166,16 +160,28 @@ export default function AmbientMixer({
             const Icon = ch.icon;
             const vol = ambientVolumes[ch.id] || 0;
             const isActive = vol > 0;
+            const isTooLoud = vol > 0.70;
+            const pct = Math.round(vol * 100);
+
+            // Track background: highlight the portion past 70% in warning red
+            const trackBg = isTooLoud
+              ? `linear-gradient(to right, ${ch.color} 0%, ${ch.color} 70%, #ef4444 70%, #ef4444 ${pct}%, rgba(255,255,255,0.1) ${pct}%, rgba(255,255,255,0.1) 100%)`
+              : `linear-gradient(to right, ${ch.color} 0%, ${ch.color} ${pct}%, rgba(255,255,255,0.1) ${pct}%, rgba(255,255,255,0.1) 100%)`;
 
             return (
-              <div key={ch.id} className={`ambient-fader-card ${isActive ? 'is-active' : ''}`}>
+              <div key={ch.id} className={`ambient-fader-card ${isActive ? 'is-active' : ''} ${isTooLoud ? 'is-too-loud' : ''}`}>
                 <div className="fader-label-side">
-                  <div className="fader-icon-badge" style={{ color: ch.color }}>
+                  <div className="fader-icon-badge" style={{ color: isTooLoud ? '#ef4444' : ch.color }}>
                     <Icon size={20} />
                   </div>
                   <div>
                     <h5 className="fader-name">{ch.name}</h5>
-                    <span className="fader-pct">{Math.round(vol * 100)}%</span>
+                    <div className="fader-val-row">
+                      <span className={`fader-pct ${isTooLoud ? 'is-warning' : ''}`}>{pct}%</span>
+                      {isTooLoud && (
+                        <span className="too-loud-badge">⚠️ Too Loud</span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -186,16 +192,15 @@ export default function AmbientMixer({
                     max="1"
                     step="0.01"
                     value={vol}
-                    onChange={(e) => {
-                      const raw = parseFloat(e.target.value);
-                      const safeVal = Math.min(raw, maxAllowedVolume);
-                      onVolumeChange(ch.id, safeVal);
-                    }}
-                    className="ambient-range-input"
-                    style={{
-                      background: `linear-gradient(to right, ${ch.color} 0%, ${ch.color} ${vol * 100}%, rgba(255,255,255,0.1) ${vol * 100}%, rgba(255,255,255,0.1) 100%)`
-                    }}
+                    onChange={(e) => onVolumeChange(ch.id, parseFloat(e.target.value))}
+                    className={`ambient-range-input ${isTooLoud ? 'is-warning-slider' : ''}`}
+                    style={{ background: trackBg }}
                   />
+                  {isTooLoud && (
+                    <div className="too-loud-hint">
+                      Volume exceeds 70% — may overpower the music
+                    </div>
+                  )}
                 </div>
               </div>
             );

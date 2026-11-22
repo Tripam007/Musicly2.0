@@ -2990,6 +2990,59 @@ body, html, #root {
   background: #ffffff;
   box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
   cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ambient-range-input.is-warning-slider::-webkit-slider-thumb {
+  background: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8);
+}
+
+.fader-val-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.fader-pct.is-warning {
+  color: #ef4444 !important;
+  font-weight: 700;
+}
+
+.too-loud-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  padding: 1px 6px;
+  border-radius: 6px;
+  animation: pulse-loud 1.4s infinite ease-in-out;
+}
+
+@keyframes pulse-loud {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.78; transform: scale(0.96); }
+}
+
+.ambient-fader-card.is-too-loud {
+  border-color: rgba(239, 68, 68, 0.45) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.2) !important;
+}
+
+.too-loud-hint {
+  font-size: 10px;
+  font-weight: 500;
+  color: #f87171;
+  margin-top: 4px;
+  animation: fadeIn 0.2s ease-in-out;
 }
 
 /* Scene Selector Grid */
