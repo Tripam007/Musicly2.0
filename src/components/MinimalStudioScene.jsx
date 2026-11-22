@@ -361,10 +361,11 @@ export default function MinimalStudioScene({
   const currentStudioBgUrl = useMemo(() => {
     // Check if Country Roads & Roots playlist is actively playing (strictly for this playlist!)
     const isCountryPlaylistPlaying = Boolean(
-      activePlayingPlaylistId && (
+      (activePlayingPlaylistId && (
         activePlayingPlaylistId === 'country_roots' ||
         String(activePlayingPlaylistId).toLowerCase().includes('country')
-      )
+      )) ||
+      (backdropImage && backdropImage.includes('country_scene') && activePlayingPlaylistId)
     );
 
     if (isCountryPlaylistPlaying) {

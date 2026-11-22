@@ -110,7 +110,7 @@ export function isSongMatchingPlaylistLang(track, playlistLang) {
  * Get unified official Musicly playlists (built-in + admin created)
  * Filtered uniformly across ALL scenes by the active language filter.
  */
-export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [], selectedLanguages = [], selectedLanguage = null) {
+export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [], selectedLanguages = null, selectedLanguage = null) {
   const list = [];
   const tracks = Array.isArray(allTracks) ? allTracks : [];
   const officialTracks = tracks.filter(t => !t?.isCustom || !!t?.isPublic);
@@ -226,28 +226,32 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
     });
   }
 
-  // Filter strictly by the active language filter:
+  // If language filtering is requested, filter strictly by the active language filter:
   // eng -> eng only, hindi -> hindi only, beng -> beng only, other -> other only, all -> all only
-  const filteredLists = list.filter(pl => isPlaylistMatchingLanguage(pl.language, selectedLanguages, selectedLanguage));
+  if (selectedLanguages !== null || selectedLanguage !== null) {
+    const filteredLists = list.filter(pl => isPlaylistMatchingLanguage(pl.language, selectedLanguages || [], selectedLanguage));
 
-  // If a specific language is selected, strictly filter internal tracks of every playlist as well
-  let effectiveLangs = [];
-  if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
-    effectiveLangs = selectedLanguages.filter(l => l && l !== 'Hinglish');
-  } else if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
-    effectiveLangs = [selectedLanguage];
+    // If a specific language is selected, strictly filter internal tracks of every playlist as well
+    let effectiveLangs = [];
+    if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
+      effectiveLangs = selectedLanguages.filter(l => l && l !== 'Hinglish');
+    } else if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
+      effectiveLangs = [selectedLanguage];
+    }
+
+    if (effectiveLangs.length > 0) {
+      filteredLists.forEach(pl => {
+        pl.tracks = pl.tracks.filter(t => isTrackInLanguages(t.language, effectiveLangs));
+        pl.trackIds = pl.tracks.map(t => t.id);
+        pl.count = pl.tracks.length;
+        pl.subtitle = `${pl.tracks.length} song${pl.tracks.length === 1 ? '' : 's'} in this list`;
+      });
+    }
+
+    return filteredLists;
   }
 
-  if (effectiveLangs.length > 0) {
-    filteredLists.forEach(pl => {
-      pl.tracks = pl.tracks.filter(t => isTrackInLanguages(t.language, effectiveLangs));
-      pl.trackIds = pl.tracks.map(t => t.id);
-      pl.count = pl.tracks.length;
-      pl.subtitle = `${pl.tracks.length} song${pl.tracks.length === 1 ? '' : 's'} in this list`;
-    });
-  }
-
-  return filteredLists;
+  return list;
 }
 
 /**

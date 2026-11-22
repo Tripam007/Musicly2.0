@@ -798,30 +798,17 @@ export default function App() {
     const targetDefaultBackdrop = (selectedGenre && selectedGenre !== 'All' && GENRE_BACKDROPS[selectedGenre]) || defaultSceneImg;
 
     // Check if Country Roads & Roots playlist is actively playing (ONLY for this playlist!)
-    const isCountryPlaylistId = Boolean(
+    const isCountryPlaylistPlaying = Boolean(
       activePlayingPlaylistId && (
         activePlayingPlaylistId === 'country_roots' ||
         String(activePlayingPlaylistId).toLowerCase().includes('country')
       )
     );
 
-    let isCountryPlaylistPlaying = false;
-    if (isCountryPlaylistId) {
-      const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
-      const countryPl = unified.find(p => p.id === activePlayingPlaylistId || p.id === 'country_roots');
-      if (countryPl && Array.isArray(countryPl.tracks) && countryPl.tracks.length > 0) {
-        if (!currentTrack || countryPl.tracks.some(t => t.id === currentTrack.id || (t.title && currentTrack.title && t.title.toLowerCase() === currentTrack.title.toLowerCase()))) {
-          isCountryPlaylistPlaying = true;
-        }
-      } else {
-        isCountryPlaylistPlaying = true;
-      }
-    }
-
     if (isCountryPlaylistPlaying) {
       const countryBackdrop = '/assets/images/country_scene.jpg';
+      isPlaylistBackdropAppliedRef.current = countryBackdrop;
       if (backdropImage !== countryBackdrop) {
-        isPlaylistBackdropAppliedRef.current = countryBackdrop;
         setIsTransitioning(true);
         setTimeout(() => {
           setBackdropImage(countryBackdrop);
@@ -2867,6 +2854,9 @@ export default function App() {
             if (shouldPlay !== undefined) {
               setIsPlaying(shouldPlay);
             }
+            if (shouldPlay !== false) {
+              audioEngine.playTrack(track, 0);
+            }
           }}
           onOpenSceneModal={() => setIsSceneOpen(true)}
           onOpenPlaylistDrawer={() => {
@@ -2932,6 +2922,9 @@ export default function App() {
             currentTimeRef.current = 0;
             if (shouldPlay !== undefined) {
               setIsPlaying(shouldPlay);
+            }
+            if (shouldPlay !== false) {
+              audioEngine.playTrack(track, 0);
             }
             setCustomQueue(prev => prev.filter(t => t.id !== track.id));
             if (isFromPlaylist && playlistId) {
@@ -3107,6 +3100,9 @@ export default function App() {
               currentTimeRef.current = 0;
               setCurrentTrackId(track.id);
               setIsPlaying(shouldPlay !== undefined ? shouldPlay : true);
+              if (shouldPlay !== false) {
+                audioEngine.playTrack(track, 0);
+              }
             }}
             onTogglePlay={togglePlay}
             favorites={favorites}
