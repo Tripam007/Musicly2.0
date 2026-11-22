@@ -268,6 +268,41 @@ export async function resetStudioBackgroundsToDefaults() {
 }
 
 /**
+ * Checks if a URL is a Gemini conversation or canvas sharing link.
+ */
+export function isGeminiShareLink(url) {
+  if (!url || typeof url !== 'string') return false;
+  return url.includes('share.gemini.google') || url.includes('gemini.google.com/share');
+}
+
+/**
+ * Normalizes web URLs for direct visual consumption, supporting Google Drive,
+ * Dropbox, and Google UserContent (Gemini generated image addresses).
+ */
+export function normalizeVisualUrl(url) {
+  if (!url || typeof url !== 'string') return url;
+  const trimmed = url.trim();
+
+  // Google Drive: https://drive.google.com/file/d/FILE_ID/view... -> direct view link
+  const gDriveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (gDriveMatch && gDriveMatch[1]) {
+    return `https://drive.google.com/uc?export=view&id=${gDriveMatch[1]}`;
+  }
+
+  // Dropbox: dl=0 -> raw=1
+  if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) {
+    return trimmed.replace('dl=0', 'raw=1');
+  }
+
+  // Google UserContent (Gemini generated image addresses): ensure original full resolution
+  if (trimmed.includes('googleusercontent.com') && trimmed.includes('=s')) {
+    return trimmed.replace(/=s\d+[^&?]*/, '=s0');
+  }
+
+  return trimmed;
+}
+
+/**
  * Process uploaded file or image URL with 100% lossless fidelity.
  * Preserves the exact original image data without any canvas compression,
  * downsampling, or convolution degradation.
@@ -279,7 +314,7 @@ export async function process4KImageFile(fileOrUrl) {
     }
 
     if (typeof fileOrUrl === 'string') {
-      const cleanUrl = fileOrUrl.trim();
+      const cleanUrl = normalizeVisualUrl(fileOrUrl);
       if (isLiveVisual(cleanUrl)) {
         resolve({
           url: cleanUrl,

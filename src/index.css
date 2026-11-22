@@ -21240,6 +21240,160 @@ body, html, #root {
   box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
 }
 
+/* Gemini Share Notice */
+.admin-bg-gemini-notice {
+  background: linear-gradient(135deg, rgba(30, 58, 138, 0.55) 0%, rgba(15, 23, 42, 0.85) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 2px rgba(255, 255, 255, 0.12);
+  animation: adminCardPop 0.25s ease-out;
+}
+
+.admin-bg-gemini-notice-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.admin-bg-gemini-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-bg-gemini-notice-title {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #93c5fd;
+  letter-spacing: 0.02em;
+}
+
+.admin-bg-gemini-notice-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.admin-bg-gemini-notice-close:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.admin-bg-gemini-notice-desc {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.45;
+  margin: 0 0 12px 0;
+}
+
+.admin-bg-gemini-notice-desc code {
+  background: rgba(0, 0, 0, 0.4);
+  color: #60a5fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.admin-bg-gemini-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.admin-bg-gemini-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 14px;
+  border-radius: 10px;
+}
+
+.admin-bg-step-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.admin-bg-gemini-step strong {
+  display: block;
+  font-size: 0.84rem;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.admin-bg-gemini-step p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+.admin-bg-gemini-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-bg-gemini-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-bg-gemini-pick-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.admin-bg-gemini-dismiss-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.admin-bg-gemini-dismiss-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .admin-bg-thumb-del-btn {
   position: absolute;
   top: 8px;

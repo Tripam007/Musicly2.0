@@ -13,7 +13,7 @@ import {
   Sparkles,
   MonitorPlay
 } from 'lucide-react';
-import { process4KImageFile } from '../utils/studioBackgroundsDB';
+import { process4KImageFile, isGeminiShareLink } from '../utils/studioBackgroundsDB';
 import { isLiveVisual } from '../utils/publicScenesDB';
 
 export default function AdminBackgroundGalleryModal({
@@ -34,6 +34,7 @@ export default function AdminBackgroundGalleryModal({
   const [urlInput, setUrlInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [geminiShareNotice, setGeminiShareNotice] = useState(false);
   const fileInputRef = useRef(null);
 
   if (!isOpen) return null;
@@ -77,6 +78,12 @@ export default function AdminBackgroundGalleryModal({
     e.preventDefault();
     const cleanUrl = urlInput.trim();
     if (!cleanUrl) return;
+
+    if (isGeminiShareLink(cleanUrl)) {
+      setGeminiShareNotice(true);
+      showToast?.('Gemini chat link detected. See instructions below to use your visual.');
+      return;
+    }
 
     try {
       setIsProcessing(true);
@@ -238,6 +245,63 @@ export default function AdminBackgroundGalleryModal({
 
         {/* Add New Background Controls */}
         <div className="admin-bg-add-section">
+          {geminiShareNotice && (
+            <div className="admin-bg-gemini-notice">
+              <div className="admin-bg-gemini-notice-header">
+                <div className="admin-bg-gemini-title-wrap">
+                  <Sparkles size={16} color="#60a5fa" />
+                  <span className="admin-bg-gemini-notice-title">Gemini Share Link Detected</span>
+                </div>
+                <button 
+                  type="button" 
+                  className="admin-bg-gemini-notice-close" 
+                  onClick={() => setGeminiShareNotice(false)}
+                  title="Dismiss notice"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <p className="admin-bg-gemini-notice-desc">
+                Links like <code>share.gemini.google</code> are private chat transcripts that cannot be embedded directly. Here is how to use your Gemini generation:
+              </p>
+              <div className="admin-bg-gemini-steps">
+                <div className="admin-bg-gemini-step">
+                  <span className="admin-bg-step-num">1</span>
+                  <div>
+                    <strong>Download &amp; Drag-and-Drop (Recommended):</strong>
+                    <p>Click the <strong>Download arrow (⬇)</strong> on your image or video in Gemini. Then drop the downloaded file into the upload box!</p>
+                  </div>
+                </div>
+                <div className="admin-bg-gemini-step">
+                  <span className="admin-bg-step-num">2</span>
+                  <div>
+                    <strong>Copy Direct Image Address:</strong>
+                    <p>Inside Gemini, right-click the image/video and choose <strong>&quot;Copy image address&quot;</strong> (or <strong>&quot;Copy video address&quot;</strong>), then paste that direct link here.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="admin-bg-gemini-actions">
+                <button 
+                  type="button" 
+                  className="admin-bg-gemini-pick-btn"
+                  onClick={() => {
+                    setActiveTab('upload');
+                    setTimeout(() => fileInputRef.current?.click(), 100);
+                  }}
+                >
+                  <Upload size={14} /> Select Downloaded File from Computer
+                </button>
+                <button 
+                  type="button" 
+                  className="admin-bg-gemini-dismiss-btn"
+                  onClick={() => setGeminiShareNotice(false)}
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="admin-bg-add-tabs">
             <button 
               type="button"
