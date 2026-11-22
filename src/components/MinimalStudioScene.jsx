@@ -554,28 +554,12 @@ export default function MinimalStudioScene({
 
   const handleCameraClick = (e) => {
     e.stopPropagation();
-    if (cameraClickTimerRef.current) {
-      clearTimeout(cameraClickTimerRef.current);
-      cameraClickTimerRef.current = null;
-      return;
-    }
-    cameraClickTimerRef.current = setTimeout(() => {
-      cameraClickTimerRef.current = null;
-      if (isUserAdmin) {
-        setIsAdminGalleryOpen(true);
-      } else {
-        updateMediaPhotoIndex((prev) => (prev + 1) % studioBackgrounds.length);
-        showToast("Switched Studio Background");
-      }
-    }, 280);
+    setIsQuickBgPickerOpen((prev) => !prev);
+    showToast(!isQuickBgPickerOpen ? "Studio Wallpaper Gallery" : "Closed Wallpaper Gallery");
   };
 
   const handleCameraDoubleClick = (e) => {
     e.stopPropagation();
-    if (cameraClickTimerRef.current) {
-      clearTimeout(cameraClickTimerRef.current);
-      cameraClickTimerRef.current = null;
-    }
     setIsQuickBgPickerOpen((prev) => !prev);
   };
 
