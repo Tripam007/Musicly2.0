@@ -21225,6 +21225,21 @@ body, html, #root {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
+.admin-bg-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.58rem;
+  font-weight: 800;
+  background: #3b82f6;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+}
+
 .admin-bg-thumb-del-btn {
   position: absolute;
   top: 8px;

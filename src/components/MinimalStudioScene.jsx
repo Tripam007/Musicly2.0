@@ -43,6 +43,7 @@ import {
   resetStudioBackgroundsToDefaults,
   DEFAULT_STUDIO_PHOTOS 
 } from '../utils/studioBackgroundsDB';
+import { isLiveVisual } from '../utils/publicScenesDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
 import { checkIsAdmin } from '../utils/userModel';
 import audioEngine from '../utils/audioEngine';
@@ -1452,11 +1453,22 @@ export default function MinimalStudioScene({
            ------------------------------------------------------------------- */}
         <section className="ref-center-stage">
           <div className="ref-main-photo-frame">
-            <img 
-              src={currentStudioBgUrl} 
-              alt={activeTrack.title || "Studio Visual"}
-              className="ref-main-photo-img"
-            />
+            {isLiveVisual(currentStudioBgUrl) ? (
+              <video 
+                src={currentStudioBgUrl} 
+                autoPlay 
+                loop 
+                muted 
+                playsInline 
+                className="ref-main-photo-img" 
+              />
+            ) : (
+              <img 
+                src={currentStudioBgUrl} 
+                alt={activeTrack.title || "Studio Visual"}
+                className="ref-main-photo-img"
+              />
+            )}
 
             {/* Vertical Volume Slider on Edge ("from below") */}
             <EdgeVolumeSlider 

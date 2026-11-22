@@ -1,4 +1,6 @@
-// IndexedDB Storage Utility for Minimal Studio Background Visuals (Supporting 4K UHD Images)
+// IndexedDB Storage Utility for Minimal Studio Background Visuals (Supporting 4K UHD Images & Live Video Wallpapers)
+
+import { isLiveVisual } from './publicScenesDB';
 
 const DB_NAME = 'MusiclyStudioDB';
 const DB_VERSION = 1;
@@ -273,11 +275,22 @@ export async function resetStudioBackgroundsToDefaults() {
 export async function process4KImageFile(fileOrUrl) {
   return new Promise((resolve, reject) => {
     if (!fileOrUrl) {
-      return reject(new Error('Please provide an image.'));
+      return reject(new Error('Please provide an image or video.'));
     }
 
     if (typeof fileOrUrl === 'string') {
       const cleanUrl = fileOrUrl.trim();
+      if (isLiveVisual(cleanUrl)) {
+        resolve({
+          url: cleanUrl,
+          width: 3840,
+          height: 2160,
+          is4K: true,
+          type: 'video',
+          title: 'Live Studio Wallpaper'
+        });
+        return;
+      }
       const img = new Image();
       img.onload = () => {
         const w = img.naturalWidth || 3840;
@@ -287,6 +300,7 @@ export async function process4KImageFile(fileOrUrl) {
           width: w,
           height: h,
           is4K: w >= 2560 || h >= 1440,
+          type: 'image',
           title: 'Studio Wallpaper'
         });
       };
@@ -296,14 +310,27 @@ export async function process4KImageFile(fileOrUrl) {
           width: 3840,
           height: 2160,
           is4K: true,
+          type: 'image',
           title: 'Studio Wallpaper'
         });
       };
       img.src = cleanUrl;
     } else if (fileOrUrl instanceof Blob || fileOrUrl instanceof File) {
+      const isVideo = (fileOrUrl.type && fileOrUrl.type.startsWith('video/')) || isLiveVisual(fileOrUrl.name);
       const reader = new FileReader();
       reader.onload = (e) => {
         const rawDataUrl = e.target.result;
+        if (isVideo) {
+          resolve({
+            url: rawDataUrl,
+            width: 3840,
+            height: 2160,
+            is4K: true,
+            type: 'video',
+            title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Live Studio Wallpaper'
+          });
+          return;
+        }
         const img = new Image();
         img.onload = () => {
           const w = img.naturalWidth || 3840;
@@ -313,6 +340,7 @@ export async function process4KImageFile(fileOrUrl) {
             width: w,
             height: h,
             is4K: w >= 2560 || h >= 1440,
+            type: 'image',
             title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
           });
         };
@@ -322,6 +350,7 @@ export async function process4KImageFile(fileOrUrl) {
             width: 3840,
             height: 2160,
             is4K: true,
+            type: 'image',
             title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
           });
         };
@@ -330,7 +359,7 @@ export async function process4KImageFile(fileOrUrl) {
       reader.onerror = () => reject(new Error('Failed to read file from disk.'));
       reader.readAsDataURL(fileOrUrl);
     } else {
-      reject(new Error('Invalid image input.'));
+      reject(new Error('Invalid image or video input.'));
     }
   });
 }

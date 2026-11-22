@@ -14,6 +14,7 @@ import {
   MonitorPlay
 } from 'lucide-react';
 import { process4KImageFile } from '../utils/studioBackgroundsDB';
+import { isLiveVisual } from '../utils/publicScenesDB';
 
 export default function AdminBackgroundGalleryModal({
   isOpen,
@@ -174,18 +175,34 @@ export default function AdminBackgroundGalleryModal({
                   }}
                   title={`Click to set as Studio Background (${bg.title || `Visual ${idx + 1}`})`}
                 >
-                  <img 
-                    src={bg.url} 
-                    alt={bg.title || `Background ${idx + 1}`}
-                    className="admin-bg-thumb-img"
-                    loading="lazy"
-                  />
+                  {bg.type === 'video' || isLiveVisual(bg.url) ? (
+                    <video 
+                      src={bg.url} 
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="admin-bg-thumb-img"
+                    />
+                  ) : (
+                    <img 
+                      src={bg.url} 
+                      alt={bg.title || `Background ${idx + 1}`}
+                      className="admin-bg-thumb-img"
+                      loading="lazy"
+                    />
+                  )}
                   
                   {/* Top Badges */}
                   <div className="admin-bg-thumb-top-badges">
                     {isActive && (
                       <span className="admin-bg-active-tag">
                         <Check size={10} strokeWidth={3} /> ACTIVE
+                      </span>
+                    )}
+                    {(bg.type === 'video' || isLiveVisual(bg.url)) && (
+                      <span className="admin-bg-live-tag">
+                        LIVE
                       </span>
                     )}
                   </div>
@@ -249,7 +266,7 @@ export default function AdminBackgroundGalleryModal({
               <input 
                 ref={fileInputRef}
                 type="file" 
-                accept="image/*"
+                accept="image/*,video/mp4,video/webm,video/ogg,video/quicktime"
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
@@ -265,7 +282,7 @@ export default function AdminBackgroundGalleryModal({
                     {isProcessing ? 'Optimizing background visual...' : 'Click to Browse or Drag & Drop Wallpaper'}
                   </span>
                   <span className="admin-bg-drop-sub">
-                    Supports PNG, JPEG, WebP. High-resolution images preserved in full quality.
+                    Supports PNG, JPEG, WebP, GIF & Live Video (MP4, WebM). High-resolution preserved in full quality.
                   </span>
                 </div>
               </div>
@@ -276,7 +293,7 @@ export default function AdminBackgroundGalleryModal({
                 <ImageIcon size={16} className="admin-bg-url-icon" />
                 <input 
                   type="url"
-                  placeholder="Paste image link (e.g. Unsplash, Wallhaven, direct photo URL)..."
+                  placeholder="Paste image or live video link (e.g. Unsplash, direct MP4/WebM video URL)..."
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
                   className="admin-bg-url-input"
