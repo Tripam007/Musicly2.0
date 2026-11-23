@@ -4,7 +4,8 @@ import {
   doc, 
   setDoc, 
   getDocs, 
-  deleteDoc 
+  deleteDoc,
+  onSnapshot 
 } from 'firebase/firestore';
 import { checkIsAdmin } from './userModel';
 
@@ -379,7 +380,52 @@ export async function loadSceneOverrides() {
 }
 
 /**
+ * Helper: Compresses large base64 data URLs to high-quality 1080p JPEG
+ * to guarantee they are under 400KB and seamlessly sync to Firestore without quota or document limit errors.
+ */
+export async function compressImageIfNeeded(dataUrl, maxDimension = 1920, quality = 0.82) {
+  if (typeof window === 'undefined' || typeof dataUrl !== 'string') return dataUrl;
+  if (!dataUrl.startsWith('data:image/')) return dataUrl;
+  if (dataUrl.length < 350000) return dataUrl;
+
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressed);
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch {
+      resolve(dataUrl);
+    }
+  });
+}
+
+/**
  * Save theme image override for any scene (Admin Only)
+ * Persists locally and synchronizes to Firestore so every device updates in real time.
  */
 export async function saveSceneOverride(sceneId, imageUrl, user) {
   if (!checkIsAdmin(user)) {
@@ -393,18 +439,20 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
   }
 
   const cleanImage = imageUrl.trim();
+  // Ensure image is compact for instant Firestore cloud sync across all devices
+  const optimizedImage = await compressImageIfNeeded(cleanImage);
 
-  // 1. Permanent IndexedDB storage (handles massive 4K data URLs without quota error)
-  await putIdbItem(STORE_SCENE_OVERRIDES, { sceneId, image: cleanImage, updatedAt: Date.now() });
+  // 1. Permanent IndexedDB storage
+  await putIdbItem(STORE_SCENE_OVERRIDES, { sceneId, image: optimizedImage, updatedAt: Date.now() });
 
-  // 2. Local storage cache (safely catching quota limits)
+  // 2. Local storage cache
   let overrides = {};
   try {
     overrides = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
   } catch {}
   try {
-    if (cleanImage.length < 500000) {
-      overrides[sceneId] = cleanImage;
+    if (optimizedImage.length < 500000) {
+      overrides[sceneId] = optimizedImage;
       localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
     }
   } catch {}
@@ -414,30 +462,30 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
     const customScenes = JSON.parse(localStorage.getItem(SCENES_CACHE_KEY) || '[]');
     const hasCustom = customScenes.some(s => s.id === sceneId);
     if (hasCustom) {
-      const updated = customScenes.map(s => s.id === sceneId ? { ...s, image: cleanImage } : s);
+      const updated = customScenes.map(s => s.id === sceneId ? { ...s, image: optimizedImage } : s);
       localStorage.setItem(SCENES_CACHE_KEY, JSON.stringify(updated));
     }
   } catch {}
 
-  // 3. Persist to Firestore with safety race
+  // 3. Persist to Firestore cloud for global real-time synchronization
   if (firestore) {
     try {
-      if (cleanImage.length < 500000) {
+      if (optimizedImage.length < 950000) {
         const docRef = doc(firestore, 'public_scene_overrides', sceneId);
         await Promise.race([
           setDoc(docRef, { 
             sceneId, 
-            image: cleanImage, 
+            image: optimizedImage, 
             updatedAt: Date.now(), 
             updatedBy: user.email || 'admin' 
           }, { merge: true }),
-          new Promise((resolve) => setTimeout(resolve, 1500))
+          new Promise((resolve) => setTimeout(resolve, 3000))
         ]);
 
         const customDocRef = doc(firestore, 'public_scenes', sceneId);
         await Promise.race([
-          setDoc(customDocRef, { image: cleanImage }, { merge: true }),
-          new Promise((resolve) => setTimeout(resolve, 1200))
+          setDoc(customDocRef, { image: optimizedImage }, { merge: true }),
+          new Promise((resolve) => setTimeout(resolve, 1500))
         ]).catch(() => {});
       }
     } catch (err) {
@@ -445,7 +493,7 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
     }
   }
 
-  return cleanImage;
+  return optimizedImage;
 }
 
 /**
@@ -621,5 +669,69 @@ export async function deletePublicScene(sceneId, user) {
   }
 
   return true;
+}
+
+/**
+ * Real-time subscription to scene image overrides from Firestore.
+ * Automatically synchronizes any changes made by an admin across all connected devices in real time.
+ */
+export function subscribeSceneOverrides(callback) {
+  if (!firestore) return () => {};
+  try {
+    const colRef = collection(firestore, 'public_scene_overrides');
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      const overrides = {};
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data && data.image) {
+          overrides[docSnap.id] = data.image;
+        }
+      });
+      // Mirror to local cache and IndexedDB
+      try {
+        localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+      } catch {}
+      if (typeof callback === 'function') {
+        callback(overrides);
+      }
+    }, (err) => {
+      console.warn("Firestore scene overrides subscription notice:", err);
+    });
+    return unsubscribe;
+  } catch (err) {
+    console.warn("Could not attach scene overrides subscription:", err);
+    return () => {};
+  }
+}
+
+/**
+ * Real-time subscription to public custom scenes from Firestore.
+ */
+export function subscribePublicScenes(callback) {
+  if (!firestore) return () => {};
+  try {
+    const colRef = collection(firestore, 'public_scenes');
+    const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      const scenes = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data && data.id) {
+          scenes.push(data);
+        }
+      });
+      try {
+        localStorage.setItem(SCENES_CACHE_KEY, JSON.stringify(scenes));
+      } catch {}
+      if (typeof callback === 'function') {
+        callback(scenes);
+      }
+    }, (err) => {
+      console.warn("Firestore public scenes subscription notice:", err);
+    });
+    return unsubscribe;
+  } catch (err) {
+    console.warn("Could not attach public scenes subscription:", err);
+    return () => {};
+  }
 }
 

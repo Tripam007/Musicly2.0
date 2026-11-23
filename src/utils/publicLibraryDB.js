@@ -5,7 +5,8 @@ import {
   setDoc, 
   getDocs, 
   deleteDoc, 
-  updateDoc 
+  updateDoc,
+  onSnapshot 
 } from 'firebase/firestore';
 import { checkIsAdmin } from './userModel';
 import { extractYouTubeId } from './youtubePlayer';
@@ -463,3 +464,30 @@ export async function deletePublicTrack(trackId, user = null) {
 
   return true;
 }
+
+/**
+ * Subscribe to real-time changes to the public music library in Firestore.
+ * Automatically synchronizes new songs, metadata edits, and deletions across all devices.
+ */
+export function subscribePublicTracks(callback) {
+  if (!firestore) return () => {};
+  try {
+    const colRef = collection(firestore, 'public_tracks');
+    const unsubTracks = onSnapshot(colRef, async () => {
+      try {
+        const fresh = await loadPublicTracks();
+        if (typeof callback === 'function') {
+          callback(fresh);
+        }
+      } catch (e) {
+        console.warn("Public tracks real-time sync notice:", e);
+      }
+    }, (err) => console.warn("Public tracks subscription notice:", err));
+
+    return unsubTracks;
+  } catch (err) {
+    console.warn("Could not attach public tracks subscription:", err);
+    return () => {};
+  }
+}
+

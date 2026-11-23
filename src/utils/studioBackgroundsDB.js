@@ -1,6 +1,8 @@
 // IndexedDB Storage Utility for Minimal Studio Background Visuals (Supporting 4K UHD Images & Live Video Wallpapers)
 
-import { isLiveVisual } from './publicScenesDB';
+import { isLiveVisual, compressImageIfNeeded } from './publicScenesDB';
+import { firestore } from '../firebase';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const DB_NAME = 'MusiclyStudioDB';
 const DB_VERSION = 1;
@@ -136,7 +138,8 @@ export async function getStudioBackgrounds() {
 }
 
 /**
- * Save current list of backgrounds to IndexedDB and localStorage (for fast init)
+ * Save current list of backgrounds to IndexedDB and localStorage (for fast init),
+ * and sync to Firestore cloud so all devices receive the updated gallery in real time.
  */
 export async function saveStudioBackgrounds(imagesList) {
   if (!Array.isArray(imagesList)) return;
@@ -156,7 +159,6 @@ export async function saveStudioBackgrounds(imagesList) {
 
   // Backup non-massive items to localStorage for instant synchronous boot
   try {
-    // Exclude oversized base64 from localStorage to prevent quota errors
     const safeForLocalStorage = imagesList.filter(item => {
       const u = typeof item === 'string' ? item : (item?.url || '');
       return !u.startsWith('data:') || u.length < 500000;
@@ -170,10 +172,37 @@ export async function saveStudioBackgrounds(imagesList) {
       detail: { count: imagesList.length }
     }));
   }
+
+  // Persist to Firestore cloud for cross-device real-time sync
+  if (firestore) {
+    (async () => {
+      try {
+        const compressedList = [];
+        for (const item of imagesList) {
+          if (typeof item === 'string') {
+            const c = await compressImageIfNeeded(item);
+            compressedList.push(c);
+          } else if (item && item.url) {
+            const c = await compressImageIfNeeded(item.url);
+            compressedList.push({ ...item, url: c });
+          } else {
+            compressedList.push(item);
+          }
+        }
+        const docRef = doc(firestore, 'public_settings', 'studio_gallery');
+        await setDoc(docRef, {
+          gallery: compressedList,
+          updatedAt: Date.now()
+        }, { merge: true });
+      } catch (err) {
+        console.warn('Firestore studio gallery save notice:', err);
+      }
+    })();
+  }
 }
 
 /**
- * Set active studio background index and broadcast update event
+ * Set active studio background index and broadcast update event locally and to Firestore
  */
 export function setActiveStudioBackgroundIndex(idx) {
   try {
@@ -184,6 +213,71 @@ export function setActiveStudioBackgroundIndex(idx) {
       }));
     }
   } catch (e) {}
+
+  if (firestore) {
+    try {
+      const docRef = doc(firestore, 'public_settings', 'studio_active_visual');
+      setDoc(docRef, {
+        activeIndex: idx,
+        updatedAt: Date.now()
+      }, { merge: true }).catch(() => {});
+    } catch {}
+  }
+}
+
+/**
+ * Subscribe to real-time studio background updates (gallery + active visual) from Firestore.
+ */
+export function subscribeStudioBackgrounds(callback) {
+  if (!firestore) return () => {};
+  let unsubGallery = null;
+  let unsubActive = null;
+
+  try {
+    const galleryDocRef = doc(firestore, 'public_settings', 'studio_gallery');
+    unsubGallery = onSnapshot(galleryDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (Array.isArray(data?.gallery) && data.gallery.length > 0) {
+          openDB().then((db) => {
+            if (db) {
+              const tx = db.transaction(STORE_NAME, 'readwrite');
+              tx.objectStore(STORE_NAME).put(data.gallery, KEY);
+            }
+          }).catch(() => {});
+          try {
+            localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(data.gallery));
+          } catch {}
+          if (typeof callback === 'function') {
+            callback({ backgrounds: data.gallery });
+          }
+        }
+      }
+    }, (err) => console.warn('Studio gallery subscription notice:', err));
+
+    const activeDocRef = doc(firestore, 'public_settings', 'studio_active_visual');
+    unsubActive = onSnapshot(activeDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (typeof data?.activeIndex === 'number') {
+          try {
+            localStorage.setItem('musicly_studio_bg_index', String(data.activeIndex));
+          } catch {}
+          if (typeof callback === 'function') {
+            callback({ activeIndex: data.activeIndex });
+          }
+        }
+      }
+    }, (err) => console.warn('Studio active visual subscription notice:', err));
+
+    return () => {
+      if (unsubGallery) unsubGallery();
+      if (unsubActive) unsubActive();
+    };
+  } catch (err) {
+    console.warn('Could not attach studio backgrounds subscription:', err);
+    return () => {};
+  }
 }
 
 /**

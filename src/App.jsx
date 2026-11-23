@@ -45,12 +45,12 @@ import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/a
 import { audioEngine } from './utils/audioEngine';
 import { ytEngine, extractYouTubeId } from './utils/youtubePlayer';
 import { saveTrackToDB, loadSavedTracksFromDB, deleteTrackFromDB, updateTrackGenresInDB, loadFromLocalCache } from './utils/storageDB';
-import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds } from './utils/publicLibraryDB';
+import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds, subscribePublicTracks } from './utils/publicLibraryDB';
 import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
 import { preloadMusiclyAssets } from './utils/assetPreloader';
-import { loadPublicScenes, publishPublicScene, deletePublicScene, loadSceneOverrides, saveSceneOverride, removeSceneOverride, isLiveVisual } from './utils/publicScenesDB';
-import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists, getUnifiedMusiclyPlaylists } from './utils/publicPlaylistsDB';
+import { loadPublicScenes, publishPublicScene, deletePublicScene, loadSceneOverrides, saveSceneOverride, removeSceneOverride, isLiveVisual, subscribeSceneOverrides, subscribePublicScenes } from './utils/publicScenesDB';
+import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists, getUnifiedMusiclyPlaylists, subscribePublicPlaylists } from './utils/publicPlaylistsDB';
 import { getLocalUserPlaylists } from './utils/userPlaylistsDB';
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
 import { resolveOriginalTrack, resolveTrackAudioStreamAsync, isDirectPlayableAudio } from './utils/originalTrackResolver';
@@ -174,7 +174,7 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAdminDashboardOpen, setIsAdminDashboardOpen] = useState(false);
 
-  // Load official Musicly Public Library tracks (accessible 100% of the time, even when logged out)
+  // Load official Musicly Public Library tracks (accessible 100% of the time worldwide)
   useEffect(() => {
     let isMounted = true;
     async function initPublicTracks() {
@@ -201,9 +201,17 @@ export default function App() {
     };
     window.addEventListener('musicly_public_library_changed', handlePublicChange);
 
+    // Cross-device cloud sync: listen in real time for any new songs, edits, or deletions by Admin
+    const unsubCloud = subscribePublicTracks((fresh) => {
+      if (isMounted && fresh && fresh.length > 0) {
+        setPublicTracks(fresh);
+      }
+    });
+
     return () => { 
       isMounted = false; 
       window.removeEventListener('musicly_public_library_changed', handlePublicChange);
+      if (unsubCloud) unsubCloud();
     };
   }, []);
 
@@ -224,7 +232,18 @@ export default function App() {
       }
     }
     initPublicScenes();
-    return () => { isMounted = false; };
+
+    // Cross-device cloud sync: listen in real time for new/edited custom scenes by Admin
+    const unsubCloud = subscribePublicScenes((scenes) => {
+      if (isMounted && scenes && scenes.length > 0) {
+        setCustomScenes(scenes);
+      }
+    });
+
+    return () => { 
+      isMounted = false; 
+      if (unsubCloud) unsubCloud();
+    };
   }, []);
 
   // Scene Image Overrides (Allows Admin to customize theme images for any scene)
@@ -249,7 +268,18 @@ export default function App() {
       }
     }
     initSceneOverrides();
-    return () => { isMounted = false; };
+
+    // Cross-device cloud sync: listen in real time for scene image changes by Admin
+    const unsubCloud = subscribeSceneOverrides((overrides) => {
+      if (isMounted && overrides) {
+        setSceneOverrides(overrides);
+      }
+    });
+
+    return () => { 
+      isMounted = false; 
+      if (unsubCloud) unsubCloud();
+    };
   }, []);
 
   // Official Musicly Public Playlists (created exclusively by verified Admin, viewable/playable publicly)
@@ -274,9 +304,17 @@ export default function App() {
     };
     window.addEventListener('musicly_public_playlists_changed', handlePlaylistsChange);
 
+    // Cross-device cloud sync: listen in real time for official playlist changes by Admin
+    const unsubCloud = subscribePublicPlaylists((fresh) => {
+      if (isMounted && fresh && fresh.length > 0) {
+        setPublicPlaylists(fresh);
+      }
+    });
+
     return () => {
       isMounted = false;
       window.removeEventListener('musicly_public_playlists_changed', handlePlaylistsChange);
+      if (unsubCloud) unsubCloud();
     };
   }, []);
 

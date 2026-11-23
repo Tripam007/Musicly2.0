@@ -45,7 +45,8 @@ import {
   getStudioBackgrounds, 
   saveStudioBackgrounds, 
   resetStudioBackgroundsToDefaults,
-  DEFAULT_STUDIO_PHOTOS 
+  DEFAULT_STUDIO_PHOTOS,
+  subscribeStudioBackgrounds 
 } from '../utils/studioBackgroundsDB';
 import { isLiveVisual } from '../utils/publicScenesDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
@@ -341,7 +342,7 @@ export default function MinimalStudioScene({
     return DEFAULT_STUDIO_PHOTOS;
   });
 
-  // Load persisted background visuals from IndexedDB and sync with external events
+  // Load persisted background visuals from IndexedDB and sync with cloud and local events in real time
   useEffect(() => {
     let isMounted = true;
     const reload = () => {
@@ -360,9 +361,22 @@ export default function MinimalStudioScene({
 
     reload();
     window.addEventListener('musicly_studio_bg_updated', reload);
+
+    // Cross-device cloud sync: listen in real time for any background or active visual changes
+    const unsubCloud = subscribeStudioBackgrounds(({ backgrounds, activeIndex }) => {
+      if (!isMounted) return;
+      if (Array.isArray(backgrounds) && backgrounds.length > 0) {
+        setStudioBackgrounds(backgrounds);
+      }
+      if (typeof activeIndex === 'number') {
+        setMediaPhotoIndex(activeIndex);
+      }
+    });
+
     return () => {
       isMounted = false;
       window.removeEventListener('musicly_studio_bg_updated', reload);
+      if (unsubCloud) unsubCloud();
     };
   }, []);
 

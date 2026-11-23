@@ -4,7 +4,8 @@ import {
   doc, 
   setDoc, 
   getDocs, 
-  deleteDoc 
+  deleteDoc,
+  onSnapshot 
 } from 'firebase/firestore';
 import { checkIsAdmin, getCachedUserRole } from './userModel';
 import { isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, isTrackInLanguages } from '../data/tracks';
@@ -457,4 +458,30 @@ export async function deletePublicPlaylist(playlistId, user) {
 
   return true;
 }
+
+/**
+ * Subscribe to real-time changes to official Musicly playlists in Firestore.
+ */
+export function subscribePublicPlaylists(callback) {
+  if (!firestore) return () => {};
+  try {
+    const colRef = collection(firestore, 'public_playlists');
+    const unsub = onSnapshot(colRef, async () => {
+      try {
+        const fresh = await loadPublicPlaylists();
+        if (typeof callback === 'function') {
+          callback(fresh);
+        }
+      } catch (e) {
+        console.warn("Public playlists real-time sync notice:", e);
+      }
+    }, (err) => console.warn("Public playlists subscription notice:", err));
+
+    return unsub;
+  } catch (err) {
+    console.warn("Could not attach public playlists subscription:", err);
+    return () => {};
+  }
+}
+
 
