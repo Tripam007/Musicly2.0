@@ -237,6 +237,11 @@ function ChooseYourVibeScene({
     currentTrackRef.current = currentTrack;
   }, [currentTrack]);
 
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
+
   // Active languages array: supports multi-selection, single-selection, or empty (all)
   const activeLangs = useMemo(() => {
     if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
@@ -426,16 +431,21 @@ function ChooseYourVibeScene({
     };
   }, []);
 
-  // Schedules automatic return to the currently playing song after 5 seconds of manual browsing inactivity
+  // Schedules automatic return to the currently playing song after 5 seconds only when music is actually playing
   const scheduleReturnToCurrentSong = useCallback(() => {
-    if (!currentTrackRef.current) return;
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
+    }
+    // If music is NOT playing (stopped or paused), do NOT schedule any return timer!
+    // Users can explore freely without being pulled back.
+    if (!isPlayingRef.current || !currentTrackRef.current) {
+      isManualInteractingRef.current = false;
+      return;
     }
     isManualInteractingRef.current = true;
     idleTimerRef.current = setTimeout(() => {
       isManualInteractingRef.current = false;
-      if (centerCurrentSongRef.current) {
+      if (isPlayingRef.current && centerCurrentSongRef.current) {
         centerCurrentSongRef.current();
       }
     }, 5000);
@@ -561,32 +571,42 @@ function ChooseYourVibeScene({
     centerCurrentSongRef.current = centerCurrentSong;
   }, [centerCurrentSong]);
 
-  // Center current song on mount or when currentTrack changes
+  // Center current song ONLY when music is actually playing or when a new song starts playing
   useEffect(() => {
-    if (!currentTrack) return;
+    if (!currentTrack || !isPlaying) return;
     if (idleTimerRef.current) {
       clearTimeout(idleTimerRef.current);
     }
     isManualInteractingRef.current = false;
     centerCurrentSong();
-  }, [currentTrack, centerCurrentSong]);
+  }, [currentTrack?.id, isPlaying, centerCurrentSong]);
 
   useEffect(() => {
-    if (currentScene?.id !== 'vibe_carousel' || !currentTrack) return;
+    if (currentScene?.id !== 'vibe_carousel' || !currentTrack || !isPlaying) return;
     if (!isManualInteractingRef.current) {
       centerCurrentSong();
     }
-  }, [currentScene, currentTrack, centerCurrentSong]);
+  }, [currentScene, currentTrack?.id, isPlaying, centerCurrentSong]);
 
-  // When in songs view and vibeSongs updates, if user is not manually interacting, ensure playing track is centered
+  // When in songs view and vibeSongs updates, if user is not manually interacting, ensure playing track is centered ONLY if playing
   useEffect(() => {
-    if (!isManualInteractingRef.current && currentTrack && viewMode === 'songs' && transitionState === 'idle') {
+    if (isPlaying && !isManualInteractingRef.current && currentTrack && viewMode === 'songs' && transitionState === 'idle') {
       const idx = getSongIndexForTrack(currentTrack, vibeSongs);
       if (idx !== -1) {
         jumpToSongIndex(idx, false);
       }
     }
-  }, [vibeSongs, currentTrack, viewMode, transitionState, jumpToSongIndex]);
+  }, [vibeSongs, currentTrack?.id, isPlaying, viewMode, transitionState, jumpToSongIndex]);
+
+  // When playback stops or pauses, immediately clear any pending idle return timer so users can explore freely
+  useEffect(() => {
+    if (!isPlaying) {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+      isManualInteractingRef.current = false;
+    }
+  }, [isPlaying]);
 
   // Keyboard navigation
   useEffect(() => {
