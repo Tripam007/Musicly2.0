@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ArrowDown } from 'lucide-react';
 import { preloadMusiclyAssets } from '../utils/assetPreloader';
 import '../styles/cinematicOpening.css';
 
@@ -78,7 +77,6 @@ export default function CinematicOpeningScreen({
   const [isExiting, setIsExiting] = useState(false);
   const [hasEntered, setHasEntered] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [preloadInfo, setPreloadInfo] = useState({ percent: 0, done: false });
 
   const targetProgressRef = useRef(0);
   const currentProgressRef = useRef(0);
@@ -95,14 +93,9 @@ export default function CinematicOpeningScreen({
   const interiorStageRef = useRef(null);
   const glassSheenRef = useRef(null);
 
-  // Preload all chapter assets, genre backdrops, scene wallpapers & soundscapes immediately on mount
+  // Preload all chapter assets, genre backdrops, scene wallpapers & soundscapes silently in the background
   useEffect(() => {
-    preloadMusiclyAssets((status) => {
-      setPreloadInfo({
-        percent: status.percent,
-        done: status.done
-      });
-    });
+    preloadMusiclyAssets();
   }, []);
 
   // Complete opening sequence and transition into main app
@@ -532,31 +525,6 @@ export default function CinematicOpeningScreen({
           </div>
         )}
       </main>
-
-      {/* 7. Bottom Plain Downward Arrow & Preload Badge */}
-      <footer className="train-intro-footer">
-        <div 
-          className={`train-preload-badge ${preloadInfo.done ? 'is-complete' : ''}`}
-          aria-live="polite"
-        >
-          <span className="train-preload-dot" />
-          <span className="train-preload-text">
-            {preloadInfo.done ? 'All pages & soundscapes ready' : `Preloading scenes & pages ${preloadInfo.percent}%`}
-          </span>
-        </div>
-
-        <button
-          className="train-plain-arrow-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            targetProgressRef.current = Math.min(1, targetProgressRef.current + 0.22);
-          }}
-          title="Scroll down"
-          aria-label="Scroll down"
-        >
-          <ArrowDown size={30} strokeWidth={1.8} className="train-plain-down-arrow" />
-        </button>
-      </footer>
     </div>
   );
 }
