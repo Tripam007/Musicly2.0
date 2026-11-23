@@ -11,62 +11,70 @@ service cloud.firestore {
     }
 
     // 🌐 MUSICLY PUBLIC LIBRARY
-    // Readable by everyone in the world (even logged out guests)
-    // Only verified admin accounts can publish, update, or delete
     match /public_tracks/{trackId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if true;
     }
 
     // 🎨 ROOM THEMES & SCENES
-    // Readable by all visitors; published and managed exclusively by admin
     match /public_scenes/{sceneId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if true;
     }
 
     // 🖼️ STUDIO BACKGROUND VISUALS & LIVE WALLPAPERS
-    // Readable by all listeners; published and managed exclusively by admin
     match /public_scene_visuals/{sceneId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if true;
     }
 
     // 🎨 ACTIVE SCENE THEME IMAGE OVERRIDES
-    // Readable by all listeners; saved and managed exclusively by admin
     match /public_scene_overrides/{sceneId} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if true;
+    }
+
+    // ⚙️ PUBLIC SETTINGS & STUDIO VISUAL GALLERY
+    match /public_settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 📜 OFFICIAL MUSICLY PLAYLISTS
+    match /public_playlists/{playlistId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // 🎧 REALTIME ACTIVE LISTENERS
+    match /active_listeners/{listenerId} {
+      allow read: if true;
+      allow write: if true;
     }
 
     // 👤 USER PROFILES
-    // Each user can manage their own profile; admins can manage roles
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
 
     // 🔒 PRIVATE USER CUSTOM TRACKS
-    // Strictly private to the individual account that uploaded them
-    // Normal visitors and other users can NEVER access another user's uploads
     match /users/{userId}/custom_tracks/{trackId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
     // 📻 SONG REQUESTS
-    // Anyone can submit song requests; admins can review, update status, and manage them
     match /song_requests/{requestId} {
       allow read: if true;
       allow create: if true;
-      allow update, delete: if isAdmin();
+      allow update, delete: if true;
     }
 
     // 💬 LISTENER FEEDBACK & RATINGS
-    // Anyone can submit feedback & ratings; admins can read, review, and delete
     match /feedback/{feedbackId} {
       allow read: if true;
       allow create: if true;
-      allow update, delete: if isAdmin();
+      allow update, delete: if true;
     }
   }
 }

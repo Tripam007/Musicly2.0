@@ -8,6 +8,7 @@ import {
   onSnapshot 
 } from 'firebase/firestore';
 import { checkIsAdmin } from './userModel';
+import { broadcastSceneOverride, broadcastSceneReset } from './realtimeRelay';
 
 const SCENES_CACHE_KEY = 'musicly_custom_scenes_cache';
 const SCENE_OVERRIDES_CACHE_KEY = 'musicly_scene_overrides_cache';
@@ -483,7 +484,10 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
     }
   } catch {}
 
-  // 3. Persist to Firestore cloud for global real-time synchronization
+  // 3. Broadcast via realtime relay (instant cross-device SSE & pub-sub)
+  broadcastSceneOverride(sceneId, optimizedImage).catch(() => {});
+
+  // 4. Persist to Firestore cloud for global real-time synchronization
   if (firestore) {
     try {
       if (optimizedImage.length < 950000) {
@@ -537,6 +541,9 @@ export async function removeSceneOverride(sceneId, user) {
   try {
     localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
   } catch {}
+
+  // 3. Broadcast reset via realtime relay (instant cross-device SSE & pub-sub)
+  broadcastSceneReset(sceneId).catch(() => {});
 
   if (firestore) {
     try {

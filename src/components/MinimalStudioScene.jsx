@@ -46,7 +46,8 @@ import {
   saveStudioBackgrounds, 
   resetStudioBackgroundsToDefaults,
   DEFAULT_STUDIO_PHOTOS,
-  subscribeStudioBackgrounds 
+  subscribeStudioBackgrounds,
+  setActiveStudioBackgroundIndex 
 } from '../utils/studioBackgroundsDB';
 import { isLiveVisual } from '../utils/publicScenesDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
@@ -332,9 +333,14 @@ export default function MinimalStudioScene({
           }));
         }
       } catch (e) {}
+      if (isUserAdmin) {
+        try {
+          setActiveStudioBackgroundIndex(next);
+        } catch {}
+      }
       return next;
     });
-  }, []);
+  }, [isUserAdmin]);
 
   // Background gallery state initialized from localStorage/defaults
   const [studioBackgrounds, setStudioBackgrounds] = useState(() => {

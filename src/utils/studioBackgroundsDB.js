@@ -3,6 +3,7 @@
 import { isLiveVisual, compressImageIfNeeded } from './publicScenesDB';
 import { firestore } from '../firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { broadcastStudioVisual } from './realtimeRelay';
 
 const DB_NAME = 'MusiclyStudioDB';
 const DB_VERSION = 1;
@@ -173,6 +174,9 @@ export async function saveStudioBackgrounds(imagesList) {
     }));
   }
 
+  // Broadcast via realtime relay (instant cross-device SSE & pub-sub)
+  broadcastStudioVisual(undefined, imagesList).catch(() => {});
+
   // Persist to Firestore cloud for cross-device real-time sync
   if (firestore) {
     (async () => {
@@ -213,6 +217,9 @@ export function setActiveStudioBackgroundIndex(idx) {
       }));
     }
   } catch (e) {}
+
+  // Broadcast via realtime relay (instant cross-device SSE & pub-sub)
+  broadcastStudioVisual(idx).catch(() => {});
 
   if (firestore) {
     try {

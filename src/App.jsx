@@ -50,6 +50,7 @@ import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
 import { preloadMusiclyAssets } from './utils/assetPreloader';
 import { loadPublicScenes, publishPublicScene, deletePublicScene, loadSceneOverrides, saveSceneOverride, removeSceneOverride, isLiveVisual, subscribeSceneOverrides, subscribePublicScenes } from './utils/publicScenesDB';
+import { initRealtimeRelay } from './utils/realtimeRelay';
 import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists, getUnifiedMusiclyPlaylists, subscribePublicPlaylists } from './utils/publicPlaylistsDB';
 import { getLocalUserPlaylists } from './utils/userPlaylistsDB';
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
@@ -676,6 +677,82 @@ export default function App() {
     });
     return [...mergedDefault, ...mergedCustom];
   }, [customScenes, sceneOverrides]);
+
+  // Instant real-time cross-device synchronization relay (SSE + PubSub)
+  useEffect(() => {
+    let isMounted = true;
+    const unsubRelay = initRealtimeRelay({
+      onSceneOverride: (sceneId, image) => {
+        if (!isMounted || !sceneId || !image) return;
+        try {
+          const overrides = JSON.parse(localStorage.getItem('musicly_scene_overrides_cache') || '{}');
+          overrides[sceneId] = image;
+          localStorage.setItem('musicly_scene_overrides_cache', JSON.stringify(overrides));
+        } catch {}
+
+        setSceneOverrides(prev => ({
+          ...prev,
+          [sceneId]: image
+        }));
+
+        setCurrentScene(prev => {
+          if (prev?.id === sceneId) {
+            setBackdropImage(image);
+            return { ...prev, image };
+          }
+          return prev;
+        });
+      },
+      onSceneReset: (sceneId) => {
+        if (!isMounted || !sceneId) return;
+        try {
+          const overrides = JSON.parse(localStorage.getItem('musicly_scene_overrides_cache') || '{}');
+          delete overrides[sceneId];
+          localStorage.setItem('musicly_scene_overrides_cache', JSON.stringify(overrides));
+        } catch {}
+
+        setSceneOverrides(prev => {
+          const next = { ...prev };
+          delete next[sceneId];
+          return next;
+        });
+
+        setCurrentScene(prev => {
+          if (prev?.id === sceneId) {
+            const def = SCENES.find(s => s.id === sceneId);
+            if (def) {
+              setBackdropImage(def.image);
+              return { ...prev, image: def.image };
+            }
+          }
+          return prev;
+        });
+      },
+      onStudioVisual: (activeIndex, backgrounds) => {
+        if (!isMounted) return;
+        if (typeof activeIndex === 'number') {
+          try {
+            localStorage.setItem('musicly_studio_bg_index', String(activeIndex));
+          } catch {}
+        }
+        if (Array.isArray(backgrounds) && backgrounds.length > 0) {
+          try {
+            localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(backgrounds));
+          } catch {}
+        }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
+            detail: { activeIndex, count: backgrounds?.length }
+          }));
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      if (unsubRelay) unsubRelay();
+    };
+  }, []);
 
   // Afterglow Experience State ('film' | 'classic')
   const [afterglowMode, setAfterglowMode] = useState('film');
