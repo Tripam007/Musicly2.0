@@ -665,8 +665,8 @@ export default function PlaylistDrawer({
         </div>
       )}
 
-      {/* Quick Language Filter Chips (Only in Musicly Single Songs mode) */}
-      {mainSource === 'musicly' && viewMode === 'single' && (
+      {/* Quick Language Filter Chips (Shown in Musicly Playlists and Single Songs mode) */}
+      {mainSource === 'musicly' && (
         <div 
           className="drawer-lang-filter-bar"
           style={!isAuthed ? { justifyContent: 'center', padding: '4px 14px 12px 14px' } : {}}
@@ -1138,22 +1138,6 @@ export default function PlaylistDrawer({
                       </button>
                     )}
 
-                    {/* Remove from this playlist button when in playlist drilldown mode */}
-                    {viewMode === 'playlists' && activeDrilldownPlaylist && canEditDrilldown && (
-                      <button 
-                        type="button"
-                        className="row-remove-pl-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleSongInPlaylist(activeDrilldownPlaylist.id, track.id);
-                        }}
-                        title={`Remove from "${activeDrilldownPlaylist.title}"`}
-                        aria-label="Remove from playlist"
-                      >
-                        <Trash2 size={13} color="#f87171" />
-                      </button>
-                    )}
-
                     {/* Download button for saving offline and downloading audio file */}
                     <button 
                       type="button"
@@ -1207,23 +1191,41 @@ export default function PlaylistDrawer({
                       <Heart size={15} fill={isFav ? '#ff4b60' : 'transparent'} color={isFav ? '#ff4b60' : 'rgba(255,255,255,0.4)'} />
                     </button>
 
-                    {/* Delete Track Button - Only visible for admin or owner of custom upload */}
-                    {(isAdmin || (isAuthed && track.isCustom && (!track.uploadedBy || track.uploadedBy === user?.uid))) && (
-                      <button 
-                        type="button"
-                        className="row-delete-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          if (onDeleteTrack) {
-                            onDeleteTrack(track.id);
-                          }
-                        }}
-                        title={`Remove "${track.title}" from library`}
-                        aria-label={`Remove "${track.title}" from library`}
-                      >
-                        <Trash2 size={14} color="#f87171" />
-                      </button>
+                    {/* Context-aware Delete / Remove Button: Exactly ONE remove button */}
+                    {activeDrilldownPlaylist ? (
+                      canEditDrilldown && (
+                        <button 
+                          type="button"
+                          className="row-remove-pl-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            handleToggleSongInPlaylist(activeDrilldownPlaylist.id, track.id);
+                          }}
+                          title={`Remove "${track.title}" from "${activeDrilldownPlaylist.title}"`}
+                          aria-label={`Remove from ${activeDrilldownPlaylist.title}`}
+                        >
+                          <Trash2 size={14} color="#f87171" />
+                        </button>
+                      )
+                    ) : (
+                      (isAdmin || (isAuthed && track.isCustom && (!track.uploadedBy || track.uploadedBy === user?.uid))) && (
+                        <button 
+                          type="button"
+                          className="row-delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            if (onDeleteTrack) {
+                              onDeleteTrack(track.id);
+                            }
+                          }}
+                          title={`Remove "${track.title}" from library`}
+                          aria-label={`Remove "${track.title}" from library`}
+                        >
+                          <Trash2 size={14} color="#f87171" />
+                        </button>
+                      )
                     )}
                   </div>
                 </div>

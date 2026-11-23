@@ -2704,7 +2704,7 @@ body, html, #root {
   margin-right: 2px;
 }
 
-.row-heart-btn, .row-delete-btn, .row-download-btn {
+.row-heart-btn, .row-delete-btn, .row-remove-pl-btn, .row-download-btn {
   background: transparent;
   border: none;
   cursor: pointer;
@@ -2752,7 +2752,7 @@ body, html, #root {
   to { transform: rotate(360deg); }
 }
 
-.row-delete-btn:hover {
+.row-delete-btn:hover, .row-remove-pl-btn:hover {
   background: rgba(239, 68, 68, 0.18);
   transform: scale(1.15);
 }
