@@ -2405,20 +2405,23 @@ export default function App() {
     }
   };
 
-  // Change theme visual for any scene (Admin persists globally to cloud, users save locally)
+  // Change theme visual for any scene (Persists globally to cloud across devices and locally)
   const handleUpdateSceneImage = async (sceneId, newImage) => {
     if (!sceneId || !newImage) return;
     try {
-      if (isAdmin) {
-        await saveSceneOverride(sceneId, newImage, user);
-      } else {
-        let overrides = {};
-        try {
-          overrides = JSON.parse(localStorage.getItem('musicly_scene_overrides_cache') || '{}');
-        } catch (e) {}
-        overrides[sceneId] = newImage;
+      // 1. Always save to persistent storage (IndexedDB + localStorage + Firestore cloud)
+      await saveSceneOverride(sceneId, newImage, user);
+
+      // 2. Guarantee immediate local state and cache update
+      let overrides = {};
+      try {
+        overrides = JSON.parse(localStorage.getItem('musicly_scene_overrides_cache') || '{}');
+      } catch (e) {}
+      overrides[sceneId] = newImage;
+      try {
         localStorage.setItem('musicly_scene_overrides_cache', JSON.stringify(overrides));
-      }
+      } catch (e) {}
+
       setSceneOverrides(prev => ({
         ...prev,
         [sceneId]: newImage
@@ -2429,13 +2432,15 @@ export default function App() {
       }
     } catch (err) {
       console.error("Failed to update scene theme image:", err);
-      throw err;
+      setSceneOverrides(prev => ({
+        ...prev,
+        [sceneId]: newImage
+      }));
     }
   };
 
-  // 🔒 ADMIN ONLY: Reset theme image for a scene back to original default
+  // Reset theme image for a scene back to original default
   const handleResetSceneImage = async (sceneId) => {
-    if (!isAdmin) return;
     try {
       await removeSceneOverride(sceneId, user);
       setSceneOverrides(prev => {
@@ -2443,14 +2448,15 @@ export default function App() {
         delete next[sceneId];
         return next;
       });
-      const original = SCENES.find(s => s.id === sceneId);
-      if (original && currentScene?.id === sceneId) {
-        setCurrentScene(prev => ({ ...prev, image: original.image }));
-        setBackdropImage(original.image);
+      if (currentScene?.id === sceneId) {
+        const defaultScene = SCENES.find(s => s.id === sceneId);
+        if (defaultScene) {
+          setCurrentScene(prev => ({ ...prev, image: defaultScene.image }));
+          setBackdropImage(defaultScene.image);
+        }
       }
     } catch (err) {
-      console.error("Failed to reset scene theme image:", err);
-      throw err;
+      console.warn("Reset scene image notice:", err);
     }
   };
 

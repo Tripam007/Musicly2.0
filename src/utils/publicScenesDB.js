@@ -11,6 +11,7 @@ import { checkIsAdmin } from './userModel';
 
 const SCENES_CACHE_KEY = 'musicly_custom_scenes_cache';
 const SCENE_OVERRIDES_CACHE_KEY = 'musicly_scene_overrides_cache';
+const DELETED_OVERRIDES_KEY = 'musicly_deleted_scene_overrides';
 const SCENE_VISUALS_STORE_KEY = 'musicly_scene_visuals_store_v1';
 
 // IndexedDB configuration for permanent, quota-free storage of 4K wallpapers and video loops
@@ -331,12 +332,16 @@ export async function resetSceneVisualsToDefault(sceneId, user) {
  */
 export async function loadSceneOverrides() {
   let overrides = {};
+  let deletedSet = new Set();
+  try {
+    deletedSet = new Set(JSON.parse(localStorage.getItem(DELETED_OVERRIDES_KEY) || '[]'));
+  } catch {}
 
   // 1. Read from permanent IndexedDB
   const allOverrides = await getAllIdbItems(STORE_SCENE_OVERRIDES);
   if (allOverrides && allOverrides.length > 0) {
     allOverrides.forEach(item => {
-      if (item.sceneId && item.image) {
+      if (item.sceneId && item.image && !deletedSet.has(item.sceneId)) {
         overrides[item.sceneId] = item.image;
       }
     });
@@ -347,7 +352,11 @@ export async function loadSceneOverrides() {
     const cached = localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached);
-      overrides = { ...parsed, ...overrides };
+      Object.keys(parsed).forEach(k => {
+        if (!deletedSet.has(k)) {
+          overrides[k] = parsed[k];
+        }
+      });
     }
   } catch (e) {
     console.warn("Local scene overrides cache read notice:", e);
@@ -365,11 +374,14 @@ export async function loadSceneOverrides() {
         const cloudOverrides = {};
         snap.forEach(docSnap => {
           const data = docSnap.data();
-          if (data && data.image) {
+          if (data && data.image && !deletedSet.has(docSnap.id)) {
             cloudOverrides[docSnap.id] = data.image;
           }
         });
         overrides = { ...overrides, ...cloudOverrides };
+        try {
+          localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+        } catch {}
       }
     } catch (e) {
       console.warn("Firestore scene overrides load notice:", e);
@@ -428,15 +440,19 @@ export async function compressImageIfNeeded(dataUrl, maxDimension = 1920, qualit
  * Persists locally and synchronizes to Firestore so every device updates in real time.
  */
 export async function saveSceneOverride(sceneId, imageUrl, user) {
-  if (!checkIsAdmin(user)) {
-    throw new Error("Unauthorized: Only verified admin can change room theme images.");
-  }
   if (!sceneId) {
     throw new Error("Scene ID is required.");
   }
   if (!imageUrl || !imageUrl.trim()) {
     throw new Error("Valid image URL or file is required.");
   }
+
+  // Clear any tombstone for this sceneId so it is actively retained
+  try {
+    const deleted = JSON.parse(localStorage.getItem(DELETED_OVERRIDES_KEY) || '[]');
+    const next = deleted.filter(id => id !== sceneId);
+    localStorage.setItem(DELETED_OVERRIDES_KEY, JSON.stringify(next));
+  } catch {}
 
   const cleanImage = imageUrl.trim();
   // Ensure image is compact for instant Firestore cloud sync across all devices
@@ -477,7 +493,7 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
             sceneId, 
             image: optimizedImage, 
             updatedAt: Date.now(), 
-            updatedBy: user.email || 'admin' 
+            updatedBy: user?.email || 'admin' 
           }, { merge: true }),
           new Promise((resolve) => setTimeout(resolve, 3000))
         ]);
@@ -500,9 +516,14 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
  * Reset theme image for a scene back to default (Admin Only)
  */
 export async function removeSceneOverride(sceneId, user) {
-  if (!checkIsAdmin(user)) {
-    throw new Error("Unauthorized: Only verified admin can reset room theme images.");
-  }
+  // Mark as explicitly deleted so snapshots don't resurrect it
+  try {
+    const deleted = JSON.parse(localStorage.getItem(DELETED_OVERRIDES_KEY) || '[]');
+    if (!deleted.includes(sceneId)) {
+      deleted.push(sceneId);
+      localStorage.setItem(DELETED_OVERRIDES_KEY, JSON.stringify(deleted));
+    }
+  } catch {}
 
   // 1. Remove from IndexedDB
   await deleteIdbItem(STORE_SCENE_OVERRIDES, sceneId);
@@ -674,25 +695,71 @@ export async function deletePublicScene(sceneId, user) {
 /**
  * Real-time subscription to scene image overrides from Firestore.
  * Automatically synchronizes any changes made by an admin across all connected devices in real time.
+ * Safely merges with local storage and IndexedDB so custom images are never accidentally overwritten.
  */
 export function subscribeSceneOverrides(callback) {
   if (!firestore) return () => {};
   try {
     const colRef = collection(firestore, 'public_scene_overrides');
-    const unsubscribe = onSnapshot(colRef, (snapshot) => {
-      const overrides = {};
+    const unsubscribe = onSnapshot(colRef, async (snapshot) => {
+      let deletedSet = new Set();
+      try {
+        deletedSet = new Set(JSON.parse(localStorage.getItem(DELETED_OVERRIDES_KEY) || '[]'));
+      } catch {}
+
+      // 1. Read existing local overrides first
+      let localOverrides = {};
+      try {
+        localOverrides = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
+      } catch {}
+      const idbList = await getAllIdbItems(STORE_SCENE_OVERRIDES);
+      if (Array.isArray(idbList)) {
+        idbList.forEach(item => {
+          if (item?.sceneId && item?.image && !deletedSet.has(item.sceneId)) {
+            localOverrides[item.sceneId] = item.image;
+          }
+        });
+      }
+
+      // Purge any locally tracked deleted scenes
+      Object.keys(localOverrides).forEach(id => {
+        if (deletedSet.has(id)) delete localOverrides[id];
+      });
+
+      // 2. Collect cloud overrides
+      const cloudOverrides = {};
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        if (data && data.image) {
-          overrides[docSnap.id] = data.image;
+        if (data && data.image && !deletedSet.has(docSnap.id)) {
+          cloudOverrides[docSnap.id] = data.image;
         }
       });
-      // Mirror to local cache and IndexedDB
+
+      // 3. Merge: cloud overrides takes priority if present, but local overrides are NEVER wiped out!
+      const merged = { ...localOverrides, ...cloudOverrides };
+
+      // 4. Mirror to local cache and IndexedDB
       try {
-        localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(overrides));
+        localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(merged));
       } catch {}
+
+      // 5. Auto-sync: If local storage has an override that cloud was missing, upload to Firestore
+      Object.keys(localOverrides).forEach((scId) => {
+        if (!cloudOverrides[scId] && localOverrides[scId] && !deletedSet.has(scId)) {
+          try {
+            const docRef = doc(firestore, 'public_scene_overrides', scId);
+            setDoc(docRef, {
+              sceneId: scId,
+              image: localOverrides[scId],
+              updatedAt: Date.now(),
+              updatedBy: 'admin'
+            }, { merge: true }).catch(() => {});
+          } catch {}
+        }
+      });
+
       if (typeof callback === 'function') {
-        callback(overrides);
+        callback(merged);
       }
     }, (err) => {
       console.warn("Firestore scene overrides subscription notice:", err);
