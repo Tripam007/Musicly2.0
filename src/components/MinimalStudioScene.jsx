@@ -556,28 +556,6 @@ export default function MinimalStudioScene({
 
   const handleCameraClick = (e) => {
     e.stopPropagation();
-    if (cameraClickTimerRef.current) {
-      clearTimeout(cameraClickTimerRef.current);
-      cameraClickTimerRef.current = null;
-      return;
-    }
-    cameraClickTimerRef.current = setTimeout(() => {
-      cameraClickTimerRef.current = null;
-      if (isUserAdmin) {
-        setIsAdminGalleryOpen(true);
-      } else {
-        updateMediaPhotoIndex((prev) => (prev + 1) % studioBackgrounds.length);
-        showToast("Switched Studio Background");
-      }
-    }, 280);
-  };
-
-  const handleCameraDoubleClick = (e) => {
-    e.stopPropagation();
-    if (cameraClickTimerRef.current) {
-      clearTimeout(cameraClickTimerRef.current);
-      cameraClickTimerRef.current = null;
-    }
     setIsQuickBgPickerOpen((prev) => !prev);
   };
 
@@ -1397,56 +1375,16 @@ export default function MinimalStudioScene({
 
             <div className="ref-camera-btn-wrapper" ref={quickBgPickerRef}>
               <button 
-                className={`ref-side-btn ${isUserAdmin ? 'admin-camera-btn' : ''} ${isQuickBgPickerOpen ? 'active' : ''}`}
+                className={`ref-side-btn ${isQuickBgPickerOpen ? 'active' : ''}`}
                 onClick={handleCameraClick}
-                onDoubleClick={handleCameraDoubleClick}
-                title={isUserAdmin ? "Click: Admin Gallery | Double-click: Quick Wallpaper Gallery" : "Click: Next Visual | Double-click: Quick Wallpaper Gallery"}
+                title="Choose background visual"
+                aria-label="Choose background visual"
               >
                 <Camera size={16} />
               </button>
 
               {isQuickBgPickerOpen && (
                 <div className="ref-glass-bg-picker-flyout">
-                  <div className="ref-glass-bg-picker-header">
-                    <span className="ref-glass-bg-picker-title">Visuals</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {isUserAdmin && (
-                        <button
-                          type="button"
-                          className="ref-glass-bg-picker-admin-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setIsQuickBgPickerOpen(false);
-                            setIsAdminGalleryOpen(true);
-                          }}
-                          title="Open 4K Background Admin Manager"
-                          style={{
-                            background: 'rgba(245, 158, 11, 0.2)',
-                            border: '1px solid rgba(245, 158, 11, 0.5)',
-                            borderRadius: '12px',
-                            color: '#f59e0b',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            padding: '3px 8px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Manage 4K
-                        </button>
-                      )}
-                      <button 
-                        type="button"
-                        className="ref-glass-bg-picker-close" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsQuickBgPickerOpen(false);
-                        }}
-                        title="Close"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  </div>
                   <div className="ref-glass-bg-picker-grid">
                     {studioBackgrounds.map((bg, idx) => {
                       const bgUrl = typeof bg === 'string' ? bg : bg.url;

@@ -18968,32 +18968,31 @@ body, html, #root {
 
 .ref-glass-bg-picker-flyout {
   position: absolute;
-  left: calc(100% + 48px);
+  left: calc(100% + 14px);
   top: 50%;
   transform: translateY(-50%);
-  width: 224px;
+  width: 216px;
   max-height: 380px;
-  background: rgba(18, 20, 29, 0.76);
-  backdrop-filter: blur(30px) saturate(190%);
-  -webkit-backdrop-filter: blur(30px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
   box-shadow: 
-    0 20px 48px rgba(0, 0, 0, 0.6),
-    0 0 24px rgba(244, 160, 0, 0.12),
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.22);
-  padding: 12px;
+    0 20px 48px rgba(0, 0, 0, 0.65),
+    0 0 24px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.16);
+  padding: 8px;
   z-index: 200;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  animation: refGlassFlyoutPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: refGlassFlyoutPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes refGlassFlyoutPop {
   from {
     opacity: 0;
-    transform: translateY(-50%) translateX(-10px) scale(0.96);
+    transform: translateY(-50%) translateX(-8px) scale(0.96);
   }
   to {
     opacity: 1;
@@ -19001,57 +19000,24 @@ body, html, #root {
   }
 }
 
-.ref-glass-bg-picker-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 4px 6px 4px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.ref-glass-bg-picker-title {
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.76rem;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.88);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.ref-glass-bg-picker-close {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.ref-glass-bg-picker-close:hover {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-}
-
 .ref-glass-bg-picker-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   overflow-y: auto;
-  max-height: 310px;
+  max-height: 350px;
   padding: 2px;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
 
 .ref-glass-bg-picker-grid::-webkit-scrollbar {
-  display: none;
-  width: 0;
-  height: 0;
+  width: 4px;
+}
+
+.ref-glass-bg-picker-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
 }
 
 .ref-glass-bg-thumb-btn {
