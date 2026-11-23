@@ -171,6 +171,7 @@ export default function SceneSelector({
   };
 
   const openImageEditor = (scene) => {
+    if (!isAdmin) return;
     playClickSound('light');
     setEditingScene(scene);
     const currentActiveUrl = (sceneOverrides && sceneOverrides[scene.id]) || scene.image || '';
@@ -187,6 +188,7 @@ export default function SceneSelector({
 
   const handleCameraClick = (e, scene) => {
     e.stopPropagation();
+    if (!isAdmin) return;
     openImageEditor(scene);
   };
 
@@ -483,7 +485,7 @@ export default function SceneSelector({
   };
 
   const handleSaveThemeImage = async () => {
-    if (!editingScene || !onUpdateSceneImage) return;
+    if (!isAdmin || !editingScene || !onUpdateSceneImage) return;
 
     const rawImage = (previewImage || imageUrlInput || '').trim();
     if (!rawImage) {
@@ -523,7 +525,7 @@ export default function SceneSelector({
   };
 
   const handleResetToDefault = async () => {
-    if (!editingScene || !onResetSceneImage) return;
+    if (!isAdmin || !editingScene || !onResetSceneImage) return;
     setIsSaving(true);
     try {
       await onResetSceneImage(editingScene.id);
@@ -615,16 +617,18 @@ export default function SceneSelector({
                   {/* Subtle dark gradient scrim for contrast */}
                   <div className="scene-card-gradient-overlay" />
 
-                  {/* Studio Visuals Gallery Camera Trigger Badge */}
-                  <button
-                    type="button"
-                    className={`scene-admin-edit-badge ${hasOverride ? 'has-custom-override' : ''}`}
-                    onClick={(e) => handleCameraClick(e, scene)}
-                    title={`Change Theme Image for "${scene.name}"`}
-                    aria-label={`Change Theme Image for ${scene.name}`}
-                  >
-                    <Camera size={13} />
-                  </button>
+                  {/* Studio Visuals Gallery Camera Trigger Badge (ADMIN ONLY) */}
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className={`scene-admin-edit-badge ${hasOverride ? 'has-custom-override' : ''}`}
+                      onClick={(e) => handleCameraClick(e, scene)}
+                      title={`Change Theme Image for "${scene.name}" (Admin Only)`}
+                      aria-label={`Change Theme Image for ${scene.name}`}
+                    >
+                      <Camera size={13} />
+                    </button>
+                  )}
 
                   {/* Premium Bookmark Ribbon Badge (Crown logo only) */}
                   {(scene.isPremium || scene.id === 'vibe_carousel') && (
@@ -660,8 +664,8 @@ export default function SceneSelector({
         </div>
       </div>
 
-      {/* 🖼️ Admin Theme Image Editor Overlay Dialog */}
-      {editingScene && (
+      {/* 🖼️ Admin Theme Image Editor Overlay Dialog (Admin Only) */}
+      {isAdmin && editingScene && (
         <div
           className="scene-edit-overlay-backdrop"
           onClick={() => {

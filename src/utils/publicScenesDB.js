@@ -332,6 +332,20 @@ export async function resetSceneVisualsToDefault(sceneId, user) {
  * Load scene image overrides from IndexedDB + local cache (0ms) + Firestore cloud sync
  */
 export async function loadSceneOverrides() {
+  // Auto-migration: Purge any legacy blue cartoon test override for minimal_studio
+  const PURGE_CARTOON_KEY = 'musicly_purge_cartoon_v2';
+  if (typeof localStorage !== 'undefined' && !localStorage.getItem(PURGE_CARTOON_KEY)) {
+    try {
+      localStorage.setItem(PURGE_CARTOON_KEY, 'true');
+      let cached = JSON.parse(localStorage.getItem(SCENE_OVERRIDES_CACHE_KEY) || '{}');
+      if (cached['minimal_studio']) {
+        delete cached['minimal_studio'];
+        localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(cached));
+      }
+      deleteIdbItem(STORE_SCENE_OVERRIDES, 'minimal_studio');
+    } catch {}
+  }
+
   let overrides = {};
   let deletedSet = new Set();
   try {
@@ -441,6 +455,9 @@ export async function compressImageIfNeeded(dataUrl, maxDimension = 1920, qualit
  * Persists locally and synchronizes to Firestore so every device updates in real time.
  */
 export async function saveSceneOverride(sceneId, imageUrl, user) {
+  if (!checkIsAdmin(user)) {
+    throw new Error("Unauthorized: Only verified admin can customize scene theme images.");
+  }
   if (!sceneId) {
     throw new Error("Scene ID is required.");
   }
@@ -514,6 +531,9 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
  * Reset theme image for a scene back to default (Admin Only)
  */
 export async function removeSceneOverride(sceneId, user) {
+  if (!checkIsAdmin(user)) {
+    throw new Error("Unauthorized: Only verified admin can reset scene theme images.");
+  }
   // Mark as explicitly deleted so snapshots don't resurrect it
   try {
     const deleted = JSON.parse(localStorage.getItem(DELETED_OVERRIDES_KEY) || '[]');
@@ -747,21 +767,6 @@ export function subscribeSceneOverrides(callback) {
       try {
         localStorage.setItem(SCENE_OVERRIDES_CACHE_KEY, JSON.stringify(merged));
       } catch {}
-
-      // 5. Auto-sync: If local storage has an override that cloud was missing, upload to Firestore
-      Object.keys(localOverrides).forEach((scId) => {
-        if (!cloudOverrides[scId] && localOverrides[scId] && !deletedSet.has(scId)) {
-          try {
-            const docRef = doc(firestore, 'public_scene_overrides', scId);
-            setDoc(docRef, {
-              sceneId: scId,
-              image: localOverrides[scId],
-              updatedAt: Date.now(),
-              updatedBy: 'admin'
-            }, { merge: true }).catch(() => {});
-          } catch {}
-        }
-      });
 
       if (typeof callback === 'function') {
         callback(merged);

@@ -2484,8 +2484,12 @@ export default function App() {
     }
   };
 
-  // Change theme visual for any scene (Persists globally to cloud across devices and locally)
+  // Change theme visual for any scene (Admin Only - Persists globally to cloud across devices and locally)
   const handleUpdateSceneImage = async (sceneId, newImage) => {
+    if (!isAdmin) {
+      console.warn("Unauthorized: Only verified admin can customize scene theme images.");
+      return;
+    }
     if (!sceneId || !newImage) return;
     try {
       // 1. Always save to persistent storage (IndexedDB + localStorage + Firestore cloud)
@@ -2518,8 +2522,12 @@ export default function App() {
     }
   };
 
-  // Reset theme image for a scene back to original default
+  // Reset theme image for a scene back to original default (Admin Only)
   const handleResetSceneImage = async (sceneId) => {
+    if (!isAdmin) {
+      console.warn("Unauthorized: Only verified admin can reset scene theme images.");
+      return;
+    }
     try {
       await removeSceneOverride(sceneId, user);
       setSceneOverrides(prev => {
