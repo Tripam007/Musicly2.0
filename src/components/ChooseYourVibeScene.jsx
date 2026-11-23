@@ -31,6 +31,7 @@ import {
   Lock
 } from 'lucide-react';
 import FloatingWaveformScrubber from './FloatingWaveformScrubber';
+import VisionSpatialGallery from './VisionSpatialGallery';
 import { isTrackInLanguages } from '../data/tracks';
 import { filterAndRankTracks } from '../utils/fuzzySearch';
 
@@ -204,12 +205,36 @@ function ChooseYourVibeScene({
   selectedLanguages = [],
   onSelectLanguage,
   favorites = [],
+  onToggleFavorite,
   customTracks = [],
   currentTime = 0,
   duration = 180,
   onSeek,
   audioElement = null
 }) {
+  // 👓 Apple Vision Pro Spatial 3D Gallery Mode (Shift view requested by user)
+  const [isVisionSpatialMode, setIsVisionSpatialMode] = useState(() => {
+    try {
+      return localStorage.getItem('musicly_vision_spatial_active') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleVisionMode = useCallback((e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setIsVisionSpatialMode(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('musicly_vision_spatial_active', String(next));
+      } catch (err) {}
+      return next;
+    });
+  }, []);
+
   // When a current song is playing, show the current song in the middle (in 'songs' view)
   const initialVibeIdx = useMemo(() => getVibeIndexForTrack(currentTrack), [currentTrack]);
   const initialVibe = initialVibeIdx !== -1 ? VIBE_ITEMS[initialVibeIdx] : VIBE_ITEMS[2];
@@ -917,10 +942,26 @@ function ChooseYourVibeScene({
       {/* Glossy reflective desk table surface in foreground with reactive reflection sheen */}
       <div className="vibe-scene-table-reflection-plane" />
 
-      {/* Top Left Branding: MUSICLY — */}
-      <div className="vibe-top-left-brand">
-        <span className="vibe-brand-logo">MUSICLY</span>
-        <span className="vibe-brand-line" />
+      {/* Top Left Branding: MUSICLY — & Mode Switcher Button */}
+      <div className="vibe-top-left-group" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="vibe-top-left-brand">
+          <span className="vibe-brand-logo">MUSICLY</span>
+          <span className="vibe-brand-line" />
+        </div>
+
+        {/* Button below MUSICLY where user can shift from one to another */}
+        <button
+          type="button"
+          className={`vibe-mode-shift-btn ${isVisionSpatialMode ? 'is-vision-mode' : ''}`}
+          onClick={handleToggleVisionMode}
+          title={isVisionSpatialMode ? "Shift back to Classic Vibe Carousel" : "Shift to Vision Spatial 3D Glass Gallery"}
+          aria-label="Shift Scene View"
+        >
+          <Sparkles size={13} className="vibe-shift-sparkle" style={{ color: isVisionSpatialMode ? '#ffd166' : '#f59e0b' }} />
+          <span>{isVisionSpatialMode ? "Classic Vibe" : "Vision Spatial"}</span>
+          <span className="vibe-shift-badge">{isVisionSpatialMode ? "Carousel" : "3D Glass"}</span>
+          <span className="vibe-shift-arrows">⇄</span>
+        </button>
       </div>
 
       {/* Top Right Controls: Tagline & Apple-Inspired 3-Dot Glass Popout Dock */}
@@ -1114,8 +1155,25 @@ function ChooseYourVibeScene({
         </div>
       </div>
 
-      {/* Center Title Header */}
-      <div className="vibe-center-header">
+      {/* View Switcher: Classic Carousel vs Apple Vision Pro 3D Spatial Gallery */}
+      {isVisionSpatialMode ? (
+        <VisionSpatialGallery
+          tracks={tracks}
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          onSelectTrack={onSelectTrack}
+          onTogglePlay={onTogglePlay}
+          onClose={() => setIsVisionSpatialMode(false)}
+          favorites={favorites}
+          onToggleFavorite={onToggleFavorite}
+          user={user}
+          isAdmin={isAdmin}
+          onOpenAuthModal={onOpenAuthModal}
+        />
+      ) : (
+        <>
+          {/* Center Title Header */}
+          <div className="vibe-center-header">
         {showVibes && (
           <div className={`vibe-header-vibes ${
             transitionState === 'vibes-to-songs' 
@@ -1734,7 +1792,9 @@ function ChooseYourVibeScene({
           </div>
         </div>
       </div>
-    </div>
+      </>
+    )}
+  </div>
   );
 }
 

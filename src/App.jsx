@@ -2895,6 +2895,7 @@ export default function App() {
         onOpenAdminDashboard={() => setIsAdminDashboardOpen(true)}
         onLogout={handleLogout}
         favorites={favorites}
+        onToggleFavorite={handleToggleFavorite}
         customTracks={customTracks}
         currentTime={currentTime}
         duration={duration}
@@ -2931,6 +2932,7 @@ export default function App() {
             repeatMode={repeatMode}
             onToggleRepeat={handleToggleRepeat}
             favorites={favorites}
+        onToggleFavorite={handleToggleFavorite}
             onToggleFavorite={handleToggleFavorite}
             onSelectTrack={(track, shouldPlay) => {
               if (!track) return;
@@ -2995,6 +2997,7 @@ export default function App() {
             onOpenAuthModal={() => setIsAuthOpen(true)}
             user={user}
             favorites={favorites}
+        onToggleFavorite={handleToggleFavorite}
             onToggleFavorite={handleToggleFavorite}
             onOpenClassic={() => setAfterglowMode('classic')}
             onClose={() => {
@@ -3065,6 +3068,7 @@ export default function App() {
           user={user}
           isAdmin={isAdmin}
           favorites={favorites}
+        onToggleFavorite={handleToggleFavorite}
           onToggleFavorite={handleToggleFavorite}
           onClose={() => {
             const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
@@ -3102,6 +3106,7 @@ export default function App() {
           repeatMode={repeatMode}
           onToggleRepeat={handleToggleRepeat}
           favorites={favorites}
+        onToggleFavorite={handleToggleFavorite}
           onToggleFavorite={handleToggleFavorite}
           customQueue={customQueue}
           onSetCustomQueue={setCustomQueue}
@@ -3300,6 +3305,7 @@ export default function App() {
             }}
             onTogglePlay={togglePlay}
             favorites={favorites}
+        onToggleFavorite={handleToggleFavorite}
             onToggleFavorite={handleToggleFavorite}
             onOpenUpload={() => {
               if (!user || user.isAnonymous) {
