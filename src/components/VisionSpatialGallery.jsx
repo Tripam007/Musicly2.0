@@ -202,16 +202,16 @@ export default function VisionSpatialGallery({
     }
   };
 
-  // 3D Spatial Cylinder Card Transform calculations
+  // 3D Spatial Cylinder Card Transform calculations - Compact & perfectly proportioned with zero overlap
   const getCardTransform = (diff) => {
     // Distance from center
     const d = diff;
     if (d === 0) {
       return {
         x: 0,
-        z: 80,
+        z: 70,
         rotateY: 0,
-        scale: 1.08,
+        scale: 1.05,
         opacity: 1,
         zIndex: 25
       };
@@ -219,29 +219,29 @@ export default function VisionSpatialGallery({
     // Left side cards
     if (d === -1) {
       return {
-        x: -360,
-        z: -90,
-        rotateY: 25,
-        scale: 0.88,
-        opacity: 0.85,
+        x: -300,
+        z: -110,
+        rotateY: 26,
+        scale: 0.86,
+        opacity: 0.88,
         zIndex: 20
       };
     }
     if (d === -2) {
       return {
-        x: -680,
-        z: -270,
+        x: -560,
+        z: -250,
         rotateY: 46,
-        scale: 0.74,
-        opacity: 0.58,
+        scale: 0.72,
+        opacity: 0.55,
         zIndex: 15
       };
     }
     if (d <= -3) {
       return {
-        x: -960,
-        z: -480,
-        rotateY: 58,
+        x: -780,
+        z: -420,
+        rotateY: 60,
         scale: 0.60,
         opacity: 0,
         zIndex: 5
@@ -250,28 +250,28 @@ export default function VisionSpatialGallery({
     // Right side cards
     if (d === 1) {
       return {
-        x: 360,
-        z: -90,
-        rotateY: -25,
-        scale: 0.88,
-        opacity: 0.85,
+        x: 300,
+        z: -110,
+        rotateY: -26,
+        scale: 0.86,
+        opacity: 0.88,
         zIndex: 20
       };
     }
     if (d === 2) {
       return {
-        x: 680,
-        z: -270,
+        x: 560,
+        z: -250,
         rotateY: -46,
-        scale: 0.74,
-        opacity: 0.58,
+        scale: 0.72,
+        opacity: 0.55,
         zIndex: 15
       };
     }
     return {
-      x: 960,
-      z: -480,
-      rotateY: -58,
+      x: 780,
+      z: -420,
+      rotateY: -60,
       scale: 0.60,
       opacity: 0,
       zIndex: 5
@@ -311,7 +311,8 @@ export default function VisionSpatialGallery({
       role="region"
       aria-label="Apple Vision Pro Spatial 3D Music Explorer"
     >
-      {/* Ambient Scrim Backdrop */}
+      {/* Photo-Realistic Luxury Living Room Room Backdrop from user reference */}
+      <div className="vision-spatial-bg-layer" />
       <div className="vision-spatial-scrim" />
 
       {/* Toast Feedback */}
