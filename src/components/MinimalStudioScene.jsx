@@ -1741,7 +1741,7 @@ export default function MinimalStudioScene({
                 </button>
               </div>
 
-              {/* Transparent Dead Poets Society Quote Pill (No solid black box) */}
+              {/* Transparent Black Dead Poets Society Quote Pill */}
               <div 
                 className="ref-quote-pill-transparent"
                 onClick={handleNextDpsQuote}
@@ -1751,7 +1751,6 @@ export default function MinimalStudioScene({
               >
                 <Quote size={12} className="ref-quote-pill-icon" style={{ color: currentTheme?.accent || '#f59e0b' }} />
                 <span className="ref-quote-pill-text">"{dpsQuote.quote}"</span>
-                <span className="ref-quote-pill-author">— {dpsQuote.author}</span>
               </div>
             </div>
 

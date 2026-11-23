@@ -19838,20 +19838,20 @@ body, html, #root {
   user-select: none;
 }
 
-/* Transparent Dead Poets Society Quote Pill (No solid black box) */
+/* Translucent Black Quote Pill (Black but a bit transparent) */
 .ref-quote-pill-transparent {
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(16px) saturate(190%) brightness(1.05);
-  -webkit-backdrop-filter: blur(16px) saturate(190%) brightness(1.05);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 999px;
-  padding: 6px 16px;
+  padding: 6px 14px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   box-shadow: 
-    inset 0 1px 1.5px rgba(255, 255, 255, 0.35),
-    0 4px 16px rgba(0, 0, 0, 0.12);
+    inset 0 1px 1px rgba(255, 255, 255, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.35);
   margin-top: 10px;
   cursor: pointer;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
@@ -19860,12 +19860,12 @@ body, html, #root {
 }
 
 .ref-quote-pill-transparent:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.58);
+  border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-1px);
   box-shadow: 
-    inset 0 1px 2px rgba(255, 255, 255, 0.5),
-    0 6px 20px rgba(0, 0, 0, 0.18);
+    inset 0 1px 1.5px rgba(255, 255, 255, 0.25),
+    0 6px 20px rgba(0, 0, 0, 0.45);
 }
 
 .ref-quote-pill-transparent:active {
@@ -19883,16 +19883,7 @@ body, html, #root {
   font-weight: 600;
   color: #ffffff;
   letter-spacing: 0.2px;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
-  white-space: nowrap;
-}
-
-.ref-quote-pill-author {
-  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.65rem;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.75);
-  letter-spacing: 0.2px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
   white-space: nowrap;
 }
 
