@@ -18968,7 +18968,7 @@ body, html, #root {
 
 .ref-glass-bg-picker-flyout {
   position: absolute;
-  left: calc(100% + 14px);
+  left: calc(100% + 36px);
   top: 50%;
   transform: translateY(-50%);
   width: 216px;
