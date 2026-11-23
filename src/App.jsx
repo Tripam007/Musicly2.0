@@ -668,7 +668,9 @@ export default function App() {
       }
       return sc;
     });
-    const mergedCustom = customScenes.map(sc => {
+    const defaultIds = new Set(SCENES.map(s => s.id));
+    const validCustom = (customScenes || []).filter(sc => sc && sc.id && !defaultIds.has(sc.id) && sc.name && sc.name.trim());
+    const mergedCustom = validCustom.map(sc => {
       const overrideImg = sceneOverrides[sc.id]?.image || sceneOverrides[sc.id];
       if (overrideImg) {
         return { ...sc, image: overrideImg, isOverridden: true };

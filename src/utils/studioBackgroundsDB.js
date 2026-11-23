@@ -12,44 +12,58 @@ const KEY = 'current_gallery';
 
 export const DEFAULT_STUDIO_PHOTOS = [
   {
-    id: 'default-zenitsu',
+    id: 'wallpaper-route-66',
+    url: '/assets/wallpapers/route_66.png',
+    title: 'Route 66 Sunset Roadside',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-astronaut',
+    url: '/assets/wallpapers/astronaut_neon.png',
+    title: 'Neon Astronaut in Space',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-luffy',
+    url: '/assets/wallpapers/luffy_anime.jpg',
+    title: 'Monkey D. Luffy',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-gojo',
+    url: '/assets/wallpapers/gojo_satoru.jpg',
+    title: 'Gojo Satoru',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-red-eclipse',
+    url: '/assets/wallpapers/red_eclipse_crown.png',
+    title: 'Red Eclipse Crown',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-lone-knight',
+    url: '/assets/wallpapers/lone_knight.png',
+    title: 'Lone Knight Beneath Stormy Skies',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-zenitsu',
     url: '/assets/images/zenitsu_clean_wallpaper.jpg',
-    title: 'Agatsuma Zenitsu (Clean Anime Visual)',
+    title: 'Agatsuma Zenitsu',
     is4K: true,
     isDefault: true
   },
   {
-    id: 'default-1',
-    url: '/assets/images/greesel_clean_portrait.jpg',
-    title: 'Studio Portrait',
-    is4K: true,
-    isDefault: true
-  },
-  {
-    id: 'default-2',
-    url: '/assets/images/vibe_card_01.jpg',
-    title: 'Warm Studio Vibe',
-    is4K: true,
-    isDefault: true
-  },
-  {
-    id: 'default-3',
-    url: '/assets/images/vibe_card_02.jpg',
-    title: 'Neon Dusk Vibe',
-    is4K: true,
-    isDefault: true
-  },
-  {
-    id: 'default-4',
-    url: '/assets/images/vibe_card_03.jpg',
-    title: 'Cozy Twilight',
-    is4K: true,
-    isDefault: true
-  },
-  {
-    id: 'default-5',
-    url: '/assets/images/vibe_card_05.jpg',
-    title: 'Retro Aesthetic',
+    id: 'wallpaper-brad-pitt',
+    url: '/assets/wallpapers/brad_pitt.jpg',
+    title: "It's Not About Money - Cliff Booth",
     is4K: true,
     isDefault: true
   }
@@ -79,13 +93,13 @@ function openDB() {
  */
 export async function getStudioBackgrounds() {
   try {
-    // Auto-migration: Purge any old mockup screenshots so clean 4K symmetrical Zenitsu visual takes effect immediately
-    const MIGRATION_KEY = 'musicly_studio_bg_v9_zenitsu_clean_default';
+    // Auto-migration: Purge any old mockup screenshots so clean 4K curated wallpapers take effect immediately
+    const MIGRATION_KEY = 'musicly_studio_bg_v12_curated_wallpapers_8';
     if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
       try {
         localStorage.setItem(MIGRATION_KEY, 'true');
-        localStorage.removeItem('musicly_studio_bg_gallery');
-        localStorage.setItem('musicly_studio_bg_index', '0');
+        localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(DEFAULT_STUDIO_PHOTOS));
+        localStorage.setItem('musicly_studio_bg_index', '6');
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);

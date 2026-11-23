@@ -501,12 +501,6 @@ export async function saveSceneOverride(sceneId, imageUrl, user) {
           }, { merge: true }),
           new Promise((resolve) => setTimeout(resolve, 3000))
         ]);
-
-        const customDocRef = doc(firestore, 'public_scenes', sceneId);
-        await Promise.race([
-          setDoc(customDocRef, { image: optimizedImage }, { merge: true }),
-          new Promise((resolve) => setTimeout(resolve, 1500))
-        ]).catch(() => {});
       }
     } catch (err) {
       console.warn("Firestore scene override save notice:", err);
@@ -586,9 +580,13 @@ export async function loadPublicScenes() {
       ]);
 
       if (snap && !snap.empty) {
+        const reservedIds = new Set(['cozy_bedroom', 'vinyl', 'vibe_carousel', 'minimal_studio']);
         const cloudScenes = [];
         snap.forEach(docSnap => {
-          cloudScenes.push({ id: docSnap.id, ...docSnap.data() });
+          const data = docSnap.data();
+          if (!reservedIds.has(docSnap.id) && data?.name && data.name.trim()) {
+            cloudScenes.push({ id: docSnap.id, ...data });
+          }
         });
         
         // Sort newest first
@@ -786,11 +784,12 @@ export function subscribePublicScenes(callback) {
   try {
     const colRef = collection(firestore, 'public_scenes');
     const unsubscribe = onSnapshot(colRef, (snapshot) => {
+      const reservedIds = new Set(['cozy_bedroom', 'vinyl', 'vibe_carousel', 'minimal_studio']);
       const scenes = [];
       snapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        if (data && data.id) {
-          scenes.push(data);
+        if (data && data.name && data.name.trim() && !reservedIds.has(docSnap.id)) {
+          scenes.push({ id: docSnap.id, ...data });
         }
       });
       try {
