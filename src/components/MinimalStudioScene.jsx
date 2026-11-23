@@ -276,7 +276,15 @@ export default function MinimalStudioScene({
   activePlayingPlaylistId = null,
   onSetActivePlayingPlaylistId = null
 }) {
-  const isUserAdmin = isAdmin || checkIsAdmin(user);
+  const isUserAdmin = Boolean(
+    isAdmin ||
+    checkIsAdmin(user) ||
+    (user?.email && user.email.toLowerCase() === 'tripambiswas007@gmail.com') ||
+    (typeof window !== 'undefined' && (
+      localStorage.getItem('musicly_user_role') === 'admin' ||
+      localStorage.getItem('musicly_admin_mode') === 'true'
+    ))
+  );
 
   // Active Atmosphere Color Theme (defaults to auto background-adaptive or saved preference)
   const [currentTheme, setCurrentTheme] = useState(() => getSavedStudioTheme());
@@ -570,7 +578,12 @@ export default function MinimalStudioScene({
 
   const handleCameraClick = (e) => {
     e.stopPropagation();
-    setIsQuickBgPickerOpen((prev) => !prev);
+    if (isUserAdmin) {
+      setIsAdminGalleryOpen((prev) => !prev);
+      setIsQuickBgPickerOpen(false);
+    } else {
+      setIsQuickBgPickerOpen((prev) => !prev);
+    }
   };
 
   const waveformRef = useRef(null);
@@ -1389,15 +1402,15 @@ export default function MinimalStudioScene({
 
             <div className="ref-camera-btn-wrapper" ref={quickBgPickerRef}>
               <button 
-                className={`ref-side-btn ${isQuickBgPickerOpen ? 'active' : ''}`}
+                className={`ref-side-btn ${(isUserAdmin ? isAdminGalleryOpen : isQuickBgPickerOpen) ? 'active' : ''}`}
                 onClick={handleCameraClick}
-                title="Choose background visual"
-                aria-label="Choose background visual"
+                title={isUserAdmin ? "Studio Visuals Manager (Admin)" : "Choose background visual"}
+                aria-label={isUserAdmin ? "Studio Visuals Manager (Admin)" : "Choose background visual"}
               >
                 <Camera size={16} />
               </button>
 
-              {isQuickBgPickerOpen && (
+              {!isUserAdmin && isQuickBgPickerOpen && (
                 <div className="ref-glass-bg-picker-flyout">
                   <div className="ref-glass-bg-picker-grid">
                     {studioBackgrounds.map((bg, idx) => {
