@@ -235,6 +235,33 @@ function ChooseYourVibeScene({
     });
   }, []);
 
+  // Single-click vs Double-click handler on MUSICLY brand:
+  // - Single click: shift between Classic Vibe Carousel and Vision Spatial 3D
+  // - Double click: return to Home page
+  const brandClickTimerRef = useRef(null);
+  const handleBrandClick = useCallback((e) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    if (brandClickTimerRef.current) {
+      clearTimeout(brandClickTimerRef.current);
+      brandClickTimerRef.current = null;
+      if (onClose) onClose();
+    } else {
+      brandClickTimerRef.current = setTimeout(() => {
+        brandClickTimerRef.current = null;
+        handleToggleVisionMode();
+      }, 260);
+    }
+  }, [handleToggleVisionMode, onClose]);
+
+  useEffect(() => {
+    return () => {
+      if (brandClickTimerRef.current) clearTimeout(brandClickTimerRef.current);
+    };
+  }, []);
+
   // When a current song is playing, show the current song in the middle (in 'songs' view)
   const initialVibeIdx = useMemo(() => getVibeIndexForTrack(currentTrack), [currentTrack]);
   const initialVibe = initialVibeIdx !== -1 ? VIBE_ITEMS[initialVibeIdx] : VIBE_ITEMS[2];
@@ -942,26 +969,18 @@ function ChooseYourVibeScene({
       {/* Glossy reflective desk table surface in foreground with reactive reflection sheen */}
       <div className="vibe-scene-table-reflection-plane" />
 
-      {/* Top Left Branding: MUSICLY — & Mode Switcher Button */}
-      <div className="vibe-top-left-group" onPointerDown={(e) => e.stopPropagation()}>
-        <div className="vibe-top-left-brand">
-          <span className="vibe-brand-logo">MUSICLY</span>
-          <span className="vibe-brand-line" />
-        </div>
-
-        {/* Button below MUSICLY where user can shift from one to another */}
-        <button
-          type="button"
-          className={`vibe-mode-shift-btn ${isVisionSpatialMode ? 'is-vision-mode' : ''}`}
-          onClick={handleToggleVisionMode}
-          title={isVisionSpatialMode ? "Shift back to Classic Vibe Carousel" : "Shift to Vision Spatial 3D Glass Gallery"}
-          aria-label="Shift Scene View"
-        >
-          <Sparkles size={13} className="vibe-shift-sparkle" style={{ color: isVisionSpatialMode ? '#ffd166' : '#f59e0b' }} />
-          <span>{isVisionSpatialMode ? "Classic Vibe" : "Vision Spatial"}</span>
-          <span className="vibe-shift-badge">{isVisionSpatialMode ? "Carousel" : "3D Glass"}</span>
-          <span className="vibe-shift-arrows">⇄</span>
-        </button>
+      {/* Top Left Branding: MUSICLY — (Click once to shift view, double-click to return Home) */}
+      <div 
+        className="vibe-top-left-brand is-clickable"
+        onClick={handleBrandClick}
+        onPointerDown={(e) => e.stopPropagation()}
+        role="button"
+        tabIndex={0}
+        title="Click once to shift view (Vision Spatial 3D ⇄ Classic) • Double-click to return Home"
+        aria-label="Musicly - Click once to shift view, double click to return home"
+      >
+        <span className="vibe-brand-logo">MUSICLY</span>
+        <span className="vibe-brand-line" />
       </div>
 
       {/* Top Right Controls: Tagline & Apple-Inspired 3-Dot Glass Popout Dock */}

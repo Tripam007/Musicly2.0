@@ -14248,24 +14248,27 @@ body, html, #root {
   pointer-events: none;
 }
 
-/* Top Left Branding: MUSICLY — & Mode Switcher Button Container */
-.vibe-top-left-group {
+/* Top Left Branding: MUSICLY — (Click once to shift view, double-click for home) */
+.vibe-top-left-brand {
   position: absolute;
   top: 36px;
   left: 48px;
   z-index: 55;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  pointer-events: auto;
-}
-
-.vibe-top-left-brand {
-  position: relative;
-  display: flex;
   align-items: center;
   gap: 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.vibe-top-left-brand:hover {
+  opacity: 0.88;
+  transform: scale(1.03);
+}
+
+.vibe-top-left-brand:active {
+  transform: scale(0.97);
 }
 
 .vibe-brand-logo {
@@ -14275,6 +14278,12 @@ body, html, #root {
   color: #f1f5f9;
   text-transform: uppercase;
   line-height: 1;
+  transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.vibe-top-left-brand:hover .vibe-brand-logo {
+  color: #ffffff;
+  text-shadow: 0 0 14px rgba(255, 255, 255, 0.45);
 }
 
 .vibe-brand-line {
@@ -14283,78 +14292,12 @@ body, html, #root {
   background: rgba(255, 255, 255, 0.45);
   display: inline-block;
   vertical-align: middle;
+  transition: width 0.25s ease, background 0.25s ease;
 }
 
-/* Elegant Frosted Glass Shift Button Below MUSICLY */
-.vibe-mode-shift-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px 6px 12px;
-  border-radius: 9999px;
-  background: rgba(30, 32, 40, 0.62);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 
-    0 8px 24px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  color: rgba(255, 255, 255, 0.88);
-  font-family: inherit;
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  user-select: none;
-}
-
-.vibe-mode-shift-btn:hover {
-  background: rgba(45, 48, 62, 0.78);
-  border-color: rgba(255, 255, 255, 0.38);
-  color: #ffffff;
-  transform: translateY(-1px);
-  box-shadow: 
-    0 12px 30px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.45);
-}
-
-.vibe-mode-shift-btn.is-vision-mode {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(30, 32, 40, 0.7));
-  border-color: rgba(245, 158, 11, 0.5);
-  color: #ffd166;
-  box-shadow: 
-    0 8px 26px rgba(0, 0, 0, 0.45),
-    0 0 16px rgba(245, 158, 11, 0.22),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.vibe-mode-shift-btn .vibe-shift-badge {
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.vibe-mode-shift-btn.is-vision-mode .vibe-shift-badge {
-  background: rgba(245, 158, 11, 0.3);
-  color: #ffd166;
-}
-
-.vibe-shift-arrows {
-  margin-left: 2px;
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.65);
-  transition: transform 0.3s ease;
-}
-
-.vibe-mode-shift-btn:hover .vibe-shift-arrows {
-  transform: scale(1.18);
-  color: #ffffff;
+.vibe-top-left-brand:hover .vibe-brand-line {
+  width: 46px;
+  background: rgba(255, 255, 255, 0.85);
 }
 
 /* Top Right Tagline: SOUNDS FOR A BETTER YOU */
