@@ -170,23 +170,24 @@ export default function SceneSelector({
     setCropBox(calculateDefaultCrop(nw, nh, ratioKey));
   };
 
-  const openVisualsModal = async (scene) => {
+  const openImageEditor = (scene) => {
     playClickSound('light');
-    setVisualsModalScene(scene);
-    setAdminUploadMode('image');
-    setLiveVideoUrlInput('');
-    setAdminUrlInput('');
-    try {
-      const list = await loadSceneVisuals(scene.id);
-      setSceneVisuals(list);
-    } catch {
-      setSceneVisuals([...DEFAULT_STUDIO_VISUALS]);
-    }
+    setEditingScene(scene);
+    const currentActiveUrl = (sceneOverrides && sceneOverrides[scene.id]) || scene.image || '';
+    setPreviewImage(currentActiveUrl);
+    setImageUrlInput(currentActiveUrl && !currentActiveUrl.startsWith('data:') ? currentActiveUrl : '');
+    setSelectedRatio('16:9');
+    setCropBox({ x: 0, y: 0, w: 1, h: 0.5625 });
+    setErrorMessage('');
+  };
+
+  const openVisualsModal = async (scene) => {
+    openImageEditor(scene);
   };
 
   const handleCameraClick = (e, scene) => {
     e.stopPropagation();
-    openVisualsModal(scene);
+    openImageEditor(scene);
   };
 
   const handleSelectVisual = async (visual) => {
@@ -619,12 +620,8 @@ export default function SceneSelector({
                     type="button"
                     className={`scene-admin-edit-badge ${hasOverride ? 'has-custom-override' : ''}`}
                     onClick={(e) => handleCameraClick(e, scene)}
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      openVisualsModal(scene);
-                    }}
-                    title={`Studio Background Visuals for "${scene.name}"`}
-                    aria-label={`Studio Background Visuals for ${scene.name}`}
+                    title={`Change Theme Image for "${scene.name}"`}
+                    aria-label={`Change Theme Image for ${scene.name}`}
                   >
                     <Camera size={13} />
                   </button>
@@ -990,92 +987,6 @@ export default function SceneSelector({
               >
                 {isSaving ? 'Saving...' : 'Apply & Save Theme Image'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 🎬 Studio Background Visuals Selection & Live Wallpaper Manager Modal */}
-      {visualsModalScene && (
-        <div
-          className="scene-edit-overlay-backdrop studio-visuals-backdrop"
-          onClick={() => setVisualsModalScene(null)}
-        >
-          <div
-            className="studio-visuals-modal-box glass-modal-panel vibe-modal-no-wheel"
-            style={{ maxWidth: '560px', width: '92%' }}
-            onClick={(e) => e.stopPropagation()}
-            onWheel={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="studio-visuals-header">
-              <div className="studio-visuals-title-group">
-                <div className="studio-visuals-icon-box">
-                  <Camera size={20} style={{ color: '#ffb703' }} />
-                </div>
-                <div>
-                  <div className="studio-visuals-headline-row">
-                    <h4>Change Scene Image</h4>
-                  </div>
-                  <p className="studio-visuals-subtitle">
-                    Select wallpaper for <strong>{visualsModalScene.name}</strong>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="drawer-close-btn"
-                onClick={() => setVisualsModalScene(null)}
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Upload Box: Click to Browse or Drag & Drop Wallpaper */}
-            <div
-              className={`scene-broad-dropzone ${isDraggingFile ? 'is-dragging' : ''}`}
-              onDragOver={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
-              onDragEnter={(e) => { e.preventDefault(); setIsDraggingFile(true); }}
-              onDragLeave={(e) => { e.preventDefault(); setIsDraggingFile(false); }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDraggingFile(false);
-                const file = e.dataTransfer.files?.[0];
-                if (file) handleAdminUploadFile(file);
-              }}
-              onClick={() => studioFileInputRef.current?.click()}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  studioFileInputRef.current?.click();
-                }
-              }}
-            >
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp,image/jpg"
-                ref={studioFileInputRef}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleAdminUploadFile(file);
-                  e.target.value = '';
-                }}
-                style={{ display: 'none' }}
-              />
-              <div className="scene-dropzone-icon-wrap">
-                <Upload size={22} className="scene-dropzone-icon" />
-              </div>
-              <div className="scene-dropzone-text-group">
-                <p className="scene-dropzone-title">
-                  <strong>Click to Browse or Drag & Drop Wallpaper</strong>
-                </p>
-                <p className="scene-dropzone-hint">
-                  Supports PNG, JPEG, WebP. Opens 16:9 interactive cropper to fit perfectly.
-                </p>
-              </div>
             </div>
           </div>
         </div>
