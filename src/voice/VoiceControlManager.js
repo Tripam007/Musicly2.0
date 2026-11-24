@@ -553,7 +553,12 @@ export class VoiceControlManager {
     this._clearCommandTimeout();
     this.ambiguousCandidates = [];
     setTimeout(() => {
-      this.stop();
+      const isWakeWordEnabled = typeof localStorage !== 'undefined' && localStorage.getItem('musicly_voice_enabled') === 'true';
+      if (isWakeWordEnabled) {
+        this._returnToWakeWordListening();
+      } else {
+        this.stop();
+      }
     }, delayMs);
   }
 

@@ -40,7 +40,14 @@ export class VoiceCommandParser {
     }
 
     // 1. Pipeline: Normalize text
-    const cleanLower = normalizeText(rawTranscript);
+    let cleanLower = normalizeText(rawTranscript);
+
+    // Strip leading or trailing wake words & polite conversational prefixes
+    cleanLower = cleanLower
+      .replace(/^(?:hey|hay|hi|hello|ok|okay)?\s*(?:musicly|musically|music\s*ly|music\s*lee|assistant)\b[,:\s]*/i, '')
+      .replace(/^(?:please|could you|can you|would you|i want to|i want you to|help me|just)\s+/i, '')
+      .replace(/\b(?:please|musicly|musically)\b$/i, '')
+      .trim();
 
     // 2. Multilingual phrase translation (Hindi/Bengali/Hinglish -> Canonical)
     const { translated: canonicalText } = mapMultilingualPhrase(cleanLower);
@@ -50,7 +57,7 @@ export class VoiceCommandParser {
     const text = withNumbers.trim();
 
     // 3. Low Speech Confidence Gate
-    if (speechConfidence < 0.40) {
+    if (speechConfidence < 0.35) {
       return {
         action: MUSICLY_ACTIONS.UNKNOWN,
         rawCommand: rawTranscript,
@@ -90,9 +97,25 @@ export class VoiceCommandParser {
       };
     }
 
-    // 6. PLAYBACK CONTROLS
+    // 6. WHAT IS PLAYING / SONG QUERY
+    if (/^(?:what\s+(?:song|track|music)\s+is\s+(?:this|playing)|what\s+is\s+playing|whats\s+playing|who\s+is\s+singing|who\s+sings\s+this|current\s+(?:song|track)|which\s+song\s+is\s+this|song\s+name|track\s+name|tell\s+me\s+the\s+song)$/i.test(text)) {
+      const cur = context.currentTrack;
+      const resp = cur ? `Currently playing ${cur.title}${cur.artist ? ' by ' + cur.artist : ''}.` : 'No music is currently playing.';
+      return {
+        action: MUSICLY_ACTIONS.WHAT_IS_PLAYING,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.99,
+        speechConfidence,
+        actionConfidence: 0.99,
+        feedback: resp,
+        spokenText: resp
+      };
+    }
+
+    // 7. PLAYBACK CONTROLS
     // Play / Resume
-    if (/^(play|resume|continue|start playing|start music|play music|unpause)$/i.test(text)) {
+    if (/^(?:play|resume|continue|unpause|start|start\s+(?:playing|playback|music|the\s+music|song|the\s+song)|play\s+(?:music|the\s+music|song|the\s+song|some\s+music|something)|resume\s+(?:the\s+)?(?:music|song|playback))$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.PLAY,
         params: {},
@@ -106,7 +129,7 @@ export class VoiceCommandParser {
     }
 
     // Pause / Stop
-    if (/^(pause|stop|halt|hold on|pause music|stop music)$/i.test(text)) {
+    if (/^(?:pause|stop|halt|hold\s*on|wait|freeze|pause\s+(?:music|the\s+music|song|the\s+song|playback|playing)|stop\s+(?:music|the\s+music|song|the\s+song|playback|playing))$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.PAUSE,
         params: {},
@@ -120,7 +143,7 @@ export class VoiceCommandParser {
     }
 
     // Next Track / Skip
-    if (/^(next|next song|next track|skip|skip this|skip song|play next|go next)$/i.test(text)) {
+    if (/^(?:next|skip|next\s+(?:track|song|music)|play\s+next(?:\s+(?:track|song))?|skip\s+(?:this|track|song|to\s+next(?:\s+(?:track|song))?)|go\s+next|forward\s+track)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.NEXT_TRACK,
         params: {},
@@ -134,7 +157,7 @@ export class VoiceCommandParser {
     }
 
     // Previous Track / Rewind to previous
-    if (/^(previous|previous song|previous track|prev song|prev|go back|back song|play previous)$/i.test(text)) {
+    if (/^(?:previous|prev|previous\s+(?:track|song)|prev\s+(?:track|song)|play\s+previous(?:\s+(?:track|song))?|go\s+back(?:\s+(?:a\s+song|track|song))?|back\s+song|last\s+(?:song|track))$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.PREVIOUS_TRACK,
         params: {},
@@ -148,7 +171,7 @@ export class VoiceCommandParser {
     }
 
     // Restart / Replay current song
-    if (/^(restart|restart this song|restart track|replay|play from beginning|start over)$/i.test(text)) {
+    if (/^(?:restart|restart\s+(?:this\s+song|track|song)|replay|play\s+from\s+beginning|start\s+over|again)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.REPLAY,
         params: {},
@@ -161,7 +184,7 @@ export class VoiceCommandParser {
       };
     }
 
-    // 7. SEEKING (Forward / Backward relative or absolute seconds)
+    // 8. SEEKING (Forward / Backward relative or absolute seconds)
     // E.g. "forward 10 seconds", "skip 30 seconds", "rewind 20 seconds", "go back 15 seconds"
     const seekMatch = text.match(/(?:skip|forward|jump|go|rewind|back)\s+(?:forward\s+|ahead\s+|back\s+)?(\d+)\s*(?:seconds?|secs?)?/i);
     if (seekMatch) {
@@ -184,9 +207,10 @@ export class VoiceCommandParser {
       };
     }
 
-    // 8. VOLUME CONTROLS
-    // Absolute Volume: "volume 50", "set volume to 70", "volume at 80 percent"
-    const volNumMatch = text.match(/(?:set\s+)?volume\s+(?:to\s+|at\s+)?(\d+)(?:\s*percent|%)?/i);
+    // 9. VOLUME CONTROLS
+    // Absolute Volume: "volume 50", "set volume to 70", "volume at 80 percent", "turn it to 50"
+    const volNumMatch = text.match(/(?:set\s+)?volume\s+(?:to\s+|at\s+)?(\d+)(?:\s*percent|%)?/i) ||
+      text.match(/^(?:turn\s+(?:it\s+)?(?:up\s+|down\s+)?to\s+|volume\s+)(\d+)(?:\s*percent|%)?$/i);
     if (volNumMatch) {
       const val = parseInt(volNumMatch[1], 10);
       const clampedPercent = Math.max(0, Math.min(100, val));
@@ -204,7 +228,7 @@ export class VoiceCommandParser {
     }
 
     // Volume Up / Louder
-    if (/^(volume up|turn it up|louder|make it louder|increase volume|boost volume)$/i.test(text)) {
+    if (/^(?:volume\s+up|turn\s+(?:the\s+)?(?:volume\s+|it\s+)?up|louder|make\s+it\s+louder|increase\s+(?:the\s+)?volume|boost\s+volume|raise\s+(?:the\s+)?volume|up\s+volume|crank\s+it\s+up)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.VOLUME_UP,
         params: { step: 0.10 },
@@ -218,7 +242,7 @@ export class VoiceCommandParser {
     }
 
     // Volume Down / Quieter
-    if (/^(volume down|turn it down|quieter|make it quieter|decrease volume|lower volume)$/i.test(text)) {
+    if (/^(?:volume\s+down|turn\s+(?:the\s+)?(?:volume\s+|it\s+)?down|quieter|make\s+it\s+quieter|decrease\s+(?:the\s+)?volume|lower\s+(?:the\s+)?volume|drop\s+volume|reduce\s+(?:the\s+)?volume|down\s+volume)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.VOLUME_DOWN,
         params: { step: 0.10 },
@@ -232,7 +256,7 @@ export class VoiceCommandParser {
     }
 
     // Mute
-    if (/^(mute|silence|turn off sound|mute sound|mute musicly)$/i.test(text)) {
+    if (/^(?:mute|silence|turn\s+off\s+(?:the\s+)?(?:sound|audio|volume|music)|mute\s+(?:the\s+)?(?:sound|audio|volume|music|it|musicly)|quiet)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.MUTE,
         params: {},
@@ -246,7 +270,7 @@ export class VoiceCommandParser {
     }
 
     // Unmute
-    if (/^(unmute|restore sound|turn sound back on)$/i.test(text)) {
+    if (/^(?:unmute|restore\s+(?:the\s+)?sound|turn\s+(?:the\s+)?sound\s+back\s+on|turn\s+on\s+(?:the\s+)?(?:sound|audio)|unmute\s+(?:the\s+)?(?:sound|audio|volume|it))$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.UNMUTE,
         params: {},
@@ -259,8 +283,8 @@ export class VoiceCommandParser {
       };
     }
 
-    // 9. SHUFFLE & REPEAT
-    if (/^(shuffle|turn shuffle on|enable shuffle|start shuffle)$/i.test(text)) {
+    // 10. SHUFFLE & REPEAT
+    if (/^(?:shuffle|turn\s+shuffle\s+on|turn\s+on\s+shuffle|enable\s+shuffle|start\s+shuffle|shuffle\s+(?:on|songs|music|playlist))$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.TOGGLE_SHUFFLE,
         params: { value: true },
@@ -272,7 +296,7 @@ export class VoiceCommandParser {
         spokenText: "Shuffle on."
       };
     }
-    if (/^(turn shuffle off|disable shuffle|stop shuffle)$/i.test(text)) {
+    if (/^(?:turn\s+shuffle\s+off|turn\s+off\s+shuffle|disable\s+shuffle|stop\s+shuffle|shuffle\s+off)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.TOGGLE_SHUFFLE,
         params: { value: false },
@@ -285,7 +309,7 @@ export class VoiceCommandParser {
       };
     }
 
-    if (/^(repeat|repeat this song|repeat track|loop this song)$/i.test(text)) {
+    if (/^(?:repeat|loop|turn\s+repeat\s+on|turn\s+on\s+repeat|enable\s+repeat|repeat\s+(?:on|this\s+song|song|track)|loop\s+(?:this\s+song|song|track))$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.TOGGLE_REPEAT,
         params: { mode: 'one' },
@@ -297,7 +321,7 @@ export class VoiceCommandParser {
         spokenText: "Repeating this song."
       };
     }
-    if (/^(turn repeat off|stop repeat|disable repeat)$/i.test(text)) {
+    if (/^(?:turn\s+repeat\s+off|turn\s+off\s+repeat|disable\s+repeat|stop\s+repeat|stop\s+loop|repeat\s+off|no\s+repeat)$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.TOGGLE_REPEAT,
         params: { mode: 'off' },
@@ -544,9 +568,15 @@ export class VoiceCommandParser {
     }
 
     // 15. MUSIC SEARCH & PLAY ENTITY EXTRACTION
-    // E.g. "play Faasle", "play something by Kaavish", "play Coldplay", "play some hindi songs", "search for Coldplay"
-    const searchPlayMatch = text.match(/(?:play\s+something\s+(?:by|from)|play\s+(?:some\s+)?|search\s+(?:for\s+)?|find\s+)(.+)/i);
-    const searchQuery = searchPlayMatch ? searchPlayMatch[1].trim() : text;
+    // E.g. "play Faasle", "play something by Kaavish", "play Coldplay", "put on Yellow", "listen to Faasle", "search for Coldplay"
+    const searchPlayMatch = text.match(/(?:play\s+something\s+(?:by|from)|play\s+(?:some\s+)?|search\s+(?:for\s+)?|find\s+|put\s+on\s+|listen\s+to\s+)(.+)/i);
+    let rawSearchQuery = searchPlayMatch ? searchPlayMatch[1].trim() : text;
+
+    // Clean extraneous filler words from song search query
+    let searchQuery = rawSearchQuery
+      .replace(/^(?:the\s+song|the\s+track|song\s+named|track\s+named|music\s+by|song\s+by)\s+/i, '')
+      .replace(/\s+(?:please|now)$/i, '')
+      .trim();
 
     if (searchQuery && searchQuery.length > 1) {
       const allTracks = context.allTracks || [];

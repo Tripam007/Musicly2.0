@@ -2110,6 +2110,14 @@ export default function App() {
       return 'Replaying track.';
     });
 
+    reg.register(MUSICLY_ACTIONS.WHAT_IS_PLAYING, async () => {
+      const cur = currentTrackRef.current;
+      if (cur && cur.title) {
+        return `Currently playing ${cur.title}${cur.artist ? ' by ' + cur.artist : ''}.`;
+      }
+      return 'No music is currently playing.';
+    });
+
     // Seeking
     reg.register(MUSICLY_ACTIONS.SEEK, async (params) => {
       const cur = currentTimeRef.current || 0;
