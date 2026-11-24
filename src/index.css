@@ -10419,48 +10419,26 @@ body, html, #root {
 /* Nav Tabs */
 .admin-nav-tabs {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: rgba(0, 0, 0, 0.26);
+  gap: 8px 10px;
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.28);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: 100%;
+  flex-shrink: 0;
   box-sizing: border-box;
-  white-space: nowrap;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 209, 102, 0.35) transparent;
-}
-
-.admin-nav-tabs::-webkit-scrollbar {
-  height: 5px;
-}
-
-.admin-nav-tabs::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
-
-.admin-nav-tabs::-webkit-scrollbar-thumb {
-  background: rgba(255, 209, 102, 0.35);
-  border-radius: 4px;
-}
-
-.admin-nav-tabs::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 209, 102, 0.6);
+  width: 100%;
 }
 
 .admin-nav-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 13px;
+  padding: 8px 13px;
   border-radius: 10px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
@@ -10470,12 +10448,14 @@ body, html, #root {
 }
 .admin-nav-btn:hover {
   color: #fff;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 .admin-nav-btn.active {
   color: #ffd166;
-  background: rgba(255, 209, 102, 0.14);
-  border-color: rgba(255, 209, 102, 0.35);
+  background: rgba(255, 209, 102, 0.15);
+  border-color: rgba(255, 209, 102, 0.45);
+  box-shadow: 0 0 14px rgba(255, 209, 102, 0.16);
 }
 
 /* Tab Content */

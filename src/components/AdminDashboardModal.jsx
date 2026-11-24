@@ -1351,14 +1351,7 @@ export default function AdminDashboardModal({
         </div>
 
         {/* Dashboard Navigation Tabs */}
-        <div 
-          className="admin-nav-tabs"
-          onWheel={(e) => {
-            if (e.deltaY !== 0) {
-              e.currentTarget.scrollLeft += e.deltaY;
-            }
-          }}
-        >
+        <div className="admin-nav-tabs">
           <button 
             className={`admin-nav-btn ${activeTab === 'list' ? 'active' : ''}`}
             onClick={() => setActiveTab('list')}
