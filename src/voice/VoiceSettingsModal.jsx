@@ -367,6 +367,37 @@ export const VoiceSettingsModal = ({
               );
             })}
           </div>
+
+          {/* ElevenLabs API Key Setup for Full Real-Time Voice Synthesis */}
+          <div className="voice-apikey-accordion" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="voice-apikey-toggle"
+              onClick={() => setShowApiKeyInput(!showApiKeyInput)}
+            >
+              <Key size={13} />
+              <span>{apiKey ? 'ElevenLabs API Key Connected (Click to edit)' : '⚡ Connect ElevenLabs API Key for Live Speech Synthesis'}</span>
+            </button>
+
+            {showApiKeyInput && (
+              <div className="voice-apikey-panel" style={{ marginTop: 8 }}>
+                <input
+                  type="password"
+                  className="voice-form-input"
+                  placeholder="Paste xi-api-key here (from elevenlabs.io)"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="voice-apikey-save-btn"
+                  onClick={handleSaveApiKey}
+                >
+                  Save Key
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* --- ADMIN VOICE MANAGEMENT SECTION (Admin Only) --- */}

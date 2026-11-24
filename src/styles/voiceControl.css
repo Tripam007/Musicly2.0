@@ -284,9 +284,9 @@
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  background: rgba(4, 6, 12, 0.86) !important;
-  backdrop-filter: blur(36px) saturate(190%) contrast(108%) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(190%) contrast(108%) !important;
+  background: rgba(0, 0, 0, 0.22) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
   z-index: 999999 !important;
   display: flex !important;
   align-items: center !important;
@@ -299,12 +299,13 @@
 .voice-settings-modal {
   width: 100%;
   max-width: 520px;
-  background: #0d111a !important;
-  background: linear-gradient(180deg, rgba(20, 24, 38, 0.99) 0%, rgba(13, 16, 26, 0.995) 100%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  background: rgba(18, 24, 38, 0.55) !important;
+  backdrop-filter: blur(36px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
   border-radius: 24px !important;
   padding: 26px 24px !important;
-  box-shadow: 0 32px 100px rgba(0, 0, 0, 0.92), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
   color: #f1f5f9;
   animation: modalScaleIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
@@ -323,8 +324,8 @@ body.voice-settings-active .app-viewport .afterglow-scene-root,
 body.voice-settings-active .app-viewport .choose-your-vibe-root,
 body.voice-settings-active .app-viewport .vision-spatial-gallery,
 body.voice-settings-active .app-viewport .vision-spatial-container {
-  filter: blur(28px) brightness(0.65) saturate(120%) !important;
-  transform: scale(1.02);
+  filter: blur(20px) saturate(120%) !important;
+  transform: scale(1.01);
   transition: filter 0.25s ease-out, transform 0.25s ease-out;
   pointer-events: none !important;
 }
@@ -851,27 +852,29 @@ body.voice-settings-active .top-bar-container {
 }
 
 .voice-model-card {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 11px 14px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   display: flex;
   flex-direction: column;
   gap: 6px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .voice-model-card:hover {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.22);
   transform: translateY(-1px);
 }
 
 .voice-model-card.selected {
-  background: rgba(139, 92, 246, 0.14);
-  border-color: rgba(139, 92, 246, 0.45);
-  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.15);
+  background: rgba(139, 92, 246, 0.2);
+  border-color: rgba(168, 85, 247, 0.55);
+  box-shadow: 0 4px 18px rgba(139, 92, 246, 0.2), inset 0 0 10px rgba(168, 85, 247, 0.12);
 }
 
 .voice-card-top {

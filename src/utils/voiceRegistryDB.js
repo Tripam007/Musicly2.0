@@ -91,19 +91,51 @@ export const DEFAULT_VOICES = [
     isFeatured: false
   },
   {
-    id: '21m00Tcm4TlvDq8ikWAM',
-    name: 'Rachel',
+    id: 'CwhRBWXzGAHq8TQ4Fs17',
+    name: 'Roger',
     provider: 'elevenlabs',
-    gender: 'Female',
-    style: 'Serene & Warm',
+    gender: 'Male',
+    style: 'Laid-Back & Resonant',
     accent: 'American',
-    description: 'Serene and natural voice with effortless clarity and composure.',
-    url: 'https://elevenlabs.io/voices/21m00Tcm4TlvDq8ikWAM',
-    previewUrl: '/assets/sarah_preview.mp3',
-    samplePhrase: 'Musicly is playing your selection. Enjoy your session.',
-    pitch: 1.10,
+    description: 'Easy going, casual, and resonant voice for laid-back sessions.',
+    url: 'https://elevenlabs.io/voices/CwhRBWXzGAHq8TQ4Fs17',
+    previewUrl: '/assets/roger_preview.mp3',
+    samplePhrase: 'Easy going and ready to roll with your favorite tunes.',
+    pitch: 0.88,
     rate: 0.95,
     langFilter: 'en-US',
+    isFeatured: false
+  },
+  {
+    id: 'TX3LPaxmHKxFdv7VOQHJ',
+    name: 'Liam',
+    provider: 'elevenlabs',
+    gender: 'Male',
+    style: 'Articulate & Dynamic',
+    accent: 'American',
+    description: 'Crisp, modern, and energetic personality with clear articulation.',
+    url: 'https://elevenlabs.io/voices/TX3LPaxmHKxFdv7VOQHJ',
+    previewUrl: '/assets/liam_preview.mp3',
+    samplePhrase: 'Musicly is tuned in and ready to play your next track.',
+    pitch: 1.0,
+    rate: 1.0,
+    langFilter: 'en-US',
+    isFeatured: false
+  },
+  {
+    id: 'pFZP5JQG7iQjIQuC4Bku',
+    name: 'Lily',
+    provider: 'elevenlabs',
+    gender: 'Female',
+    style: 'Velvety & Soothing',
+    accent: 'British',
+    description: 'Soft, velvety British voice perfect for acoustic and lo-fi tracks.',
+    url: 'https://elevenlabs.io/voices/pFZP5JQG7iQjIQuC4Bku',
+    previewUrl: '/assets/lily_preview.mp3',
+    samplePhrase: 'Sit back and unwind. I will take care of the music.',
+    pitch: 1.15,
+    rate: 0.92,
+    langFilter: 'en-GB',
     isFeatured: false
   },
   {
@@ -316,6 +348,32 @@ export async function addCustomVoice(voiceInput, user) {
   const isFemale = genderLower.includes('female') || genderLower.includes('woman');
   const isBritish = styleLower.includes('british') || styleLower.includes('uk') || (voiceInput.accent || '').toLowerCase().includes('british');
 
+  let autoPreviewUrl = voiceInput.previewUrl || '';
+  if (!autoPreviewUrl) {
+    if (voiceId === 'AeRdCCKzvd23BpJoofzx') {
+      autoPreviewUrl = '/assets/nathaniel_preview.mp3';
+    } else {
+      const defaultMatch = DEFAULT_VOICES.find(v => v.id === voiceId);
+      if (defaultMatch && defaultMatch.previewUrl) {
+        autoPreviewUrl = defaultMatch.previewUrl;
+      }
+    }
+  }
+
+  // Attempt to fetch official preview URL from ElevenLabs public API if missing
+  if (!autoPreviewUrl) {
+    try {
+      const elevenLabsRes = await fetch('https://api.elevenlabs.io/v1/voices');
+      if (elevenLabsRes.ok) {
+        const publicData = await elevenLabsRes.json();
+        const match = (publicData.voices || []).find(v => v.voice_id === voiceId);
+        if (match && match.preview_url) {
+          autoPreviewUrl = match.preview_url;
+        }
+      }
+    } catch {}
+  }
+
   const voiceData = {
     id: voiceId,
     name: (voiceInput.name || 'Custom Voice').trim(),
@@ -325,7 +383,7 @@ export async function addCustomVoice(voiceInput, user) {
     accent: (voiceInput.accent || (isBritish ? 'British' : 'American')).trim(),
     description: (voiceInput.description || 'Custom voice model added by admin.').trim(),
     url: voiceInput.url ? voiceInput.url.trim() : `https://elevenlabs.io/voices/${voiceId}`,
-    previewUrl: voiceInput.previewUrl || (voiceId === 'AeRdCCKzvd23BpJoofzx' ? DEFAULT_VOICES[0].previewUrl : ''),
+    previewUrl: autoPreviewUrl,
     samplePhrase: (voiceInput.samplePhrase || `Hello, this is ${voiceInput.name || 'your custom voice'} on Musicly.`).trim(),
     pitch: isFemale ? 1.15 : (isBritish ? 0.85 : 0.8),
     rate: isBritish ? 0.94 : 1.0,

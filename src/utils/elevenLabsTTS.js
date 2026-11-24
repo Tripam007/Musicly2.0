@@ -140,13 +140,29 @@ export function getAuthenticVoicePreviewUrl(voice) {
   if (id === 'pNInz6obpgDQGcFmaJgB' || name.includes('adam')) {
     return '/assets/adam_preview.mp3';
   }
-  // Sarah & Rachel
-  if (id === 'EXAVITQu4vr4xnSDxMaL' || id === '21m00Tcm4TlvDq8ikWAM' || name.includes('sarah') || name.includes('rachel')) {
+  // Sarah
+  if (id === 'EXAVITQu4vr4xnSDxMaL' || name.includes('sarah')) {
     return '/assets/sarah_preview.mp3';
   }
   // Alice
   if (id === 'Xb7hH8MSUJpSbSDYk0k2' || name.includes('alice')) {
     return '/assets/alice_preview.mp3';
+  }
+  // Roger
+  if (id === 'CwhRBWXzGAHq8TQ4Fs17' || name.includes('roger')) {
+    return '/assets/roger_preview.mp3';
+  }
+  // Liam
+  if (id === 'TX3LPaxmHKxFdv7VOQHJ' || name.includes('liam')) {
+    return '/assets/liam_preview.mp3';
+  }
+  // Lily
+  if (id === 'pFZP5JQG7iQjIQuC4Bku' || name.includes('lily')) {
+    return '/assets/lily_preview.mp3';
+  }
+  // Matilda
+  if (id === 'XrExE9yKIg1WjnnlVkGX' || name.includes('matilda')) {
+    return '/assets/matilda_preview.mp3';
   }
 
   return voice.previewUrl || null;
