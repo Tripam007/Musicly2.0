@@ -29,6 +29,12 @@ export class VoiceControlManager {
     this.permissionGranted = false;
     this.lastDebugInfo = null;
     this.commandTimeoutId = null;
+    this.inactivityTimeoutId = null;
+    this.inactivityDurationMs = 5 * 60 * 1000; // Auto-off after 5 minutes of no commands
+    this.isVoiceControlActive = false;
+    try {
+      this.isVoiceControlActive = localStorage.getItem('musicly_voice_enabled') === 'true';
+    } catch {}
 
     // Sub-components
     this.actionRegistry = MusiclyActionRegistry.getInstance();
@@ -162,16 +168,20 @@ export class VoiceControlManager {
   // --- Start / Stop / Command Listening Lifecycle ---
   async start() {
     try {
-      this.wakeWordManager.start();
-      this.permissionGranted = true;
+      this.isVoiceControlActive = true;
       try {
         localStorage.setItem('musicly_voice_enabled', 'true');
       } catch {}
+      this.wakeWordManager.start();
+      this.permissionGranted = true;
+      this._resetInactivityTimer();
       this._setState(VOICE_STATES.LISTENING_FOR_WAKE_WORD);
       return true;
     } catch (err) {
       console.warn('[VoiceControlManager] Mic start error:', err);
       this.permissionGranted = false;
+      this.isVoiceControlActive = false;
+      this._clearInactivityTimer();
       this._setState(VOICE_STATES.ERROR, {
         lastResponse: 'Microphone access is required for Hey Musicly.',
       });
@@ -181,6 +191,11 @@ export class VoiceControlManager {
 
   startCommandListening() {
     this._clearCommandTimeout();
+    this.isVoiceControlActive = true;
+    try {
+      localStorage.setItem('musicly_voice_enabled', 'true');
+    } catch {}
+    this._resetInactivityTimer();
 
     // 1. Stop / pause playback immediately so the room is quiet for listening
     const currentlyPlaying = this.getIsPlaying();
@@ -204,7 +219,6 @@ export class VoiceControlManager {
 
   cancel() {
     this._clearCommandTimeout();
-    this.wakeWordManager.stop();
     this.recorder.stop();
     this.responseManager.cancel();
     this.ambiguousCandidates = [];
@@ -214,10 +228,18 @@ export class VoiceControlManager {
       } catch {}
       this.wasPlayingBeforeCommand = false;
     }
-    this._setState(VOICE_STATES.IDLE);
+    // If user explicitly turned Voice Control ON, keep it listening for wake words!
+    if (this.isVoiceControlActive) {
+      this._returnToWakeWordListening();
+      this._resetInactivityTimer();
+    } else {
+      this.stop();
+    }
   }
 
   stop() {
+    this.isVoiceControlActive = false;
+    this._clearInactivityTimer();
     this._clearCommandTimeout();
     this.wakeWordManager.stop();
     this.recorder.stop();
@@ -236,17 +258,49 @@ export class VoiceControlManager {
   }
 
   toggle() {
-    if (this.state === VOICE_STATES.IDLE || this.state === VOICE_STATES.ERROR) {
-      return this.startCommandListening();
-    } else {
+    // If currently ON, user clicks microphone to manually turn it OFF
+    if (this.state !== VOICE_STATES.IDLE && this.isVoiceControlActive) {
       this.stop();
       return false;
+    } else {
+      // User turned it ON
+      this.isVoiceControlActive = true;
+      return this.startCommandListening();
+    }
+  }
+
+  /**
+   * Resets the 5-minute inactivity auto-off timer.
+   * If no voice command is given for 5 minutes, Voice Control turns off automatically.
+   */
+  _resetInactivityTimer() {
+    this._clearInactivityTimer();
+    if (!this.isVoiceControlActive) return;
+
+    this.inactivityTimeoutId = setTimeout(() => {
+      console.log('[VoiceControlManager] 5 minutes with no command spoken. Turning Voice Control off automatically.');
+      if (this.isVoiceControlActive) {
+        if (this.config.enableVoiceResponses) {
+          try {
+            this.responseManager.speak("Turning voice control off due to inactivity.");
+          } catch {}
+        }
+        this.stop();
+      }
+    }, this.inactivityDurationMs);
+  }
+
+  _clearInactivityTimer() {
+    if (this.inactivityTimeoutId) {
+      clearTimeout(this.inactivityTimeoutId);
+      this.inactivityTimeoutId = null;
     }
   }
 
   // --- Wake Word Trigger & Pipeline ---
   async _onWakeWordTriggered({ tailCommand }) {
     if (this.state !== VOICE_STATES.LISTENING_FOR_WAKE_WORD) return;
+    this._resetInactivityTimer();
 
     // Pause music if currently playing so the command is heard clearly
     const currentlyPlaying = this.getIsPlaying();
@@ -408,6 +462,7 @@ export class VoiceControlManager {
   // --- Command Processing & Intent Parsing ---
   async _processCommandString(commandText, speechConfidence = 0.9, wakeTime = 0, extraTelemetry = {}) {
     try {
+      this._resetInactivityTimer();
       this.lastRecognized = commandText;
       this._setState(VOICE_STATES.PROCESSING_COMMAND, { lastRecognized: commandText });
 
@@ -553,9 +608,10 @@ export class VoiceControlManager {
     this._clearCommandTimeout();
     this.ambiguousCandidates = [];
     setTimeout(() => {
-      const isWakeWordEnabled = typeof localStorage !== 'undefined' && localStorage.getItem('musicly_voice_enabled') === 'true';
-      if (isWakeWordEnabled) {
+      // If user turned on Voice Control, stay active and listen for Hey Musicly / next commands!
+      if (this.isVoiceControlActive) {
         this._returnToWakeWordListening();
+        this._resetInactivityTimer();
       } else {
         this.stop();
       }
