@@ -248,7 +248,7 @@ export default function Player({
           <div className="track-meta">
             <div className="now-playing-label">
               <span>NOW PLAYING</span>
-              {activePlayingPlaylist ? (
+              {activePlayingPlaylist && Array.isArray(activePlayingPlaylist.tracks) && activePlayingPlaylist.tracks.some(t => t.id === currentTrack?.id || (t.title && currentTrack?.title && t.title.toLowerCase().trim() === currentTrack.title.toLowerCase().trim())) ? (
                 <span 
                   className="now-playing-playlist-badge" 
                   onClick={(e) => {

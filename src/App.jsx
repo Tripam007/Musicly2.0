@@ -938,9 +938,9 @@ export default function App() {
   const activePlayingPlaylistIdRef = useRef(activePlayingPlaylistId);
   activePlayingPlaylistIdRef.current = activePlayingPlaylistId;
 
-  // Active playing playlist object resolution
+  // Active playing playlist object resolution (strictly verifies currentTrack is an actual member)
   const activePlayingPlaylist = useMemo(() => {
-    if (!activePlayingPlaylistId) return null;
+    if (!activePlayingPlaylistId || !currentTrack) return null;
     const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
     let pl = unified.find(p => p.id === activePlayingPlaylistId);
     if (!pl) {
@@ -951,8 +951,60 @@ export default function App() {
         pl = { ...foundUser, tracks: plTracks };
       }
     }
-    return pl || null;
-  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user]);
+    if (!pl || !Array.isArray(pl.tracks) || pl.tracks.length === 0) return null;
+    const isCurrentInPl = pl.tracks.some(t => 
+      t && currentTrack && (
+        t.id === currentTrack.id || 
+        (t.title && currentTrack.title && t.title.toLowerCase().trim() === currentTrack.title.toLowerCase().trim())
+      )
+    );
+    return isCurrentInPl ? pl : null;
+  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack]);
+
+  // Synchronize localStorage with activePlayingPlaylistId and auto-clear stale playlist state if current track does not belong
+  useEffect(() => {
+    if (!activePlayingPlaylistId) {
+      try {
+        localStorage.removeItem('musicly_active_playlist_id');
+      } catch {}
+      return;
+    }
+
+    if (!currentTrack) {
+      setActivePlayingPlaylistId(null);
+      try { localStorage.removeItem('musicly_active_playlist_id'); } catch {}
+      return;
+    }
+
+    const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
+    let pl = unified.find(p => p.id === activePlayingPlaylistId);
+    if (!pl) {
+      const userPls = getLocalUserPlaylists(user);
+      const foundUser = userPls.find(p => p.id === activePlayingPlaylistId);
+      if (foundUser) {
+        const plTracks = (foundUser.trackIds || []).map(tId => allTracks.find(t => t.id === tId)).filter(Boolean);
+        pl = { ...foundUser, tracks: plTracks };
+      }
+    }
+
+    if (pl && Array.isArray(pl.tracks) && pl.tracks.length > 0) {
+      const belongs = pl.tracks.some(t => 
+        t && currentTrack && (
+          t.id === currentTrack.id || 
+          (t.title && currentTrack.title && t.title.toLowerCase().trim() === currentTrack.title.toLowerCase().trim())
+        )
+      );
+      if (!belongs) {
+        setActivePlayingPlaylistId(null);
+        try { localStorage.removeItem('musicly_active_playlist_id'); } catch {}
+      } else {
+        try { localStorage.setItem('musicly_active_playlist_id', activePlayingPlaylistId); } catch {}
+      }
+    } else if (allTracks && allTracks.length > 0) {
+      setActivePlayingPlaylistId(null);
+      try { localStorage.removeItem('musicly_active_playlist_id'); } catch {}
+    }
+  }, [currentTrack, activePlayingPlaylistId, allTracks, publicPlaylists, user]);
 
   const handleNextTrackAutoRef = useRef(null);
 
@@ -2716,6 +2768,10 @@ export default function App() {
 
   // Play a song directly from an interactive poster card & save permanently to user library
   const handlePlayPosterTrack = async (trackData) => {
+    setActivePlayingPlaylistId(null);
+    try {
+      localStorage.removeItem('musicly_active_playlist_id');
+    } catch {}
     const trackGenre = trackData.genre || 'Retro';
     const trackTitle = trackData.title || trackData.name || 'Song';
     const trackId = trackData.id || ('poster-' + (trackData.youtubeId || trackTitle.toLowerCase().replace(/\s+/g, '-')));
@@ -2842,6 +2898,8 @@ export default function App() {
         onPlayTrack={handlePlayPosterTrack}
         onTogglePlay={togglePlay}
         onSelectTrack={(track) => {
+          setActivePlayingPlaylistId(null);
+          try { localStorage.removeItem('musicly_active_playlist_id'); } catch {}
           setCurrentTime(0);
           currentTimeRef.current = 0;
           setCurrentTrackId(track.id);
@@ -2857,6 +2915,8 @@ export default function App() {
         onPlayTrack={handlePlayPosterTrack}
         onTogglePlay={togglePlay}
         onSelectTrack={(track) => {
+          setActivePlayingPlaylistId(null);
+          try { localStorage.removeItem('musicly_active_playlist_id'); } catch {}
           setCurrentTime(0);
           currentTimeRef.current = 0;
           setCurrentTrackId(track.id);
@@ -2873,6 +2933,8 @@ export default function App() {
         selectedLanguages={selectedLanguages}
         onSelectLanguage={handleSelectLanguage}
         onPlayTrackForGenre={(genre) => {
+          setActivePlayingPlaylistId(null);
+          try { localStorage.removeItem('musicly_active_playlist_id'); } catch {}
           const match = allTracks.find(t => {
             const matchesGenre = Array.isArray(t.genres)
               ? t.genres.some(g => g.toLowerCase() === genre.toLowerCase())
@@ -2893,6 +2955,8 @@ export default function App() {
           }
         }}
         onSelectTrack={(track) => {
+          setActivePlayingPlaylistId(null);
+          try { localStorage.removeItem('musicly_active_playlist_id'); } catch {}
           if (currentTrackId === track.id) {
             togglePlay();
           } else {

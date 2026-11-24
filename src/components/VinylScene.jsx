@@ -1291,7 +1291,12 @@ export default function VinylScene({
     if (!activePlayingPlaylistId || !currentTrack) return null;
     const pl = favoritePlaylists.find(p => p.id === activePlayingPlaylistId);
     if (!pl || !pl.tracks) return null;
-    const trackBelongsToPlaylist = pl.tracks.some(t => t.id === currentTrack.id);
+    const trackBelongsToPlaylist = pl.tracks.some(t => 
+      t && currentTrack && (
+        t.id === currentTrack.id || 
+        (t.title && currentTrack.title && t.title.toLowerCase().trim() === currentTrack.title.toLowerCase().trim())
+      )
+    );
     return trackBelongsToPlaylist ? pl : null;
   }, [activePlayingPlaylistId, favoritePlaylists, currentTrack]);
 

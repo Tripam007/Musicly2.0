@@ -756,11 +756,39 @@ export default function MinimalStudioScene({
       return 'Mine Playlist';
     }
 
-    if (!activePlayingPlaylistId) return null;
+    if (!activePlayingPlaylistId || !currentTrack) return null;
 
     if (activePlayingPlaylistId === 'liked_songs') {
-      return 'Liked Songs';
+      const isLiked = favorites && (favorites.includes(currentTrack.id) || favorites.some(f => (f?.id || f) === currentTrack.id));
+      return isLiked ? 'Liked Songs' : null;
     }
+
+    let pl = null;
+    try {
+      const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
+      pl = unified.find(p => p.id === activePlayingPlaylistId);
+    } catch (e) {}
+
+    if (!pl) {
+      try {
+        const foundUserPl = (userPlaylists || []).find(p => p.id === activePlayingPlaylistId);
+        if (foundUserPl) {
+          const plTracks = (foundUserPl.trackIds || []).map(tId => (allTracks || []).find(t => t.id === tId)).filter(Boolean);
+          pl = { ...foundUserPl, tracks: plTracks };
+        }
+      } catch (e) {}
+    }
+
+    if (!pl || !Array.isArray(pl.tracks) || pl.tracks.length === 0) return null;
+
+    const belongs = pl.tracks.some(t => 
+      t && currentTrack && (
+        t.id === currentTrack.id || 
+        (t.title && currentTrack.title && t.title.toLowerCase().trim() === currentTrack.title.toLowerCase().trim())
+      )
+    );
+
+    if (!belongs) return null;
 
     const BUILTIN_NAMES = {
       'country_roots': 'Country Roads & Roots',
@@ -773,33 +801,12 @@ export default function MinimalStudioScene({
       'global_other_melodies': 'Global & Other Melodies'
     };
 
-    if (BUILTIN_NAMES[activePlayingPlaylistId]) {
-      return BUILTIN_NAMES[activePlayingPlaylistId];
-    }
-
-    try {
-      const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
-      const foundPl = unified.find(p => p.id === activePlayingPlaylistId);
-      if (foundPl?.title || foundPl?.name) {
-        return foundPl.title || foundPl.name;
-      }
-    } catch (e) {}
-
-    try {
-      const foundUserPl = (userPlaylists || []).find(p => p.id === activePlayingPlaylistId);
-      if (foundUserPl?.title || foundUserPl?.name) {
-        return foundUserPl.title || foundUserPl.name;
-      }
-    } catch (e) {}
-
-    if (typeof activePlayingPlaylistId === 'string' && activePlayingPlaylistId.trim()) {
-      return activePlayingPlaylistId
-        .replace(/[_-]+/g, ' ')
-        .replace(/\b\w/g, l => l.toUpperCase());
-    }
-
-    return null;
-  }, [playSource, activePlayingPlaylistId, allTracks, publicPlaylists, userPlaylists]);
+    return BUILTIN_NAMES[activePlayingPlaylistId] || pl.title || pl.name || (
+      typeof activePlayingPlaylistId === 'string' && activePlayingPlaylistId.trim()
+        ? activePlayingPlaylistId.replace(/[_-]+/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        : null
+    );
+  }, [playSource, activePlayingPlaylistId, allTracks, publicPlaylists, userPlaylists, currentTrack, favorites]);
 
   // Dedicated next/prev song handlers that strictly isolate 'own' (Mine Playlist only) vs 'musicly'
   const handleNextSong = useCallback(() => {
