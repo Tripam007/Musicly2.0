@@ -33,10 +33,14 @@ export default function AuthModal({
   const [displayName, setDisplayName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState(0);
 
   if (!isOpen) return null;
 
   const handleLoginSuccess = (user) => {
+    setFailedAttempts(0);
+    setLockoutUntil(0);
     playTingSound();
     onUserLogin(user);
     onClose();
@@ -71,6 +75,14 @@ export default function AuthModal({
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     setError('');
+
+    // Rate limiting: enforce cooldown if locked out after repeated failed attempts
+    if (Date.now() < lockoutUntil) {
+      const remainingSec = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      setError(`Too many failed login attempts. Please wait ${remainingSec}s before trying again.`);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -86,17 +98,17 @@ export default function AuthModal({
       }
     } catch (err) {
       console.error("Email auth error:", err);
-      // If user typed the authorized admin email, log in directly as admin so local testing/dev is never blocked
-      if (email.toLowerCase().trim() === 'tripambiswas007@gmail.com') {
-        const adminUser = {
-          uid: 'admin_tripam_007',
-          displayName: displayName || 'Tripam Biswas',
-          email: 'tripambiswas007@gmail.com',
-          photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-          role: 'admin'
-        };
-        handleLoginSuccess(adminUser);
-        return;
+
+      // Increment failed attempt counter on credential failure
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found') {
+        const nextCount = failedAttempts + 1;
+        setFailedAttempts(nextCount);
+        if (nextCount >= 5) {
+          const lockTime = Date.now() + 60 * 1000; // 60s lockout
+          setLockoutUntil(lockTime);
+          setError('Too many failed attempts. Login locked for 60 seconds.');
+          return;
+        }
       }
 
       if (err.code === 'auth/email-already-in-use') {
@@ -111,7 +123,6 @@ export default function AuthModal({
     } finally {
       setLoading(false);
     }
-
   };
 
   return (

@@ -13,37 +13,37 @@ service cloud.firestore {
     // 🌐 MUSICLY PUBLIC LIBRARY
     match /public_tracks/{trackId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 🎨 ROOM THEMES & SCENES
     match /public_scenes/{sceneId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 🖼️ STUDIO BACKGROUND VISUALS & LIVE WALLPAPERS
     match /public_scene_visuals/{sceneId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 🎨 ACTIVE SCENE THEME IMAGE OVERRIDES
     match /public_scene_overrides/{sceneId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // ⚙️ PUBLIC SETTINGS & STUDIO VISUAL GALLERY
     match /public_settings/{settingId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 📜 OFFICIAL MUSICLY PLAYLISTS
     match /public_playlists/{playlistId} {
       allow read: if true;
-      allow write: if true;
+      allow write: if isAdmin();
     }
 
     // 🎧 REALTIME ACTIVE LISTENERS
@@ -52,15 +52,21 @@ service cloud.firestore {
       allow write: if true;
     }
 
-    // 👤 USER PROFILES
+    // 👤 USER PROFILES (Protected from IDOR and Privilege Escalation)
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == userId && 
+                    (!('role' in request.resource.data) || request.resource.data.role != 'admin' || request.auth.token.email == 'tripambiswas007@gmail.com');
+      allow update: if request.auth != null && (
+        isAdmin() || 
+        (request.auth.uid == userId && (!('role' in request.resource.data) || request.resource.data.role == resource.data.role))
+      );
+      allow delete: if isAdmin() || (request.auth != null && request.auth.uid == userId);
     }
 
-    // 🔒 PRIVATE USER CUSTOM TRACKS
-    match /users/{userId}/custom_tracks/{trackId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // 🔒 PRIVATE USER CUSTOM TRACKS & PLAYLISTS
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
     }
 
     // 📻 SONG REQUESTS

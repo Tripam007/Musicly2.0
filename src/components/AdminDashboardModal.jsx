@@ -82,6 +82,9 @@ import {
 const AVAILABLE_SECTIONS = GENRES.filter(g => g !== 'All');
 const AVAILABLE_LANGUAGES = LANGUAGES;
 
+// Security helper: sanitize external URLs to prevent javascript: pseudo-protocol XSS
+const sanitizeSafeHttpUrl = (url) => (/^https?:\/\//i.test((url || '').trim()) ? url.trim() : '#');
+
 const PRESET_THEMES = [
   {
     name: 'Cozy Kyoto Rain',
@@ -586,7 +589,7 @@ export default function AdminDashboardModal({
     return filterAndRankTracks(publicTracks, q);
   }, [publicTracks, searchQuery]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isAdmin) return null;
 
   const pendingRequestsCount = songRequests.filter(r => r.status === 'pending').length;
 
@@ -2652,7 +2655,7 @@ export default function AdminDashboardModal({
                               />
                               {(requestAudioInputs[req.id] || req.audioUrl) && (
                                 <a
-                                  href={requestAudioInputs[req.id] || req.audioUrl}
+                                  href={sanitizeSafeHttpUrl(requestAudioInputs[req.id] || req.audioUrl)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="admin-audio-preview-external"
@@ -2781,7 +2784,7 @@ export default function AdminDashboardModal({
                                 </span>
                               ) : (
                                 <a
-                                  href={requestAudioInputs[req.id] || req.audioUrl}
+                                  href={sanitizeSafeHttpUrl(requestAudioInputs[req.id] || req.audioUrl)}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="admin-request-stream-link"

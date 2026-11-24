@@ -135,8 +135,35 @@ export default function UploadModal({
     }
   };
 
-  const processFile = (file) => {
+  const processFile = async (file) => {
     if (!file) return;
+
+    // Check MIME type or audio file extension
+    const isAudioType = file.type ? file.type.startsWith('audio/') || file.type === 'video/ogg' : true;
+    if (!isAudioType && !/\.(mp3|wav|ogg|flac|m4a|aac)$/i.test(file.name)) {
+      setErrorMessage("Please select a valid audio file (MP3, WAV, OGG, FLAC).");
+      return;
+    }
+
+    // Binary Magic Bytes Validation to verify real file type
+    try {
+      const header = await file.slice(0, 12).arrayBuffer();
+      const bytes = new Uint8Array(header);
+      const isID3 = bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33; // ID3 (MP3)
+      const isMP3Sync = (bytes[0] === 0xFF && (bytes[1] & 0xE0) === 0xE0); // MP3 Frame Sync
+      const isRIFF = bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46; // RIFF (WAV)
+      const isOgg = bytes[0] === 0x4F && bytes[1] === 0x67 && bytes[2] === 0x67 && bytes[3] === 0x53; // OggS
+      const isFLAC = bytes[0] === 0x66 && bytes[1] === 0x4C && bytes[2] === 0x61 && bytes[3] === 0x43; // fLaC
+      const isM4A = bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70; // ftyp (M4A)
+
+      if (bytes.length >= 4 && !isID3 && !isMP3Sync && !isRIFF && !isOgg && !isFLAC && !isM4A) {
+        setErrorMessage("File signature verification failed. Please select a genuine audio file.");
+        return;
+      }
+    } catch (e) {
+      console.warn("Could not check file magic bytes:", e);
+    }
+
     setFileObject(file);
     setDetectedYtId(null);
 

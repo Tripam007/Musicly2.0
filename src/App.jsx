@@ -2349,16 +2349,28 @@ export default function App() {
 
     // Admin Commands
     reg.register(MUSICLY_ACTIONS.ADMIN_OPEN_DASHBOARD, async () => {
+      const u = userRef.current;
+      if (!checkIsAdmin(u)) {
+        return 'Access denied: Admin authorization required.';
+      }
       actionsRef.current.setIsAdminDashboardOpen?.(true);
       return 'Admin dashboard opened.';
     });
 
     reg.register(MUSICLY_ACTIONS.ADMIN_SHOW_FEEDBACK, async () => {
+      const u = userRef.current;
+      if (!checkIsAdmin(u)) {
+        return 'Access denied: Admin authorization required.';
+      }
       actionsRef.current.setIsAdminDashboardOpen?.(true);
       return 'Showing feedback in dashboard.';
     });
 
     reg.register(MUSICLY_ACTIONS.ADMIN_SHOW_AIR_AI, async () => {
+      const u = userRef.current;
+      if (!checkIsAdmin(u)) {
+        return 'Access denied: Admin authorization required.';
+      }
       if (typeof window !== 'undefined') {
         window.history.pushState({}, '', '/admin/air-ai');
         actionsRef.current.setCurrentRoute?.('/admin/air-ai');
@@ -2367,6 +2379,10 @@ export default function App() {
     });
 
     reg.register(MUSICLY_ACTIONS.ADMIN_SHOW_REQUESTS, async () => {
+      const u = userRef.current;
+      if (!checkIsAdmin(u)) {
+        return 'Access denied: Admin authorization required.';
+      }
       actionsRef.current.setIsAdminDashboardOpen?.(true);
       return 'Showing song requests.';
     });
@@ -3648,7 +3664,7 @@ export default function App() {
       />
 
       {/* 📊 Musicly Air AI - Admin Model Analytics Dashboard */}
-      {currentRoute === '/admin/air-ai' && (
+      {currentRoute === '/admin/air-ai' && isAdmin && (
         <AirAiAdminDashboard
           onBack={() => navigateTo('/')}
           onNavigateToCollector={() => navigateTo('/admin/air-ai/dataset')}
@@ -3656,7 +3672,7 @@ export default function App() {
       )}
 
       {/* 🎯 Musicly Air AI - Dataset Collection Tool */}
-      {currentRoute === '/admin/air-ai/dataset' && (
+      {currentRoute === '/admin/air-ai/dataset' && isAdmin && (
         <AirAiDatasetCollector
           onBack={() => navigateTo('/')}
           onNavigateToDashboard={() => navigateTo('/admin/air-ai')}
