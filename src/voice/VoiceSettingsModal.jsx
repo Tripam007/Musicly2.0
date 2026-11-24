@@ -31,6 +31,7 @@ import {
   ChevronUp,
   Radio
 } from 'lucide-react';
+import { VOICE_STATES } from './voiceConfig.js';
 import { 
   getAvailableVoices, 
   subscribeVoiceRegistry, 
@@ -58,6 +59,9 @@ export const VoiceSettingsModal = ({
   const [showAdminAddVoice, setShowAdminAddVoice] = useState(false);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [apiKey, setApiKey] = useState(getCustomElevenLabsApiKey());
+  const [isVoiceActive, setIsVoiceActive] = useState(
+    voiceManager ? voiceManager.state !== VOICE_STATES.IDLE : false
+  );
 
   // Form states for Admin adding a new voice
   const [voiceInputUrl, setVoiceInputUrl] = useState('');
@@ -92,8 +96,13 @@ export const VoiceSettingsModal = ({
       document.body.classList.add('app-modal-open');
     }
 
-    const unsubscribe = subscribeVoiceRegistry((updatedVoices) => {
+    const unsubscribeRegistry = subscribeVoiceRegistry((updatedVoices) => {
       setVoices(updatedVoices);
+    });
+
+    setIsVoiceActive(voiceManager?.state !== VOICE_STATES.IDLE);
+    const unsubscribeVoice = voiceManager?.subscribe((payload) => {
+      setIsVoiceActive(payload?.state !== VOICE_STATES.IDLE);
     });
 
     const activeId = voiceManager?.config?.voiceId || getSelectedVoiceId();
@@ -101,7 +110,8 @@ export const VoiceSettingsModal = ({
 
     return () => {
       stopVoicePreview();
-      unsubscribe();
+      unsubscribeRegistry();
+      if (unsubscribeVoice) unsubscribeVoice();
       if (typeof document !== 'undefined') {
         document.body.classList.remove('voice-settings-active');
         document.body.classList.remove('app-modal-open');
@@ -116,6 +126,7 @@ export const VoiceSettingsModal = ({
 
   const handleToggleVoice = (e) => {
     const enabled = e.target.checked;
+    setIsVoiceActive(enabled);
     if (!enabled) {
       voiceManager.stop();
     } else {
@@ -273,7 +284,7 @@ export const VoiceSettingsModal = ({
           <label className="voice-switch">
             <input
               type="checkbox"
-              checked={voiceManager.state !== 'IDLE'}
+              checked={isVoiceActive}
               onChange={handleToggleVoice}
             />
             <span className="voice-slider"></span>
