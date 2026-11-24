@@ -10246,10 +10246,13 @@ body, html, #root {
 }
 
 .admin-dashboard-panel {
-  width: 100%;
-  max-width: 860px;
+  width: 95vw;
+  max-width: 1060px;
   max-height: 90vh;
-  background: rgba(22, 18, 28, 0.88);
+  box-sizing: border-box;
+  background: rgba(22, 18, 28, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 209, 102, 0.28);
   border-radius: 20px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75), 0 0 30px rgba(255, 209, 102, 0.12);
@@ -10416,24 +10419,53 @@ body, html, #root {
 /* Nav Tabs */
 .admin-nav-tabs {
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 12px 24px;
-  background: rgba(0, 0, 0, 0.22);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 10px 20px;
+  background: rgba(0, 0, 0, 0.26);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 209, 102, 0.35) transparent;
+}
+
+.admin-nav-tabs::-webkit-scrollbar {
+  height: 5px;
+}
+
+.admin-nav-tabs::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.admin-nav-tabs::-webkit-scrollbar-thumb {
+  background: rgba(255, 209, 102, 0.35);
+  border-radius: 4px;
+}
+
+.admin-nav-tabs::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 209, 102, 0.6);
 }
 
 .admin-nav-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
+  padding: 7px 13px;
   border-radius: 10px;
   background: transparent;
   border: 1px solid transparent;
   color: rgba(255, 255, 255, 0.65);
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.2s ease;
 }
 .admin-nav-btn:hover {
