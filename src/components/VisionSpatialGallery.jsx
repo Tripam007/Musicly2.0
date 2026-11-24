@@ -23,6 +23,7 @@ import {
   Sparkles,
   Compass
 } from 'lucide-react';
+import { getUniqueSongQuote } from '../utils/songQuoteGenerator';
 import '../styles/visionSpatialGallery.css';
 
 // Clean track title (strip ugly pipe separators or redundant brackets)
@@ -40,32 +41,6 @@ const formatDuration = (seconds) => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-};
-
-// Evocative description generator for cards (matching the Rome Explorer aesthetic)
-const getTrackDescription = (track) => {
-  if (track?.description && track.description.length > 20) {
-    return track.description;
-  }
-  const genre = (track?.genre || track?.genres?.[0] || 'Acoustic').toLowerCase();
-  const artist = track?.artist || 'Musicly Artist';
-  
-  if (genre.includes('country') || genre.includes('americana')) {
-    return `An iconic acoustic anthem crafted by ${artist}. Resonating with open highways, nostalgic mountain air, and heartfelt storytelling recorded in pure warm analog harmonic fidelity.`;
-  }
-  if (genre.includes('indie') || genre.includes('folk')) {
-    return `A tender sanctuary of melody and delicate acoustic strings by ${artist}. Evoking quiet rainy mornings, thoughtful solitude, and timeless poetry for the wandering soul.`;
-  }
-  if (genre.includes('lofi') || genre.includes('lo-fi') || genre.includes('chill')) {
-    return `A soothing harmonic tapestry of gentle vinyl flutter and tape warmth by ${artist}. Sculpted for deep focus, peaceful twilight relaxation, and midnight introspection.`;
-  }
-  if (genre.includes('retro') || genre.includes('classic') || genre.includes('vintage')) {
-    return `A golden vintage treasure remastered in pristine spatial depth. Featuring the timeless expressive vocal warmth of ${artist} that defined an unforgettable era of sound.`;
-  }
-  if (genre.includes('ghazal') || genre.includes('sufi')) {
-    return `A profound poetic voyage through love, longing, and transcendental harmony. Performed with masterly emotional depth by ${artist} in rich acoustic resonance.`;
-  }
-  return `An iconic musical composition by ${artist}. Mastered in ultra-high fidelity for Musicly's spatial acoustic sanctuary, inviting listeners into deep calm and sonic presence.`;
 };
 
 export default function VisionSpatialGallery({
@@ -134,6 +109,14 @@ export default function VisionSpatialGallery({
   const activeTrack = displaySongs[safeActiveIndex] || songPool[0] || {};
   const isCurrentActivePlaying = isPlaying && currentTrack?.id === activeTrack?.id;
   const isFavorite = (favorites || []).includes(activeTrack?.id);
+
+  // Dynamic Quote Counter to support manual refresh on click as well as per-song unique rotation
+  const [quoteRefreshCount, setQuoteRefreshCount] = useState(0);
+
+  // Dynamic Quote: unique to this exact song, and different every time
+  const activeQuote = useMemo(() => {
+    return getUniqueSongQuote(activeTrack);
+  }, [activeTrack?.id, activeTrack?.title, quoteRefreshCount]);
 
   // Shift to Next / Prev card
   const handleShiftNext = useCallback(() => {
@@ -575,8 +558,15 @@ export default function VisionSpatialGallery({
                         </span>
                       </div>
 
-                      <p className="vision-card-description">
-                        {getTrackDescription(song)}
+                      <p 
+                        className="vision-card-description is-interactive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuoteRefreshCount(prev => prev + 1);
+                        }}
+                        title="Click to discover another unique reflection for this song"
+                      >
+                        {activeQuote}
                       </p>
 
                       <div className="vision-card-meta-row">
