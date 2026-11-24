@@ -27,8 +27,12 @@ async function handleGenerateVoiceResponse(request, apiKeySecret) {
     }
     // Strictly enforce short, minimal responses (max 160 characters)
     const trimmedText = text.trim().slice(0, 160);
-    const cacheKey = trimmedText.toLowerCase();
-    // 2. Check memory cache first
+    // 4. ElevenLabs Voice Selection:
+    // Default: Nathaniel C (AeRdCCKzvd23BpJoofzx) - calm, British suspenseful storyteller
+    const voiceId = customVoiceId || process.env.ELEVENLABS_VOICE_ID || 'AeRdCCKzvd23BpJoofzx';
+    const modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_flash_v2_5';
+    // 2. Check memory cache first - Keyed by voiceId + text so different voices never clash
+    const cacheKey = `${voiceId}_${trimmedText.toLowerCase()}`;
     const cachedAudio = ttsResponseCache.get(cacheKey);
     if (cachedAudio) {
         return {
@@ -48,10 +52,6 @@ async function handleGenerateVoiceResponse(request, apiKeySecret) {
             status: 'KEY_NOT_CONFIGURED',
         };
     }
-    // 4. ElevenLabs Voice Selection:
-    // Default: Rachel (21m00Tcm4TlvDq8ikWAM) - calm, warm, cinematic
-    const voiceId = customVoiceId || process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
-    const modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_flash_v2_5';
     const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`;
     try {
         const controller = new AbortController();

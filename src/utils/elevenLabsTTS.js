@@ -59,20 +59,22 @@ export function resolveMatchingBrowserVoice(voiceDef) {
   const voices = getBrowserVoices();
   if (!voices.length) return null;
 
-  const isFemale = (voiceDef?.gender || '').toLowerCase().includes('female');
-  const isBritish = (voiceDef?.accent || voiceDef?.style || '').toLowerCase().includes('british');
+  const id = voiceDef?.id || '';
+  const name = (voiceDef?.name || '').toLowerCase();
+  const isFemale = (voiceDef?.gender || '').toLowerCase().includes('female') && !name.includes('nathaniel') && id !== 'AeRdCCKzvd23BpJoofzx';
+  const isBritish = (voiceDef?.accent || voiceDef?.style || '').toLowerCase().includes('british') || id === 'AeRdCCKzvd23BpJoofzx' || id === 'Xb7hH8MSUJpSbSDYk0k2' || name.includes('nathaniel');
 
   if (isBritish) {
     // 1. Look for British English voice
     const ukVoice = voices.find(v => {
       const lang = (v.lang || '').toLowerCase();
-      const name = (v.name || '').toLowerCase();
-      const isUk = lang.includes('en-gb') || lang.includes('en_gb') || name.includes('united kingdom') || name.includes('british');
+      const vName = (v.name || '').toLowerCase();
+      const isUk = lang.includes('en-gb') || lang.includes('en_gb') || vName.includes('united kingdom') || vName.includes('british') || vName.includes('uk english');
       if (!isUk) return false;
       if (isFemale) {
-        return name.includes('female') || name.includes('hazel') || name.includes('susan') || name.includes('libby');
+        return vName.includes('female') || vName.includes('hazel') || vName.includes('susan') || vName.includes('libby');
       }
-      return name.includes('male') || name.includes('george') || name.includes('oliver') || !name.includes('female');
+      return vName.includes('male') || vName.includes('george') || vName.includes('oliver') || !vName.includes('female');
     });
     if (ukVoice) return ukVoice;
   }
@@ -106,6 +108,50 @@ export function resolveMatchingBrowserVoice(voiceDef) {
   return voices.find(v => (v.lang || '').toLowerCase().startsWith('en')) || voices[0] || null;
 }
 
+export function stopVoicePreview() {
+  if (previewAudioElement) {
+    try {
+      previewAudioElement.pause();
+      previewAudioElement.currentTime = 0;
+      previewAudioElement.removeAttribute('src');
+      previewAudioElement.load();
+    } catch {}
+  }
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch {}
+  }
+}
+
+/**
+ * Resolve authentic direct preview audio URL for known ElevenLabs voices
+ */
+export function getAuthenticVoicePreviewUrl(voice) {
+  if (!voice) return null;
+  const id = voice.id || '';
+  const name = (voice.name || '').toLowerCase();
+
+  // Nathaniel C (Requested ElevenLabs voice: AeRdCCKzvd23BpJoofzx)
+  if (id === 'AeRdCCKzvd23BpJoofzx' || name.includes('nathaniel')) {
+    return '/assets/nathaniel_preview.mp3';
+  }
+  // Adam
+  if (id === 'pNInz6obpgDQGcFmaJgB' || name.includes('adam')) {
+    return '/assets/adam_preview.mp3';
+  }
+  // Sarah & Rachel
+  if (id === 'EXAVITQu4vr4xnSDxMaL' || id === '21m00Tcm4TlvDq8ikWAM' || name.includes('sarah') || name.includes('rachel')) {
+    return '/assets/sarah_preview.mp3';
+  }
+  // Alice
+  if (id === 'Xb7hH8MSUJpSbSDYk0k2' || name.includes('alice')) {
+    return '/assets/alice_preview.mp3';
+  }
+
+  return voice.previewUrl || null;
+}
+
 /**
  * Synthesize and play audio for previewing a voice
  * @param {object} voice - Voice definition { id, name, provider, samplePhrase, previewUrl }
@@ -121,10 +167,11 @@ export async function playVoicePreview(voice, customText = null, commandClient =
   const text = customText || voice.samplePhrase || `Hello, this is ${voice.name} speaking on Musicly.`;
   const voiceId = voice.id;
 
-  // 1. If voice has an authentic direct ElevenLabs preview URL (like Nathaniel C), play it!
-  if (voice.previewUrl && !customText) {
+  // 1. If voice has an authentic direct ElevenLabs preview URL (like Nathaniel C), play it directly!
+  const directPreviewUrl = getAuthenticVoicePreviewUrl(voice);
+  if (directPreviewUrl && !customText) {
     try {
-      await playAudioUrl(voice.previewUrl);
+      await playAudioUrl(directPreviewUrl);
       return;
     } catch (err) {
       console.warn('[elevenLabsTTS] Direct previewUrl playback note, trying synthesis:', err);
@@ -197,26 +244,43 @@ export async function playVoicePreview(voice, customText = null, commandClient =
  * Play an audio URL (object URL or data URI) through preview audio element
  */
 function playAudioUrl(src) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const audio = getPreviewAudio();
     if (!audio) {
       resolve();
       return;
     }
 
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch {}
+
     audio.src = src;
     
+    let timer = null;
     const cleanup = () => {
+      if (timer) clearTimeout(timer);
       audio.onended = null;
       audio.onerror = null;
       resolve();
     };
 
     audio.onended = cleanup;
-    audio.onerror = cleanup;
+    audio.onerror = (e) => {
+      console.warn('[elevenLabsTTS] Audio preview playback failed for src:', src, e);
+      if (timer) clearTimeout(timer);
+      audio.onended = null;
+      audio.onerror = null;
+      reject(new Error('Audio playback failed'));
+    };
 
-    audio.play().catch(() => resolve());
-    setTimeout(cleanup, 8000);
+    audio.play().then(() => {
+      timer = setTimeout(cleanup, 12000);
+    }).catch((err) => {
+      console.warn('[elevenLabsTTS] audio.play() rejected:', err);
+      cleanup();
+    });
   });
 }
 
@@ -262,21 +326,4 @@ export function playSystemSpeech(text, voice = null) {
       resolve();
     }
   });
-}
-
-/**
- * Stop any active voice preview playback
- */
-export function stopVoicePreview() {
-  if (previewAudioElement) {
-    try {
-      previewAudioElement.pause();
-      previewAudioElement.currentTime = 0;
-    } catch {}
-  }
-  if (typeof window !== 'undefined' && window.speechSynthesis) {
-    try {
-      window.speechSynthesis.cancel();
-    } catch {}
-  }
 }

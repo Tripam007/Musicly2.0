@@ -34,23 +34,24 @@ export const DEFAULT_VOICES = [
     accent: 'British',
     description: 'Calm, thoughtful British narrator with suspenseful warmth and cinematic depth.',
     url: 'https://elevenlabs.io/voices/AeRdCCKzvd23BpJoofzx',
-    previewUrl: 'https://api.us.elevenlabs.io/v1/voices/AeRdCCKzvd23BpJoofzx/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoiMDJjODdkNDQtNzU0ZC00N2ZjLWI2MWQtMDcyNGM4MGY2NWM3Lm1wMyIsInRpbWVzdGFtcCI6MTc5NTI0ODAwMDAwMDAwMH0%3D',
+    previewUrl: '/assets/nathaniel_preview.mp3',
     samplePhrase: 'Hello, I am Nathaniel. Ready to curate your music experience on Musicly.',
-    pitch: 0.84,
-    rate: 0.92,
+    pitch: 0.82,
+    rate: 0.88,
     langFilter: 'en-GB',
     isFeatured: true,
     isDefault: true
   },
   {
-    id: '21m00Tcm4TlvDq8ikWAM',
-    name: 'Rachel',
+    id: 'EXAVITQu4vr4xnSDxMaL',
+    name: 'Sarah',
     provider: 'elevenlabs',
     gender: 'Female',
     style: 'Warm & Cinematic',
     accent: 'American',
     description: 'Warm, soothing, and clear voice designed for serene listening sessions.',
-    url: 'https://elevenlabs.io/voices/21m00Tcm4TlvDq8ikWAM',
+    url: 'https://elevenlabs.io/voices/EXAVITQu4vr4xnSDxMaL',
+    previewUrl: '/assets/sarah_preview.mp3',
     samplePhrase: 'Welcome back. Tell me what track or vibe you want to hear next.',
     pitch: 1.14,
     rate: 0.96,
@@ -66,24 +67,42 @@ export const DEFAULT_VOICES = [
     accent: 'American',
     description: 'Resonant, confident, and smooth late-night host personality.',
     url: 'https://elevenlabs.io/voices/pNInz6obpgDQGcFmaJgB',
+    previewUrl: '/assets/adam_preview.mp3',
     samplePhrase: 'Hey there. Let me set the mood with some good music for you.',
-    pitch: 0.76,
-    rate: 1.02,
+    pitch: 0.70,
+    rate: 0.98,
     langFilter: 'en-US',
     isFeatured: false
   },
   {
-    id: 'AZnzlk1XvdvUeBnXmlld',
-    name: 'Domi',
+    id: 'Xb7hH8MSUJpSbSDYk0k2',
+    name: 'Alice',
     provider: 'elevenlabs',
     gender: 'Female',
-    style: 'Bright & Crisp',
-    accent: 'American',
-    description: 'Bright, cheerful, and crisp modern AI assistant style.',
-    url: 'https://elevenlabs.io/voices/AZnzlk1XvdvUeBnXmlld',
+    style: 'Clear & Engaging',
+    accent: 'British',
+    description: 'Clear, engaging educator with bright British pacing and warmth.',
+    url: 'https://elevenlabs.io/voices/Xb7hH8MSUJpSbSDYk0k2',
+    previewUrl: '/assets/alice_preview.mp3',
     samplePhrase: 'Musicly Voice active. Shuffling tracks and adjusting your ambience.',
-    pitch: 1.28,
-    rate: 1.12,
+    pitch: 1.22,
+    rate: 1.05,
+    langFilter: 'en-GB',
+    isFeatured: false
+  },
+  {
+    id: '21m00Tcm4TlvDq8ikWAM',
+    name: 'Rachel',
+    provider: 'elevenlabs',
+    gender: 'Female',
+    style: 'Serene & Warm',
+    accent: 'American',
+    description: 'Serene and natural voice with effortless clarity and composure.',
+    url: 'https://elevenlabs.io/voices/21m00Tcm4TlvDq8ikWAM',
+    previewUrl: '/assets/sarah_preview.mp3',
+    samplePhrase: 'Musicly is playing your selection. Enjoy your session.',
+    pitch: 1.10,
+    rate: 0.95,
     langFilter: 'en-US',
     isFeatured: false
   },
@@ -111,7 +130,15 @@ export function getVoiceById(voiceId) {
   if (!voiceId) return DEFAULT_VOICES[0];
   const custom = getLocalCustomVoices();
   const all = [...DEFAULT_VOICES, ...custom];
-  return all.find(v => v.id === voiceId) || DEFAULT_VOICES[0];
+  const found = all.find(v => v.id === voiceId);
+  if (found) {
+    const defaultVoice = DEFAULT_VOICES.find(v => v.id === voiceId);
+    if (defaultVoice && !found.previewUrl) {
+      return { ...found, previewUrl: defaultVoice.previewUrl, isFeatured: defaultVoice.isFeatured };
+    }
+    return found;
+  }
+  return DEFAULT_VOICES[0];
 }
 
 /**
@@ -193,10 +220,17 @@ export async function getAvailableVoices() {
   const voiceMap = new Map();
 
   // 1. Add defaults
-  DEFAULT_VOICES.forEach(v => voiceMap.set(v.id, v));
+  DEFAULT_VOICES.forEach(v => voiceMap.set(v.id, { ...v }));
 
-  // 2. Add local custom
-  localCustom.forEach(v => voiceMap.set(v.id, v));
+  // 2. Add local custom (merging defaults safely)
+  localCustom.forEach(v => {
+    const existing = voiceMap.get(v.id);
+    if (existing) {
+      voiceMap.set(v.id, { ...v, previewUrl: existing.previewUrl || v.previewUrl, isFeatured: existing.isFeatured });
+    } else {
+      voiceMap.set(v.id, v);
+    }
+  });
 
   // 3. Attempt Firestore fetch
   try {
@@ -205,7 +239,12 @@ export async function getAvailableVoices() {
       snap.forEach(docSnap => {
         const data = docSnap.data();
         if (data && data.id) {
-          voiceMap.set(data.id, { ...data, isCustom: true });
+          const existing = voiceMap.get(data.id);
+          if (existing) {
+            voiceMap.set(data.id, { ...data, isCustom: true, previewUrl: existing.previewUrl || data.previewUrl, isFeatured: existing.isFeatured });
+          } else {
+            voiceMap.set(data.id, { ...data, isCustom: true });
+          }
         }
       });
       // Update local cache
@@ -241,8 +280,15 @@ export function subscribeVoiceRegistry(onUpdate) {
       saveLocalCustomVoices(customVoices);
 
       const voiceMap = new Map();
-      DEFAULT_VOICES.forEach(v => voiceMap.set(v.id, v));
-      customVoices.forEach(v => voiceMap.set(v.id, v));
+      DEFAULT_VOICES.forEach(v => voiceMap.set(v.id, { ...v }));
+      customVoices.forEach(v => {
+        const existing = voiceMap.get(v.id);
+        if (existing) {
+          voiceMap.set(v.id, { ...v, previewUrl: existing.previewUrl || v.previewUrl, isFeatured: existing.isFeatured });
+        } else {
+          voiceMap.set(v.id, v);
+        }
+      });
 
       onUpdate(Array.from(voiceMap.values()));
     }, (err) => {

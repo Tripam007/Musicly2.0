@@ -206,11 +206,11 @@ export class VoiceResponseManager {
           utterance.voice = this.fallbackVoice;
         }
 
-        const isFemale = (voiceDef?.gender || '').toLowerCase().includes('female');
-        const isBritish = (voiceDef?.accent || voiceDef?.style || '').toLowerCase().includes('british');
+        const isFemale = (voiceDef?.gender || '').toLowerCase().includes('female') && voiceDef?.id !== 'AeRdCCKzvd23BpJoofzx';
+        const isBritish = (voiceDef?.accent || voiceDef?.style || '').toLowerCase().includes('british') || voiceDef?.id === 'AeRdCCKzvd23BpJoofzx' || voiceDef?.id === 'Xb7hH8MSUJpSbSDYk0k2';
 
-        utterance.pitch = voiceDef?.pitch !== undefined ? voiceDef.pitch : (isFemale ? 1.15 : (isBritish ? 0.85 : 0.82));
-        utterance.rate = voiceDef?.rate !== undefined ? voiceDef.rate : (isBritish ? 0.92 : 1.02);
+        utterance.pitch = voiceDef?.pitch !== undefined ? voiceDef.pitch : (isFemale ? 1.15 : (isBritish ? 0.82 : 0.80));
+        utterance.rate = voiceDef?.rate !== undefined ? voiceDef.rate : (isBritish ? 0.88 : 1.02);
         utterance.volume = 1.0;
 
         const cleanup = () => {
