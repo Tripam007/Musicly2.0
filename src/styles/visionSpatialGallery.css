@@ -530,44 +530,56 @@
 
 /* ==========================================================================
    5. BOTTOM FLOATING FROSTED GLASS PILL DOCK & PAGINATION
+   Fixed stable size and anchored position (never extends, never moves)
    ========================================================================== */
 .vision-bottom-dock-wrapper {
-  position: relative;
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 30;
-  margin-bottom: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 9px;
+  width: auto;
+  pointer-events: none;
 }
 
 .vision-bottom-dock {
+  width: 370px;
+  height: 52px;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 6px 16px;
+  justify-content: space-between;
+  padding: 0 14px;
   border-radius: 9999px;
-  background: rgba(28, 30, 38, 0.6);
+  background: rgba(28, 30, 38, 0.65);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 
     0 14px 38px rgba(0, 0, 0, 0.5),
     inset 0 1px 0 rgba(255, 255, 255, 0.28);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+  pointer-events: auto;
+  transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .vision-bottom-dock:hover {
-  background: rgba(34, 38, 48, 0.72);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(34, 38, 48, 0.78);
+  border-color: rgba(255, 255, 255, 0.28);
   box-shadow: 
     0 18px 48px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 
 .vision-dock-arrow-btn {
   width: 28px;
   height: 28px;
+  flex-shrink: 0;
   border-radius: 50%;
   border: none;
   background: rgba(255, 255, 255, 0.08);
@@ -576,7 +588,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .vision-dock-arrow-btn:hover {
@@ -587,14 +599,15 @@
 
 .vision-dock-thumb-wrap {
   position: relative;
-  width: 38px;
-  height: 38px;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .vision-dock-thumb-wrap:hover {
@@ -617,12 +630,16 @@
   to { transform: rotate(360deg); }
 }
 
+/* Fixed width track info container so titles never expand or shrink the dock */
 .vision-dock-track-info {
   display: flex;
   flex-direction: column;
-  min-width: 120px;
-  max-width: 190px;
+  justify-content: center;
+  width: 175px;
+  flex: 0 0 175px;
+  overflow: hidden;
   cursor: pointer;
+  user-select: none;
 }
 
 .vision-dock-title {
@@ -633,6 +650,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
+  display: block;
 }
 
 .vision-dock-subtitle {
@@ -641,11 +660,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  width: 100%;
+  display: block;
 }
 
 .vision-dock-heart-btn {
   width: 28px;
   height: 28px;
+  flex-shrink: 0;
   border-radius: 50%;
   border: none;
   background: transparent;
@@ -654,7 +676,7 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 
 .vision-dock-heart-btn:hover {
@@ -671,7 +693,10 @@
 .vision-pagination-dots {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  height: 10px;
+  pointer-events: auto;
 }
 
 .vision-dot {
