@@ -143,6 +143,9 @@ export const VoiceSettingsModal = ({
     setSelectedVoice(voiceId);
     setSelectedVoiceId(voiceId);
     voiceManager.updateConfig({ voiceId });
+    if (voiceManager.responseManager) {
+      voiceManager.responseManager.setVoiceId(voiceId);
+    }
   };
 
   const handlePreviewVoice = async (voice, e) => {

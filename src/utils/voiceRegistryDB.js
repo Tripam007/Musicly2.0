@@ -34,7 +34,11 @@ export const DEFAULT_VOICES = [
     accent: 'British',
     description: 'Calm, thoughtful British narrator with suspenseful warmth and cinematic depth.',
     url: 'https://elevenlabs.io/voices/AeRdCCKzvd23BpJoofzx',
+    previewUrl: 'https://api.us.elevenlabs.io/v1/voices/AeRdCCKzvd23BpJoofzx/previews/audio?payload=eyJ2b2ljZV9zb3VyY2UiOiJjdXN0b20iLCJ3b3Jrc3BhY2VfaWQiOiI1MTRkOTRlOTI0MWM0OGU4Yjc5MDUzNzU3MjljNDM2ZiIsImZpbGVuYW1lIjoiMDJjODdkNDQtNzU0ZC00N2ZjLWI2MWQtMDcyNGM4MGY2NWM3Lm1wMyIsInRpbWVzdGFtcCI6MTc5NTI0ODAwMDAwMDAwMH0%3D',
     samplePhrase: 'Hello, I am Nathaniel. Ready to curate your music experience on Musicly.',
+    pitch: 0.84,
+    rate: 0.92,
+    langFilter: 'en-GB',
     isFeatured: true,
     isDefault: true
   },
@@ -48,6 +52,9 @@ export const DEFAULT_VOICES = [
     description: 'Warm, soothing, and clear voice designed for serene listening sessions.',
     url: 'https://elevenlabs.io/voices/21m00Tcm4TlvDq8ikWAM',
     samplePhrase: 'Welcome back. Tell me what track or vibe you want to hear next.',
+    pitch: 1.14,
+    rate: 0.96,
+    langFilter: 'en-US',
     isFeatured: false
   },
   {
@@ -60,6 +67,9 @@ export const DEFAULT_VOICES = [
     description: 'Resonant, confident, and smooth late-night host personality.',
     url: 'https://elevenlabs.io/voices/pNInz6obpgDQGcFmaJgB',
     samplePhrase: 'Hey there. Let me set the mood with some good music for you.',
+    pitch: 0.76,
+    rate: 1.02,
+    langFilter: 'en-US',
     isFeatured: false
   },
   {
@@ -72,6 +82,9 @@ export const DEFAULT_VOICES = [
     description: 'Bright, cheerful, and crisp modern AI assistant style.',
     url: 'https://elevenlabs.io/voices/AZnzlk1XvdvUeBnXmlld',
     samplePhrase: 'Musicly Voice active. Shuffling tracks and adjusting your ambience.',
+    pitch: 1.28,
+    rate: 1.12,
+    langFilter: 'en-US',
     isFeatured: false
   },
   {
@@ -84,9 +97,22 @@ export const DEFAULT_VOICES = [
     description: 'High-speed browser speech synthesis with zero cloud latency or data usage.',
     url: '',
     samplePhrase: 'Musicly local speech synthesis is working smoothly.',
+    pitch: 1.0,
+    rate: 1.0,
+    langFilter: 'en',
     isFeatured: false
   }
 ];
+
+/**
+ * Find voice definition by voiceId
+ */
+export function getVoiceById(voiceId) {
+  if (!voiceId) return DEFAULT_VOICES[0];
+  const custom = getLocalCustomVoices();
+  const all = [...DEFAULT_VOICES, ...custom];
+  return all.find(v => v.id === voiceId) || DEFAULT_VOICES[0];
+}
 
 /**
  * Extract Voice ID from ElevenLabs voice URL or clean ID string
@@ -239,16 +265,25 @@ export async function addCustomVoice(voiceInput, user) {
     throw new Error('Please provide a valid ElevenLabs Voice ID or URL.');
   }
 
+  const genderLower = (voiceInput.gender || 'male').toLowerCase();
+  const styleLower = (voiceInput.style || '').toLowerCase();
+  const isFemale = genderLower.includes('female') || genderLower.includes('woman');
+  const isBritish = styleLower.includes('british') || styleLower.includes('uk') || (voiceInput.accent || '').toLowerCase().includes('british');
+
   const voiceData = {
     id: voiceId,
     name: (voiceInput.name || 'Custom Voice').trim(),
     provider: voiceInput.provider || 'elevenlabs',
     gender: voiceInput.gender || 'Unknown',
     style: (voiceInput.style || 'Custom').trim(),
-    accent: (voiceInput.accent || 'Natural').trim(),
+    accent: (voiceInput.accent || (isBritish ? 'British' : 'American')).trim(),
     description: (voiceInput.description || 'Custom voice model added by admin.').trim(),
     url: voiceInput.url ? voiceInput.url.trim() : `https://elevenlabs.io/voices/${voiceId}`,
+    previewUrl: voiceInput.previewUrl || (voiceId === 'AeRdCCKzvd23BpJoofzx' ? DEFAULT_VOICES[0].previewUrl : ''),
     samplePhrase: (voiceInput.samplePhrase || `Hello, this is ${voiceInput.name || 'your custom voice'} on Musicly.`).trim(),
+    pitch: isFemale ? 1.15 : (isBritish ? 0.85 : 0.8),
+    rate: isBritish ? 0.94 : 1.0,
+    langFilter: isBritish ? 'en-GB' : 'en-US',
     addedBy: user?.email || 'admin',
     addedAt: Date.now(),
     isCustom: true

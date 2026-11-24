@@ -11,7 +11,8 @@
  * 6. Player actions ALWAYS succeed even if voice feedback fails.
  */
 
-import { getSelectedVoiceId } from '../utils/voiceRegistryDB.js';
+import { getSelectedVoiceId, getVoiceById } from '../utils/voiceRegistryDB.js';
+import { resolveMatchingBrowserVoice } from '../utils/elevenLabsTTS.js';
 
 export class VoiceResponseManager {
   /**
@@ -121,11 +122,12 @@ export class VoiceResponseManager {
     this.isSpeaking = true;
     const originalVol = this._duckAudio();
     const targetVoiceId = customVoiceId || this.voiceId || getSelectedVoiceId();
+    const voiceDef = getVoiceById(targetVoiceId);
 
     try {
       // 1. If system native is selected, skip ElevenLabs
       if (targetVoiceId === 'system_native') {
-        await this._speakFallback(text);
+        await this._speakFallback(text, voiceDef);
         return;
       }
 
@@ -140,8 +142,8 @@ export class VoiceResponseManager {
         }
       }
 
-      // 3. Fallback to Web Speech Synthesis
-      await this._speakFallback(text);
+      // 3. Fallback to distinct acoustic Speech Synthesis matching the persona
+      await this._speakFallback(text, voiceDef);
     } catch (err) {
       console.warn('[VoiceResponseManager] speak failed gracefully:', err);
     } finally {
@@ -186,9 +188,9 @@ export class VoiceResponseManager {
   }
 
   /**
-   * Fallback using window.speechSynthesis
+   * Fallback using window.speechSynthesis configured to match persona
    */
-  _speakFallback(text) {
+  _speakFallback(text, voiceDef = null) {
     return new Promise((resolve) => {
       if (!this.synth) {
         resolve();
@@ -197,11 +199,18 @@ export class VoiceResponseManager {
 
       try {
         const utterance = new SpeechSynthesisUtterance(text);
-        if (this.fallbackVoice) {
+        const resolvedVoice = resolveMatchingBrowserVoice(voiceDef);
+        if (resolvedVoice) {
+          utterance.voice = resolvedVoice;
+        } else if (this.fallbackVoice) {
           utterance.voice = this.fallbackVoice;
         }
-        utterance.rate = 1.05;
-        utterance.pitch = 1.0;
+
+        const isFemale = (voiceDef?.gender || '').toLowerCase().includes('female');
+        const isBritish = (voiceDef?.accent || voiceDef?.style || '').toLowerCase().includes('british');
+
+        utterance.pitch = voiceDef?.pitch !== undefined ? voiceDef.pitch : (isFemale ? 1.15 : (isBritish ? 0.85 : 0.82));
+        utterance.rate = voiceDef?.rate !== undefined ? voiceDef.rate : (isBritish ? 0.92 : 1.02);
         utterance.volume = 1.0;
 
         const cleanup = () => {

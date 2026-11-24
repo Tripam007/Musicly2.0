@@ -3,13 +3,14 @@
  * 
  * Client-side audio synthesizer and preview helper for ElevenLabs voices.
  * Features:
+ * - High-fidelity authentic ElevenLabs preview audio playback (e.g. Nathaniel C)
  * - Direct synthesis with ElevenLabs API or Firebase Callable proxy
- * - Graceful fallback to browser Web Speech Synthesis
- * - Audio blob memory cache to minimize redundant API calls
+ * - Multi-voice acoustic speech synthesis engine with distinct pitch/rate/timbre
+ * - Memory caching for audio blobs
  * - Isolated audio preview player
  */
 
-import { getCustomElevenLabsApiKey } from './voiceRegistryDB';
+import { getCustomElevenLabsApiKey, getVoiceById } from './voiceRegistryDB';
 
 // In-memory audio URL cache for sample phrases
 const audioCache = new Map();
@@ -25,9 +26,89 @@ function getPreviewAudio() {
   return previewAudioElement;
 }
 
+// Pre-warm browser voices on module initialization
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  try {
+    window.speechSynthesis.getVoices();
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        try {
+          window.speechSynthesis.getVoices();
+        } catch {}
+      };
+    }
+  } catch {}
+}
+
+/**
+ * Get all loaded browser speech voices safely
+ */
+export function getBrowserVoices() {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return [];
+  try {
+    return window.speechSynthesis.getVoices() || [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Resolve the best matching browser native voice for an AI persona
+ */
+export function resolveMatchingBrowserVoice(voiceDef) {
+  const voices = getBrowserVoices();
+  if (!voices.length) return null;
+
+  const isFemale = (voiceDef?.gender || '').toLowerCase().includes('female');
+  const isBritish = (voiceDef?.accent || voiceDef?.style || '').toLowerCase().includes('british');
+
+  if (isBritish) {
+    // 1. Look for British English voice
+    const ukVoice = voices.find(v => {
+      const lang = (v.lang || '').toLowerCase();
+      const name = (v.name || '').toLowerCase();
+      const isUk = lang.includes('en-gb') || lang.includes('en_gb') || name.includes('united kingdom') || name.includes('british');
+      if (!isUk) return false;
+      if (isFemale) {
+        return name.includes('female') || name.includes('hazel') || name.includes('susan') || name.includes('libby');
+      }
+      return name.includes('male') || name.includes('george') || name.includes('oliver') || !name.includes('female');
+    });
+    if (ukVoice) return ukVoice;
+  }
+
+  if (isFemale) {
+    // 2. Look for female voice
+    const femaleVoice = voices.find(v => {
+      const name = (v.name || '').toLowerCase();
+      return name.includes('zira') ||
+        name.includes('samantha') ||
+        name.includes('aria') ||
+        name.includes('jenny') ||
+        name.includes('female') ||
+        name.includes('victoria');
+    });
+    if (femaleVoice) return femaleVoice;
+  } else {
+    // 3. Look for male voice
+    const maleVoice = voices.find(v => {
+      const name = (v.name || '').toLowerCase();
+      return name.includes('david') ||
+        name.includes('mark') ||
+        name.includes('guy') ||
+        name.includes('george') ||
+        name.includes('male');
+    });
+    if (maleVoice) return maleVoice;
+  }
+
+  // Fallback to any English voice or first voice
+  return voices.find(v => (v.lang || '').toLowerCase().startsWith('en')) || voices[0] || null;
+}
+
 /**
  * Synthesize and play audio for previewing a voice
- * @param {object} voice - Voice definition { id, name, provider, samplePhrase }
+ * @param {object} voice - Voice definition { id, name, provider, samplePhrase, previewUrl }
  * @param {string} [customText] - Text to speak
  * @param {object} [commandClient] - Optional VoiceCommandClient instance
  * @returns {Promise<void>}
@@ -40,19 +121,29 @@ export async function playVoicePreview(voice, customText = null, commandClient =
   const text = customText || voice.samplePhrase || `Hello, this is ${voice.name} speaking on Musicly.`;
   const voiceId = voice.id;
 
-  // 1. If it's a native system voice, use SpeechSynthesis
-  if (voice.provider === 'system' || voiceId === 'system_native') {
-    return playSystemSpeech(text);
+  // 1. If voice has an authentic direct ElevenLabs preview URL (like Nathaniel C), play it!
+  if (voice.previewUrl && !customText) {
+    try {
+      await playAudioUrl(voice.previewUrl);
+      return;
+    } catch (err) {
+      console.warn('[elevenLabsTTS] Direct previewUrl playback note, trying synthesis:', err);
+    }
   }
 
-  // 2. Check in-memory blob cache
+  // 2. If it's a native system voice, use SpeechSynthesis
+  if (voice.provider === 'system' || voiceId === 'system_native') {
+    return playSystemSpeech(text, voice);
+  }
+
+  // 3. Check in-memory blob cache
   const cacheKey = `${voiceId}_${text.toLowerCase().trim()}`;
   if (audioCache.has(cacheKey)) {
     const cachedUrl = audioCache.get(cacheKey);
     return playAudioUrl(cachedUrl);
   }
 
-  // 3. Try Firebase Cloud Function if client passed
+  // 4. Try Firebase Cloud Function if client passed
   if (commandClient && typeof commandClient.generateVoiceResponse === 'function') {
     try {
       const res = await commandClient.generateVoiceResponse(text, 'cinematic', voiceId);
@@ -66,7 +157,7 @@ export async function playVoicePreview(voice, customText = null, commandClient =
     }
   }
 
-  // 4. Try Direct ElevenLabs API call if client API key is configured
+  // 5. Try Direct ElevenLabs API call if client API key is configured
   const apiKey = getCustomElevenLabsApiKey() || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ELEVENLABS_API_KEY);
   if (apiKey) {
     try {
@@ -98,7 +189,7 @@ export async function playVoicePreview(voice, customText = null, commandClient =
     }
   }
 
-  // 5. Fallback to Browser Speech Synthesis
+  // 6. Distinct Acoustic Fallback Speech Synthesis with exact voice matching
   return playSystemSpeech(text, voice);
 }
 
@@ -130,9 +221,9 @@ function playAudioUrl(src) {
 }
 
 /**
- * Speak text with Web Speech API
+ * Speak text with Web Speech API using unique acoustic persona parameters
  */
-function playSystemSpeech(text, voice = null) {
+export function playSystemSpeech(text, voice = null) {
   return new Promise((resolve) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) {
       resolve();
@@ -142,24 +233,31 @@ function playSystemSpeech(text, voice = null) {
     try {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
 
-      const voices = window.speechSynthesis.getVoices() || [];
-      if (voice && voice.accent) {
-        const matching = voices.find(v => 
-          v.name.toLowerCase().includes(voice.name.toLowerCase()) ||
-          (voice.gender === 'Male' && (v.name.toLowerCase().includes('male') || v.name.toLowerCase().includes('david') || v.name.toLowerCase().includes('george'))) ||
-          (voice.gender === 'Female' && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('samantha')))
-        );
-        if (matching) utterance.voice = matching;
+      const matchingVoice = resolveMatchingBrowserVoice(voice);
+      if (matchingVoice) {
+        utterance.voice = matchingVoice;
       }
 
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
+      const isFemale = (voice?.gender || '').toLowerCase().includes('female');
+      const isBritish = (voice?.accent || voice?.style || '').toLowerCase().includes('british');
+
+      // Unique acoustic pitch & rate per persona
+      utterance.pitch = voice?.pitch !== undefined ? voice.pitch : (isFemale ? 1.16 : (isBritish ? 0.84 : 0.82));
+      utterance.rate = voice?.rate !== undefined ? voice.rate : (isBritish ? 0.92 : 1.02);
+      utterance.volume = 1.0;
+
+      const cleanup = () => {
+        utterance.onend = null;
+        utterance.onerror = null;
+        resolve();
+      };
+
+      utterance.onend = cleanup;
+      utterance.onerror = cleanup;
 
       window.speechSynthesis.speak(utterance);
-      setTimeout(resolve, 5000);
+      setTimeout(resolve, 6000);
     } catch {
       resolve();
     }
