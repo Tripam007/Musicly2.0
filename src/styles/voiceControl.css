@@ -955,8 +955,10 @@ body.voice-settings-active .top-bar-container {
 .voice-preview-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 9px;
+  justify-content: center;
+  gap: 5px;
+  min-width: 76px;
+  padding: 4px 10px;
   border-radius: 8px;
   font-size: 0.72rem;
   font-weight: 600;
@@ -964,7 +966,8 @@ body.voice-settings-active .top-bar-container {
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #f1f5f9;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: background 0.18s ease, border-color 0.18s ease;
+  user-select: none;
 }
 
 .voice-preview-btn:hover {
@@ -976,7 +979,8 @@ body.voice-settings-active .top-bar-container {
   background: rgba(236, 72, 153, 0.25);
   border-color: rgba(236, 72, 153, 0.5);
   color: #f472b6;
-  animation: voicePulse 1.2s infinite ease-in-out;
+  animation: none !important;
+  transform: none !important;
 }
 
 .voice-delete-btn {
