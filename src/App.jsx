@@ -40,7 +40,7 @@ import './styles/airControls.css';
 import { VoiceControlManager, MUSICLY_ACTIONS } from './voice';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useButtonTactileFeedback } from './hooks/useButtonTactileFeedback';
-import { TRACKS, SCENES, GENRE_BACKDROPS, getPlaylistBackdrop, isGhazalLanguage, isCountryLanguage, LANGUAGES, isTrackInLanguages } from './data/tracks';
+import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage, isCountryLanguage, LANGUAGES, isTrackInLanguages } from './data/tracks';
 import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/audioSynth';
 import { audioEngine } from './utils/audioEngine';
 import { ytEngine, extractYouTubeId } from './utils/youtubePlayer';
@@ -967,87 +967,35 @@ export default function App() {
     }
   }, [currentTrackId]);
 
-  // Ref tracking whether the current backdropImage was specifically applied by an active playlist
-  const isPlaylistBackdropAppliedRef = useRef(null);
-
-  // When a particular playlist is played (e.g. Country Roads & Roots, Ghazals, etc.),
-  // automatically change the current background backdrop to that playlist's theme!
-  // And restore the scene/genre background once the user plays something else or exits from the playlist.
+  // When playing any playlist, keep the Cozy Bedroom Studio background image (/assets/images/cozy_bedroom.jpg).
+  // Do not dynamically swap the backdrop to other scenes (country, ghazals, etc.) when any playlist is played.
   useEffect(() => {
-    const defaultSceneImg = (currentScene && (sceneOverrides[currentScene.id]?.image || sceneOverrides[currentScene.id])) || currentScene?.image || SCENES[0].image;
-    const targetDefaultBackdrop = (selectedGenre && selectedGenre !== 'All' && GENRE_BACKDROPS[selectedGenre]) || defaultSceneImg;
+    const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
+    const defaultBedroomImg = (sceneOverrides?.['cozy_bedroom']?.image || sceneOverrides?.['cozy_bedroom']) || bedroomScene?.image || '/assets/images/cozy_bedroom.jpg';
 
-    // Check if Country Roads & Roots playlist is actively playing (ONLY for this playlist!)
-    const isCurrentTrackCountry = Boolean(
-      currentTrack && (
-        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
-        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country'))) ||
-        (Array.isArray(currentTrack.sections) && currentTrack.sections.some(s => (s || '').toLowerCase().includes('country')))
-      )
-    );
-
-    const isCountryPlaylistPlaying = Boolean(
-      activePlayingPlaylistId && (
-        activePlayingPlaylistId === 'country_roots' ||
-        String(activePlayingPlaylistId).toLowerCase().includes('country')
-      ) && isCurrentTrackCountry
-    );
-
-    if (isCountryPlaylistPlaying) {
-      const countryBackdrop = '/assets/images/country_scene.jpg';
-      isPlaylistBackdropAppliedRef.current = countryBackdrop;
-      if (backdropImage !== countryBackdrop) {
+    if (activePlayingPlaylistId) {
+      // While playing any playlist, enforce keeping the Cozy Bedroom Studio background image
+      if (backdropImage !== defaultBedroomImg) {
         setIsTransitioning(true);
         setTimeout(() => {
-          setBackdropImage(countryBackdrop);
+          setBackdropImage(defaultBedroomImg);
           setTimeout(() => setIsTransitioning(false), 60);
-        }, 200);
+        }, 150);
       }
-      return;
-    }
-
-    // For other active playlists (Ghazals, Lo-Fi, Peace, etc.)
-    if (activePlayingPlaylistId) {
-      const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
-      let pl = unified.find(p => p.id === activePlayingPlaylistId);
-      if (!pl) {
-        const userPls = getLocalUserPlaylists(user);
-        const foundUser = userPls.find(p => p.id === activePlayingPlaylistId);
-        if (foundUser) {
-          const plTracks = (foundUser.trackIds || []).map(tId => allTracks.find(t => t.id === tId)).filter(Boolean);
-          pl = { ...foundUser, tracks: plTracks };
-        }
-      }
-
-      const isCurrentTrackInPl = pl && Array.isArray(pl.tracks) && currentTrack && pl.tracks.some(t => t.id === currentTrack.id || (t.title && currentTrack.title && t.title.toLowerCase() === currentTrack.title.toLowerCase()));
-
-      if (pl && isCurrentTrackInPl) {
-        const targetBackdrop = getPlaylistBackdrop(pl, currentTrack);
-        if (targetBackdrop && targetBackdrop !== backdropImage) {
-          isPlaylistBackdropAppliedRef.current = targetBackdrop;
+    } else {
+      // If a thematic playlist backdrop was left over from a previous session, restore to default
+      if (backdropImage === '/assets/images/country_scene.jpg' || backdropImage === '/assets/images/ghazals_bg.jpg') {
+        const targetBackdrop = (selectedGenre && selectedGenre !== 'All' && GENRE_BACKDROPS[selectedGenre]) || defaultBedroomImg;
+        if (backdropImage !== targetBackdrop) {
           setIsTransitioning(true);
           setTimeout(() => {
             setBackdropImage(targetBackdrop);
             setTimeout(() => setIsTransitioning(false), 60);
-          }, 200);
+          }, 150);
         }
-        return;
       }
     }
-
-    // When the user plays something else (outside the country playlist or active playlist),
-    // restore the scene or genre background
-    if (isPlaylistBackdropAppliedRef.current || backdropImage === '/assets/images/country_scene.jpg') {
-      isPlaylistBackdropAppliedRef.current = null;
-      if (backdropImage !== targetDefaultBackdrop) {
-        setIsTransitioning(true);
-        setTimeout(() => {
-          setBackdropImage(targetDefaultBackdrop);
-          setTimeout(() => setIsTransitioning(false), 60);
-        }, 200);
-      }
-    }
-  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user, currentTrack, backdropImage, currentScene, sceneOverrides, selectedGenre]);
+  }, [activePlayingPlaylistId, backdropImage, sceneOverrides, selectedGenre]);
 
   // When active language(s) change, verify current track and queue strictly match selected language
   useEffect(() => {
@@ -1827,9 +1775,6 @@ export default function App() {
       }
     }
 
-    if (isPlaylistBackdropAppliedRef.current) {
-      isPlaylistBackdropAppliedRef.current = null;
-    }
     const defaultSceneImg = (currentScene && (sceneOverrides[currentScene.id]?.image || sceneOverrides[currentScene.id])) || currentScene?.image || SCENES[0].image;
     const nextBackdrop = genre === 'All' ? defaultSceneImg : (GENRE_BACKDROPS[genre] || defaultSceneImg);
     if (nextBackdrop && nextBackdrop !== backdropImage) {
