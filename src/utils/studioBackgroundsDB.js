@@ -90,6 +90,51 @@ function openDB() {
 }
 
 /**
+ * Strict deduplication helper: removes identical backgrounds by URL, ID, or title
+ */
+export function deduplicateBackgrounds(list) {
+  if (!Array.isArray(list)) return [];
+  const seenUrls = new Set();
+  const seenTitles = new Set();
+  const result = [];
+
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+    if (!item) continue;
+    const url = typeof item === 'string' ? item : (item.url || '');
+    const title = typeof item === 'string' ? '' : (item.title || '');
+    const cleanUrl = typeof url === 'string' ? url.trim() : '';
+    if (!cleanUrl) continue;
+
+    // Fast fingerprint for data URLs or web URLs
+    let fingerprint = cleanUrl;
+    if (cleanUrl.startsWith('data:')) {
+      fingerprint = `data:${cleanUrl.length}:${cleanUrl.slice(0, 100)}:${cleanUrl.slice(-100)}`;
+    } else {
+      fingerprint = cleanUrl.toLowerCase().split('?')[0];
+    }
+
+    if (seenUrls.has(fingerprint)) {
+      continue;
+    }
+    seenUrls.add(fingerprint);
+
+    // Also check for identical title if it's an uploaded file (e.g. Gemini_Generated_Image_...)
+    if (title && (title.startsWith('Gemini_Generated_Image_') || title.startsWith('zenitsu-agatsuma-'))) {
+      const titleKey = title.toLowerCase().trim();
+      if (seenTitles.has(titleKey)) {
+        continue;
+      }
+      seenTitles.add(titleKey);
+    }
+
+    result.push(typeof item === 'string' ? { id: `bg-${result.length}`, url: cleanUrl } : { ...item, id: item.id || `bg-${result.length}` });
+  }
+
+  return result;
+}
+
+/**
  * Retrieve user custom-uploaded background visuals from permanent IndexedDB pool
  */
 export async function getCustomStudioPool() {
@@ -100,7 +145,7 @@ export async function getCustomStudioPool() {
       const store = tx.objectStore(STORE_NAME);
       const req = store.get(KEY_CUSTOM_POOL);
       req.onsuccess = () => {
-        resolve(Array.isArray(req.result) ? req.result : []);
+        resolve(deduplicateBackgrounds(Array.isArray(req.result) ? req.result : []));
       };
       req.onerror = () => resolve([]);
     });
@@ -117,7 +162,8 @@ export async function saveCustomStudioPool(pool) {
     const db = await openDB();
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    store.put(Array.isArray(pool) ? pool : [], KEY_CUSTOM_POOL);
+    const deduped = deduplicateBackgrounds(Array.isArray(pool) ? pool : []);
+    store.put(deduped, KEY_CUSTOM_POOL);
   } catch (err) {
     console.warn('Error saving custom studio pool:', err);
   }
@@ -125,6 +171,7 @@ export async function saveCustomStudioPool(pool) {
 
 /**
  * Load all backgrounds from IndexedDB, ensuring all custom uploaded visuals are permanently preserved
+ * and strictly deduplicated
  */
 export async function getStudioBackgrounds() {
   try {
@@ -168,18 +215,13 @@ export async function getStudioBackgrounds() {
           if (baseList.length === 0) baseList = DEFAULT_STUDIO_PHOTOS;
         }
 
-        // Always guarantee that any custom uploaded visual is permanently preserved at the front
-        const customUrls = new Set(customPool.map(c => typeof c === 'string' ? c : (c?.url || c?.id)));
-        const nonCustom = baseList.filter(item => {
-          const u = typeof item === 'string' ? item : (item?.url || item?.id);
-          return !customUrls.has(u);
-        });
-        const combined = [...customPool, ...nonCustom];
+        // Strictly deduplicate combined list (custom pool takes precedence at the front)
+        const combined = deduplicateBackgrounds([...customPool, ...baseList]);
         resolve(combined);
       };
 
       req.onerror = () => {
-        resolve(customPool.length > 0 ? [...customPool, ...DEFAULT_STUDIO_PHOTOS] : DEFAULT_STUDIO_PHOTOS);
+        resolve(deduplicateBackgrounds(customPool.length > 0 ? [...customPool, ...DEFAULT_STUDIO_PHOTOS] : DEFAULT_STUDIO_PHOTOS));
       };
     });
   } catch (err) {
@@ -189,7 +231,7 @@ export async function getStudioBackgrounds() {
       if (local) {
         const parsed = JSON.parse(local);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          return deduplicateBackgrounds(parsed);
         }
       }
     } catch (e) {}
@@ -204,10 +246,11 @@ export async function getStudioBackgrounds() {
  */
 export async function saveStudioBackgrounds(imagesList) {
   if (!Array.isArray(imagesList)) return;
+  const dedupedList = deduplicateBackgrounds(imagesList);
 
   // 1. Permanently isolate custom-uploaded visuals into KEY_CUSTOM_POOL
   const defaultUrls = new Set(DEFAULT_STUDIO_PHOTOS.map(d => d.url));
-  const customItems = imagesList.filter(item => {
+  const customItems = dedupedList.filter(item => {
     if (!item) return false;
     const u = typeof item === 'string' ? item : (item?.url || '');
     const id = typeof item === 'string' ? '' : (item?.id || '');
@@ -221,13 +264,13 @@ export async function saveStudioBackgrounds(imagesList) {
   });
   await saveCustomStudioPool(customItems);
 
-  // 2. Save full gallery list to IndexedDB
+  // 2. Save full deduplicated gallery list to IndexedDB
   try {
     const db = await openDB();
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.put(imagesList, KEY);
+      const req = store.put(dedupedList, KEY);
       tx.oncomplete = () => resolve(true);
       tx.onerror = (e) => reject(e);
       req.onerror = (e) => reject(e);
@@ -238,7 +281,7 @@ export async function saveStudioBackgrounds(imagesList) {
 
   // 3. Backup non-massive items to localStorage for instant synchronous boot
   try {
-    const safeForLocalStorage = imagesList.filter(item => {
+    const safeForLocalStorage = dedupedList.filter(item => {
       const u = typeof item === 'string' ? item : (item?.url || '');
       return !u.startsWith('data:') || u.length < 500000;
     });
@@ -248,12 +291,12 @@ export async function saveStudioBackgrounds(imagesList) {
   // 4. Broadcast sync event so all open views update in real time
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
-      detail: { count: imagesList.length }
+      detail: { count: dedupedList.length }
     }));
   }
 
   // 5. Broadcast via realtime relay (instant cross-device SSE & pub-sub)
-  broadcastStudioVisual(undefined, imagesList).catch(() => {});
+  broadcastStudioVisual(undefined, dedupedList).catch(() => {});
 
   // 6. Persist to Firestore cloud safely (keeping payload well under the 1MB Firestore limit)
   if (firestore) {
@@ -261,7 +304,7 @@ export async function saveStudioBackgrounds(imagesList) {
       try {
         const compressedList = [];
         let totalPayloadBytes = 0;
-        for (const item of imagesList) {
+        for (const item of dedupedList) {
           const u = typeof item === 'string' ? item : (item?.url || '');
           if (u.startsWith('data:')) {
             // Compress data URL for cloud sync if space allows (< 400KB total)
@@ -335,7 +378,7 @@ export function subscribeStudioBackgrounds(callback) {
             const u = typeof cg === 'string' ? cg : (cg?.url || cg?.id);
             return !customUrls.has(u);
           });
-          const mergedGallery = [...localCustoms, ...nonCustomFromCloud];
+          const mergedGallery = deduplicateBackgrounds([...localCustoms, ...nonCustomFromCloud]);
 
           openDB().then((db) => {
             if (db) {

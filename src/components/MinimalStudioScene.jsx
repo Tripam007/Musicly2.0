@@ -47,7 +47,8 @@ import {
   resetStudioBackgroundsToDefaults,
   DEFAULT_STUDIO_PHOTOS,
   subscribeStudioBackgrounds,
-  setActiveStudioBackgroundIndex 
+  setActiveStudioBackgroundIndex,
+  deduplicateBackgrounds 
 } from '../utils/studioBackgroundsDB';
 import { isLiveVisual } from '../utils/publicScenesDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
@@ -362,7 +363,7 @@ export default function MinimalStudioScene({
     const reload = () => {
       getStudioBackgrounds().then((bgs) => {
         if (isMounted && Array.isArray(bgs) && bgs.length > 0) {
-          setStudioBackgrounds(bgs);
+          setStudioBackgrounds(deduplicateBackgrounds(bgs));
         }
       }).catch(() => {});
       try {
@@ -380,7 +381,7 @@ export default function MinimalStudioScene({
     const unsubCloud = subscribeStudioBackgrounds(({ backgrounds, activeIndex }) => {
       if (!isMounted) return;
       if (Array.isArray(backgrounds) && backgrounds.length > 0) {
-        setStudioBackgrounds(backgrounds);
+        setStudioBackgrounds(deduplicateBackgrounds(backgrounds));
       }
       if (typeof activeIndex === 'number') {
         setMediaPhotoIndex(activeIndex);
@@ -625,7 +626,7 @@ export default function MinimalStudioScene({
 
   const handleAddStudioBg = useCallback((newBg) => {
     setStudioBackgrounds((prev) => {
-      const next = [newBg, ...prev];
+      const next = deduplicateBackgrounds([newBg, ...prev]);
       saveStudioBackgrounds(next);
       return next;
     });

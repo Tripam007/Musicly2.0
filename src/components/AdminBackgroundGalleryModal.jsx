@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   X, 
   Upload, 
@@ -13,7 +13,7 @@ import {
   Sparkles,
   MonitorPlay
 } from 'lucide-react';
-import { process4KImageFile, isGeminiShareLink } from '../utils/studioBackgroundsDB';
+import { process4KImageFile, isGeminiShareLink, deduplicateBackgrounds } from '../utils/studioBackgroundsDB';
 import { isLiveVisual } from '../utils/publicScenesDB';
 
 export default function AdminBackgroundGalleryModal({
@@ -36,6 +36,15 @@ export default function AdminBackgroundGalleryModal({
   const [dragOver, setDragOver] = useState(false);
   const [geminiShareNotice, setGeminiShareNotice] = useState(false);
   const fileInputRef = useRef(null);
+
+  const displayBackgrounds = useMemo(() => {
+    return deduplicateBackgrounds(backgrounds);
+  }, [backgrounds]);
+
+  const safeActiveIndex = useMemo(() => {
+    if (!displayBackgrounds || displayBackgrounds.length === 0) return 0;
+    return Math.max(0, Math.min(activeBackgroundIndex || 0, displayBackgrounds.length - 1));
+  }, [activeBackgroundIndex, displayBackgrounds]);
 
   if (!isOpen) return null;
 
@@ -164,17 +173,17 @@ export default function AdminBackgroundGalleryModal({
         <div className="admin-bg-gallery-section">
           <div className="admin-bg-section-label-row">
             <span className="admin-bg-section-label">
-              Available Visuals ({backgrounds.length})
+              Available Visuals ({displayBackgrounds.length})
             </span>
             <span className="admin-bg-hint">Click image to set as active</span>
           </div>
 
           <div className="admin-bg-grid">
-            {backgrounds.map((bg, idx) => {
-              const isActive = idx === activeBackgroundIndex;
+            {displayBackgrounds.map((bg, idx) => {
+              const isActive = idx === safeActiveIndex;
               return (
                 <div 
-                  key={bg.id || idx}
+                  key={`bg-card-${bg.id || 'visual'}-${idx}`}
                   className={`admin-bg-thumb-card ${isActive ? 'is-active' : ''}`}
                   onClick={() => {
                     onSelectBackground(idx);
@@ -382,7 +391,7 @@ export default function AdminBackgroundGalleryModal({
             <div className="admin-bg-live-indicator-pill">
               <span className="admin-bg-live-pulse-dot" />
               <span className="admin-bg-live-text">
-                Visual {activeBackgroundIndex + 1} of {backgrounds.length}
+                Visual {safeActiveIndex + 1} of {displayBackgrounds.length}
               </span>
             </div>
 
