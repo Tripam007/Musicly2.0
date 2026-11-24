@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, 
   Mic, 
@@ -79,7 +80,16 @@ export const VoiceSettingsModal = ({
     if (!isOpen) {
       stopVoicePreview();
       setPreviewingVoiceId(null);
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('voice-settings-active');
+        document.body.classList.remove('app-modal-open');
+      }
       return;
+    }
+
+    if (typeof document !== 'undefined') {
+      document.body.classList.add('voice-settings-active');
+      document.body.classList.add('app-modal-open');
     }
 
     const unsubscribe = subscribeVoiceRegistry((updatedVoices) => {
@@ -92,6 +102,10 @@ export const VoiceSettingsModal = ({
     return () => {
       stopVoicePreview();
       unsubscribe();
+      if (typeof document !== 'undefined') {
+        document.body.classList.remove('voice-settings-active');
+        document.body.classList.remove('app-modal-open');
+      }
     };
   }, [isOpen, voiceManager]);
 
@@ -233,7 +247,7 @@ export const VoiceSettingsModal = ({
 
   const detectedVoiceId = extractVoiceId(voiceInputUrl);
 
-  return (
+  const modalContent = (
     <div className="voice-settings-overlay" onClick={onClose}>
       <div className="voice-settings-modal voice-settings-modal-extended" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
@@ -594,4 +608,6 @@ export const VoiceSettingsModal = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 };
