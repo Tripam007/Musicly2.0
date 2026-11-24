@@ -315,6 +315,20 @@ export default function MinimalStudioScene({
     return () => window.removeEventListener('musicly:studio-notification-change', handleNotifSync);
   }, []);
 
+  // Background gallery state initialized from localStorage/defaults
+  const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
+    try {
+      const local = localStorage.getItem('musicly_studio_bg_gallery');
+      if (local) {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {}
+    return DEFAULT_STUDIO_PHOTOS;
+  });
+
   const [mediaPhotoIndex, setMediaPhotoIndex] = useState(() => {
     try {
       const activeUrl = localStorage.getItem('musicly_active_studio_bg_url');
@@ -350,20 +364,6 @@ export default function MinimalStudioScene({
       return next;
     });
   }, [studioBackgrounds]);
-
-  // Background gallery state initialized from localStorage/defaults
-  const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
-    try {
-      const local = localStorage.getItem('musicly_studio_bg_gallery');
-      if (local) {
-        const parsed = JSON.parse(local);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch (e) {}
-    return DEFAULT_STUDIO_PHOTOS;
-  });
 
   // Load persisted background visuals from IndexedDB and sync with cloud and local events in real time
   useEffect(() => {
