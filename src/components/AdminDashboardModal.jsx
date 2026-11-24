@@ -44,8 +44,18 @@ import {
   RotateCcw,
   MonitorPlay,
   ListMusic,
-  Lock
+  Lock,
+  Mic
 } from 'lucide-react';
+import { 
+  subscribeVoiceRegistry, 
+  addCustomVoice, 
+  deleteCustomVoice, 
+  extractVoiceId,
+  getCustomElevenLabsApiKey,
+  setCustomElevenLabsApiKey
+} from '../utils/voiceRegistryDB';
+import { playVoicePreview, stopVoicePreview } from '../utils/elevenLabsTTS';
 import { PLAYLIST_LANGUAGES, normalizePlaylistLang, getUnifiedMusiclyPlaylists, isSongMatchingPlaylistLang } from '../utils/publicPlaylistsDB';
 
 import { GENRES, LANGUAGES, getAvailableSections, getAvailableGenres, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage } from '../data/tracks';
@@ -133,6 +143,35 @@ export default function AdminDashboardModal({
   const [plTrackSearch, setPlTrackSearch] = useState('');
   const [managingPl, setManagingPl] = useState(null); // Playlist being edited for songs
   const [editingPlId, setEditingPlId] = useState(null);
+
+  // 🎙️ Voice AI Models & ElevenLabs States
+  const [voiceList, setVoiceList] = useState([]);
+  const [adminVoiceUrl, setAdminVoiceUrl] = useState('');
+  const [adminVoiceName, setAdminVoiceName] = useState('');
+  const [adminVoiceGender, setAdminVoiceGender] = useState('Male');
+  const [adminVoiceStyle, setAdminVoiceStyle] = useState('British Calm & Suspense');
+  const [adminVoiceDesc, setAdminVoiceDesc] = useState('');
+  const [adminVoiceSample, setAdminVoiceSample] = useState('');
+  const [adminVoiceSaving, setAdminVoiceSaving] = useState(false);
+  const [adminVoiceFeedback, setAdminVoiceFeedback] = useState(null);
+  const [adminPreviewVoiceId, setAdminPreviewVoiceId] = useState(null);
+  const [adminApiKey, setAdminApiKey] = useState(getCustomElevenLabsApiKey());
+  const [showApiKeySetting, setShowApiKeySetting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      stopVoicePreview();
+      setAdminPreviewVoiceId(null);
+      return;
+    }
+    const unsub = subscribeVoiceRegistry((voices) => {
+      setVoiceList(voices);
+    });
+    return () => {
+      stopVoicePreview();
+      unsub();
+    };
+  }, [isOpen, activeTab]);
 
   // Automatically autoselect language from active playlist filter when opening create modal
   useEffect(() => {
@@ -1354,6 +1393,12 @@ export default function AdminDashboardModal({
             onClick={() => setActiveTab('feedback')}
           >
             <Star size={15} /> Feedback ({feedbacks.length})
+          </button>
+          <button 
+            className={`admin-nav-btn ${activeTab === 'voices' ? 'active' : ''}`}
+            onClick={() => setActiveTab('voices')}
+          >
+            <Mic size={15} /> Voice AI Personas ({voiceList.length})
           </button>
           {onOpenAirAiDashboard && (
             <button 
@@ -3430,6 +3475,367 @@ export default function AdminDashboardModal({
                   <button type="button" className="admin-save-btn" onClick={() => setManagingPl(null)}>
                     <Check size={14} /> Done
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB: Voice AI & Personas Management */}
+        {activeTab === 'voices' && (
+          <div className="admin-tab-content admin-voices-tab" style={{ padding: '20px 24px' }}>
+            {/* Header intro */}
+            <div style={{ marginBottom: '22px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                <Mic size={20} color="#a855f7" />
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#f8fafc' }}>
+                  Voice AI Personas & ElevenLabs Integration
+                </h3>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.6)', lineHeight: 1.5 }}>
+                Manage voice models that respond to user voice commands ("Hey Musicly") and system announcements. 
+                Paste any ElevenLabs voice URL (e.g. <code>https://elevenlabs.io/voices/AeRdCCKzvd23BpJoofzx</code>) or Voice ID to publish it globally across Musicly.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 420px) 1fr', gap: '24px', alignItems: 'start' }}>
+              {/* Form Card: Add Voice */}
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '16px',
+                padding: '18px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '14px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)', paddingBottom: '10px' }}>
+                  <Plus size={16} color="#38bdf8" />
+                  <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#ffffff' }}>Add New Voice Model</span>
+                </div>
+
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  const cleanId = extractVoiceId(adminVoiceUrl);
+                  if (!cleanId) {
+                    setAdminVoiceFeedback({ type: 'error', message: 'Please provide a valid ElevenLabs voice URL or Voice ID.' });
+                    return;
+                  }
+                  if (!adminVoiceName.trim()) {
+                    setAdminVoiceFeedback({ type: 'error', message: 'Please enter a name for the voice.' });
+                    return;
+                  }
+                  setAdminVoiceSaving(true);
+                  setAdminVoiceFeedback(null);
+                  try {
+                    const added = await addCustomVoice({
+                      id: cleanId,
+                      url: adminVoiceUrl.startsWith('http') ? adminVoiceUrl : `https://elevenlabs.io/voices/${cleanId}`,
+                      name: adminVoiceName.trim(),
+                      gender: adminVoiceGender,
+                      style: adminVoiceStyle.trim(),
+                      description: adminVoiceDesc.trim() || 'Custom ElevenLabs voice model.',
+                      samplePhrase: adminVoiceSample.trim() || `Hello! I am ${adminVoiceName.trim()}. Ready to curate your music on Musicly.`
+                    }, user);
+                    setAdminVoiceFeedback({ type: 'success', message: `Added "${added.name}" successfully!` });
+                    setAdminVoiceUrl('');
+                    setAdminVoiceName('');
+                    setAdminVoiceDesc('');
+                    setAdminVoiceSample('');
+                    setTimeout(() => setAdminVoiceFeedback(null), 3000);
+                  } catch (err) {
+                    setAdminVoiceFeedback({ type: 'error', message: err?.message || 'Failed to add voice.' });
+                  } finally {
+                    setAdminVoiceSaving(false);
+                  }
+                }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div className="admin-form-group">
+                    <label style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>ElevenLabs Voice URL or Voice ID *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. https://elevenlabs.io/voices/AeRdCCKzvd23BpJoofzx"
+                      value={adminVoiceUrl}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAdminVoiceUrl(val);
+                        const ext = extractVoiceId(val);
+                        if (ext === 'AeRdCCKzvd23BpJoofzx' && !adminVoiceName) {
+                          setAdminVoiceName('Nathaniel C');
+                          setAdminVoiceStyle('British Calm & Suspense');
+                          setAdminVoiceGender('Male');
+                          setAdminVoiceDesc('Calm, suspenseful British storyteller voice.');
+                        }
+                      }}
+                      required
+                      style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '8px 10px', color: '#fff', fontSize: '0.8rem' }}
+                    />
+                    {adminVoiceUrl && (
+                      <span style={{ fontSize: '0.7rem', color: '#34d399', marginTop: '3px', display: 'block' }}>
+                        Detected ID: {extractVoiceId(adminVoiceUrl)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                    <div className="admin-form-group">
+                      <label style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>Display Name *</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Nathaniel C"
+                        value={adminVoiceName}
+                        onChange={(e) => setAdminVoiceName(e.target.value)}
+                        required
+                        style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '8px 10px', color: '#fff', fontSize: '0.8rem' }}
+                      />
+                    </div>
+                    <div className="admin-form-group">
+                      <label style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>Gender</label>
+                      <select
+                        value={adminVoiceGender}
+                        onChange={(e) => setAdminVoiceGender(e.target.value)}
+                        style={{ background: '#181b26', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '8px 10px', color: '#fff', fontSize: '0.8rem' }}
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Neutral">Neutral</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="admin-form-group">
+                    <label style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>Voice Style / Accent</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. British Calm & Suspense"
+                      value={adminVoiceStyle}
+                      onChange={(e) => setAdminVoiceStyle(e.target.value)}
+                      style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '8px 10px', color: '#fff', fontSize: '0.8rem' }}
+                    />
+                  </div>
+
+                  <div className="admin-form-group">
+                    <label style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>Description</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Deep, calm narrative voice for relaxed music sessions"
+                      value={adminVoiceDesc}
+                      onChange={(e) => setAdminVoiceDesc(e.target.value)}
+                      style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '8px 10px', color: '#fff', fontSize: '0.8rem' }}
+                    />
+                  </div>
+
+                  <div className="admin-form-group">
+                    <label style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>Preview Quote (Sample Phrase)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Hello, I am ready to curate your music on Musicly."
+                      value={adminVoiceSample}
+                      onChange={(e) => setAdminVoiceSample(e.target.value)}
+                      style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', padding: '8px 10px', color: '#fff', fontSize: '0.8rem' }}
+                    />
+                  </div>
+
+                  {/* API Key Toggle */}
+                  <div style={{ marginTop: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKeySetting(!showApiKeySetting)}
+                      style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '0.72rem', cursor: 'pointer', padding: 0 }}
+                    >
+                      {showApiKeySetting ? 'Hide ElevenLabs API Key Override' : '+ Configure ElevenLabs API Key Override'}
+                    </button>
+                    {showApiKeySetting && (
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                        <input
+                          type="password"
+                          placeholder="Paste ElevenLabs xi-api-key"
+                          value={adminApiKey}
+                          onChange={(e) => setAdminApiKey(e.target.value)}
+                          style={{ flex: 1, background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', padding: '6px 8px', color: '#fff', fontSize: '0.75rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomElevenLabsApiKey(adminApiKey);
+                            setAdminVoiceFeedback({ type: 'success', message: 'API key saved locally.' });
+                            setTimeout(() => setAdminVoiceFeedback(null), 3000);
+                          }}
+                          style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', borderRadius: '6px', padding: '0 10px', fontSize: '0.72rem', cursor: 'pointer' }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {adminVoiceFeedback && (
+                    <div style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      fontSize: '0.78rem',
+                      background: adminVoiceFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                      color: adminVoiceFeedback.type === 'success' ? '#34d399' : '#f87171',
+                      border: `1px solid ${adminVoiceFeedback.type === 'success' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                    }}>
+                      {adminVoiceFeedback.message}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={adminVoiceSaving}
+                    style={{
+                      marginTop: '6px',
+                      background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      padding: '9px 14px',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 14px rgba(99, 102, 241, 0.3)'
+                    }}
+                  >
+                    <Plus size={16} />
+                    <span>{adminVoiceSaving ? 'Publishing...' : 'Save & Publish Voice'}</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* List Column: Active & Custom Voices */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                  <span style={{ fontSize: '0.94rem', fontWeight: 600, color: '#f1f5f9' }}>
+                    Available Voices ({voiceList.length})
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    Includes Nathaniel C, Curated Voices & Admin Additions
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '520px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {voiceList.map((v) => {
+                    const isPreviewing = adminPreviewVoiceId === v.id;
+                    return (
+                      <div
+                        key={v.id}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.03)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '12px',
+                          padding: '12px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#ffffff' }}>{v.name}</span>
+                            {v.isFeatured && (
+                              <span style={{ fontSize: '0.65rem', background: 'rgba(234, 179, 8, 0.2)', color: '#facc15', border: '1px solid rgba(234, 179, 8, 0.35)', padding: '1px 5px', borderRadius: '4px' }}>
+                                Featured
+                              </span>
+                            )}
+                            {v.provider === 'elevenlabs' ? (
+                              <span style={{ fontSize: '0.65rem', background: 'rgba(56, 189, 248, 0.15)', color: '#7dd3fc', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '1px 5px', borderRadius: '4px' }}>
+                                ElevenLabs
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.65rem', background: 'rgba(148, 163, 184, 0.15)', color: '#cbd5e1', border: '1px solid rgba(148, 163, 184, 0.25)', padding: '1px 5px', borderRadius: '4px' }}>
+                                System Native
+                              </span>
+                            )}
+                            {v.isCustom && (
+                              <span style={{ fontSize: '0.65rem', background: 'rgba(168, 85, 247, 0.2)', color: '#c084fc', border: '1px solid rgba(168, 85, 247, 0.35)', padding: '1px 5px', borderRadius: '4px' }}>
+                                Admin Added
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.5)' }}>
+                            {v.gender} • {v.style || v.accent || 'Natural'} • <span style={{ fontFamily: 'monospace', color: '#93c5fd' }}>{v.id}</span>
+                          </div>
+                          {v.description && (
+                            <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.4)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {v.description}
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (adminPreviewVoiceId === v.id) {
+                                stopVoicePreview();
+                                setAdminPreviewVoiceId(null);
+                                return;
+                              }
+                              setAdminPreviewVoiceId(v.id);
+                              try {
+                                await playVoicePreview(v);
+                              } catch (err) {
+                                console.warn(err);
+                              } finally {
+                                setAdminPreviewVoiceId(null);
+                              }
+                            }}
+                            style={{
+                              background: isPreviewing ? 'rgba(236, 72, 153, 0.25)' : 'rgba(255, 255, 255, 0.08)',
+                              border: `1px solid ${isPreviewing ? 'rgba(236, 72, 153, 0.5)' : 'rgba(255, 255, 255, 0.15)'}`,
+                              color: isPreviewing ? '#f472b6' : '#fff',
+                              borderRadius: '8px',
+                              padding: '5px 10px',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <Play size={11} fill="currentColor" />
+                            <span>{isPreviewing ? 'Playing' : 'Preview'}</span>
+                          </button>
+
+                          {v.isCustom && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm(`Are you sure you want to remove the voice "${v.name}"?`)) {
+                                  try {
+                                    await deleteCustomVoice(v.id);
+                                  } catch (err) {
+                                    alert('Failed to delete voice: ' + err.message);
+                                  }
+                                }
+                              }}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#f87171',
+                                cursor: 'pointer',
+                                padding: '6px',
+                                borderRadius: '6px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                              title="Delete custom voice"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             </div>
