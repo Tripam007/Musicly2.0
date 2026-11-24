@@ -20065,13 +20065,17 @@ body, html, #root {
   overscroll-behavior: contain;
 }
 
-/* Prevent pointer event interference between flipped faces */
+/* Prevent pointer event interference and 3D ghost scrollbar bleed between flipped faces */
 .ref-speech-bubble-island-container.is-flipped .ref-island-front {
   pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
 }
 
 .ref-speech-bubble-island-container:not(.is-flipped) .ref-island-back {
   pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
 }
 
 /* Interactive Lyrics Toggle Button in place of arrow */
@@ -20214,6 +20218,9 @@ body, html, #root {
   box-sizing: border-box;
   mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+  border-top-right-radius: 40px;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
 }
 
 .ref-island-lyrics-stream {
@@ -20290,16 +20297,15 @@ body, html, #root {
 }
 
 .ref-island-lyrics-content::-webkit-scrollbar {
-  width: 3px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-.ref-island-lyrics-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
+.ref-island-lyrics-content::-webkit-scrollbar-track,
 .ref-island-lyrics-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18);
-  border-radius: 3px;
+  display: none !important;
+  background: transparent !important;
 }
 
 /* Yellow Circular Info Button with Dark 'i' */
@@ -21509,6 +21515,25 @@ body, html, #root {
   padding: 20px 26px 14px 26px;
   overflow-y: auto;
   max-height: 360px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+
+.admin-bg-gallery-section::-webkit-scrollbar {
+  width: 5px;
+}
+
+.admin-bg-gallery-section::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-bg-gallery-section::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+}
+
+.admin-bg-gallery-section::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .admin-bg-section-label-row {
