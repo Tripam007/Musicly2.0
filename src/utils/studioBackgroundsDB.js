@@ -9,6 +9,7 @@ const DB_NAME = 'MusiclyStudioDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'studio_backgrounds';
 const KEY = 'current_gallery';
+const KEY_CUSTOM_POOL = 'user_custom_studio_wallpapers';
 
 export const DEFAULT_STUDIO_PHOTOS = [
   {
@@ -89,7 +90,41 @@ function openDB() {
 }
 
 /**
- * Load all backgrounds from IndexedDB, falling back to localStorage or defaults
+ * Retrieve user custom-uploaded background visuals from permanent IndexedDB pool
+ */
+export async function getCustomStudioPool() {
+  try {
+    const db = await openDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(KEY_CUSTOM_POOL);
+      req.onsuccess = () => {
+        resolve(Array.isArray(req.result) ? req.result : []);
+      };
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Permanently save user custom-uploaded background visuals into IndexedDB pool
+ */
+export async function saveCustomStudioPool(pool) {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.put(Array.isArray(pool) ? pool : [], KEY_CUSTOM_POOL);
+  } catch (err) {
+    console.warn('Error saving custom studio pool:', err);
+  }
+}
+
+/**
+ * Load all backgrounds from IndexedDB, ensuring all custom uploaded visuals are permanently preserved
  */
 export async function getStudioBackgrounds() {
   try {
@@ -109,32 +144,42 @@ export async function getStudioBackgrounds() {
     }
 
     const db = await openDB();
+    const customPool = await getCustomStudioPool();
+
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const req = store.get(KEY);
 
       req.onsuccess = () => {
+        let baseList = [];
         if (Array.isArray(req.result) && req.result.length > 0) {
-          resolve(req.result);
+          baseList = req.result;
         } else {
-          // Check localStorage fallback
           try {
             const local = localStorage.getItem('musicly_studio_bg_gallery');
             if (local) {
               const parsed = JSON.parse(local);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                resolve(parsed);
-                return;
+                baseList = parsed;
               }
             }
           } catch (e) {}
-          resolve(DEFAULT_STUDIO_PHOTOS);
+          if (baseList.length === 0) baseList = DEFAULT_STUDIO_PHOTOS;
         }
+
+        // Always guarantee that any custom uploaded visual is permanently preserved at the front
+        const customUrls = new Set(customPool.map(c => typeof c === 'string' ? c : (c?.url || c?.id)));
+        const nonCustom = baseList.filter(item => {
+          const u = typeof item === 'string' ? item : (item?.url || item?.id);
+          return !customUrls.has(u);
+        });
+        const combined = [...customPool, ...nonCustom];
+        resolve(combined);
       };
 
       req.onerror = () => {
-        resolve(DEFAULT_STUDIO_PHOTOS);
+        resolve(customPool.length > 0 ? [...customPool, ...DEFAULT_STUDIO_PHOTOS] : DEFAULT_STUDIO_PHOTOS);
       };
     });
   } catch (err) {
@@ -154,10 +199,29 @@ export async function getStudioBackgrounds() {
 
 /**
  * Save current list of backgrounds to IndexedDB and localStorage (for fast init),
- * and sync to Firestore cloud so all devices receive the updated gallery in real time.
+ * permanently isolating user custom uploads into KEY_CUSTOM_POOL so cloud snapshots
+ * can never overwrite or remove them.
  */
 export async function saveStudioBackgrounds(imagesList) {
   if (!Array.isArray(imagesList)) return;
+
+  // 1. Permanently isolate custom-uploaded visuals into KEY_CUSTOM_POOL
+  const defaultUrls = new Set(DEFAULT_STUDIO_PHOTOS.map(d => d.url));
+  const customItems = imagesList.filter(item => {
+    if (!item) return false;
+    const u = typeof item === 'string' ? item : (item?.url || '');
+    const id = typeof item === 'string' ? '' : (item?.id || '');
+    return (
+      item.isCustom === true ||
+      id.startsWith('bg-') ||
+      id.startsWith('custom-') ||
+      (typeof u === 'string' && (u.startsWith('data:') || u.startsWith('blob:'))) ||
+      !defaultUrls.has(u)
+    );
+  });
+  await saveCustomStudioPool(customItems);
+
+  // 2. Save full gallery list to IndexedDB
   try {
     const db = await openDB();
     await new Promise((resolve, reject) => {
@@ -172,7 +236,7 @@ export async function saveStudioBackgrounds(imagesList) {
     console.warn('Error saving to IndexedDB:', err);
   }
 
-  // Backup non-massive items to localStorage for instant synchronous boot
+  // 3. Backup non-massive items to localStorage for instant synchronous boot
   try {
     const safeForLocalStorage = imagesList.filter(item => {
       const u = typeof item === 'string' ? item : (item?.url || '');
@@ -181,28 +245,31 @@ export async function saveStudioBackgrounds(imagesList) {
     localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(safeForLocalStorage));
   } catch (e) {}
 
-  // Broadcast sync event so all open views update in real time
+  // 4. Broadcast sync event so all open views update in real time
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
       detail: { count: imagesList.length }
     }));
   }
 
-  // Broadcast via realtime relay (instant cross-device SSE & pub-sub)
+  // 5. Broadcast via realtime relay (instant cross-device SSE & pub-sub)
   broadcastStudioVisual(undefined, imagesList).catch(() => {});
 
-  // Persist to Firestore cloud for cross-device real-time sync
+  // 6. Persist to Firestore cloud safely (keeping payload well under the 1MB Firestore limit)
   if (firestore) {
     (async () => {
       try {
         const compressedList = [];
+        let totalPayloadBytes = 0;
         for (const item of imagesList) {
-          if (typeof item === 'string') {
-            const c = await compressImageIfNeeded(item);
-            compressedList.push(c);
-          } else if (item && item.url) {
-            const c = await compressImageIfNeeded(item.url);
-            compressedList.push({ ...item, url: c });
+          const u = typeof item === 'string' ? item : (item?.url || '');
+          if (u.startsWith('data:')) {
+            // Compress data URL for cloud sync if space allows (< 400KB total)
+            if (totalPayloadBytes < 400000) {
+              const c = await compressImageIfNeeded(u, 1280, 0.75);
+              totalPayloadBytes += c.length;
+              compressedList.push(typeof item === 'string' ? c : { ...item, url: c });
+            }
           } else {
             compressedList.push(item);
           }
@@ -248,6 +315,7 @@ export function setActiveStudioBackgroundIndex(idx) {
 
 /**
  * Subscribe to real-time studio background updates (gallery + active visual) from Firestore.
+ * Always merges cloud updates with local custom uploaded visuals so user uploads are NEVER deleted!
  */
 export function subscribeStudioBackgrounds(callback) {
   if (!firestore) return () => {};
@@ -256,21 +324,36 @@ export function subscribeStudioBackgrounds(callback) {
 
   try {
     const galleryDocRef = doc(firestore, 'public_settings', 'studio_gallery');
-    unsubGallery = onSnapshot(galleryDocRef, (docSnap) => {
+    unsubGallery = onSnapshot(galleryDocRef, async (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (Array.isArray(data?.gallery) && data.gallery.length > 0) {
+          // CRITICAL: Load local custom uploaded visuals and merge them in front
+          const localCustoms = await getCustomStudioPool();
+          const customUrls = new Set(localCustoms.map(c => typeof c === 'string' ? c : (c?.url || c?.id)));
+          const nonCustomFromCloud = data.gallery.filter(cg => {
+            const u = typeof cg === 'string' ? cg : (cg?.url || cg?.id);
+            return !customUrls.has(u);
+          });
+          const mergedGallery = [...localCustoms, ...nonCustomFromCloud];
+
           openDB().then((db) => {
             if (db) {
               const tx = db.transaction(STORE_NAME, 'readwrite');
-              tx.objectStore(STORE_NAME).put(data.gallery, KEY);
+              tx.objectStore(STORE_NAME).put(mergedGallery, KEY);
             }
           }).catch(() => {});
+
           try {
-            localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(data.gallery));
+            const safeForLocalStorage = mergedGallery.filter(item => {
+              const u = typeof item === 'string' ? item : (item?.url || '');
+              return !u.startsWith('data:') || u.length < 500000;
+            });
+            localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(safeForLocalStorage));
           } catch {}
+
           if (typeof callback === 'function') {
-            callback({ backgrounds: data.gallery });
+            callback({ backgrounds: mergedGallery });
           }
         }
       }
@@ -334,13 +417,25 @@ export async function addStudioBackground(newBg) {
 }
 
 /**
- * Remove a background visual by index
+ * Remove a background visual by index (removing from both current gallery and custom pool)
  */
 export async function removeStudioBackground(indexToRemove) {
   try {
     const current = await getStudioBackgrounds();
     if (current.length <= 1) return current;
+    const itemToRemove = current[indexToRemove];
+    const removeUrl = typeof itemToRemove === 'string' ? itemToRemove : (itemToRemove?.url || itemToRemove?.id);
+
     const next = current.filter((_, idx) => idx !== indexToRemove);
+
+    // Also remove from custom pool if it was a custom visual
+    const customPool = await getCustomStudioPool();
+    const updatedCustom = customPool.filter(c => {
+      const u = typeof c === 'string' ? c : (c?.url || c?.id);
+      return u !== removeUrl;
+    });
+    await saveCustomStudioPool(updatedCustom);
+
     await saveStudioBackgrounds(next);
     const activeIdx = getActiveStudioBackgroundIndex();
     if (activeIdx >= indexToRemove && activeIdx > 0) {
@@ -356,30 +451,36 @@ export async function removeStudioBackground(indexToRemove) {
 }
 
 /**
- * Hard reset studio background gallery to pristine official default visuals
+ * Hard reset studio background gallery to pristine official default visuals (preserving custom uploads)
  */
 export async function resetStudioBackgroundsToDefaults() {
   try {
     localStorage.removeItem('musicly_studio_bg_gallery');
     localStorage.setItem('musicly_studio_bg_index', '0');
+
+    // Preserve custom uploads while restoring clean official default presets
+    const customPool = await getCustomStudioPool();
+    const merged = [...customPool, ...DEFAULT_STUDIO_PHOTOS];
+
     const db = await openDB();
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.put(DEFAULT_STUDIO_PHOTOS, KEY);
+      const req = store.put(merged, KEY);
       tx.oncomplete = () => resolve(true);
       tx.onerror = (e) => reject(e);
       req.onerror = (e) => reject(e);
     });
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
-        detail: { count: DEFAULT_STUDIO_PHOTOS.length, activeIndex: 0 }
+        detail: { count: merged.length, activeIndex: 0 }
       }));
     }
+    return merged;
   } catch (e) {
     console.warn('Error resetting studio backgrounds:', e);
+    return DEFAULT_STUDIO_PHOTOS;
   }
-  return DEFAULT_STUDIO_PHOTOS;
 }
 
 /**
