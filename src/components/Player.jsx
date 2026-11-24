@@ -248,7 +248,7 @@ export default function Player({
           <div className="track-meta">
             <div className="now-playing-label">
               <span>NOW PLAYING</span>
-              {activePlayingPlaylist && (
+              {activePlayingPlaylist ? (
                 <span 
                   className="now-playing-playlist-badge" 
                   onClick={(e) => {
@@ -262,16 +262,17 @@ export default function Player({
                   <ListMusic size={10} className="playlist-badge-icon" />
                   <span className="playlist-badge-name">{activePlayingPlaylist.title || activePlayingPlaylist.name}</span>
                 </span>
+              ) : (
+                (() => {
+                  let g = currentTrack?.genre;
+                  if (Array.isArray(currentTrack?.genres) && currentTrack.genres.length > 0) {
+                    const clean = currentTrack.genres.filter(x => x && x.toLowerCase() !== 'custom');
+                    if (clean.length > 0) g = clean.join(', ');
+                  }
+                  if (g && g.toLowerCase() === 'custom') g = 'Lo-Fi';
+                  return g ? <span className="track-genre-tag" title={g}>{formatGenrePill(g)}</span> : null;
+                })()
               )}
-              {(() => {
-                let g = currentTrack?.genre;
-                if (Array.isArray(currentTrack?.genres) && currentTrack.genres.length > 0) {
-                  const clean = currentTrack.genres.filter(x => x && x.toLowerCase() !== 'custom');
-                  if (clean.length > 0) g = clean.join(', ');
-                }
-                if (g && g.toLowerCase() === 'custom') g = 'Lo-Fi';
-                return g ? <span className="track-genre-tag" title={g}>{formatGenrePill(g)}</span> : null;
-              })()}
             </div>
             <h3 className="track-title" title={currentTrack?.title}>
               {currentTrack?.title || 'No Track Selected'}
