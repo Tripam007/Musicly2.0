@@ -46,6 +46,14 @@ export default function AdminBackgroundGalleryModal({
     return Math.max(0, Math.min(activeBackgroundIndex || 0, displayBackgrounds.length - 1));
   }, [activeBackgroundIndex, displayBackgrounds]);
 
+  const activeBgUrl = useMemo(() => {
+    try {
+      return localStorage.getItem('musicly_active_studio_bg_url') || '';
+    } catch {
+      return '';
+    }
+  }, [isOpen, safeActiveIndex]);
+
   if (!isOpen) return null;
 
   // Handle local file upload
@@ -180,13 +188,14 @@ export default function AdminBackgroundGalleryModal({
 
           <div className="admin-bg-grid">
             {displayBackgrounds.map((bg, idx) => {
-              const isActive = idx === safeActiveIndex;
+              const bgUrl = typeof bg === 'string' ? bg : (bg?.url || '');
+              const isActive = (activeBgUrl && bgUrl === activeBgUrl) || (!activeBgUrl && idx === safeActiveIndex);
               return (
                 <div 
                   key={`bg-card-${bg.id || 'visual'}-${idx}`}
                   className={`admin-bg-thumb-card ${isActive ? 'is-active' : ''}`}
                   onClick={() => {
-                    onSelectBackground(idx);
+                    onSelectBackground(idx, bg);
                     showToast?.(`Activated: ${bg.title || `Visual ${idx + 1}`}`);
                   }}
                   title={`Click to set as Studio Background (${bg.title || `Visual ${idx + 1}`})`}

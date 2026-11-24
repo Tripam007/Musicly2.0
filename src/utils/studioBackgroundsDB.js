@@ -332,12 +332,17 @@ export async function saveStudioBackgrounds(imagesList) {
 /**
  * Set active studio background index and broadcast update event locally and to Firestore
  */
-export function setActiveStudioBackgroundIndex(idx) {
+export function setActiveStudioBackgroundIndex(idx, activeUrl = '') {
+  const now = Date.now();
   try {
     localStorage.setItem('musicly_studio_bg_index', String(idx));
+    if (activeUrl) {
+      localStorage.setItem('musicly_active_studio_bg_url', activeUrl);
+    }
+    localStorage.setItem('musicly_studio_bg_updated_at', String(now));
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
-        detail: { activeIndex: idx }
+        detail: { activeIndex: idx, activeUrl, updatedAt: now }
       }));
     }
   } catch (e) {}
@@ -350,7 +355,8 @@ export function setActiveStudioBackgroundIndex(idx) {
       const docRef = doc(firestore, 'public_settings', 'studio_active_visual');
       setDoc(docRef, {
         activeIndex: idx,
-        updatedAt: Date.now()
+        activeUrl: activeUrl || '',
+        updatedAt: now
       }, { merge: true }).catch(() => {});
     } catch {}
   }
@@ -407,11 +413,24 @@ export function subscribeStudioBackgrounds(callback) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (typeof data?.activeIndex === 'number') {
+          const remoteTime = typeof data?.updatedAt === 'number' ? data.updatedAt : 0;
+          let localTime = 0;
           try {
-            localStorage.setItem('musicly_studio_bg_index', String(data.activeIndex));
+            localTime = parseInt(localStorage.getItem('musicly_studio_bg_updated_at') || '0', 10);
           } catch {}
-          if (typeof callback === 'function') {
-            callback({ activeIndex: data.activeIndex });
+
+          // Only accept remote active visual if it is strictly newer than the local user selection
+          if (remoteTime > localTime) {
+            try {
+              localStorage.setItem('musicly_studio_bg_index', String(data.activeIndex));
+              if (data?.activeUrl) {
+                localStorage.setItem('musicly_active_studio_bg_url', data.activeUrl);
+              }
+              localStorage.setItem('musicly_studio_bg_updated_at', String(remoteTime));
+            } catch {}
+            if (typeof callback === 'function') {
+              callback({ activeIndex: data.activeIndex, activeUrl: data.activeUrl });
+            }
           }
         }
       }
@@ -440,18 +459,29 @@ export function getActiveStudioBackgroundIndex() {
 }
 
 /**
+ * Get active studio background URL
+ */
+export function getActiveStudioBackgroundUrl() {
+  try {
+    return localStorage.getItem('musicly_active_studio_bg_url') || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * Add a new background visual to the front of the list, save, and activate it
  */
 export async function addStudioBackground(newBg) {
   try {
+    const newU = typeof newBg === 'string' ? newBg : (newBg?.url || '');
     const current = await getStudioBackgrounds();
     const next = [newBg, ...current.filter(item => {
       const u = typeof item === 'string' ? item : (item?.url || '');
-      const newU = typeof newBg === 'string' ? newBg : (newBg?.url || '');
       return u !== newU;
     })];
     await saveStudioBackgrounds(next);
-    setActiveStudioBackgroundIndex(0);
+    setActiveStudioBackgroundIndex(0, newU);
     return next;
   } catch (err) {
     console.error('Failed to add studio background:', err);
@@ -481,10 +511,29 @@ export async function removeStudioBackground(indexToRemove) {
 
     await saveStudioBackgrounds(next);
     const activeIdx = getActiveStudioBackgroundIndex();
-    if (activeIdx >= indexToRemove && activeIdx > 0) {
-      setActiveStudioBackgroundIndex(activeIdx - 1);
+    const activeUrl = getActiveStudioBackgroundUrl();
+    if (activeUrl === removeUrl) {
+      const fallbackItem = next[0];
+      const fallbackUrl = typeof fallbackItem === 'string' ? fallbackItem : (fallbackItem?.url || '');
+      setActiveStudioBackgroundIndex(0, fallbackUrl);
+    } else if (activeUrl) {
+      const newActiveIdx = next.findIndex(item => {
+        const u = typeof item === 'string' ? item : (item?.url || '');
+        return u === activeUrl;
+      });
+      if (newActiveIdx >= 0) {
+        setActiveStudioBackgroundIndex(newActiveIdx, activeUrl);
+      } else if (activeIdx >= indexToRemove && activeIdx > 0) {
+        setActiveStudioBackgroundIndex(activeIdx - 1);
+      } else {
+        setActiveStudioBackgroundIndex(0);
+      }
     } else {
-      setActiveStudioBackgroundIndex(0);
+      if (activeIdx >= indexToRemove && activeIdx > 0) {
+        setActiveStudioBackgroundIndex(activeIdx - 1);
+      } else {
+        setActiveStudioBackgroundIndex(0);
+      }
     }
     return next;
   } catch (err) {
@@ -499,6 +548,7 @@ export async function removeStudioBackground(indexToRemove) {
 export async function resetStudioBackgroundsToDefaults() {
   try {
     localStorage.removeItem('musicly_studio_bg_gallery');
+    localStorage.removeItem('musicly_active_studio_bg_url');
     localStorage.setItem('musicly_studio_bg_index', '0');
 
     // Preserve custom uploads while restoring clean official default presets

@@ -317,31 +317,39 @@ export default function MinimalStudioScene({
 
   const [mediaPhotoIndex, setMediaPhotoIndex] = useState(() => {
     try {
+      const activeUrl = localStorage.getItem('musicly_active_studio_bg_url');
       const saved = localStorage.getItem('musicly_studio_bg_index');
       if (saved !== null) return parseInt(saved, 10) || 0;
     } catch (e) {}
     return 0;
   });
 
-  const updateMediaPhotoIndex = useCallback((updater) => {
+  const updateMediaPhotoIndex = useCallback((updater, activeUrlOverride = null) => {
     setMediaPhotoIndex((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
+      let urlToSave = activeUrlOverride;
+      if (!urlToSave && Array.isArray(studioBackgrounds) && studioBackgrounds[next]) {
+        const item = studioBackgrounds[next];
+        urlToSave = typeof item === 'string' ? item : (item?.url || '');
+      }
       try {
         localStorage.setItem('musicly_studio_bg_index', String(next));
+        if (urlToSave) {
+          localStorage.setItem('musicly_active_studio_bg_url', urlToSave);
+        }
+        localStorage.setItem('musicly_studio_bg_updated_at', String(Date.now()));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
-            detail: { activeIndex: next }
+            detail: { activeIndex: next, activeUrl: urlToSave }
           }));
         }
       } catch (e) {}
-      if (isUserAdmin) {
-        try {
-          setActiveStudioBackgroundIndex(next);
-        } catch {}
-      }
+      try {
+        setActiveStudioBackgroundIndex(next, urlToSave);
+      } catch {}
       return next;
     });
-  }, [isUserAdmin]);
+  }, [studioBackgrounds]);
 
   // Background gallery state initialized from localStorage/defaults
   const [studioBackgrounds, setStudioBackgrounds] = useState(() => {
@@ -363,25 +371,48 @@ export default function MinimalStudioScene({
     const reload = () => {
       getStudioBackgrounds().then((bgs) => {
         if (isMounted && Array.isArray(bgs) && bgs.length > 0) {
-          setStudioBackgrounds(deduplicateBackgrounds(bgs));
+          const deduped = deduplicateBackgrounds(bgs);
+          setStudioBackgrounds(deduped);
+          try {
+            const activeUrl = localStorage.getItem('musicly_active_studio_bg_url');
+            if (activeUrl) {
+              const foundIdx = deduped.findIndex(item => {
+                const u = typeof item === 'string' ? item : (item?.url || '');
+                return u === activeUrl;
+              });
+              if (foundIdx >= 0) {
+                setMediaPhotoIndex(foundIdx);
+                return;
+              }
+            }
+            const savedIdx = localStorage.getItem('musicly_studio_bg_index');
+            if (savedIdx !== null && isMounted) {
+              setMediaPhotoIndex(parseInt(savedIdx, 10) || 0);
+            }
+          } catch (e) {}
         }
       }).catch(() => {});
-      try {
-        const savedIdx = localStorage.getItem('musicly_studio_bg_index');
-        if (savedIdx !== null && isMounted) {
-          setMediaPhotoIndex(parseInt(savedIdx, 10) || 0);
-        }
-      } catch (e) {}
     };
 
     reload();
     window.addEventListener('musicly_studio_bg_updated', reload);
 
     // Cross-device cloud sync: listen in real time for any background or active visual changes
-    const unsubCloud = subscribeStudioBackgrounds(({ backgrounds, activeIndex }) => {
+    const unsubCloud = subscribeStudioBackgrounds(({ backgrounds, activeIndex, activeUrl }) => {
       if (!isMounted) return;
       if (Array.isArray(backgrounds) && backgrounds.length > 0) {
-        setStudioBackgrounds(deduplicateBackgrounds(backgrounds));
+        const deduped = deduplicateBackgrounds(backgrounds);
+        setStudioBackgrounds(deduped);
+        if (activeUrl) {
+          const foundIdx = deduped.findIndex(b => {
+            const u = typeof b === 'string' ? b : (b?.url || '');
+            return u === activeUrl;
+          });
+          if (foundIdx >= 0) {
+            setMediaPhotoIndex(foundIdx);
+            return;
+          }
+        }
       }
       if (typeof activeIndex === 'number') {
         setMediaPhotoIndex(activeIndex);
@@ -396,46 +427,31 @@ export default function MinimalStudioScene({
   }, []);
 
   const currentStudioBgUrl = useMemo(() => {
-    // 1. Verify whether the currently playing song actually belongs to Country Roads & Roots
-    const isCurrentTrackCountry = Boolean(
-      currentTrack && (
-        (typeof currentTrack.genre === 'string' && currentTrack.genre.toLowerCase().includes('country')) ||
-        (Array.isArray(currentTrack.genres) && currentTrack.genres.some(g => (g || '').toLowerCase().includes('country'))) ||
-        (Array.isArray(currentTrack.sections) && currentTrack.sections.some(s => (s || '').toLowerCase().includes('country')))
-      )
-    );
+    // 1. If an active studio visual URL is stored and found in the gallery, keep it permanently locked!
+    let activeSavedUrl = null;
+    try {
+      activeSavedUrl = localStorage.getItem('musicly_active_studio_bg_url');
+    } catch {}
 
-    // 2. The Country Roads backdrop is strictly active ONLY while the Country playlist is active AND a Country track is playing
-    const isCountryPlaylistPlaying = Boolean(
-      activePlayingPlaylistId && (
-        activePlayingPlaylistId === 'country_roots' ||
-        String(activePlayingPlaylistId).toLowerCase().includes('country')
-      ) && isCurrentTrackCountry
-    );
-
-    if (isCountryPlaylistPlaying) {
-      return '/assets/images/country_scene.jpg';
+    if (activeSavedUrl && Array.isArray(studioBackgrounds)) {
+      const match = studioBackgrounds.find(b => {
+        const u = typeof b === 'string' ? b : (b?.url || '');
+        return u === activeSavedUrl;
+      });
+      if (match) {
+        return typeof match === 'string' ? match : (match.url || activeSavedUrl);
+      }
     }
 
-    // If a playlist with a dedicated theme backdrop is actively playing (e.g. Ghazals, Retro, Lo-Fi, etc.),
-    // display that backdrop in the studio's main visual!
-    if (activePlayingPlaylistId && backdropImage && (
-      backdropImage.includes('ghazals_bg') ||
-      backdropImage.includes('peace_scene') ||
-      backdropImage.includes('retro_scene') ||
-      backdropImage.includes('lofi_scene') ||
-      backdropImage.includes('chill_sleep_scene')
-    )) {
-      return backdropImage;
+    // 2. Otherwise use the safe index in studioBackgrounds
+    if (Array.isArray(studioBackgrounds) && studioBackgrounds.length > 0) {
+      const safeIdx = mediaPhotoIndex % studioBackgrounds.length;
+      const item = studioBackgrounds[safeIdx];
+      return typeof item === 'string' ? item : (item?.url || '/assets/images/zenitsu_clean_wallpaper.jpg');
     }
 
-    if (!studioBackgrounds || studioBackgrounds.length === 0) {
-      return '/assets/images/zenitsu_clean_wallpaper.jpg';
-    }
-    const safeIdx = mediaPhotoIndex % studioBackgrounds.length;
-    const item = studioBackgrounds[safeIdx];
-    return typeof item === 'string' ? item : (item?.url || '/assets/images/zenitsu_clean_wallpaper.jpg');
-  }, [studioBackgrounds, mediaPhotoIndex, activePlayingPlaylistId, backdropImage, currentTrack]);
+    return '/assets/images/zenitsu_clean_wallpaper.jpg';
+  }, [studioBackgrounds, mediaPhotoIndex]);
 
   // When the user plays something else (outside the country playlist), automatically clear country playlist state
   useEffect(() => {
@@ -625,12 +641,13 @@ export default function MinimalStudioScene({
   }, [currentStudioBgUrl]);
 
   const handleAddStudioBg = useCallback((newBg) => {
+    const bgUrl = typeof newBg === 'string' ? newBg : (newBg?.url || '');
     setStudioBackgrounds((prev) => {
       const next = deduplicateBackgrounds([newBg, ...prev]);
       saveStudioBackgrounds(next);
       return next;
     });
-    updateMediaPhotoIndex(0);
+    updateMediaPhotoIndex(0, bgUrl);
     try {
       const bgTitle = typeof newBg === 'string' ? 'Custom Studio Visual' : (newBg.title || 'Studio Background Visual');
       addStudioNotification({
@@ -655,14 +672,21 @@ export default function MinimalStudioScene({
     });
   }, [updateMediaPhotoIndex]);
 
-  const handleSelectStudioBg = useCallback((index) => {
-    updateMediaPhotoIndex(index);
-  }, [updateMediaPhotoIndex]);
+  const handleSelectStudioBg = useCallback((index, bg) => {
+    let bgUrl = typeof bg === 'string' ? bg : (bg?.url || '');
+    if (!bgUrl && Array.isArray(studioBackgrounds) && studioBackgrounds[index]) {
+      const item = studioBackgrounds[index];
+      bgUrl = typeof item === 'string' ? item : (item?.url || '');
+    }
+    updateMediaPhotoIndex(index, bgUrl);
+  }, [studioBackgrounds, updateMediaPhotoIndex]);
 
   const handleResetStudioBgDefaults = useCallback(() => {
     resetStudioBackgroundsToDefaults().then((defaults) => {
       setStudioBackgrounds(defaults);
-      updateMediaPhotoIndex(0);
+      const firstBg = defaults[0];
+      const firstUrl = typeof firstBg === 'string' ? firstBg : (firstBg?.url || '');
+      updateMediaPhotoIndex(0, firstUrl);
       showToast("Restored clean studio visuals (cleared duplicate overlays)");
     });
   }, [updateMediaPhotoIndex, showToast]);
@@ -691,8 +715,9 @@ export default function MinimalStudioScene({
     if (nextIdx === currentIdx) {
       nextIdx = (nextIdx + 1) % studioBackgrounds.length;
     }
-    updateMediaPhotoIndex(nextIdx);
     const item = studioBackgrounds[nextIdx];
+    const itemUrl = typeof item === 'string' ? item : (item?.url || '');
+    updateMediaPhotoIndex(nextIdx, itemUrl);
     const title = typeof item === 'string' ? `Visual ${nextIdx + 1}` : (item?.title || `Visual ${nextIdx + 1}`);
     showToast(`Shuffled to: ${title}`);
   }, [studioBackgrounds, mediaPhotoIndex, updateMediaPhotoIndex, showToast]);
@@ -1439,7 +1464,7 @@ export default function MinimalStudioScene({
                           className={`ref-glass-bg-thumb-btn ${isSelected ? 'selected' : ''}`}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleSelectStudioBg(idx);
+                            handleSelectStudioBg(idx, bg);
                             showToast("Studio visual updated");
                           }}
                           title={`Select visual ${idx + 1}`}
