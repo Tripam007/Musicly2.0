@@ -28,14 +28,49 @@ function resolveEncoding(mimeType = '') {
     }
     return speech_1.protos.google.cloud.speech.v1.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED;
 }
-async function handleTranscribeCommand(request) {
+/**
+ * Transcribe using ElevenLabs Scribe Speech-to-Text API
+ */
+async function transcribeWithElevenLabsScribe(audioBytes, mimeType, apiKey, languageCode) {
+    if (!apiKey) {
+        throw new Error('ElevenLabs API key is not configured for Scribe STT.');
+    }
+    const ext = mimeType.includes('wav') ? 'wav' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+    const blob = new Blob([new Uint8Array(audioBytes)], { type: mimeType });
+    const formData = new FormData();
+    formData.append('file', blob, `command.${ext}`);
+    formData.append('model_id', 'scribe_v1');
+    if (languageCode) {
+        formData.append('language_code', languageCode.slice(0, 2));
+    }
+    const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+        method: 'POST',
+        headers: {
+            'xi-api-key': apiKey,
+        },
+        body: formData,
+    });
+    if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        throw new Error(`ElevenLabs Scribe STT error ${response.status}: ${errText}`);
+    }
+    const data = await response.json();
+    return {
+        transcript: data.text ? data.text.trim() : '',
+        confidence: 0.95,
+        detectedLanguage: data.language_code || languageCode || 'en',
+        alternatives: [],
+        providerUsed: 'elevenlabs_scribe'
+    };
+}
+async function handleTranscribeCommand(request, elevenLabsApiKey) {
     const uid = request.auth?.uid || request.rawRequest.ip || 'anonymous';
     // 1. Rate limiting: 40 requests per minute max
     const rateLimit = (0, rateLimit_1.checkRateLimit)(`stt_${uid}`, 40);
     if (!rateLimit.allowed) {
         throw new https_1.HttpsError('resource-exhausted', `Voice rate limit exceeded. Please wait ${Math.ceil(rateLimit.resetMs / 1000)} seconds.`);
     }
-    const { audioBase64, mimeType = 'audio/webm;codecs=opus', languagePreference = 'en-IN' } = request.data || {};
+    const { audioBase64, mimeType = 'audio/webm;codecs=opus', languagePreference = 'en-IN', provider = 'google' } = request.data || {};
     if (!audioBase64 || typeof audioBase64 !== 'string') {
         throw new https_1.HttpsError('invalid-argument', 'Missing or invalid audioBase64 payload.');
     }
@@ -51,12 +86,26 @@ async function handleTranscribeCommand(request) {
             confidence: 0,
             detectedLanguage: languagePreference,
             alternatives: [],
+            providerUsed: provider
         };
     }
-    const encoding = resolveEncoding(mimeType);
-    // 3. Configure Google Cloud Speech-to-Text for short voice commands
-    // Multi-lingual & Hinglish support: Primary code + alternative language codes
+    const apiKey = elevenLabsApiKey || process.env.ELEVENLABS_API_KEY;
+    // 3. Provider Choice: ElevenLabs Scribe
+    if (provider === 'elevenlabs_scribe') {
+        try {
+            const scribeRes = await transcribeWithElevenLabsScribe(audioBytes, mimeType, apiKey, languagePreference);
+            if (scribeRes.transcript) {
+                return scribeRes;
+            }
+        }
+        catch (scribeErr) {
+            console.warn('[handleTranscribeCommand] ElevenLabs Scribe note, falling back to Google STT:', scribeErr);
+        }
+    }
+    // 4. Google Cloud Speech-to-Text (default & reliable fallback)
     let primaryLang = 'en-IN';
+    let config = null;
+    const encoding = resolveEncoding(mimeType);
     let altLangs = ['en-US', 'hi-IN', 'bn-IN'];
     if (languagePreference.startsWith('hi')) {
         primaryLang = 'hi-IN';
@@ -70,7 +119,7 @@ async function handleTranscribeCommand(request) {
         primaryLang = 'en-US';
         altLangs = ['en-IN', 'hi-IN', 'bn-IN'];
     }
-    const config = {
+    config = {
         encoding,
         languageCode: primaryLang,
         alternativeLanguageCodes: altLangs,
@@ -168,7 +217,7 @@ async function handleTranscribeCommand(request) {
     catch (err) {
         console.error('[transcribeMusiclyCommand] Speech-to-Text error:', err);
         // If 'command_and_search' model is unsupported for certain language combinations, retry with 'default'
-        if (err.message && err.message.includes('model') && config.model === 'command_and_search') {
+        if (err.message && err.message.includes('model') && config && config.model === 'command_and_search') {
             try {
                 const client = getSpeechClient();
                 config.model = 'default';

@@ -44,6 +44,7 @@ export default function Player({
   onDownloadTrack,
   user,
   onOpenAuthModal,
+  activePlayingPlaylist = null,
   children
 }) {
   const [isMuted, setIsMuted] = useState(false);
@@ -247,6 +248,21 @@ export default function Player({
           <div className="track-meta">
             <div className="now-playing-label">
               <span>NOW PLAYING</span>
+              {activePlayingPlaylist && (
+                <span 
+                  className="now-playing-playlist-badge" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (typeof onTogglePlaylistDrawer === 'function') {
+                      onTogglePlaylistDrawer();
+                    }
+                  }}
+                  title={`Playing from playlist: ${activePlayingPlaylist.title || activePlayingPlaylist.name} (Click to open)`}
+                >
+                  <ListMusic size={10} className="playlist-badge-icon" />
+                  <span className="playlist-badge-name">{activePlayingPlaylist.title || activePlayingPlaylist.name}</span>
+                </span>
+              )}
               {(() => {
                 let g = currentTrack?.genre;
                 if (Array.isArray(currentTrack?.genres) && currentTrack.genres.length > 0) {

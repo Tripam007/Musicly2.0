@@ -1,14 +1,16 @@
 /**
  * VoiceResponseManager.js
  * 
- * Handles ElevenLabs voice responses and smooth music audio ducking.
+ * Handles hybrid spoken responses (Google Cloud TTS, ElevenLabs TTS, or local fallback)
+ * and smooth music audio ducking.
+ * 
  * Strict audio safety rules:
  * 1. Voice response audio plays through a dedicated, isolated HTML5 Audio element.
  * 2. NEVER routes voice audio through the main music player.
- * 3. NEVER modifies main player's currentTime or destroy its AudioContext.
+ * 3. NEVER modifies main player's currentTime or destroys its AudioContext.
  * 4. Temporarily ducks music volume smoothly during speech, then restores it.
- * 5. If ElevenLabs is unavailable, gracefully falls back to browser SpeechSynthesis.
- * 6. Player actions ALWAYS succeed even if voice feedback fails.
+ * 5. Supports both Google Cloud TTS & ElevenLabs TTS with zero-interruption fallback.
+ * 6. Never plays two voice streams simultaneously.
  */
 
 import { getSelectedVoiceId, getVoiceById } from '../utils/voiceRegistryDB.js';
@@ -21,18 +23,22 @@ export class VoiceResponseManager {
    * @param {Function} [options.setTemporaryVolume]
    * @param {object} [options.commandClient]
    * @param {string} [options.voiceId]
+   * @param {string} [options.responseProvider='elevenlabs']
    * @param {number} [options.duckFactor=0.28]
    * @param {boolean} [options.enabled=true]
    * @param {boolean} [options.duckingEnabled=true]
+   * @param {Function} [options.onSpeakingChange]
    */
   constructor(options = {}) {
     this.getCurrentVolume = options.getCurrentVolume || (() => 0.7);
     this.setTemporaryVolume = options.setTemporaryVolume || null;
     this.commandClient = options.commandClient || null;
     this.voiceId = options.voiceId || getSelectedVoiceId();
+    this.responseProvider = options.responseProvider || 'elevenlabs';
     this.duckFactor = options.duckFactor !== undefined ? options.duckFactor : 0.28;
     this.enabled = options.enabled !== undefined ? options.enabled : true;
     this.duckingEnabled = options.duckingEnabled !== undefined ? options.duckingEnabled : true;
+    this.onSpeakingChange = options.onSpeakingChange || null;
 
     // Dedicated, isolated Audio element for voice responses
     this.voiceAudio = typeof window !== 'undefined' ? new Audio() : null;
@@ -80,8 +86,23 @@ export class VoiceResponseManager {
     }
   }
 
+  setResponseProvider(provider) {
+    if (provider) {
+      this.responseProvider = provider;
+    }
+  }
+
   setDucking(val) {
     this.duckingEnabled = !!val;
+  }
+
+  _setSpeakingState(isSpeaking) {
+    this.isSpeaking = isSpeaking;
+    if (typeof this.onSpeakingChange === 'function') {
+      try {
+        this.onSpeakingChange(isSpeaking);
+      } catch {}
+    }
   }
 
   /**
@@ -110,45 +131,70 @@ export class VoiceResponseManager {
   }
 
   /**
-   * Speak a short system response using ElevenLabs, with fallback to browser SpeechSynthesis
-   * @param {string} text - Short response text (e.g. "Playing Kaavish.")
-   * @param {string} [customVoiceId] - Optional voice ID override
+   * Speak a system response via the selected provider (Google TTS or ElevenLabs TTS)
+   * 
+   * @param {string} text - Response text to speak
+   * @param {object|string} [options] - Options object or voiceId string
    * @returns {Promise<void>}
    */
-  async speak(text, customVoiceId = null) {
+  async speak(text, options = null) {
     if (!this.enabled || !text) return;
 
+    // Safety: Cancel any currently running voice to avoid overlapping dual streams
     this.cancel();
-    this.isSpeaking = true;
+    this._setSpeakingState(true);
     const originalVol = this._duckAudio();
-    const targetVoiceId = customVoiceId || this.voiceId || getSelectedVoiceId();
+
+    const opts = typeof options === 'string' ? { voiceId: options } : (options || {});
+    const targetVoiceId = opts.voiceId || this.voiceId || getSelectedVoiceId();
+    const provider = opts.provider || this.responseProvider || 'elevenlabs';
+    const language = opts.language || 'en-US';
+    const gender = opts.gender || 'FEMALE';
     const voiceDef = getVoiceById(targetVoiceId);
 
     try {
-      // 1. If system native is selected, skip ElevenLabs
-      if (targetVoiceId === 'system_native') {
+      // 1. If explicit browser speech requested, use SpeechSynthesis
+      if (provider === 'system_native' || targetVoiceId === 'system_native') {
         await this._speakFallback(text, voiceDef);
         return;
       }
 
-      // 2. Attempt ElevenLabs via Cloud Functions or Direct API if client is available
+      // 2. Primary TTS via VoiceCommandClient (Google TTS or ElevenLabs TTS)
       if (this.commandClient) {
-        const elevenLabsResult = await this.commandClient.generateVoiceResponse(text, 'cinematic', targetVoiceId);
-        if (elevenLabsResult.success && elevenLabsResult.audioBase64 && this.voiceAudio) {
-          await this._playAudioBase64(elevenLabsResult.audioBase64, elevenLabsResult.mimeType);
-          this._restoreAudio(originalVol);
-          this.isSpeaking = false;
+        const ttsResult = await this.commandClient.generateVoiceResponse(text, {
+          provider,
+          voiceId: targetVoiceId,
+          language,
+          gender
+        });
+
+        if (ttsResult && ttsResult.success && ttsResult.audioBase64 && this.voiceAudio) {
+          await this._playAudioBase64(ttsResult.audioBase64, ttsResult.mimeType || 'audio/mpeg');
+          return;
+        }
+
+        // Automatic Provider Cross-Fallback: If primary provider failed, try alternate provider
+        const alternateProvider = provider === 'google' ? 'elevenlabs' : 'google';
+        const fallbackResult = await this.commandClient.generateVoiceResponse(text, {
+          provider: alternateProvider,
+          voiceId: targetVoiceId,
+          language,
+          gender
+        });
+
+        if (fallbackResult && fallbackResult.success && fallbackResult.audioBase64 && this.voiceAudio) {
+          await this._playAudioBase64(fallbackResult.audioBase64, fallbackResult.mimeType || 'audio/mpeg');
           return;
         }
       }
 
-      // 3. Fallback to distinct acoustic Speech Synthesis matching the persona
+      // 3. Fallback: Browser Web Speech Synthesis matching persona pitch/rate
       await this._speakFallback(text, voiceDef);
     } catch (err) {
       console.warn('[VoiceResponseManager] speak failed gracefully:', err);
     } finally {
       this._restoreAudio(originalVol);
-      this.isSpeaking = false;
+      this._setSpeakingState(false);
     }
   }
 
@@ -165,9 +211,14 @@ export class VoiceResponseManager {
       const audioSrc = `data:${mimeType};base64,${base64Data}`;
       this.voiceAudio.src = audioSrc;
 
+      let resolved = false;
       const cleanup = () => {
-        this.voiceAudio.onended = null;
-        this.voiceAudio.onerror = null;
+        if (resolved) return;
+        resolved = true;
+        if (this.voiceAudio) {
+          this.voiceAudio.onended = null;
+          this.voiceAudio.onerror = null;
+        }
         resolve();
       };
 
@@ -182,8 +233,8 @@ export class VoiceResponseManager {
         cleanup();
       });
 
-      // Safety timeout (max 6 seconds)
-      setTimeout(cleanup, 6000);
+      // Safety timeout (max 7 seconds)
+      setTimeout(cleanup, 7000);
     });
   }
 
@@ -206,14 +257,17 @@ export class VoiceResponseManager {
           utterance.voice = this.fallbackVoice;
         }
 
-        const isFemale = (voiceDef?.gender || '').toLowerCase().includes('female') && voiceDef?.id !== 'AeRdCCKzvd23BpJoofzx';
-        const isBritish = (voiceDef?.accent || voiceDef?.style || '').toLowerCase().includes('british') || voiceDef?.id === 'AeRdCCKzvd23BpJoofzx' || voiceDef?.id === 'Xb7hH8MSUJpSbSDYk0k2';
+        const isFemale = (voiceDef?.gender || '').toLowerCase().includes('female');
+        const isBritish = (voiceDef?.accent || voiceDef?.style || '').toLowerCase().includes('british') || voiceDef?.id === 'AeRdCCKzvd23BpJoofzx';
 
         utterance.pitch = voiceDef?.pitch !== undefined ? voiceDef.pitch : (isFemale ? 1.15 : (isBritish ? 0.82 : 0.80));
         utterance.rate = voiceDef?.rate !== undefined ? voiceDef.rate : (isBritish ? 0.88 : 1.02);
         utterance.volume = 1.0;
 
+        let resolved = false;
         const cleanup = () => {
+          if (resolved) return;
+          resolved = true;
           utterance.onend = null;
           utterance.onerror = null;
           resolve();
@@ -225,7 +279,7 @@ export class VoiceResponseManager {
         this.synth.speak(utterance);
 
         // Safety timeout in case speechSynthesis hangs
-        setTimeout(cleanup, 4500);
+        setTimeout(cleanup, 5000);
       } catch {
         resolve();
       }
@@ -233,14 +287,15 @@ export class VoiceResponseManager {
   }
 
   /**
-   * Cancel any active spoken response
+   * Cancel any active spoken response immediately
    */
   cancel() {
-    this.isSpeaking = false;
+    this._setSpeakingState(false);
     if (this.voiceAudio) {
       try {
         this.voiceAudio.pause();
-        this.voiceAudio.src = '';
+        this.voiceAudio.removeAttribute('src');
+        this.voiceAudio.load();
       } catch {
         // ignore
       }

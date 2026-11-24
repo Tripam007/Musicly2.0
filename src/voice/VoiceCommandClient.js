@@ -2,13 +2,15 @@
  * VoiceCommandClient.js
  * 
  * Secure Client wrapper for Firebase Cloud Functions:
- * 1. transcribeMusiclyCommand -> Google Cloud Speech-to-Text
- * 2. generateMusiclyVoice -> ElevenLabs Text-to-Speech
+ * 1. transcribeMusiclyCommand -> Google Cloud Speech-to-Text & ElevenLabs Scribe STT
+ * 2. generateMusiclyVoice -> ElevenLabs TTS & Google Cloud TTS
+ * 3. getConversationalAgentSignedUrl -> ElevenLabs Conversational AI
  * 
  * Features:
  * - Direct callable function invocation using Firebase SDK
+ * - Independent provider selection (Google vs ElevenLabs)
+ * - Automatic graceful client-side fallbacks
  * - Request cancellation and timeout handling
- * - Clean error mapping without breaking the UI
  */
 
 import { httpsCallable } from 'firebase/functions';
@@ -20,6 +22,7 @@ export class VoiceCommandClient {
     this.functionsInstance = options.functions || functions;
     this.transcribeCallable = null;
     this.voiceCallable = null;
+    this.agentSignedUrlCallable = null;
 
     this._initCallables();
   }
@@ -29,6 +32,7 @@ export class VoiceCommandClient {
       if (this.functionsInstance) {
         this.transcribeCallable = httpsCallable(this.functionsInstance, 'transcribeMusiclyCommand');
         this.voiceCallable = httpsCallable(this.functionsInstance, 'generateMusiclyVoice');
+        this.agentSignedUrlCallable = httpsCallable(this.functionsInstance, 'getConversationalAgentSignedUrl');
       }
     } catch (e) {
       console.warn('[VoiceCommandClient] Callable initialization note:', e);
@@ -36,14 +40,20 @@ export class VoiceCommandClient {
   }
 
   /**
-   * Transcribe short audio command via Google Cloud STT
+   * Transcribe short audio command via selected recognition provider (Google STT or ElevenLabs Scribe)
    * 
    * @param {string} audioBase64 - Base64 encoded audio
    * @param {string} mimeType - e.g. 'audio/webm;codecs=opus'
    * @param {string} languagePreference - 'en-IN' | 'en-US' | 'hi-IN' | 'bn-IN'
-   * @returns {Promise<{ success: boolean, transcript: string, confidence: number, detectedLanguage: string, alternatives: string[], error?: string }>}
+   * @param {string} provider - 'google' | 'elevenlabs_scribe'
+   * @returns {Promise<{ success: boolean, transcript: string, confidence: number, detectedLanguage: string, alternatives: string[], providerUsed?: string, error?: string }>}
    */
-  async transcribeAudio(audioBase64, mimeType = 'audio/webm;codecs=opus', languagePreference = 'en-IN') {
+  async transcribeAudio(
+    audioBase64, 
+    mimeType = 'audio/webm;codecs=opus', 
+    languagePreference = 'en-IN',
+    provider = 'google'
+  ) {
     if (!audioBase64) {
       return {
         success: false,
@@ -59,59 +69,96 @@ export class VoiceCommandClient {
       this._initCallables();
     }
 
-    if (!this.transcribeCallable) {
-      return {
-        success: false,
-        transcript: '',
-        confidence: 0,
-        detectedLanguage: languagePreference,
-        alternatives: [],
-        error: 'Firebase Functions not initialized'
-      };
+    // 1. Try Firebase Callable Function
+    if (this.transcribeCallable) {
+      try {
+        const response = await this.transcribeCallable({
+          audioBase64,
+          mimeType,
+          languagePreference,
+          provider
+        });
+
+        const data = response.data || {};
+        return {
+          success: true,
+          transcript: data.transcript || '',
+          confidence: data.confidence !== undefined ? data.confidence : 0.85,
+          detectedLanguage: data.detectedLanguage || languagePreference,
+          alternatives: data.alternatives || [],
+          providerUsed: data.providerUsed || provider
+        };
+      } catch (err) {
+        console.warn('[VoiceCommandClient] Transcribe callable note:', err?.message || err);
+      }
     }
 
-    try {
-      const response = await this.transcribeCallable({
-        audioBase64,
-        mimeType,
-        languagePreference
-      });
+    // 2. Client-side fallback if ElevenLabs Scribe selected and client API key is available
+    const clientApiKey = getCustomElevenLabsApiKey() || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ELEVENLABS_API_KEY);
+    if (provider === 'elevenlabs_scribe' && clientApiKey) {
+      try {
+        const binaryStr = window.atob(audioBase64);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+        const ext = mimeType.includes('wav') ? 'wav' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+        const blob = new Blob([bytes], { type: mimeType });
+        const formData = new FormData();
+        formData.append('file', blob, `voice.${ext}`);
+        formData.append('model_id', 'scribe_v1');
+        formData.append('language_code', languagePreference.slice(0, 2));
 
-      const data = response.data || {};
-      return {
-        success: true,
-        transcript: data.transcript || '',
-        confidence: data.confidence !== undefined ? data.confidence : 0.85,
-        detectedLanguage: data.detectedLanguage || languagePreference,
-        alternatives: data.alternatives || []
-      };
-    } catch (err) {
-      console.warn('[VoiceCommandClient] Transcribe call note:', err?.message || err);
-      return {
-        success: false,
-        transcript: '',
-        confidence: 0,
-        detectedLanguage: languagePreference,
-        alternatives: [],
-        error: err?.message || 'STT transcription failed'
-      };
+        const res = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+          method: 'POST',
+          headers: { 'xi-api-key': clientApiKey },
+          body: formData
+        });
+
+        if (res.ok) {
+          const scribeData = await res.json();
+          return {
+            success: true,
+            transcript: scribeData.text ? scribeData.text.trim() : '',
+            confidence: 0.95,
+            detectedLanguage: scribeData.language_code || languagePreference,
+            alternatives: [],
+            providerUsed: 'elevenlabs_scribe'
+          };
+        }
+      } catch (fallbackErr) {
+        console.warn('[VoiceCommandClient] Direct Scribe STT note:', fallbackErr);
+      }
     }
+
+    return {
+      success: false,
+      transcript: '',
+      confidence: 0,
+      detectedLanguage: languagePreference,
+      alternatives: [],
+      error: 'STT service temporarily unavailable'
+    };
   }
 
   /**
-   * Request ElevenLabs TTS audio for short system response
+   * Request TTS audio for short system response via selected response provider
    * 
-   * @param {string} text - Response text to speak (e.g. "Playing Kaavish.")
-   * @param {string} [voiceStyle]
-   * @param {string} [voiceId] - ElevenLabs voice ID (default Nathaniel C: AeRdCCKzvd23BpJoofzx)
-   * @returns {Promise<{ success: boolean, audioBase64: string|null, mimeType: string, cached?: boolean, error?: string }>}
+   * @param {string} text - Response text to speak
+   * @param {object|string} [options] - Options or voiceStyle string
+   * @returns {Promise<{ success: boolean, audioBase64: string|null, mimeType: string, cached?: boolean, providerUsed?: string, error?: string }>}
    */
-  async generateVoiceResponse(text, voiceStyle = 'cinematic', voiceId = 'AeRdCCKzvd23BpJoofzx') {
+  async generateVoiceResponse(text, options = {}) {
     if (!text || typeof text !== 'string') {
       return { success: false, audioBase64: null, mimeType: 'audio/mpeg' };
     }
 
-    const targetVoiceId = voiceId || 'AeRdCCKzvd23BpJoofzx';
+    const opts = typeof options === 'string' ? { voiceStyle: options } : options;
+    const voiceStyle = opts.voiceStyle || 'cinematic';
+    const voiceId = opts.voiceId || 'AeRdCCKzvd23BpJoofzx';
+    const provider = opts.provider || 'elevenlabs';
+    const language = opts.language || 'en-US';
+    const gender = opts.gender || 'FEMALE';
 
     // 1. Try Firebase Callable Function first
     if (!this.voiceCallable) {
@@ -123,7 +170,10 @@ export class VoiceCommandClient {
         const response = await this.voiceCallable({
           text,
           voiceStyle,
-          voiceId: targetVoiceId
+          voiceId,
+          provider,
+          language,
+          gender
         });
 
         const data = response.data || {};
@@ -132,7 +182,8 @@ export class VoiceCommandClient {
             success: true,
             audioBase64: data.audioBase64,
             mimeType: data.mimeType || 'audio/mpeg',
-            cached: !!data.cached
+            cached: !!data.cached,
+            providerUsed: data.providerUsed || provider
           };
         }
       } catch (err) {
@@ -140,11 +191,11 @@ export class VoiceCommandClient {
       }
     }
 
-    // 2. Direct browser fallback using configured ElevenLabs API key if available
+    // 2. Direct browser fallback for ElevenLabs if client API key is configured
     const apiKey = getCustomElevenLabsApiKey() || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ELEVENLABS_API_KEY);
-    if (apiKey) {
+    if (provider === 'elevenlabs' && apiKey) {
       try {
-        const directRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${targetVoiceId}?output_format=mp3_44100_128`, {
+        const directRes = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -163,7 +214,6 @@ export class VoiceCommandClient {
 
         if (directRes.ok) {
           const buffer = await directRes.arrayBuffer();
-          // Convert arrayBuffer to base64
           let binary = '';
           const bytes = new Uint8Array(buffer);
           const len = bytes.byteLength;
@@ -175,7 +225,8 @@ export class VoiceCommandClient {
             success: true,
             audioBase64: base64,
             mimeType: 'audio/mpeg',
-            cached: false
+            cached: false,
+            providerUsed: 'elevenlabs'
           };
         }
       } catch (directErr) {
@@ -188,6 +239,62 @@ export class VoiceCommandClient {
       audioBase64: null,
       mimeType: 'audio/mpeg',
       error: 'TTS generation unavailable'
+    };
+  }
+
+  /**
+   * Obtain temporary authenticated signed URL for ElevenLabs Conversational AI Agent
+   * 
+   * @param {string} [agentId]
+   * @returns {Promise<{ success: boolean, signedUrl?: string, agentId?: string, error?: string }>}
+   */
+  async getConversationalAgentSignedUrl(agentId = null) {
+    if (!this.agentSignedUrlCallable) {
+      this._initCallables();
+    }
+
+    if (this.agentSignedUrlCallable) {
+      try {
+        const res = await this.agentSignedUrlCallable({ agentId: agentId || undefined });
+        const data = res.data || {};
+        if (data.success && data.signedUrl) {
+          return {
+            success: true,
+            signedUrl: data.signedUrl,
+            agentId: data.agentId
+          };
+        }
+      } catch (err) {
+        console.warn('[VoiceCommandClient] Signed URL callable note:', err?.message || err);
+      }
+    }
+
+    // Direct fallback if client API key is provided
+    const apiKey = getCustomElevenLabsApiKey() || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_ELEVENLABS_API_KEY);
+    if (apiKey) {
+      try {
+        const targetAgentId = agentId || 'agent_musicly_assistant';
+        const url = `https://api.elevenlabs.io/v1/convai/conversation/get-signed-url?agent_id=${encodeURIComponent(targetAgentId)}`;
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: { 'xi-api-key': apiKey }
+        });
+        if (res.ok) {
+          const json = await res.json();
+          return {
+            success: true,
+            signedUrl: json.signed_url,
+            agentId: targetAgentId
+          };
+        }
+      } catch (e) {
+        console.warn('[VoiceCommandClient] Direct signed URL note:', e);
+      }
+    }
+
+    return {
+      success: false,
+      error: 'Conversational Agent session could not be established.'
     };
   }
 }

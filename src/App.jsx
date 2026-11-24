@@ -638,26 +638,49 @@ export default function App() {
     setRoomBrightness(nextVal);
   };
 
-  // Scene / Visual state with smooth animated genre backdrops & persistence
+  // Scene / Visual state: Musicly ALWAYS starts on the main scene (Cozy Bedroom Studio) at first and on reload.
+  // When a user explicitly chooses a scene in-app, it stays active until they change it or click Back to Home.
   const [currentScene, setCurrentScene] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        // Unconditionally purge any legacy minimal_studio / selected scene flags so reload never gets hijacked
+        try {
+          localStorage.removeItem('musicly_user_chose_scene');
+          const saved = localStorage.getItem('musicly_selected_scene_id');
+          if (!saved || saved === 'minimal_studio' || saved === 'minimal') {
+            localStorage.setItem('musicly_selected_scene_id', 'cozy_bedroom');
+          }
+          if (window.location.search && (window.location.search.includes('minimal_studio') || window.location.search.includes('minimal'))) {
+            window.history.replaceState({}, '', window.location.pathname);
+          }
+        } catch {}
+
+        // Respect explicit URL parameter only if non-minimal (e.g. ?scene=vinyl)
+        const params = new URLSearchParams(window.location.search);
+        const sceneParam = params.get('scene');
+        if (sceneParam && sceneParam.toLowerCase() !== 'minimal_studio' && sceneParam.toLowerCase() !== 'minimal') {
+          const match = SCENES.find(s => s.id.toLowerCase() === sceneParam.toLowerCase() || s.name.toLowerCase() === sceneParam.toLowerCase());
+          if (match) return match;
+        }
+      }
+    } catch {}
+    // Default main scene: Cozy Bedroom Studio
+    return SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
+  });
+
+  const [backdropImage, setBackdropImage] = useState(() => {
     try {
       if (typeof window !== 'undefined') {
         const params = new URLSearchParams(window.location.search);
         const sceneParam = params.get('scene');
-        if (sceneParam) {
+        if (sceneParam && sceneParam.toLowerCase() !== 'minimal_studio' && sceneParam.toLowerCase() !== 'minimal') {
           const match = SCENES.find(s => s.id.toLowerCase() === sceneParam.toLowerCase() || s.name.toLowerCase() === sceneParam.toLowerCase());
-          if (match) return match;
-        }
-        const savedSceneId = localStorage.getItem('musicly_selected_scene_id');
-        if (savedSceneId) {
-          const found = SCENES.find(s => s.id === savedSceneId);
-          if (found) return found;
+          if (match?.image) return match.image;
         }
       }
     } catch {}
-    return SCENES[0];
+    return GENRE_BACKDROPS['All'] || SCENES.find(s => s.id === 'cozy_bedroom')?.image || SCENES[0]?.image || '/assets/images/cozy_bedroom.jpg';
   });
-  const [backdropImage, setBackdropImage] = useState(GENRE_BACKDROPS['All']);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [overlayOpacity, setOverlayOpacity] = useState(0.45);
   const allScenes = useMemo(() => {
@@ -914,6 +937,22 @@ export default function App() {
   });
   const activePlayingPlaylistIdRef = useRef(activePlayingPlaylistId);
   activePlayingPlaylistIdRef.current = activePlayingPlaylistId;
+
+  // Active playing playlist object resolution
+  const activePlayingPlaylist = useMemo(() => {
+    if (!activePlayingPlaylistId) return null;
+    const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
+    let pl = unified.find(p => p.id === activePlayingPlaylistId);
+    if (!pl) {
+      const userPls = getLocalUserPlaylists(user);
+      const foundUser = userPls.find(p => p.id === activePlayingPlaylistId);
+      if (foundUser) {
+        const plTracks = (foundUser.trackIds || []).map(tId => allTracks.find(t => t.id === tId)).filter(Boolean);
+        pl = { ...foundUser, tracks: plTracks };
+      }
+    }
+    return pl || null;
+  }, [activePlayingPlaylistId, allTracks, publicPlaylists, user]);
 
   const handleNextTrackAutoRef = useRef(null);
 
@@ -1502,6 +1541,11 @@ export default function App() {
     setBackdropImage(scene.image);
     try {
       localStorage.setItem('musicly_selected_scene_id', scene.id);
+      if (scene.id === 'cozy_bedroom') {
+        localStorage.removeItem('musicly_user_chose_scene');
+      } else {
+        localStorage.setItem('musicly_user_chose_scene', 'true');
+      }
     } catch {}
     if (scene.primaryColor || scene.isTheme) {
       applyWebappTheme({
@@ -1515,13 +1559,27 @@ export default function App() {
     setIsSceneOpen(false);
   }, []);
 
+  // Return to the main home scene (Cozy Bedroom Studio)
+  const handleReturnToHomeScene = useCallback(() => {
+    const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
+    setCurrentScene(bedroomScene);
+    setBackdropImage(bedroomScene.image);
+    try {
+      localStorage.setItem('musicly_selected_scene_id', 'cozy_bedroom');
+      localStorage.removeItem('musicly_user_chose_scene');
+      if (typeof window !== 'undefined' && window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    } catch {}
+    resetWebappTheme();
+  }, []);
+
   // Keyboard and Navigation Handlers
   const handleGoHome = useCallback(() => {
-    const homeScene = allScenes[0] || SCENES[0];
-    handleSelectScene(homeScene);
+    handleReturnToHomeScene();
     setSelectedGenre('All');
     setIsDrawerOpen(false);
-  }, [allScenes, handleSelectScene]);
+  }, [handleReturnToHomeScene]);
 
   const handleSeekForward = useCallback(() => {
     const dur = duration || 180;
@@ -2848,11 +2906,7 @@ export default function App() {
       {/* 🪐 Choose Your Vibe 3D Glass Cylindrical Scene */}
       <ChooseYourVibeScene
         currentScene={currentScene}
-        onClose={() => {
-          const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
-          setCurrentScene(bedroomScene);
-          setBackdropImage(bedroomScene.image);
-        }}
+        onClose={handleReturnToHomeScene}
         onSelectGenre={handleSelectGenre}
         selectedLanguage={selectedLanguage}
         selectedLanguages={selectedLanguages}
@@ -2921,11 +2975,7 @@ export default function App() {
         afterglowMode === 'classic' ? (
           <AfterglowScene
             currentScene={currentScene}
-            onClose={() => {
-              const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
-              setCurrentScene(bedroomScene);
-              setBackdropImage(bedroomScene.image);
-            }}
+            onClose={handleReturnToHomeScene}
             currentTrack={currentTrack}
             allTracks={allTracks}
             isPlaying={isPlaying}
@@ -3013,11 +3063,7 @@ export default function App() {
         onToggleFavorite={handleToggleFavorite}
             onToggleFavorite={handleToggleFavorite}
             onOpenClassic={() => setAfterglowMode('classic')}
-            onClose={() => {
-              const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
-              setCurrentScene(bedroomScene);
-              setBackdropImage(bedroomScene.image);
-            }}
+            onClose={handleReturnToHomeScene}
             audioElement={audioRef.current}
             selectedLanguage={selectedLanguages}
           />
@@ -3083,11 +3129,7 @@ export default function App() {
           favorites={favorites}
         onToggleFavorite={handleToggleFavorite}
           onToggleFavorite={handleToggleFavorite}
-          onClose={() => {
-            const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
-            setCurrentScene(bedroomScene);
-            setBackdropImage(bedroomScene.image);
-          }}
+          onClose={handleReturnToHomeScene}
           selectedGenre={selectedGenre}
           onSelectGenre={setSelectedGenre}
           selectedLanguage={selectedLanguage}
@@ -3168,11 +3210,7 @@ export default function App() {
           isAdmin={isAdmin}
           isAdminDashboardOpen={isAdminDashboardOpen}
           onLogout={handleLogout}
-          onClose={() => {
-            const bedroomScene = SCENES.find(s => s.id === 'cozy_bedroom') || SCENES[0];
-            setCurrentScene(bedroomScene);
-            setBackdropImage(bedroomScene.image);
-          }}
+          onClose={handleReturnToHomeScene}
           selectedGenre={selectedGenre}
           onSelectGenre={setSelectedGenre}
           audioElement={audioRef.current}
@@ -3256,6 +3294,7 @@ export default function App() {
           onDownloadTrack={handleDownloadTrack}
           user={user}
           onOpenAuthModal={() => setIsAuthOpen(true)}
+          activePlayingPlaylist={activePlayingPlaylist}
         />
       </div>
 
@@ -3276,8 +3315,10 @@ export default function App() {
             onUpdatePublicPlaylist={(id, upd) => updatePublicPlaylist(id, upd, user)}
             onDeletePublicPlaylist={(id) => deletePublicPlaylist(id, user)}
             activePlayingPlaylistId={activePlayingPlaylistId}
+            activePlayingPlaylist={activePlayingPlaylist}
             onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
             onSetCustomQueue={setCustomQueue}
+            onReorderFavorites={setFavorites}
             onOpenAdminDashboard={() => {
               setIsDrawerOpen(false);
               setIsAdminDashboardOpen(true);

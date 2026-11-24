@@ -1,11 +1,22 @@
 import { HttpsError, CallableRequest } from 'firebase-functions/v2/https';
+import { TextToSpeechClient, protos as ttsProtos } from '@google-cloud/text-to-speech';
 import { checkRateLimit } from './rateLimit';
+
+let googleTtsClient: TextToSpeechClient | null = null;
+function getGoogleTtsClient(): TextToSpeechClient {
+  if (!googleTtsClient) {
+    googleTtsClient = new TextToSpeechClient();
+  }
+  return googleTtsClient;
+}
 
 export interface GenerateVoiceRequest {
   text: string;
   language?: string;
   voiceStyle?: string;
   voiceId?: string;
+  provider?: 'google' | 'elevenlabs';
+  gender?: string;
 }
 
 export interface GenerateVoiceResponse {
@@ -13,6 +24,7 @@ export interface GenerateVoiceResponse {
   mimeType: string;
   status: 'SUCCESS' | 'KEY_NOT_CONFIGURED' | 'FAILED';
   cached?: boolean;
+  providerUsed?: string;
 }
 
 // In-memory cache for common short system responses to save latency and API cost
@@ -26,6 +38,44 @@ function trimCache() {
       ttsResponseCache.delete(keys[i]);
     }
   }
+}
+
+/**
+ * Synthesize speech via Google Cloud Text-to-Speech
+ */
+async function synthesizeWithGoogleTTS(
+  text: string,
+  voiceName: string = 'en-US-Journey-F',
+  languageCode: string = 'en-US',
+  gender: string = 'FEMALE'
+): Promise<GenerateVoiceResponse> {
+  const client = getGoogleTtsClient();
+  const ssmlGender =
+    gender.toUpperCase() === 'MALE'
+      ? ttsProtos.google.cloud.texttospeech.v1.SsmlVoiceGender.MALE
+      : ttsProtos.google.cloud.texttospeech.v1.SsmlVoiceGender.FEMALE;
+
+  const [response] = await client.synthesizeSpeech({
+    input: { text },
+    voice: {
+      languageCode: languageCode || 'en-US',
+      name: voiceName || 'en-US-Journey-F',
+      ssmlGender,
+    },
+    audioConfig: {
+      audioEncoding: ttsProtos.google.cloud.texttospeech.v1.AudioEncoding.MP3,
+      speakingRate: 1.0,
+      pitch: 0.0,
+    },
+  });
+
+  const audioContent = response.audioContent as Buffer;
+  return {
+    audioBase64: audioContent.toString('base64'),
+    mimeType: 'audio/mpeg',
+    status: 'SUCCESS',
+    providerUsed: 'google',
+  };
 }
 
 export async function handleGenerateVoiceResponse(
@@ -43,7 +93,13 @@ export async function handleGenerateVoiceResponse(
     );
   }
 
-  const { text, voiceId: customVoiceId } = request.data || {};
+  const { 
+    text, 
+    voiceId: customVoiceId,
+    provider = 'elevenlabs',
+    language = 'en-US',
+    gender = 'FEMALE'
+  } = request.data || {};
 
   if (!text || typeof text !== 'string') {
     throw new HttpsError('invalid-argument', 'Missing or invalid text parameter.');
@@ -52,13 +108,8 @@ export async function handleGenerateVoiceResponse(
   // Strictly enforce short, minimal responses (max 160 characters)
   const trimmedText = text.trim().slice(0, 160);
 
-  // 4. ElevenLabs Voice Selection:
-  // Default: Nathaniel C (AeRdCCKzvd23BpJoofzx) - calm, British suspenseful storyteller
-  const voiceId = customVoiceId || process.env.ELEVENLABS_VOICE_ID || 'AeRdCCKzvd23BpJoofzx';
-  const modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_flash_v2_5';
-
-  // 2. Check memory cache first - Keyed by voiceId + text so different voices never clash
-  const cacheKey = `${voiceId}_${trimmedText.toLowerCase()}`;
+  // Check memory cache first - Keyed by provider + voiceId + text
+  const cacheKey = `${provider}_${customVoiceId || 'default'}_${trimmedText.toLowerCase()}`;
   const cachedAudio = ttsResponseCache.get(cacheKey);
   if (cachedAudio) {
     return {
@@ -66,10 +117,31 @@ export async function handleGenerateVoiceResponse(
       mimeType: 'audio/mpeg',
       status: 'SUCCESS',
       cached: true,
+      providerUsed: provider,
     };
   }
 
-  // 3. Resolve API key from Secret or environment
+  // 1. Google Cloud Text-to-Speech
+  if (provider === 'google') {
+    try {
+      const googleVoice = customVoiceId || (gender === 'MALE' ? 'en-US-Journey-D' : 'en-US-Journey-F');
+      const googleResult = await synthesizeWithGoogleTTS(trimmedText, googleVoice, language, gender);
+      if (googleResult.audioBase64) {
+        ttsResponseCache.set(cacheKey, googleResult.audioBase64);
+        trimCache();
+        return googleResult;
+      }
+    } catch (googleErr) {
+      console.warn('[handleGenerateVoiceResponse] Google TTS note, falling back to ElevenLabs:', googleErr);
+    }
+  }
+
+  // 2. ElevenLabs Voice Selection:
+  // Default: Nathaniel C (AeRdCCKzvd23BpJoofzx) - calm, British suspenseful storyteller
+  const voiceId = customVoiceId || process.env.ELEVENLABS_VOICE_ID || 'AeRdCCKzvd23BpJoofzx';
+  const modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_flash_v2_5';
+
+  // Resolve API key from Secret or environment
   const apiKey = apiKeySecret || process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     // If not configured, gracefully let the client know so it falls back to Web Speech Synthesis
@@ -77,6 +149,7 @@ export async function handleGenerateVoiceResponse(
       audioBase64: null,
       mimeType: 'audio/mpeg',
       status: 'KEY_NOT_CONFIGURED',
+      providerUsed: 'elevenlabs',
     };
   }
 

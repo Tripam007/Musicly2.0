@@ -11,13 +11,14 @@
  * 6. VoiceResponseManager (ElevenLabs isolated playback with smooth music audio ducking)
  */
 
-import { VOICE_STATES, MUSICLY_ACTIONS, DEFAULT_VOICE_CONFIG } from './voiceConfig.js';
+import { VOICE_STATES, MUSICLY_ACTIONS, DEFAULT_VOICE_CONFIG, VOICE_PROVIDERS, VOICE_PERSONALITIES } from './voiceConfig.js';
 import { WakeWordManager } from './WakeWordManager.js';
 import { VoiceRecorder } from './VoiceRecorder.js';
 import { VoiceCommandClient } from './VoiceCommandClient.js';
 import { VoiceCommandParser } from './VoiceCommandParser.js';
 import { MusiclyActionRegistry } from './MusiclyActionRegistry.js';
 import { VoiceResponseManager } from './VoiceResponseManager.js';
+import { ConversationalAgentClient } from './ConversationalAgentClient.js';
 import { getSelectedVoiceId, setSelectedVoiceId } from '../utils/voiceRegistryDB.js';
 
 export class VoiceControlManager {
@@ -62,6 +63,30 @@ export class VoiceControlManager {
       duckFactor: this.config.duckingVolumeRatio,
       enabled: this.config.enableVoiceResponses,
       duckingEnabled: this.config.enableDucking,
+    });
+
+    // Conversational AI WebSocket Client
+    this.conversationTranscript = [];
+    this.conversationalClient = new ConversationalAgentClient({
+      commandClient: this.commandClient,
+      actionRegistry: this.actionRegistry,
+      responseProvider: this.config.responseProvider,
+      personality: VOICE_PERSONALITIES[this.config.personalityId] || VOICE_PERSONALITIES.DEFAULT,
+      onTranscriptUpdate: (transcript) => {
+        this.conversationTranscript = transcript;
+        this._notify({ conversationTranscript: transcript });
+      },
+      onStateChange: (agentState) => {
+        if (agentState === 'SPEAKING') {
+          this._setState(VOICE_STATES.SPEAKING);
+        } else if (agentState === 'LISTENING') {
+          this._setState(VOICE_STATES.CONVERSING);
+        } else if (agentState === 'DISCONNECTED') {
+          if (this.state === VOICE_STATES.CONVERSING || this.state === VOICE_STATES.SPEAKING) {
+            this._setState(VOICE_STATES.IDLE);
+          }
+        }
+      }
     });
 
     // Sub-chime audio context
@@ -119,7 +144,80 @@ export class VoiceControlManager {
       ambiguousCandidates: this.ambiguousCandidates || [],
       debugInfo: this.lastDebugInfo || null,
       config: { ...this.config },
+      isConversing: this.state === VOICE_STATES.CONVERSING || !!(this.conversationalClient && this.conversationalClient.isConnected),
+      conversationTranscript: this.conversationTranscript || [],
+      activePersonality: this.config.personalityId || 'DEFAULT',
+      recognitionProvider: this.config.recognitionProvider || 'google',
+      responseProvider: this.config.responseProvider || 'elevenlabs',
     };
+  }
+
+  // --- Personality & Provider Switchers ---
+  setPersonality(personalityId) {
+    const personality = VOICE_PERSONALITIES[personalityId];
+    if (!personality) return;
+    this.config.personalityId = personalityId;
+    this.config.recognitionProvider = personality.recognitionProvider;
+    this.config.responseProvider = personality.responseProvider;
+    this.config.voiceId = personality.voiceId;
+    if (this.responseManager) {
+      this.responseManager.setVoiceId(personality.voiceId);
+      this.responseManager.setResponseProvider(personality.responseProvider);
+    }
+    if (this.conversationalClient) {
+      this.conversationalClient.personality = personality;
+      this.conversationalClient.responseProvider = personality.responseProvider;
+    }
+    setSelectedVoiceId(personality.voiceId);
+    this._notify();
+  }
+
+  setRecognitionProvider(provider) {
+    this.config.recognitionProvider = provider;
+    this._notify();
+  }
+
+  setResponseProvider(provider) {
+    this.config.responseProvider = provider;
+    if (this.responseManager) {
+      this.responseManager.setResponseProvider(provider);
+    }
+    if (this.conversationalClient) {
+      this.conversationalClient.responseProvider = provider;
+    }
+    this._notify();
+  }
+
+  // --- Conversational AI Session Lifecycle ---
+  async startConversationalSession() {
+    this.isVoiceControlActive = true;
+    this._clearInactivityTimer();
+    this.wakeWordManager.stop();
+    this._setState(VOICE_STATES.CONVERSING);
+    const personality = VOICE_PERSONALITIES[this.config.personalityId] || VOICE_PERSONALITIES.DEFAULT;
+    return await this.conversationalClient.startConversation({
+      agentId: personality.voiceId || this.config.voiceId,
+      personality,
+      responseProvider: this.config.responseProvider
+    });
+  }
+
+  stopConversationalSession() {
+    if (this.conversationalClient) {
+      this.conversationalClient.disconnect();
+    }
+    if (this.isVoiceControlActive) {
+      this._returnToWakeWordListening();
+      this._resetInactivityTimer();
+    } else {
+      this.stop();
+    }
+  }
+
+  sendConversationalMessage(text) {
+    if (this.conversationalClient) {
+      this.conversationalClient.sendMessage(text);
+    }
   }
 
   _setState(newState, extra = {}) {
@@ -337,9 +435,10 @@ export class VoiceControlManager {
     this._clearCommandTimeout();
 
     const hasSpeechRecognition = typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    const shouldUseWebSpeech = (this.config.recognitionProvider === 'google') && hasSpeechRecognition;
 
-    // Primary: If browser speech recognition is supported, keep mic open and listen live
-    if (this.wakeWordManager && hasSpeechRecognition) {
+    // Primary: If Google STT provider and browser speech recognition is supported, keep mic open and listen live
+    if (this.wakeWordManager && shouldUseWebSpeech) {
       let silenceDebounceTimer = null;
       let accumulatedText = '';
       const commandTimeoutDuration = this.config.commandTimeoutMs || 8000;
@@ -480,11 +579,12 @@ export class VoiceControlManager {
     // Transition to processing state
     this._setState(VOICE_STATES.PROCESSING_COMMAND);
 
-    // Call Firebase Function for Google Cloud Speech-to-Text
+    // Call Firebase Function for Google Cloud Speech-to-Text or ElevenLabs Scribe STT
     const sttResult = await this.commandClient.transcribeAudio(
       audioBase64,
       mimeType,
-      this.config.language
+      this.config.language,
+      this.config.recognitionProvider || 'google'
     );
     const sttCompleteTime = performance.now();
 
@@ -743,6 +843,22 @@ export class VoiceControlManager {
 
   updateConfig(updates) {
     this.config = { ...this.config, ...updates };
+    if ('personalityId' in updates && updates.personalityId) {
+      this.setPersonality(updates.personalityId);
+      return;
+    }
+    if ('recognitionProvider' in updates) {
+      this.config.recognitionProvider = updates.recognitionProvider;
+    }
+    if ('responseProvider' in updates) {
+      this.config.responseProvider = updates.responseProvider;
+      if (this.responseManager) {
+        this.responseManager.setResponseProvider(updates.responseProvider);
+      }
+      if (this.conversationalClient) {
+        this.conversationalClient.responseProvider = updates.responseProvider;
+      }
+    }
     if ('enableVoiceResponses' in updates) {
       this.responseManager.setEnabled(this.config.enableVoiceResponses);
     }

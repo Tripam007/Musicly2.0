@@ -15,8 +15,103 @@ export const VOICE_STATES = {
   SUCCESS: 'SUCCESS',
   ERROR: 'ERROR',
   AMBIGUOUS: 'AMBIGUOUS',
+  CONVERSING: 'CONVERSING',
+  SPEAKING: 'SPEAKING',
   COOLDOWN: 'COOLDOWN',
   UNSUPPORTED: 'UNSUPPORTED'
+};
+
+export const VOICE_PROVIDERS = {
+  RECOGNITION: {
+    GOOGLE: 'google',
+    ELEVENLABS_SCRIBE: 'elevenlabs_scribe'
+  },
+  RESPONSE: {
+    ELEVENLABS: 'elevenlabs',
+    GOOGLE: 'google',
+    ELEVENLABS_AGENT: 'elevenlabs_agent'
+  }
+};
+
+export const VOICE_PERSONALITIES = {
+  DEFAULT: {
+    id: 'DEFAULT',
+    name: 'Default',
+    tagline: 'Friendly ElevenLabs Companion',
+    recognitionProvider: 'elevenlabs_scribe',
+    responseProvider: 'elevenlabs',
+    voiceId: 'AeRdCCKzvd23BpJoofzx', // Nathaniel C
+    provider: 'elevenlabs',
+    systemPrompt: 'You are Musicly AI, a friendly, warm, and helpful music companion. You recommend actual songs from the Musicly catalog, understand mood, answer questions about playing tracks, and speak naturally.',
+    speakingRate: 1.0,
+    pitch: 0.0,
+    language: 'en-US'
+  },
+  GOOGLE: {
+    id: 'GOOGLE',
+    name: 'Google Natural',
+    tagline: 'Google Cloud Journey Voice',
+    recognitionProvider: 'google',
+    responseProvider: 'google',
+    voiceId: 'en-US-Journey-F',
+    provider: 'google',
+    systemPrompt: 'You are Musicly AI powered by Google Cloud Voice. Natural, precise, articulate, and calm.',
+    speakingRate: 1.0,
+    pitch: 0.0,
+    language: 'en-US'
+  },
+  CAPTAIN: {
+    id: 'CAPTAIN',
+    name: 'Captain',
+    tagline: 'Playful Pirate Navigator',
+    recognitionProvider: 'google',
+    responseProvider: 'elevenlabs',
+    voiceId: 'CwhRBWXzGAHq8TQ4Fs17', // Roger
+    provider: 'elevenlabs',
+    systemPrompt: 'Ahoy! You are Captain of Musicly, a witty and playful pirate DJ. You treat playlists as treasure maps and navigate tracks with nautical charm.',
+    speakingRate: 0.95,
+    pitch: -0.1,
+    language: 'en-US'
+  },
+  AFTERGLOW: {
+    id: 'AFTERGLOW',
+    name: 'Afterglow',
+    tagline: 'Cinematic & Deeply Calm',
+    recognitionProvider: 'elevenlabs_scribe',
+    responseProvider: 'elevenlabs',
+    voiceId: 'AeRdCCKzvd23BpJoofzx', // Nathaniel C
+    provider: 'elevenlabs',
+    systemPrompt: 'You are Afterglow, Musicly’s cinematic, reflective, and deeply serene narrator. Speak softly, thoughtfully, and poetically about the music and late-night ambience.',
+    speakingRate: 0.88,
+    pitch: -0.05,
+    language: 'en-US'
+  },
+  DRIVE: {
+    id: 'DRIVE',
+    name: 'Drive',
+    tagline: 'Energetic & Confident',
+    recognitionProvider: 'google',
+    responseProvider: 'elevenlabs',
+    voiceId: 'TX3LPaxmHKxFdv7VOQHJ', // Liam
+    provider: 'elevenlabs',
+    systemPrompt: 'You are Drive, Musicly’s high-energy, upbeat co-pilot. Confident, modern, quick-witted, and ready to pump up the energy.',
+    speakingRate: 1.05,
+    pitch: 0.05,
+    language: 'en-US'
+  },
+  STUDIO: {
+    id: 'STUDIO',
+    name: 'Studio',
+    tagline: 'Professional & Relaxed Producer',
+    recognitionProvider: 'google',
+    responseProvider: 'google',
+    voiceId: 'en-US-Journey-D',
+    provider: 'google',
+    systemPrompt: 'You are Studio, a relaxed, professional audio engineer and producer. You appreciate acoustic fidelity, crisp mastering, and smooth playback flow.',
+    speakingRate: 0.98,
+    pitch: 0.0,
+    language: 'en-US'
+  }
 };
 
 export const MUSICLY_ACTIONS = {
@@ -128,6 +223,9 @@ export const DEFAULT_VOICE_CONFIG = {
   duckingVolumeRatio: 0.28,         // Temporarily duck music to 28% of current level
   voicePersonality: 'cinematic',
   voiceId: 'AeRdCCKzvd23BpJoofzx',  // Nathaniel C (ElevenLabs Curated Calm & Suspense)
+  recognitionProvider: 'google',    // 'google' | 'elevenlabs_scribe'
+  responseProvider: 'elevenlabs',   // 'elevenlabs' | 'google' | 'elevenlabs_agent'
+  personalityId: 'DEFAULT',         // 'DEFAULT' | 'GOOGLE' | 'CAPTAIN' | 'AFTERGLOW' | 'DRIVE' | 'STUDIO'
 
   // Confidence Thresholds
   confidenceThresholds: {

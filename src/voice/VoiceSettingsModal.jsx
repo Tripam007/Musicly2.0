@@ -29,9 +29,11 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
-  Radio
+  Radio,
+  Cpu,
+  Bot
 } from 'lucide-react';
-import { VOICE_STATES } from './voiceConfig.js';
+import { VOICE_STATES, VOICE_PROVIDERS, VOICE_PERSONALITIES } from './voiceConfig.js';
 import { 
   getAvailableVoices, 
   subscribeVoiceRegistry, 
@@ -55,6 +57,16 @@ export const VoiceSettingsModal = ({
 }) => {
   const [voices, setVoices] = useState([]);
   const [selectedVoiceId, setSelectedVoice] = useState(getSelectedVoiceId());
+  const [selectedPersonality, setSelectedPersonality] = useState(
+    voiceManager?.config?.personalityId || 'DEFAULT'
+  );
+  const [recognitionProvider, setRecognitionProvider] = useState(
+    voiceManager?.config?.recognitionProvider || 'google'
+  );
+  const [responseProvider, setResponseProvider] = useState(
+    voiceManager?.config?.responseProvider || 'elevenlabs'
+  );
+  const [isTestingVoice, setIsTestingVoice] = useState(false);
   const [previewingVoiceId, setPreviewingVoiceId] = useState(null);
   const [showAdminAddVoice, setShowAdminAddVoice] = useState(false);
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
@@ -148,6 +160,61 @@ export const VoiceSettingsModal = ({
 
   const handleToggleAnalytics = (e) => {
     voiceManager.updateConfig({ enableAnalytics: e.target.checked });
+  };
+
+  const handleSelectPersonality = (pId) => {
+    setSelectedPersonality(pId);
+    voiceManager.setPersonality(pId);
+    const p = VOICE_PERSONALITIES[pId];
+    if (p) {
+      setRecognitionProvider(p.recognitionProvider);
+      setResponseProvider(p.responseProvider);
+      setSelectedVoice(p.voiceId);
+    }
+  };
+
+  const handleRecognitionProviderChange = (e) => {
+    const val = e.target.value;
+    setRecognitionProvider(val);
+    voiceManager.updateConfig({ recognitionProvider: val });
+  };
+
+  const handleResponseProviderChange = (e) => {
+    const val = e.target.value;
+    setResponseProvider(val);
+    voiceManager.updateConfig({ responseProvider: val });
+  };
+
+  const handleTestVoice = async () => {
+    if (isTestingVoice) {
+      if (voiceManager.responseManager) {
+        voiceManager.responseManager.cancel();
+      }
+      setIsTestingVoice(false);
+      return;
+    }
+
+    setIsTestingVoice(true);
+    const p = VOICE_PERSONALITIES[selectedPersonality];
+    const sampleText = p?.id === 'CAPTAIN' 
+      ? "Ahoy! The Captain is aboard Musicly. Set sail for uncharted melodies!"
+      : p?.id === 'AFTERGLOW'
+      ? "Welcome to Afterglow. Unwind and let the night drift with smooth acoustics."
+      : p?.id === 'DRIVE'
+      ? "Drive mode engaged! Fast tempo, high vibes, let's roll."
+      : p?.id === 'STUDIO'
+      ? "Studio acoustics calibrated. Pristine audio fidelity ready for playback."
+      : "Hello! This is Musicly AI with your selected voice. Ready to play your favorite music.";
+
+    try {
+      if (voiceManager.responseManager) {
+        await voiceManager.responseManager.speak(sampleText);
+      }
+    } catch (err) {
+      console.warn('[VoiceSettingsModal] Test voice error:', err);
+    } finally {
+      setIsTestingVoice(false);
+    }
   };
 
   const handleSelectVoice = (voiceId) => {
@@ -291,14 +358,109 @@ export const VoiceSettingsModal = ({
           </label>
         </div>
 
-        {/* --- AI VOICE SELECTION SECTION (For All Users) --- */}
+        {/* --- 1. VOICE PERSONALITIES (6 PROFILES) --- */}
         <div className="voice-settings-section-divider">
           <div className="voice-section-header">
             <div className="voice-section-title">
               <Sparkles size={16} className="voice-section-icon" />
-              <span>AI Voice Persona</span>
+              <span>Voice Personalities</span>
             </div>
-            <span className="voice-section-hint">Select the voice that confirms your commands</span>
+            <span className="voice-section-hint">Select a signature AI personality for your session</span>
+          </div>
+
+          <div className="voice-cards-grid voice-personality-grid">
+            {Object.values(VOICE_PERSONALITIES).map((p) => {
+              const isSelected = selectedPersonality === p.id;
+              return (
+                <div
+                  key={p.id}
+                  className={`voice-model-card voice-personality-card ${isSelected ? 'selected' : ''}`}
+                  onClick={() => handleSelectPersonality(p.id)}
+                >
+                  <div className="voice-card-top">
+                    <div className="voice-card-radio-box">
+                      <div className={`voice-custom-radio ${isSelected ? 'checked' : ''}`}>
+                        {isSelected && <Check size={11} strokeWidth={3} />}
+                      </div>
+                      <div className="voice-card-title-group">
+                        <span className="voice-card-name">{p.name}</span>
+                        <span className={`voice-badge ${p.provider === 'google' ? 'system' : 'elevenlabs'}`}>
+                          {p.provider === 'google' ? 'Google Cloud' : 'ElevenLabs'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="voice-card-details">
+                    <span className="voice-personality-tagline">{p.tagline}</span>
+                    <p className="voice-card-desc">{p.systemPrompt}</p>
+                    <div className="voice-card-meta" style={{ marginTop: 6 }}>
+                      <span className="voice-meta-pill">STT: {p.recognitionProvider === 'google' ? 'Google' : 'Scribe'}</span>
+                      <span className="voice-meta-pill">TTS: {p.responseProvider === 'google' ? 'Google' : 'ElevenLabs'}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* --- 2. INDEPENDENT PROVIDER SELECTION & TEST VOICE --- */}
+        <div className="voice-settings-section-divider">
+          <div className="voice-section-header">
+            <div className="voice-section-title">
+              <Cpu size={16} className="voice-section-icon" />
+              <span>Independent Voice Providers</span>
+            </div>
+            <span className="voice-section-hint">Mix and match speech recognition & response engines</span>
+          </div>
+
+          <div className="voice-providers-container">
+            <div className="voice-provider-box">
+              <label className="voice-provider-label">Speech Recognition (STT)</label>
+              <select
+                className="voice-select-dropdown"
+                value={recognitionProvider}
+                onChange={handleRecognitionProviderChange}
+              >
+                <option value="google">Google Cloud STT (Multi-dialect, Hinglish, Fast)</option>
+                <option value="elevenlabs_scribe">ElevenLabs Scribe STT (High Precision)</option>
+              </select>
+            </div>
+
+            <div className="voice-provider-box">
+              <label className="voice-provider-label">Voice Response (TTS)</label>
+              <select
+                className="voice-select-dropdown"
+                value={responseProvider}
+                onChange={handleResponseProviderChange}
+              >
+                <option value="elevenlabs">ElevenLabs TTS (Expressive & Cinematic)</option>
+                <option value="google">Google Cloud TTS (Journey Natural)</option>
+                <option value="elevenlabs_agent">ElevenLabs Conversational AI Agent (Direct Audio)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="voice-test-row" style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className={`voice-test-btn ${isTestingVoice ? 'active' : ''}`}
+              onClick={handleTestVoice}
+            >
+              {isTestingVoice ? <Square size={13} fill="currentColor" /> : <Play size={13} fill="currentColor" />}
+              <span>{isTestingVoice ? 'Stop Speaking' : 'Test Active Voice & Engine'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* --- 3. CUSTOM & CATALOG VOICES --- */}
+        <div className="voice-settings-section-divider">
+          <div className="voice-section-header">
+            <div className="voice-section-title">
+              <Sparkles size={16} className="voice-section-icon" />
+              <span>Voice Library & Custom Models</span>
+            </div>
+            <span className="voice-section-hint">Individual voice models and preview synthesis</span>
           </div>
 
           <div className="voice-cards-grid">

@@ -17,7 +17,8 @@ import {
   Crown,
   ShieldCheck,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  GripVertical
 } from 'lucide-react';
 import { playPeacefulLikeSound, playClickSound } from '../utils/audioSynth';
 import { 
@@ -79,7 +80,9 @@ export default function PlaylistDrawer({
   onDeletePublicPlaylist = null,
   onOpenAdminDashboard = null,
   onOpenAuthModal = null,
-  autoFocusSearch = false
+  autoFocusSearch = false,
+  activePlayingPlaylist = null,
+  onReorderFavorites = null
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [mainSource, setMainSource] = useState('musicly'); // 'musicly' | 'user' | 'favorites'
@@ -96,6 +99,16 @@ export default function PlaylistDrawer({
   const [newPlaylistTarget, setNewPlaylistTarget] = useState('user'); // 'user' | 'musicly'
   const [newPlaylistLanguage, setNewPlaylistLanguage] = useState('All');
   const [playlistMenuTrackId, setPlaylistMenuTrackId] = useState(null);
+  const [draggedTrackIndex, setDraggedTrackIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [customTrackOrder, setCustomTrackOrder] = useState(() => {
+    try {
+      const saved = localStorage.getItem('musicly_custom_queue_order');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
   const clickTimerRef = useRef(null);
   const popoverRef = useRef(null);
   const trackListRef = useRef(null);
@@ -247,6 +260,16 @@ export default function PlaylistDrawer({
 
   const canEditDrilldown = Boolean(activeDrilldownPlaylist && (activeDrilldownPlaylist.isCustom || isAdmin));
 
+  // Resolve currently playing playlist for global indication and quick navigation
+  const resolvedActivePlayingPlaylist = useMemo(() => {
+    if (activePlayingPlaylist) return activePlayingPlaylist;
+    if (!activePlayingPlaylistId) return null;
+    const allPls = getUnifiedMusiclyPlaylists(tracks, publicPlaylists);
+    let pl = allPls.find(p => p.id === activePlayingPlaylistId);
+    if (!pl) pl = userPlaylists.find(p => p.id === activePlayingPlaylistId);
+    return pl || null;
+  }, [activePlayingPlaylist, activePlayingPlaylistId, tracks, publicPlaylists, userPlaylists]);
+
   const displayedPlaylists = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return currentPlaylists;
@@ -270,10 +293,37 @@ export default function PlaylistDrawer({
     let baseList = [];
     if (mainSource === 'musicly') {
       baseList = visibleTracks.filter(t => !t.isCustom || !!t.isPublic);
+      if (!q && customTrackOrder && customTrackOrder.length > 0) {
+        const orderMap = new Map();
+        customTrackOrder.forEach((id, idx) => orderMap.set(id, idx));
+        baseList = [...baseList].sort((a, b) => {
+          const idxA = orderMap.has(a.id) ? orderMap.get(a.id) : 999999;
+          const idxB = orderMap.has(b.id) ? orderMap.get(b.id) : 999999;
+          return idxA - idxB;
+        });
+      }
     } else if (mainSource === 'user') {
       baseList = visibleTracks.filter(t => t.isCustom || userPersonalSongIds.includes(t.id));
+      if (!q && userPersonalSongIds && userPersonalSongIds.length > 0) {
+        const orderMap = new Map();
+        userPersonalSongIds.forEach((id, idx) => orderMap.set(id, idx));
+        baseList = [...baseList].sort((a, b) => {
+          const idxA = orderMap.has(a.id) ? orderMap.get(a.id) : 999999;
+          const idxB = orderMap.has(b.id) ? orderMap.get(b.id) : 999999;
+          return idxA - idxB;
+        });
+      }
     } else if (mainSource === 'favorites') {
       baseList = visibleTracks.filter(t => favorites.includes(t.id));
+      if (!q && favorites && favorites.length > 0) {
+        const orderMap = new Map();
+        favorites.forEach((id, idx) => orderMap.set(id, idx));
+        baseList = [...baseList].sort((a, b) => {
+          const idxA = orderMap.has(a.id) ? orderMap.get(a.id) : 999999;
+          const idxB = orderMap.has(b.id) ? orderMap.get(b.id) : 999999;
+          return idxA - idxB;
+        });
+      }
     }
 
     // When NOT searching, filter by active language; when searching, search across all songs!
@@ -285,7 +335,7 @@ export default function PlaylistDrawer({
 
     // Use phonetic & fuzzy matching across all tracks
     return filterAndRankTracks(baseList, q);
-  }, [viewMode, activeDrilldownPlaylist, mainSource, visibleTracks, userPersonalSongIds, favorites, searchQuery, activeLangs]);
+  }, [viewMode, activeDrilldownPlaylist, mainSource, visibleTracks, userPersonalSongIds, favorites, searchQuery, activeLangs, customTrackOrder]);
 
   // Toggle personal song in user's collection (from clicking + in Musicly)
   const handleTogglePersonalSong = (track) => {
@@ -512,6 +562,93 @@ export default function PlaylistDrawer({
       return `${items[0]}, ${items[1]} +${items.length - 2}`;
     }
     return `${items[0]} +${items.length - 1}`;
+  };
+
+  // Drag and drop event handlers for reordering playback sequence
+  const handleTrackDragStart = (e, index) => {
+    setDraggedTrackIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', index.toString());
+    } catch {}
+  };
+
+  const handleTrackDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleTrackDragEnd = () => {
+    setDraggedTrackIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleTrackDrop = (e, targetIndex) => {
+    e.preventDefault();
+    const fromIndex = draggedTrackIndex;
+    setDraggedTrackIndex(null);
+    setDragOverIndex(null);
+    if (fromIndex === null || fromIndex === undefined || fromIndex === targetIndex) return;
+
+    const updated = [...sortedFilteredTracks];
+    const [movedItem] = updated.splice(fromIndex, 1);
+    updated.splice(targetIndex, 0, movedItem);
+
+    const updatedIds = updated.map(t => t.id);
+
+    // 1. If currently inside a playlist
+    if (viewMode === 'playlists' && activeDrilldownPlaylist) {
+      if (activeDrilldownPlaylist.isCustom) {
+        const updatedPlaylists = userPlaylists.map(pl => {
+          if (pl.id === activeDrilldownPlaylist.id) {
+            return { ...pl, trackIds: updatedIds };
+          }
+          return pl;
+        });
+        setUserPlaylists(updatedPlaylists);
+        saveUserPlaylists(updatedPlaylists, user);
+      } else if (isAdmin && typeof onUpdatePublicPlaylist === 'function') {
+        onUpdatePublicPlaylist(activeDrilldownPlaylist.id, { trackIds: updatedIds });
+      }
+    } else if (mainSource === 'user') {
+      // Personal choice songs
+      setUserPersonalSongIds(updatedIds);
+      saveUserPersonalSongIds(updatedIds, user);
+    } else if (mainSource === 'favorites') {
+      // Liked songs
+      if (typeof onReorderFavorites === 'function') {
+        onReorderFavorites(updatedIds);
+      }
+    } else {
+      // Musicly official catalog
+      setCustomTrackOrder(updatedIds);
+      try {
+        localStorage.setItem('musicly_custom_queue_order', JSON.stringify(updatedIds));
+      } catch {}
+    }
+
+    // Automatically sync live playback queue so upcoming songs follow the user's customized sequence
+    if (typeof onSetCustomQueue === 'function' && currentTrack) {
+      const currentIdx = updated.findIndex(t => t.id === currentTrack.id);
+      if (currentIdx !== -1) {
+        onSetCustomQueue(updated.slice(currentIdx + 1));
+      } else {
+        onSetCustomQueue(updated);
+      }
+    }
+
+    playClickSound('light');
+  };
+
+  const handleResetCustomOrder = () => {
+    setCustomTrackOrder([]);
+    try {
+      localStorage.removeItem('musicly_custom_queue_order');
+    } catch {}
+    playClickSound('light');
   };
 
   if (!isOpen) return null;
@@ -997,6 +1134,53 @@ export default function PlaylistDrawer({
               </div>
             )}
 
+            {/* Active Playing Playlist Indicator Banner */}
+            {resolvedActivePlayingPlaylist && (
+              <div 
+                className="drawer-active-playlist-banner"
+                onClick={() => {
+                  if (viewMode !== 'playlists' || drilldownPlaylistId !== resolvedActivePlayingPlaylist.id) {
+                    setViewMode('playlists');
+                    setDrilldownPlaylistId(resolvedActivePlayingPlaylist.id);
+                    playClickSound('light');
+                  }
+                }}
+                title={`Now Playing: ${resolvedActivePlayingPlaylist.title || resolvedActivePlayingPlaylist.name} • Click to view`}
+              >
+                <div className="active-pl-banner-left">
+                  <div className="mini-equalizer active-pl-eq">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <div className="active-pl-meta">
+                    <span className="active-pl-status-tag">NOW PLAYING PLAYLIST</span>
+                    <span className="active-pl-name">{resolvedActivePlayingPlaylist.title || resolvedActivePlayingPlaylist.name}</span>
+                  </div>
+                </div>
+                <span className="active-pl-view-btn">View Playlist →</span>
+              </div>
+            )}
+
+            {/* Reorder Sequence Helper Strip */}
+            {!searchQuery && sortedFilteredTracks.length > 1 && (
+              <div className="drawer-reorder-hint">
+                <span className="reorder-hint-text">
+                  <GripVertical size={11} className="reorder-hint-icon" /> Drag and drop songs to set your playback sequence
+                </span>
+                {mainSource === 'musicly' && customTrackOrder.length > 0 && (
+                  <button 
+                    type="button" 
+                    className="drawer-reset-order-btn" 
+                    onClick={handleResetCustomOrder}
+                    title="Reset sequence to default catalog order"
+                  >
+                    Reset Order
+                  </button>
+                )}
+              </div>
+            )}
+
             {sortedFilteredTracks.length === 0 ? (
               <div className="drawer-empty-state">
                 <Sparkles size={30} className="empty-icon" />
@@ -1036,7 +1220,12 @@ export default function PlaylistDrawer({
             return (
               <React.Fragment key={track.id}>
                 <div 
-                  className={`drawer-track-row ${isSelected ? 'is-selected' : ''}`}
+                  className={`drawer-track-row ${isSelected ? 'is-selected' : ''} ${draggedTrackIndex === idx ? 'is-dragging' : ''} ${dragOverIndex === idx ? 'drag-over-target' : ''}`}
+                  draggable={!searchQuery}
+                  onDragStart={(e) => handleTrackDragStart(e, idx)}
+                  onDragOver={(e) => handleTrackDragOver(e, idx)}
+                  onDragEnd={handleTrackDragEnd}
+                  onDrop={(e) => handleTrackDrop(e, idx)}
                   onClick={() => {
                     if (isSelected) {
                       onTogglePlay();
@@ -1059,6 +1248,14 @@ export default function PlaylistDrawer({
                     }
                   }}
                 >
+                  <div 
+                    className="track-drag-handle" 
+                    title="Drag to reorder sequence"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <GripVertical size={13} />
+                  </div>
+
                   <div className="track-number-wrapper">
                     {isSelected && isPlaying ? (
                       <div className="mini-equalizer">

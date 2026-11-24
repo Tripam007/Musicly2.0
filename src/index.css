@@ -1578,6 +1578,46 @@ body, html, #root {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
+.now-playing-playlist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(168, 85, 247, 0.18);
+  border: 1px solid rgba(168, 85, 247, 0.38);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #c084fc;
+  padding: 1.5px 7px;
+  border-radius: 6px;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.now-playing-playlist-badge:hover {
+  background: rgba(168, 85, 247, 0.32);
+  border-color: rgba(192, 132, 252, 0.65);
+  color: #f3e8ff;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.4);
+}
+
+.playlist-badge-icon {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.playlist-badge-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .track-genre-tag {
   background: rgba(255, 183, 3, 0.16);
   border: 1px solid rgba(255, 183, 3, 0.32);
@@ -2547,6 +2587,149 @@ body, html, #root {
   background: rgba(251, 191, 36, 0.18);
   border-color: rgba(251, 191, 36, 0.45);
   transform: none !important;
+}
+
+.drawer-track-row.is-dragging {
+  opacity: 0.42;
+  background: rgba(168, 85, 247, 0.16) !important;
+  border: 1px dashed rgba(168, 85, 247, 0.6) !important;
+}
+
+.drawer-track-row.drag-over-target {
+  border-top: 2px solid #a855f7 !important;
+  background: rgba(168, 85, 247, 0.14) !important;
+}
+
+.track-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 22px;
+  color: rgba(255, 255, 255, 0.28);
+  cursor: grab;
+  transition: color 0.18s ease, transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.track-drag-handle:active {
+  cursor: grabbing;
+}
+
+.drawer-track-row:hover .track-drag-handle {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Active Playlist Banner at the top of Playlist Drawer */
+.drawer-active-playlist-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.16) 0%, rgba(251, 191, 36, 0.12) 100%);
+  border: 1px solid rgba(168, 85, 247, 0.35);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.drawer-active-playlist-banner:hover {
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.26) 0%, rgba(251, 191, 36, 0.18) 100%);
+  border-color: rgba(192, 132, 252, 0.6);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 22px rgba(168, 85, 247, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.active-pl-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.active-pl-eq span {
+  background: #c084fc;
+}
+
+.active-pl-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.active-pl-status-tag {
+  font-size: 8.5px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  color: #c084fc;
+  text-transform: uppercase;
+}
+
+.active-pl-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.active-pl-view-btn {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 4px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.drawer-active-playlist-banner:hover .active-pl-view-btn {
+  color: #ffffff;
+  background: rgba(168, 85, 247, 0.3);
+  border-color: rgba(192, 132, 252, 0.5);
+}
+
+/* Drag & Drop Reorder Hint & Track Row Drag Styling */
+.drawer-reorder-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px 9px 6px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.48);
+}
+
+.reorder-hint-text {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reorder-hint-icon {
+  opacity: 0.65;
+}
+
+.drawer-reset-order-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 9.5px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.drawer-reset-order-btn:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
 }
 
 .track-number-wrapper {
