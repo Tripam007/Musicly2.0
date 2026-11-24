@@ -1134,34 +1134,6 @@ export default function PlaylistDrawer({
               </div>
             )}
 
-            {/* Active Playing Playlist Indicator Banner */}
-            {resolvedActivePlayingPlaylist && (
-              <div 
-                className="drawer-active-playlist-banner"
-                onClick={() => {
-                  if (viewMode !== 'playlists' || drilldownPlaylistId !== resolvedActivePlayingPlaylist.id) {
-                    setViewMode('playlists');
-                    setDrilldownPlaylistId(resolvedActivePlayingPlaylist.id);
-                    playClickSound('light');
-                  }
-                }}
-                title={`Now Playing: ${resolvedActivePlayingPlaylist.title || resolvedActivePlayingPlaylist.name} • Click to view`}
-              >
-                <div className="active-pl-banner-left">
-                  <div className="mini-equalizer active-pl-eq">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                  <div className="active-pl-meta">
-                    <span className="active-pl-status-tag">NOW PLAYING PLAYLIST</span>
-                    <span className="active-pl-name">{resolvedActivePlayingPlaylist.title || resolvedActivePlayingPlaylist.name}</span>
-                  </div>
-                </div>
-                <span className="active-pl-view-btn">View Playlist →</span>
-              </div>
-            )}
-
             {/* Reorder Sequence Helper Strip */}
             {!searchQuery && sortedFilteredTracks.length > 1 && (
               <div className="drawer-reorder-hint">
