@@ -18,10 +18,12 @@ import { VoiceCommandClient } from './VoiceCommandClient.js';
 import { VoiceCommandParser } from './VoiceCommandParser.js';
 import { MusiclyActionRegistry } from './MusiclyActionRegistry.js';
 import { VoiceResponseManager } from './VoiceResponseManager.js';
+import { getSelectedVoiceId, setSelectedVoiceId } from '../utils/voiceRegistryDB.js';
 
 export class VoiceControlManager {
   constructor(options = {}) {
-    this.config = { ...DEFAULT_VOICE_CONFIG, ...options.config };
+    const savedVoiceId = getSelectedVoiceId();
+    this.config = { ...DEFAULT_VOICE_CONFIG, voiceId: savedVoiceId, ...options.config };
     this.state = VOICE_STATES.IDLE;
     this.listeners = new Set();
     this.permissionGranted = false;
@@ -50,6 +52,7 @@ export class VoiceControlManager {
       getCurrentVolume: options.getCurrentVolume,
       setTemporaryVolume: options.setTemporaryVolume,
       commandClient: this.commandClient,
+      voiceId: this.config.voiceId,
       duckFactor: this.config.duckingVolumeRatio,
       enabled: this.config.enableVoiceResponses,
       duckingEnabled: this.config.enableDucking,
@@ -622,6 +625,10 @@ export class VoiceControlManager {
     }
     if ('enableDucking' in updates) {
       this.responseManager.setDucking(this.config.enableDucking);
+    }
+    if ('voiceId' in updates && updates.voiceId) {
+      this.responseManager.setVoiceId(updates.voiceId);
+      setSelectedVoiceId(updates.voiceId);
     }
     this._notify();
   }

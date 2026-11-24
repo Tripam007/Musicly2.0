@@ -126,6 +126,7 @@ export const DEFAULT_VOICE_CONFIG = {
   enableDucking: true,
   duckingVolumeRatio: 0.28,         // Temporarily duck music to 28% of current level
   voicePersonality: 'cinematic',
+  voiceId: 'AeRdCCKzvd23BpJoofzx',  // Nathaniel C (ElevenLabs Curated Calm & Suspense)
 
   // Confidence Thresholds
   confidenceThresholds: {

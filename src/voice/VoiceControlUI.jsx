@@ -20,7 +20,7 @@ import { VoiceSettingsModal } from './VoiceSettingsModal.jsx';
 import { VoiceDebugPanel } from './VoiceDebugPanel.jsx';
 import '../styles/voiceControl.css';
 
-export const VoiceControlUI = ({ voiceManager }) => {
+export const VoiceControlUI = ({ voiceManager, user, isAdmin }) => {
   const [voiceState, setVoiceState] = useState(voiceManager ? voiceManager.getStatePayload() : null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
@@ -181,6 +181,8 @@ export const VoiceControlUI = ({ voiceManager }) => {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         voiceManager={voiceManager}
+        user={user}
+        isAdmin={isAdmin}
         onOpenDebug={() => {
           setIsSettingsOpen(false);
           setIsDebugOpen(true);

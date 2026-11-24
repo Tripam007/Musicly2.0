@@ -396,7 +396,7 @@ export default function TopBar({
             </button>
 
             {voiceManager && (
-              <VoiceControlUI voiceManager={voiceManager} />
+              <VoiceControlUI voiceManager={voiceManager} user={user} isAdmin={isAdmin} />
             )}
           </div>
         </div>

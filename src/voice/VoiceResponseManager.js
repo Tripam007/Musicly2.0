@@ -11,12 +11,15 @@
  * 6. Player actions ALWAYS succeed even if voice feedback fails.
  */
 
+import { getSelectedVoiceId } from '../utils/voiceRegistryDB.js';
+
 export class VoiceResponseManager {
   /**
    * @param {object} options
    * @param {Function} [options.getCurrentVolume]
    * @param {Function} [options.setTemporaryVolume]
    * @param {object} [options.commandClient]
+   * @param {string} [options.voiceId]
    * @param {number} [options.duckFactor=0.28]
    * @param {boolean} [options.enabled=true]
    * @param {boolean} [options.duckingEnabled=true]
@@ -25,6 +28,7 @@ export class VoiceResponseManager {
     this.getCurrentVolume = options.getCurrentVolume || (() => 0.7);
     this.setTemporaryVolume = options.setTemporaryVolume || null;
     this.commandClient = options.commandClient || null;
+    this.voiceId = options.voiceId || getSelectedVoiceId();
     this.duckFactor = options.duckFactor !== undefined ? options.duckFactor : 0.28;
     this.enabled = options.enabled !== undefined ? options.enabled : true;
     this.duckingEnabled = options.duckingEnabled !== undefined ? options.duckingEnabled : true;
@@ -69,6 +73,12 @@ export class VoiceResponseManager {
     }
   }
 
+  setVoiceId(voiceId) {
+    if (voiceId) {
+      this.voiceId = voiceId;
+    }
+  }
+
   setDucking(val) {
     this.duckingEnabled = !!val;
   }
@@ -101,19 +111,27 @@ export class VoiceResponseManager {
   /**
    * Speak a short system response using ElevenLabs, with fallback to browser SpeechSynthesis
    * @param {string} text - Short response text (e.g. "Playing Kaavish.")
+   * @param {string} [customVoiceId] - Optional voice ID override
    * @returns {Promise<void>}
    */
-  async speak(text) {
+  async speak(text, customVoiceId = null) {
     if (!this.enabled || !text) return;
 
     this.cancel();
     this.isSpeaking = true;
     const originalVol = this._duckAudio();
+    const targetVoiceId = customVoiceId || this.voiceId || getSelectedVoiceId();
 
     try {
-      // 1. Attempt ElevenLabs via Cloud Functions if client is available
+      // 1. If system native is selected, skip ElevenLabs
+      if (targetVoiceId === 'system_native') {
+        await this._speakFallback(text);
+        return;
+      }
+
+      // 2. Attempt ElevenLabs via Cloud Functions or Direct API if client is available
       if (this.commandClient) {
-        const elevenLabsResult = await this.commandClient.generateVoiceResponse(text);
+        const elevenLabsResult = await this.commandClient.generateVoiceResponse(text, 'cinematic', targetVoiceId);
         if (elevenLabsResult.success && elevenLabsResult.audioBase64 && this.voiceAudio) {
           await this._playAudioBase64(elevenLabsResult.audioBase64, elevenLabsResult.mimeType);
           this._restoreAudio(originalVol);
@@ -122,7 +140,7 @@ export class VoiceResponseManager {
         }
       }
 
-      // 2. Fallback to Web Speech Synthesis
+      // 3. Fallback to Web Speech Synthesis
       await this._speakFallback(text);
     } catch (err) {
       console.warn('[VoiceResponseManager] speak failed gracefully:', err);
