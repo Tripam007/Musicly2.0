@@ -233,6 +233,27 @@ assert(ambMatch.params.candidates.length >= 2, 'Should provide candidate list fo
 assert.strictEqual(ambMatch.spokenText, 'Which one did you mean?');
 console.log('✓ Ambiguity handling ("play Faasle" -> AMBIGUOUS_CHOICE with candidates) passed');
 
+// Ambiguity choice resolution (user's 2nd command)
+const ambContext = { ...mockContext, ambiguousCandidates: ambMatch.params.candidates };
+const pickFirst = VoiceCommandParser.parse('the first one', ambContext);
+assert.strictEqual(pickFirst.action, MUSICLY_ACTIONS.PLAY_SEARCH_RESULT);
+assert.strictEqual(pickFirst.params.track.title, ambMatch.params.candidates[0].title);
+
+const pickSecond = VoiceCommandParser.parse('2', ambContext);
+assert.strictEqual(pickSecond.action, MUSICLY_ACTIONS.PLAY_SEARCH_RESULT);
+assert.strictEqual(pickSecond.params.track.title, ambMatch.params.candidates[1].title);
+
+const cancelAmb = VoiceCommandParser.parse('cancel', ambContext);
+assert.strictEqual(cancelAmb.action, MUSICLY_ACTIONS.CANCEL);
+console.log('✓ Ambiguity candidate voice resolution ("the first one", "2", "cancel") passed');
+
+// Generic play commands ("play me a song", "play a song", "play some music")
+assert.strictEqual(VoiceCommandParser.parse('play me a song', mockContext).action, MUSICLY_ACTIONS.PLAY);
+assert.strictEqual(VoiceCommandParser.parse('play a song', mockContext).action, MUSICLY_ACTIONS.PLAY);
+assert.strictEqual(VoiceCommandParser.parse('play some music', mockContext).action, MUSICLY_ACTIONS.PLAY);
+assert.strictEqual(VoiceCommandParser.parse('play something', mockContext).action, MUSICLY_ACTIONS.PLAY);
+console.log('✓ Generic playback commands ("play me a song", "play some music", "play something") passed');
+
 // Artist search
 const artistMatch = VoiceCommandParser.parse('play something by Coldplay', mockContext);
 assert.strictEqual(artistMatch.action, MUSICLY_ACTIONS.PLAY_SEARCH_RESULT);

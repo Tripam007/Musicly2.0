@@ -57,7 +57,7 @@ export class VoiceCommandParser {
     const text = withNumbers.trim();
 
     // 3. Low Speech Confidence Gate
-    if (speechConfidence < 0.35) {
+    if (speechConfidence < 0.40) {
       return {
         action: MUSICLY_ACTIONS.UNKNOWN,
         rawCommand: rawTranscript,
@@ -67,6 +67,63 @@ export class VoiceCommandParser {
         feedback: "Could you repeat that?",
         spokenText: "I couldn't understand that. Please repeat."
       };
+    }
+
+    // 3.5. AMBIGUITY CANDIDATE SELECTION (When "Which one did you mean?" is active)
+    if (context.ambiguousCandidates && context.ambiguousCandidates.length > 0) {
+      const candidates = context.ambiguousCandidates;
+
+      // Cancel / Dismiss
+      if (/^(?:cancel|dismiss|never\s*mind|none|no|exit|stop)$/i.test(text)) {
+        return {
+          action: MUSICLY_ACTIONS.CANCEL,
+          params: {},
+          rawCommand: rawTranscript,
+          intentConfidence: 0.99,
+          speechConfidence,
+          actionConfidence: 0.99,
+          feedback: "Cancelled.",
+          spokenText: "Cancelled."
+        };
+      }
+
+      let selectedIndex = -1;
+      if (/^(?:the\s+)?(?:first(?:\s+(?:one|1))?|one|1|number\s+(?:one|1)|1(?:st)?|top(?:\s+(?:one|1))?)$/i.test(text)) {
+        selectedIndex = 0;
+      } else if (/^(?:the\s+)?(?:second(?:\s+(?:one|2|two))?|two|2|number\s+(?:two|2)|2(?:nd)?|middle(?:\s+(?:one|2|two))?)$/i.test(text)) {
+        selectedIndex = 1;
+      } else if (/^(?:the\s+)?(?:third(?:\s+(?:one|3|three))?|three|3|number\s+(?:three|3)|3(?:rd)?|last(?:\s+(?:one|3|three))?|bottom(?:\s+(?:one|3|three))?)$/i.test(text)) {
+        selectedIndex = 2;
+      } else {
+        // Check if user spoke a song title or artist that matches one of the candidates
+        const cleanChoice = normalizeText(text.replace(/^(?:play|choose|select|pick)\s+/i, ''));
+        const matchedCandIndex = candidates.findIndex(c => {
+          const title = normalizeText(c.title || '');
+          const artist = normalizeText(c.artist || '');
+          return (cleanChoice.length >= 3 && (title.includes(cleanChoice) || cleanChoice.includes(title))) ||
+                 (artist && cleanChoice.length >= 3 && (artist.includes(cleanChoice) || cleanChoice.includes(artist)));
+        });
+        if (matchedCandIndex !== -1) {
+          selectedIndex = matchedCandIndex;
+        }
+      }
+
+      if (selectedIndex >= 0 && selectedIndex < candidates.length) {
+        const chosen = candidates[selectedIndex];
+        return {
+          action: MUSICLY_ACTIONS.PLAY_SEARCH_RESULT,
+          params: {
+            track: chosen,
+            targetTrack: chosen
+          },
+          rawCommand: rawTranscript,
+          intentConfidence: 0.98,
+          speechConfidence,
+          actionConfidence: 0.98,
+          feedback: `Playing ${chosen.title}.`,
+          spokenText: `Playing ${chosen.title}.`
+        };
+      }
     }
 
     // 4. CANCEL / DISMISS
@@ -114,8 +171,8 @@ export class VoiceCommandParser {
     }
 
     // 7. PLAYBACK CONTROLS
-    // Play / Resume
-    if (/^(?:play|resume|continue|unpause|start|start\s+(?:playing|playback|music|the\s+music|song|the\s+song)|play\s+(?:music|the\s+music|song|the\s+song|some\s+music|something)|resume\s+(?:the\s+)?(?:music|song|playback))$/i.test(text)) {
+    // Play / Resume / Play me a song / Play something
+    if (/^(?:play|resume|continue|unpause|start|start\s+(?:playing|playback|music|the\s+music|song|the\s+song)|play\s+(?:me\s+)?(?:a\s+|some\s+|any\s+|the\s+)?(?:songs?|tracks?|music|tunes?|something(?:\s+good)?)|play\s+(?:me\s+)?something|resume\s+(?:the\s+)?(?:music|song|playback))$/i.test(text)) {
       return {
         action: MUSICLY_ACTIONS.PLAY,
         params: {},
@@ -577,6 +634,20 @@ export class VoiceCommandParser {
       .replace(/^(?:the\s+song|the\s+track|song\s+named|track\s+named|music\s+by|song\s+by)\s+/i, '')
       .replace(/\s+(?:please|now)$/i, '')
       .trim();
+
+    // If search query is generic filler like "a song", "me a song", "music", "something"
+    if (/^(?:(?:me\s+)?(?:a\s+|some\s+|any\s+)?(?:songs?|tracks?|music|something))$/i.test(searchQuery)) {
+      return {
+        action: MUSICLY_ACTIONS.PLAY,
+        params: {},
+        rawCommand: rawTranscript,
+        intentConfidence: 0.98,
+        speechConfidence,
+        actionConfidence: 0.98,
+        feedback: "Resuming playback.",
+        spokenText: "Playing."
+      };
+    }
 
     if (searchQuery && searchQuery.length > 1) {
       const allTracks = context.allTracks || [];

@@ -2069,6 +2069,11 @@ export default function App() {
 
     // Playback
     reg.register(MUSICLY_ACTIONS.PLAY, async () => {
+      if (!currentTrackRef.current && allTracksRef.current?.length > 0) {
+        const trackToPlay = allTracksRef.current[0];
+        actionsRef.current.handleSelectTrack?.(trackToPlay);
+        return `Playing ${trackToPlay.title}.`;
+      }
       if (!isPlayingRef.current) {
         actionsRef.current.togglePlay?.();
       }

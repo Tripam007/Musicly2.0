@@ -410,6 +410,55 @@ export class VoiceControlManager {
     this._finishCommandCycle(1800);
   }
 
+  _startWaitingForAmbiguousChoice(wakeTime = 0) {
+    this._clearCommandTimeout();
+    this._resetInactivityTimer();
+
+    const hasSpeechRecognition = typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+    const ambiguityTimeoutDuration = 10000; // 10 seconds to respond or click
+
+    this.commandTimeoutId = setTimeout(() => {
+      if (this.state === VOICE_STATES.AMBIGUOUS) {
+        console.log('[VoiceControlManager] Ambiguity choice timed out, returning to standby.');
+        this._finishCommandCycle(1000);
+      }
+    }, ambiguityTimeoutDuration);
+
+    if (this.wakeWordManager && hasSpeechRecognition) {
+      let silenceDebounceTimer = null;
+      let accumulatedText = '';
+
+      this.wakeWordManager.startCommandMode(({ text, isFinal }) => {
+        if (this.state !== VOICE_STATES.AMBIGUOUS) return;
+
+        const clean = (text || '').trim();
+        if (!clean) return;
+
+        accumulatedText = clean;
+        this.lastRecognized = clean;
+        this._notify({ lastRecognized: clean });
+
+        if (isFinal) {
+          if (silenceDebounceTimer) clearTimeout(silenceDebounceTimer);
+          this.wakeWordManager.lock();
+          this._processCommandString(clean, 0.95, wakeTime);
+        } else {
+          if (silenceDebounceTimer) clearTimeout(silenceDebounceTimer);
+          silenceDebounceTimer = setTimeout(() => {
+            if (this.state === VOICE_STATES.AMBIGUOUS && accumulatedText) {
+              this.wakeWordManager.lock();
+              this._processCommandString(accumulatedText, 0.9, wakeTime);
+            }
+          }, 1200);
+        }
+      });
+      return;
+    }
+
+    // Fallback recorder if Web Speech API not present
+    this._recordAndExecuteCommand(wakeTime);
+  }
+
   async _recordAndExecuteCommand(wakeTime) {
     const started = await this.recorder.start();
     if (!started) {
@@ -467,7 +516,11 @@ export class VoiceControlManager {
       this._setState(VOICE_STATES.PROCESSING_COMMAND, { lastRecognized: commandText });
 
       const parseStartTime = performance.now();
-      const context = this.actionRegistry.contextProvider() || {};
+      const baseContext = this.actionRegistry.contextProvider() || {};
+      const context = {
+        ...baseContext,
+        ambiguousCandidates: this.ambiguousCandidates || [],
+      };
       const parsed = VoiceCommandParser.parse(commandText, context, speechConfidence);
       const parseEndTime = performance.now();
 
@@ -493,6 +546,7 @@ export class VoiceControlManager {
 
       // 1. Cancel
       if (parsed.action === MUSICLY_ACTIONS.CANCEL) {
+        this.ambiguousCandidates = [];
         this._setState(VOICE_STATES.SUCCESS, { lastResponse: 'Cancelled.' });
         if (this.wasPlayingBeforeCommand) {
           try {
@@ -511,10 +565,18 @@ export class VoiceControlManager {
           ambiguousCandidates: this.ambiguousCandidates,
           lastResponse: 'Which one did you mean?',
         });
-        await this.responseManager.speak('Which one did you mean?');
-        // Keep ambiguous state open so user can tap candidate or say next command
+        if (this.config.enableVoiceResponses) {
+          try {
+            await this.responseManager.speak('Which one did you mean?');
+          } catch {}
+        }
+        // Start listening immediately for user's voice candidate selection (or manual click)
+        this._startWaitingForAmbiguousChoice(wakeTime);
         return;
       }
+
+      // If an action was chosen (e.g. from ambiguity or normal command), clear any pending candidates
+      this.ambiguousCandidates = [];
 
       // 3. Unknown Command
       if (parsed.action === MUSICLY_ACTIONS.UNKNOWN) {
