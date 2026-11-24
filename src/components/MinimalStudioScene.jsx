@@ -1359,16 +1359,52 @@ export default function MinimalStudioScene({
   const likeCount = useMemo(() => 7 + (isLiked ? 1 : 0), [isLiked]);
   const thumbsCount = useMemo(() => 80 + (isThumbsUp ? 1 : 0), [isThumbsUp]);
 
+  // Active track pool for Minimal Studio navigation (Mine Playlist, Active Curated Playlist, or Public Catalog)
+  const activeSongPool = useMemo(() => {
+    if (playSource === 'own') {
+      return mineTracks;
+    }
+    if (activePlayingPlaylistId) {
+      if (activePlayingPlaylistId === 'liked_songs') {
+        const likedIds = new Set((favorites || []).map(f => (typeof f === 'string' ? f : f?.id)));
+        const likedList = (allTracks || []).filter(t => likedIds.has(t.id));
+        if (likedList.length > 0) return likedList;
+      }
+      try {
+        const unified = getUnifiedMusiclyPlaylists(allTracks, publicPlaylists);
+        const pl = unified.find(p => p.id === activePlayingPlaylistId);
+        if (pl && Array.isArray(pl.tracks) && pl.tracks.length > 0) {
+          return pl.tracks;
+        }
+      } catch (e) {}
+      try {
+        const foundUserPl = (userPlaylists || []).find(p => p.id === activePlayingPlaylistId);
+        if (foundUserPl && Array.isArray(foundUserPl.trackIds)) {
+          const plTracks = foundUserPl.trackIds.map(tId => (allTracks || []).find(t => t.id === tId)).filter(Boolean);
+          if (plTracks.length > 0) return plTracks;
+        }
+      } catch (e) {}
+    }
+    return (allTracks || []).filter(t => !t?.isCustom || !!t?.isPublic);
+  }, [playSource, mineTracks, activePlayingPlaylistId, favorites, allTracks, publicPlaylists, userPlaylists]);
+
   // Next track preview respecting active source ('own' Mine Playlist vs 'musicly')
   const nextTrack = useMemo(() => {
-    const pool = playSource === 'own'
-      ? mineTracks
-      : (allTracks || []).filter(t => !t?.isCustom || !!t?.isPublic);
-    if (!pool || pool.length === 0) return null;
-    const currentIndex = pool.findIndex(t => t.id === activeTrack?.id);
-    const nextIdx = (currentIndex + 1) % pool.length;
-    return pool[nextIdx];
-  }, [allTracks, mineTracks, playSource, activeTrack?.id]);
+    if (!activeSongPool || activeSongPool.length <= 1) return null;
+    const currentIndex = activeSongPool.findIndex(t => t.id === activeTrack?.id);
+    if (currentIndex === -1) return activeSongPool[0];
+    const nextIdx = (currentIndex + 1) % activeSongPool.length;
+    return activeSongPool[nextIdx];
+  }, [activeSongPool, activeTrack?.id]);
+
+  // Previous track preview respecting active source ('own' Mine Playlist vs 'musicly')
+  const prevTrack = useMemo(() => {
+    if (!activeSongPool || activeSongPool.length <= 1) return null;
+    const currentIndex = activeSongPool.findIndex(t => t.id === activeTrack?.id);
+    if (currentIndex === -1) return activeSongPool[activeSongPool.length - 1];
+    const prevIdx = (currentIndex - 1 + activeSongPool.length) % activeSongPool.length;
+    return activeSongPool[prevIdx];
+  }, [activeSongPool, activeTrack?.id]);
 
   // Media gallery photos (greesel_clean_portrait.jpg is the crystal-clear focused central visual)
   const mediaPhotos = useMemo(() => {
@@ -1657,13 +1693,25 @@ export default function MinimalStudioScene({
 
             {/* Top Navigation Floating Badges & Center Canopy */}
             <div className="ref-photo-top-bar">
-              <button 
-                className="ref-badge-back-home"
-                onClick={onClose}
-                title="Return to Cozy Bedroom Studio"
-              >
-                <span className="ref-badge-arrow">◀◀</span> Back to Home
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button 
+                  className="ref-badge-back-home"
+                  onClick={prevTrack ? handlePrevSong : onClose}
+                  title={prevTrack ? `Previous: ${prevTrack.title} (Click to Play)` : "Return to Cozy Bedroom Studio"}
+                >
+                  <span className="ref-badge-arrow">◀◀</span> <span>{prevTrack ? (prevTrack.title.length > 14 ? `${prevTrack.title.substring(0, 13)}…` : prevTrack.title) : 'Back to Home'}</span>
+                </button>
+                {prevTrack && (
+                  <button
+                    className="ref-badge-back-home"
+                    onClick={onClose}
+                    title="Return to Cozy Bedroom Studio"
+                    style={{ padding: '7px 11px' }}
+                  >
+                    <Home size={13} />
+                  </button>
+                )}
+              </div>
 
               <div className="ref-badge-center-stats">
                 <button 
