@@ -48,6 +48,8 @@ import {
   DEFAULT_STUDIO_PHOTOS,
   subscribeStudioBackgrounds,
   setActiveStudioBackgroundIndex,
+  saveActiveStudioVisual,
+  getActiveStudioVisual,
   deduplicateBackgrounds 
 } from '../utils/studioBackgroundsDB';
 import { isLiveVisual } from '../utils/publicScenesDB';
@@ -329,6 +331,23 @@ export default function MinimalStudioScene({
     return DEFAULT_STUDIO_PHOTOS;
   });
 
+  // Dedicated permanent active visual URL state (persists directly across reloads, cloud sync, and tracks)
+  const [activeVisualUrl, setActiveVisualUrl] = useState(() => {
+    try {
+      return localStorage.getItem('musicly_active_studio_bg_url') || null;
+    } catch {}
+    return null;
+  });
+
+  // Ensure active visual is also loaded from IndexedDB on startup (handles large data URLs)
+  useEffect(() => {
+    getActiveStudioVisual().then((savedUrl) => {
+      if (savedUrl) {
+        setActiveVisualUrl((prev) => prev || savedUrl);
+      }
+    }).catch(() => {});
+  }, []);
+
   const [mediaPhotoIndex, setMediaPhotoIndex] = useState(() => {
     try {
       const activeUrl = localStorage.getItem('musicly_active_studio_bg_url');
@@ -350,14 +369,18 @@ export default function MinimalStudioScene({
         localStorage.setItem('musicly_studio_bg_index', String(next));
         if (urlToSave) {
           localStorage.setItem('musicly_active_studio_bg_url', urlToSave);
+          localStorage.setItem('musicly_studio_bg_updated_at', String(Date.now()));
         }
-        localStorage.setItem('musicly_studio_bg_updated_at', String(Date.now()));
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
             detail: { activeIndex: next, activeUrl: urlToSave }
           }));
         }
       } catch (e) {}
+      if (urlToSave) {
+        setActiveVisualUrl(urlToSave);
+        saveActiveStudioVisual(urlToSave);
+      }
       try {
         setActiveStudioBackgroundIndex(next, urlToSave);
       } catch {}
@@ -376,6 +399,7 @@ export default function MinimalStudioScene({
           try {
             const activeUrl = localStorage.getItem('musicly_active_studio_bg_url');
             if (activeUrl) {
+              setActiveVisualUrl(activeUrl);
               const foundIdx = deduped.findIndex(item => {
                 const u = typeof item === 'string' ? item : (item?.url || '');
                 return u === activeUrl;
@@ -404,6 +428,7 @@ export default function MinimalStudioScene({
         const deduped = deduplicateBackgrounds(backgrounds);
         setStudioBackgrounds(deduped);
         if (activeUrl) {
+          setActiveVisualUrl(activeUrl);
           const foundIdx = deduped.findIndex(b => {
             const u = typeof b === 'string' ? b : (b?.url || '');
             return u === activeUrl;
@@ -414,7 +439,7 @@ export default function MinimalStudioScene({
           }
         }
       }
-      if (typeof activeIndex === 'number') {
+      if (typeof activeIndex === 'number' && !activeVisualUrl) {
         setMediaPhotoIndex(activeIndex);
       }
     });
@@ -424,24 +449,18 @@ export default function MinimalStudioScene({
       window.removeEventListener('musicly_studio_bg_updated', reload);
       if (unsubCloud) unsubCloud();
     };
-  }, []);
+  }, [activeVisualUrl]);
 
   const currentStudioBgUrl = useMemo(() => {
-    // 1. If an active studio visual URL is stored and found in the gallery, keep it permanently locked!
-    let activeSavedUrl = null;
-    try {
-      activeSavedUrl = localStorage.getItem('musicly_active_studio_bg_url');
-    } catch {}
-
-    if (activeSavedUrl && Array.isArray(studioBackgrounds)) {
-      const match = studioBackgrounds.find(b => {
-        const u = typeof b === 'string' ? b : (b?.url || '');
-        return u === activeSavedUrl;
-      });
-      if (match) {
-        return typeof match === 'string' ? match : (match.url || activeSavedUrl);
-      }
+    // 1. If an active studio visual URL is chosen, it is 100% PERMANENTLY LOCKED
+    if (activeVisualUrl) {
+      return activeVisualUrl;
     }
+
+    try {
+      const activeSavedUrl = localStorage.getItem('musicly_active_studio_bg_url');
+      if (activeSavedUrl) return activeSavedUrl;
+    } catch {}
 
     // 2. Otherwise use the safe index in studioBackgrounds
     if (Array.isArray(studioBackgrounds) && studioBackgrounds.length > 0) {
@@ -451,7 +470,7 @@ export default function MinimalStudioScene({
     }
 
     return '/assets/images/zenitsu_clean_wallpaper.jpg';
-  }, [studioBackgrounds, mediaPhotoIndex]);
+  }, [activeVisualUrl, studioBackgrounds, mediaPhotoIndex]);
 
   // When the user plays something else (outside the country playlist), automatically clear country playlist state
   useEffect(() => {
@@ -647,6 +666,10 @@ export default function MinimalStudioScene({
       saveStudioBackgrounds(next);
       return next;
     });
+    if (bgUrl) {
+      setActiveVisualUrl(bgUrl);
+      saveActiveStudioVisual(bgUrl);
+    }
     updateMediaPhotoIndex(0, bgUrl);
     try {
       const bgTitle = typeof newBg === 'string' ? 'Custom Studio Visual' : (newBg.title || 'Studio Background Visual');
@@ -678,6 +701,10 @@ export default function MinimalStudioScene({
       const item = studioBackgrounds[index];
       bgUrl = typeof item === 'string' ? item : (item?.url || '');
     }
+    if (bgUrl) {
+      setActiveVisualUrl(bgUrl);
+      saveActiveStudioVisual(bgUrl);
+    }
     updateMediaPhotoIndex(index, bgUrl);
   }, [studioBackgrounds, updateMediaPhotoIndex]);
 
@@ -686,6 +713,10 @@ export default function MinimalStudioScene({
       setStudioBackgrounds(defaults);
       const firstBg = defaults[0];
       const firstUrl = typeof firstBg === 'string' ? firstBg : (firstBg?.url || '');
+      if (firstUrl) {
+        setActiveVisualUrl(firstUrl);
+        saveActiveStudioVisual(firstUrl);
+      }
       updateMediaPhotoIndex(0, firstUrl);
       showToast("Restored clean studio visuals (cleared duplicate overlays)");
     });
@@ -717,6 +748,10 @@ export default function MinimalStudioScene({
     }
     const item = studioBackgrounds[nextIdx];
     const itemUrl = typeof item === 'string' ? item : (item?.url || '');
+    if (itemUrl) {
+      setActiveVisualUrl(itemUrl);
+      saveActiveStudioVisual(itemUrl);
+    }
     updateMediaPhotoIndex(nextIdx, itemUrl);
     const title = typeof item === 'string' ? `Visual ${nextIdx + 1}` : (item?.title || `Visual ${nextIdx + 1}`);
     showToast(`Shuffled to: ${title}`);
@@ -2198,6 +2233,7 @@ export default function MinimalStudioScene({
           onClose={() => setIsAdminGalleryOpen(false)}
           backgrounds={studioBackgrounds}
           activeBackgroundIndex={mediaPhotoIndex % (studioBackgrounds.length || 1)}
+          activeBackgroundUrl={currentStudioBgUrl}
           onSelectBackground={handleSelectStudioBg}
           onAddBackground={handleAddStudioBg}
           onRemoveBackground={handleRemoveStudioBg}

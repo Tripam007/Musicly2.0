@@ -10,6 +10,7 @@ const DB_VERSION = 1;
 const STORE_NAME = 'studio_backgrounds';
 const KEY = 'current_gallery';
 const KEY_CUSTOM_POOL = 'user_custom_studio_wallpapers';
+const KEY_ACTIVE_VISUAL = 'active_studio_visual';
 
 export const DEFAULT_STUDIO_PHOTOS = [
   {
@@ -347,6 +348,10 @@ export function setActiveStudioBackgroundIndex(idx, activeUrl = '') {
     }
   } catch (e) {}
 
+  if (activeUrl) {
+    saveActiveStudioVisual(activeUrl).catch(() => {});
+  }
+
   // Broadcast via realtime relay (instant cross-device SSE & pub-sub)
   broadcastStudioVisual(idx).catch(() => {});
 
@@ -359,6 +364,50 @@ export function setActiveStudioBackgroundIndex(idx, activeUrl = '') {
         updatedAt: now
       }, { merge: true }).catch(() => {});
     } catch {}
+  }
+}
+
+/**
+ * Permanently save the user's explicitly activated background visual into IndexedDB & localStorage
+ */
+export async function saveActiveStudioVisual(visualUrl) {
+  if (!visualUrl) return;
+  try {
+    const now = Date.now();
+    try {
+      localStorage.setItem('musicly_active_studio_bg_url', visualUrl);
+      localStorage.setItem('musicly_studio_bg_updated_at', String(now));
+    } catch {}
+    const db = await openDB();
+    if (db) {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put(visualUrl, KEY_ACTIVE_VISUAL);
+    }
+  } catch (err) {
+    console.warn('Could not save active visual to IndexedDB:', err);
+  }
+}
+
+/**
+ * Get active studio background URL from localStorage or persistent IndexedDB
+ */
+export async function getActiveStudioVisual() {
+  try {
+    const fromLocal = localStorage.getItem('musicly_active_studio_bg_url');
+    if (fromLocal) return fromLocal;
+  } catch {}
+  try {
+    const db = await openDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(KEY_ACTIVE_VISUAL);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => resolve(null);
+    });
+  } catch {
+    return null;
   }
 }
 
@@ -559,6 +608,7 @@ export async function resetStudioBackgroundsToDefaults() {
     await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE_NAME, 'readwrite');
       const store = tx.objectStore(STORE_NAME);
+      store.delete(KEY_ACTIVE_VISUAL);
       const req = store.put(merged, KEY);
       tx.oncomplete = () => resolve(true);
       tx.onerror = (e) => reject(e);

@@ -21,6 +21,7 @@ export default function AdminBackgroundGalleryModal({
   onClose,
   backgrounds = [],
   activeBackgroundIndex = 0,
+  activeBackgroundUrl = null,
   onSelectBackground,
   onAddBackground,
   onRemoveBackground,
@@ -47,12 +48,13 @@ export default function AdminBackgroundGalleryModal({
   }, [activeBackgroundIndex, displayBackgrounds]);
 
   const activeBgUrl = useMemo(() => {
+    if (activeBackgroundUrl) return activeBackgroundUrl;
     try {
       return localStorage.getItem('musicly_active_studio_bg_url') || '';
     } catch {
       return '';
     }
-  }, [isOpen, safeActiveIndex]);
+  }, [isOpen, safeActiveIndex, activeBackgroundUrl]);
 
   if (!isOpen) return null;
 
