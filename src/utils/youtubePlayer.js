@@ -356,7 +356,7 @@ class YouTubeAudioEngine {
 
   startBufferingWatchdog() {
     this.clearBufferingWatchdog();
-    // Gently nudge the player if buffering takes more than 3.2s, without prematurely killing playback
+    // 1. Gently nudge the player if buffering takes more than 2.8s
     this.bufferingWatchdog = setTimeout(() => {
       try {
         if (this.player && typeof this.player.getPlayerState === 'function') {
@@ -367,7 +367,26 @@ class YouTubeAudioEngine {
           }
         }
       } catch (e) {}
-    }, 3200);
+    }, 2800);
+
+    // 2. If buffering or stalled for more than 5.5s (silent embed block), trigger error recovery to swap stream
+    this.bufferingFallbackWatchdog = setTimeout(() => {
+      try {
+        if (this.player && typeof this.player.getPlayerState === 'function') {
+          const state = this.player.getPlayerState();
+          if (state === window.YT.PlayerState.BUFFERING || state === -1) {
+            console.warn('[Musicly YouTube] Video stalled in unplayable/restricted state -> triggering auto-recovery');
+            if (this.callbacks.onError) {
+              this.callbacks.onError({
+                code: 150,
+                videoId: this.currentVideoId,
+                isRestricted: true
+              });
+            }
+          }
+        }
+      } catch (e) {}
+    }, 5500);
   }
 
   clearBufferingWatchdog() {

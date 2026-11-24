@@ -126,7 +126,7 @@ export const KNOWN_ORIGINAL_SONGS = [
     },
     title: 'Faasle',
     artist: 'Kaavish',
-    youtubeId: 'tZ42pPcvxoc',
+    youtubeId: '63-a3chbuH8',
     isYouTube: true,
     cover: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=600&auto=format&fit=crop&q=80',
     duration: 312,

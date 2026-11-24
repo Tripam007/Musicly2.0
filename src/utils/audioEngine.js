@@ -506,19 +506,65 @@ class AudioEngine {
     }
   }
 
-  handleYouTubeError(errInfo) {
+  async handleYouTubeError(errInfo) {
     console.warn('[Musicly AudioEngine] YouTube playback notice:', errInfo);
-    // If error 150/101 (embedding restricted), attempt stream resolution
-    if (errInfo?.isRestricted && this.currentTrack) {
-      resolveTrackAudioStreamAsync(this.currentTrack).then(upgraded => {
-        if (upgraded && isDirectPlayableAudio(upgraded.audioUrl)) {
+    if (!this.currentTrack || this._isAutoRecovering) return;
+
+    // Check if error is 150, 101 (restricted), 100 (deleted/not found), or 2 (invalid)
+    const isUnplayable = errInfo?.isRestricted || errInfo?.isNotFound || errInfo?.isInvalid || errInfo?.code === 150 || errInfo?.code === 101 || errInfo?.code === 100 || errInfo?.code === 2;
+    if (isUnplayable) {
+      // 1. First attempt: check if original direct audio stream is available
+      try {
+        const upgraded = await resolveTrackAudioStreamAsync(this.currentTrack);
+        if (upgraded && upgraded.audioUrl && isDirectPlayableAudio(upgraded.audioUrl)) {
           console.log('[Musicly AudioEngine] Switching restricted YouTube track to direct audio stream');
           this.playbackMode = 'native';
           ytEngine.stop();
-          this.playNativeUrl(upgraded.audioUrl, this.currentTime);
+          await this.playNativeUrl(upgraded.audioUrl, this.currentTime);
+          return;
         }
-      });
+      } catch (e) {}
+
+      // 2. Second attempt: auto-recover alternate playable embeddable YouTube stream
+      await this.autoRecoverBrokenTrack(this.currentTrack, this.currentTime);
     }
+  }
+
+  async autoRecoverBrokenTrack(track, startTime = 0) {
+    if (!track || this._isAutoRecovering) return false;
+    this._isAutoRecovering = true;
+    try {
+      const failedYtId = track.youtubeId;
+      const cleanTitle = (track.title || '').replace(/\(.*\)|\[.*\]/g, '').trim();
+      const cleanArtist = (track.artist || '').replace(/\(.*\)|\[.*\]/g, '').trim();
+      const queryStr = `${cleanTitle} ${cleanArtist} audio`.trim();
+      console.log(`[Musicly AudioEngine] Auto-recovering restricted/broken track "${track.title}" via search "${queryStr}"...`);
+
+      const res = await fetch(`/api/youtube-search?q=${encodeURIComponent(queryStr)}`);
+      if (res.ok) {
+        const data = await res.json();
+        const candidates = data?.results || [];
+        // Find an alternate playable candidate with a different videoId
+        for (const candidate of candidates.slice(0, 10)) {
+          if (candidate.youtubeId && candidate.youtubeId !== failedYtId) {
+            console.log(`[Musicly AudioEngine] Auto-recovery: switching to alternate working stream "${candidate.title}" (${candidate.youtubeId})`);
+            track.youtubeId = candidate.youtubeId;
+            track.audioUrl = `https://www.youtube.com/watch?v=${candidate.youtubeId}`;
+            track.isYouTube = true;
+            this.playbackMode = 'youtube';
+            this.isPlaying = true;
+            this.notifyState();
+            await ytEngine.playVideo(candidate.youtubeId, startTime || 0, this.volume);
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Musicly AudioEngine] Auto-recovery error:', e);
+    } finally {
+      this._isAutoRecovering = false;
+    }
+    return false;
   }
 
   // Event Subscription System

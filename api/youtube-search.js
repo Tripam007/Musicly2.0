@@ -258,7 +258,7 @@ async function handleSearch(searchQuery, userRawQuery, res) {
     const safeEscaped = qClean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const wordRegex = safeEscaped ? new RegExp(`\\b${safeEscaped}`, 'i') : null;
 
-    const results = [];
+    let results = [];
     if (rawRenderers && rawRenderers.length > 0) {
       for (const v of rawRenderers) {
         if (!v || !v.videoId) continue;
@@ -382,6 +382,27 @@ async function handleSearch(searchQuery, userRawQuery, res) {
 
     // Sort results descending by score: TOP MATCHED recommendations first, then more below
     results.sort((a, b) => b.score - a.score);
+
+    // Verify embeddability for top search results so restricted videos (401) are deprioritized
+    if (results.length > 0) {
+      try {
+        const topSlice = results.slice(0, 10);
+        const checks = await Promise.all(
+          topSlice.map(item => 
+            fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${item.youtubeId}&format=json`, { signal: AbortSignal.timeout(1200) })
+              .then(r => ({ id: item.youtubeId, isPlayable: r.status === 200 }))
+              .catch(() => ({ id: item.youtubeId, isPlayable: true }))
+          )
+        );
+        const playableMap = new Map(checks.map(c => [c.id, c.isPlayable]));
+        results = results.filter(item => {
+          if (playableMap.has(item.youtubeId) && !playableMap.get(item.youtubeId)) {
+            return false; // Filter out videos where owner blocked external embedding
+          }
+          return true;
+        });
+      } catch (e) {}
+    }
 
     res.status(200).json({
       query: searchQuery,
