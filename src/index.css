@@ -19619,10 +19619,10 @@ body, html, #root {
 }
 
 .ref-badge-back-home {
-  background: rgba(14, 18, 28, 0.85);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.20);
   border-radius: 999px;
   padding: 7px 18px;
   color: #ffffff;
@@ -19633,14 +19633,14 @@ body, html, #root {
   display: flex;
   align-items: center;
   gap: 7px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 
 .ref-badge-back-home:hover {
-  background: rgba(25, 32, 48, 0.95);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.70);
+  border-color: rgba(255, 255, 255, 0.38);
   transform: scale(1.04);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 255, 255, 0.2);
 }
@@ -19662,7 +19662,7 @@ body, html, #root {
   transform: translateX(-50%);
   top: 0;
   margin-top: -14px;
-  background: rgba(14, 18, 28, 0.45);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -19752,10 +19752,10 @@ body, html, #root {
 }
 
 .ref-badge-next-song {
-  background: rgba(14, 18, 28, 0.85);
+  background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.20);
   border-radius: 999px;
   padding: 7px 18px;
   color: #ffffff;
@@ -19766,14 +19766,14 @@ body, html, #root {
   display: flex;
   align-items: center;
   gap: 7px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.15);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 
 .ref-badge-next-song:hover {
-  background: rgba(25, 32, 48, 0.95);
-  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(0, 0, 0, 0.70);
+  border-color: rgba(255, 255, 255, 0.38);
   transform: scale(1.04);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 12px rgba(255, 255, 255, 0.2);
 }
@@ -20038,7 +20038,9 @@ body, html, #root {
 
 /* Front Face: Artist & Track Info */
 .ref-island-front {
-  background: #252631;
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   padding: 22px 24px 18px 20px;
   display: flex;
   flex-direction: column;
@@ -20049,7 +20051,9 @@ body, html, #root {
 
 /* Back Face: Full-Box Synchronized Lyrics inside this exact box */
 .ref-island-back {
-  background: #1c1d27;
+  background: rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -20075,10 +20079,10 @@ body, html, #root {
   position: absolute;
   top: -14px;
   left: 24px;
-  background: rgba(22, 25, 36, 0.88);
+  background: rgba(0, 0, 0, 0.52);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.20);
   color: #ffffff;
   border-radius: 999px;
   padding: 5px 12px 5px 10px;
@@ -20087,13 +20091,13 @@ body, html, #root {
   gap: 6px;
   cursor: pointer;
   z-index: 20;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
 }
 
 .ref-lyrics-toggle-btn:hover {
-  background: rgba(30, 34, 50, 0.95);
+  background: rgba(0, 0, 0, 0.72);
   border-color: var(--ref-accent, #f4a000);
   transform: translateY(-2px) scale(1.05);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5), 0 0 14px var(--ref-accent-glow, rgba(244, 160, 0, 0.35));
