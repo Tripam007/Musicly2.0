@@ -106,35 +106,22 @@ export default function PlaylistDrawer({
   const [draggedTrackIndex, setDraggedTrackIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [customTrackOrder, setCustomTrackOrder] = useState(() => getLocalUserQueueOrder(user));
-  const lastCloudOrderRef = useRef(null);
 
   useEffect(() => {
-    setCustomTrackOrder(getLocalUserQueueOrder(user));
-    if (user && !user.isAnonymous) {
-      loadUserQueueOrder(user).then(order => {
-        if (Array.isArray(order) && order.length > 0) {
-          lastCloudOrderRef.current = JSON.stringify(order);
-          setCustomTrackOrder(order);
-        }
-      });
-      const unsub = subscribeUserQueueOrder(user, (freshOrder) => {
-        if (Array.isArray(freshOrder)) {
-          lastCloudOrderRef.current = JSON.stringify(freshOrder);
-          setCustomTrackOrder(freshOrder);
-        }
-      });
-      return () => {
-        if (unsub) unsub();
-      };
-    }
+    loadUserQueueOrder(user).then(order => {
+      if (Array.isArray(order) && order.length > 0) {
+        setCustomTrackOrder(order);
+      }
+    });
+    const unsub = subscribeUserQueueOrder(user, (freshOrder) => {
+      if (Array.isArray(freshOrder) && freshOrder.length > 0) {
+        setCustomTrackOrder(freshOrder);
+      }
+    });
+    return () => {
+      if (unsub) unsub();
+    };
   }, [user?.uid, isOpen]);
-
-  useEffect(() => {
-    const currentStr = JSON.stringify(customTrackOrder);
-    if (lastCloudOrderRef.current !== currentStr) {
-      saveUserQueueOrder(customTrackOrder, user);
-    }
-  }, [customTrackOrder, user?.uid]);
   const clickTimerRef = useRef(null);
   const popoverRef = useRef(null);
   const trackListRef = useRef(null);

@@ -321,39 +321,29 @@ export default function App() {
 
   // Favorites persistence with cross-device cloud sync
   const [favorites, setFavorites] = useState(() => getLocalUserFavorites(user));
-  const lastCloudFavsRef = useRef(null);
 
   useEffect(() => {
     const localFavs = getLocalUserFavorites(user);
-    setFavorites(localFavs);
-
-    if (user && !user.isAnonymous) {
-      loadUserFavorites(user).then(favs => {
-        if (Array.isArray(favs) && favs.length > 0) {
-          lastCloudFavsRef.current = JSON.stringify(favs);
-          setFavorites(favs);
-        }
-      });
-
-      const unsub = subscribeUserFavorites(user, (freshFavs) => {
-        if (Array.isArray(freshFavs)) {
-          lastCloudFavsRef.current = JSON.stringify(freshFavs);
-          setFavorites(freshFavs);
-        }
-      });
-
-      return () => {
-        if (unsub) unsub();
-      };
+    if (localFavs && localFavs.length > 2) {
+      setFavorites(localFavs);
     }
+
+    loadUserFavorites(user).then(favs => {
+      if (Array.isArray(favs) && favs.length > 0) {
+        setFavorites(favs);
+      }
+    });
+
+    const unsub = subscribeUserFavorites(user, (freshFavs) => {
+      if (Array.isArray(freshFavs) && freshFavs.length > 0) {
+        setFavorites(freshFavs);
+      }
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, [user?.uid]);
-
-  useEffect(() => {
-    const currentStr = JSON.stringify(favorites);
-    if (lastCloudFavsRef.current !== currentStr) {
-      saveUserFavorites(favorites, user);
-    }
-  }, [favorites, user?.uid]);
 
   // User customizable genre/section overrides for any track in library
   const [genreOverrides, setGenreOverrides] = useState({});
@@ -1583,9 +1573,11 @@ export default function App() {
   const handleToggleFavorite = (trackId) => {
     const id = trackId || currentTrack?.id;
     if (!id) return;
-    setFavorites(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
+    setFavorites(prev => {
+      const next = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
+      saveUserFavorites(next, user);
+      return next;
+    });
   };
 
   // Unified Scene Selection
@@ -2693,7 +2685,11 @@ export default function App() {
     // 1. Immediately remove from active React state
     setCustomTracks(prev => prev.filter(t => t.id !== trackId));
     setDeletedTrackIds(prev => prev.includes(trackId) ? prev : [...prev, trackId]);
-    setFavorites(prev => prev.filter(id => id !== trackId));
+    setFavorites(prev => {
+      const next = prev.filter(id => id !== trackId);
+      saveUserFavorites(next, user);
+      return next;
+    });
 
     if (currentTrack?.id === trackId) {
       const remaining = allTracks.filter(t => t.id !== trackId);
@@ -3398,7 +3394,10 @@ export default function App() {
             activePlayingPlaylist={activePlayingPlaylist}
             onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}
             onSetCustomQueue={setCustomQueue}
-            onReorderFavorites={setFavorites}
+            onReorderFavorites={(newOrder) => {
+              setFavorites(newOrder);
+              saveUserFavorites(newOrder, user);
+            }}
             onOpenAdminDashboard={() => {
               setIsDrawerOpen(false);
               setIsAdminDashboardOpen(true);

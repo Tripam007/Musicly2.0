@@ -1,5 +1,6 @@
 import { firestore } from '../firebase';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { checkIsAdmin } from './userModel';
 
 export function getUserPlaylistStorageKey(user) {
   if (user && !user.isAnonymous && user.uid) {
@@ -176,18 +177,29 @@ export async function loadUserFavorites(user) {
   const key = getUserFavoritesStorageKey(user);
   let favs = getLocalUserFavorites(user);
 
-  if (user && !user.isAnonymous && user.uid && firestore) {
+  if (firestore) {
     try {
-      const docRef = doc(firestore, 'users', user.uid, 'user_data', 'favorites');
-      const snap = await Promise.race([
-        getDoc(docRef),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-      ]);
-      if (snap && snap.exists()) {
-        const cloudData = snap.data();
-        if (Array.isArray(cloudData?.trackIds)) {
+      // 1. Check public_settings/admin_favorites (always accessible without permission restrictions)
+      const adminFavRef = doc(firestore, 'public_settings', 'admin_favorites');
+      const adminFavSnap = await getDoc(adminFavRef).catch(() => null);
+      if (adminFavSnap && adminFavSnap.exists()) {
+        const cloudData = adminFavSnap.data();
+        if (Array.isArray(cloudData?.trackIds) && cloudData.trackIds.length > 0) {
           favs = cloudData.trackIds;
           localStorage.setItem(key, JSON.stringify(favs));
+        }
+      }
+
+      // 2. If authenticated, check user's private favorites document
+      if (user && !user.isAnonymous && user.uid) {
+        const docRef = doc(firestore, 'users', user.uid, 'user_data', 'favorites');
+        const snap = await getDoc(docRef).catch(() => null);
+        if (snap && snap.exists()) {
+          const cloudData = snap.data();
+          if (Array.isArray(cloudData?.trackIds) && cloudData.trackIds.length > 0) {
+            favs = cloudData.trackIds;
+            localStorage.setItem(key, JSON.stringify(favs));
+          }
         }
       }
     } catch (e) {
@@ -204,35 +216,70 @@ export async function saveUserFavorites(favorites, user) {
     localStorage.setItem(key, JSON.stringify(safeFavs));
   } catch (e) {}
 
-  if (user && !user.isAnonymous && user.uid && firestore) {
-    try {
-      const docRef = doc(firestore, 'users', user.uid, 'user_data', 'favorites');
-      setDoc(docRef, { trackIds: safeFavs, updatedAt: Date.now() }, { merge: true }).catch(err => {
-        console.warn("User favorites background cloud save notice:", err);
-      });
-    } catch (err) {
-      console.warn("User favorites cloud save notice:", err);
+  if (firestore) {
+    const payload = { trackIds: safeFavs, updatedAt: Date.now() };
+
+    // 1. Save to user private document if logged in
+    if (user && !user.isAnonymous && user.uid) {
+      try {
+        const docRef = doc(firestore, 'users', user.uid, 'user_data', 'favorites');
+        setDoc(docRef, payload, { merge: true }).catch(() => {});
+      } catch (e) {}
+    }
+
+    // 2. If admin, ALSO save to public_settings/admin_favorites so all devices immediately get it
+    if (checkIsAdmin(user)) {
+      try {
+        const adminDocRef = doc(firestore, 'public_settings', 'admin_favorites');
+        setDoc(adminDocRef, payload, { merge: true }).catch(() => {});
+      } catch (e) {}
     }
   }
 }
 
 export function subscribeUserFavorites(user, callback) {
-  if (!user || user.isAnonymous || !user.uid || !firestore) return () => {};
+  if (!firestore) return () => {};
+  const unsubs = [];
+  const key = getUserFavoritesStorageKey(user);
+
   try {
-    const key = getUserFavoritesStorageKey(user);
-    const docRef = doc(firestore, 'users', user.uid, 'user_data', 'favorites');
-    const unsub = onSnapshot(docRef, (snap) => {
+    // 1. Subscribe to public_settings/admin_favorites (always works across all devices & sessions)
+    const adminDocRef = doc(firestore, 'public_settings', 'admin_favorites');
+    const unsubAdmin = onSnapshot(adminDocRef, (snap) => {
       if (snap && snap.exists()) {
         const data = snap.data();
-        if (Array.isArray(data?.trackIds)) {
+        if (Array.isArray(data?.trackIds) && data.trackIds.length > 0) {
           localStorage.setItem(key, JSON.stringify(data.trackIds));
           if (typeof callback === 'function') {
             callback(data.trackIds);
           }
         }
       }
-    }, (err) => console.warn("User favorites subscription notice:", err));
-    return unsub;
+    }, () => {});
+    unsubs.push(unsubAdmin);
+
+    // 2. If authenticated, also subscribe to user private favorites
+    if (user && !user.isAnonymous && user.uid) {
+      const docRef = doc(firestore, 'users', user.uid, 'user_data', 'favorites');
+      const unsubUser = onSnapshot(docRef, (snap) => {
+        if (snap && snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data?.trackIds) && data.trackIds.length > 0) {
+            localStorage.setItem(key, JSON.stringify(data.trackIds));
+            if (typeof callback === 'function') {
+              callback(data.trackIds);
+            }
+          }
+        }
+      }, () => {});
+      unsubs.push(unsubUser);
+    }
+
+    return () => {
+      unsubs.forEach(u => {
+        try { u(); } catch (_e) {}
+      });
+    };
   } catch (e) {
     console.warn("User favorites subscription failed:", e);
     return () => {};
@@ -259,32 +306,51 @@ export function getLocalUserQueueOrder(user) {
     const legacyRaw = localStorage.getItem('musicly_custom_queue_order');
     if (legacyRaw) return JSON.parse(legacyRaw);
   } catch (e) {}
-  return [];
+  return ['public-1795609929694', 'public-1795606194436'];
 }
 
 export async function loadUserQueueOrder(user) {
   let order = getLocalUserQueueOrder(user);
-  if (user && !user.isAnonymous && user.uid && firestore) {
+
+  if (firestore) {
     try {
-      const docRef = doc(firestore, 'users', user.uid, 'user_data', 'queue_order');
-      const snap = await Promise.race([
-        getDoc(docRef),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
-      ]);
-      if (snap && snap.exists()) {
-        const cloudData = snap.data();
-        if (Array.isArray(cloudData?.trackOrder)) {
+      // 1. Check public_settings/admin_queue_order
+      const adminQueueRef = doc(firestore, 'public_settings', 'admin_queue_order');
+      const adminQueueSnap = await getDoc(adminQueueRef).catch(() => null);
+      if (adminQueueSnap && adminQueueSnap.exists()) {
+        const cloudData = adminQueueSnap.data();
+        if (Array.isArray(cloudData?.trackOrder) && cloudData.trackOrder.length > 0) {
           order = cloudData.trackOrder;
           const userKey = getUserQueueOrderStorageKey(user);
           localStorage.setItem(userKey, JSON.stringify(order));
           localStorage.setItem('musicly_custom_queue_order', JSON.stringify(order));
         }
       }
+
+      // 2. If authenticated, check user's private queue order document
+      if (user && !user.isAnonymous && user.uid) {
+        const docRef = doc(firestore, 'users', user.uid, 'user_data', 'queue_order');
+        const snap = await getDoc(docRef).catch(() => null);
+        if (snap && snap.exists()) {
+          const cloudData = snap.data();
+          if (Array.isArray(cloudData?.trackOrder) && cloudData.trackOrder.length > 0) {
+            order = cloudData.trackOrder;
+            const userKey = getUserQueueOrderStorageKey(user);
+            localStorage.setItem(userKey, JSON.stringify(order));
+            localStorage.setItem('musicly_custom_queue_order', JSON.stringify(order));
+          }
+        }
+      }
     } catch (e) {
       console.warn("User queue order cloud sync notice:", e);
     }
   }
-  return Array.isArray(order) ? order : [];
+
+  // Ensure Tu Aake Dekhle and Despacito lead if not explicitly elsewhere
+  if (Array.isArray(order) && order.length > 0) {
+    return order;
+  }
+  return ['public-1795609929694', 'public-1795606194436'];
 }
 
 export async function saveUserQueueOrder(trackOrder, user) {
@@ -295,27 +361,39 @@ export async function saveUserQueueOrder(trackOrder, user) {
     localStorage.setItem('musicly_custom_queue_order', JSON.stringify(safeOrder));
   } catch (e) {}
 
-  if (user && !user.isAnonymous && user.uid && firestore) {
-    try {
-      const docRef = doc(firestore, 'users', user.uid, 'user_data', 'queue_order');
-      setDoc(docRef, { trackOrder: safeOrder, updatedAt: Date.now() }, { merge: true }).catch(err => {
-        console.warn("User queue order background cloud save notice:", err);
-      });
-    } catch (err) {
-      console.warn("User queue order cloud save notice:", err);
+  if (firestore && safeOrder.length > 0) {
+    const payload = { trackOrder: safeOrder, updatedAt: Date.now() };
+
+    // 1. User private doc
+    if (user && !user.isAnonymous && user.uid) {
+      try {
+        const docRef = doc(firestore, 'users', user.uid, 'user_data', 'queue_order');
+        setDoc(docRef, payload, { merge: true }).catch(() => {});
+      } catch (e) {}
+    }
+
+    // 2. Admin public doc
+    if (checkIsAdmin(user)) {
+      try {
+        const adminDocRef = doc(firestore, 'public_settings', 'admin_queue_order');
+        setDoc(adminDocRef, payload, { merge: true }).catch(() => {});
+      } catch (e) {}
     }
   }
 }
 
 export function subscribeUserQueueOrder(user, callback) {
-  if (!user || user.isAnonymous || !user.uid || !firestore) return () => {};
+  if (!firestore) return () => {};
+  const unsubs = [];
+  const userKey = getUserQueueOrderStorageKey(user);
+
   try {
-    const docRef = doc(firestore, 'users', user.uid, 'user_data', 'queue_order');
-    const unsub = onSnapshot(docRef, (snap) => {
+    // 1. Subscribe to public_settings/admin_queue_order
+    const adminDocRef = doc(firestore, 'public_settings', 'admin_queue_order');
+    const unsubAdmin = onSnapshot(adminDocRef, (snap) => {
       if (snap && snap.exists()) {
         const data = snap.data();
-        if (Array.isArray(data?.trackOrder)) {
-          const userKey = getUserQueueOrderStorageKey(user);
+        if (Array.isArray(data?.trackOrder) && data.trackOrder.length > 0) {
           localStorage.setItem(userKey, JSON.stringify(data.trackOrder));
           localStorage.setItem('musicly_custom_queue_order', JSON.stringify(data.trackOrder));
           if (typeof callback === 'function') {
@@ -323,8 +401,32 @@ export function subscribeUserQueueOrder(user, callback) {
           }
         }
       }
-    }, (err) => console.warn("User queue order subscription notice:", err));
-    return unsub;
+    }, () => {});
+    unsubs.push(unsubAdmin);
+
+    // 2. If authenticated, also subscribe to user private queue order
+    if (user && !user.isAnonymous && user.uid) {
+      const docRef = doc(firestore, 'users', user.uid, 'user_data', 'queue_order');
+      const unsubUser = onSnapshot(docRef, (snap) => {
+        if (snap && snap.exists()) {
+          const data = snap.data();
+          if (Array.isArray(data?.trackOrder) && data.trackOrder.length > 0) {
+            localStorage.setItem(userKey, JSON.stringify(data.trackOrder));
+            localStorage.setItem('musicly_custom_queue_order', JSON.stringify(data.trackOrder));
+            if (typeof callback === 'function') {
+              callback(data.trackOrder);
+            }
+          }
+        }
+      }, () => {});
+      unsubs.push(unsubUser);
+    }
+
+    return () => {
+      unsubs.forEach(u => {
+        try { u(); } catch (_e) {}
+      });
+    };
   } catch (e) {
     console.warn("User queue order subscription failed:", e);
     return () => {};

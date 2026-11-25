@@ -123,15 +123,13 @@ export function deduplicateTracks(trackList = []) {
       if (seenUrls.has(audioUrl)) return false;
     }
 
-    // 4. Check Title + Artist
+    // 4. Check Title + Artist ONLY if audio/YouTube IDs are also matching or missing
     const cleanTitle = normalizeMediaString(track.title);
     const cleanArtist = normalizeMediaString(track.artist);
-    if (cleanTitle) {
-      const titleKey = cleanArtist ? `${cleanTitle}::${cleanArtist}` : cleanTitle;
-      if (seenTitleArtist.has(titleKey)) return false;
-
-      // Also check title alone if unique enough (>= 7 chars)
-      if (cleanTitle.length >= 7 && seenTitleArtist.has(cleanTitle)) return false;
+    if (cleanTitle && cleanArtist) {
+      const titleKey = `${cleanTitle}::${cleanArtist}`;
+      // Only treat as duplicate if both title AND artist match AND no distinct YouTube/audio URL exists
+      if (seenTitleArtist.has(titleKey) && (!ytId && !audioUrl)) return false;
     }
 
     // Register identifiers as seen
@@ -140,12 +138,9 @@ export function deduplicateTracks(trackList = []) {
     if (audioUrl && !audioUrl.startsWith('blob:') && !audioUrl.startsWith('data:')) {
       seenUrls.add(audioUrl);
     }
-    if (cleanTitle) {
-      const titleKey = cleanArtist ? `${cleanTitle}::${cleanArtist}` : cleanTitle;
+    if (cleanTitle && cleanArtist) {
+      const titleKey = `${cleanTitle}::${cleanArtist}`;
       seenTitleArtist.add(titleKey);
-      if (cleanTitle.length >= 7) {
-        seenTitleArtist.add(cleanTitle);
-      }
     }
 
     return true;

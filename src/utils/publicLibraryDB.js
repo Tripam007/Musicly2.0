@@ -608,10 +608,10 @@ export function subscribePublicTracks(callback) {
 
 /**
  * 🔄 AUTO-RECONCILIATION:
- * Scans local storage and IndexedDB on the current device. If any public track exists locally
- * (such as tracks published or cached on Device A) but is missing in Cloud Firestore,
- * this function automatically uploads them to Firestore /public_tracks so ALL other devices
- * immediately receive and sync them.
+ * Scans all local storage keys and IndexedDB on the current device. If any public or custom track
+ * exists locally on Device A but is missing in Cloud Firestore, this function automatically uploads
+ * them to Firestore /public_tracks so ALL other devices immediately receive and sync them.
+ * Also synchronizes the user's master favorites list and custom queue order to public_settings.
  */
 export async function reconcileLocalPublicTracksToCloud(user) {
   if (!checkIsAdmin(user) || !firestore) return 0;
@@ -620,32 +620,84 @@ export async function reconcileLocalPublicTracksToCloud(user) {
     await flushPendingCloudSync();
 
     const deletedIds = getDeletedPublicTrackIds();
-    const localTracks = getLocalPublicTracks();
+    const allCandidateMap = new Map();
 
-    // Also inspect IndexedDB
-    let idbTracks = [];
+    // 1. Scan getLocalPublicTracks()
+    const localTracks = getLocalPublicTracks();
+    localTracks.forEach(t => {
+      if (t && t.id && !deletedIds.has(t.id)) {
+        allCandidateMap.set(t.id, t);
+      }
+    });
+
+    // 2. Scan MusiclyPublicDB
     try {
       const db = await openPublicDB();
-      idbTracks = await new Promise((resolve) => {
+      const idbTracks = await new Promise((resolve) => {
         const tx = db.transaction(PUBLIC_STORE_NAME, 'readonly');
         const store = tx.objectStore(PUBLIC_STORE_NAME);
         const req = store.getAll();
         req.onsuccess = () => resolve(req.result || []);
         req.onerror = () => resolve([]);
       });
+      idbTracks.forEach(t => {
+        if (t && t.id && !deletedIds.has(t.id)) {
+          allCandidateMap.set(t.id, { ...(allCandidateMap.get(t.id) || {}), ...t });
+        }
+      });
     } catch (_idbErr) {}
 
-    const allCandidateMap = new Map();
-    localTracks.forEach(t => {
-      if (t && t.id && !deletedIds.has(t.id)) {
-        allCandidateMap.set(t.id, t);
-      }
-    });
-    idbTracks.forEach(t => {
-      if (t && t.id && !deletedIds.has(t.id)) {
-        allCandidateMap.set(t.id, { ...(allCandidateMap.get(t.id) || {}), ...t });
-      }
-    });
+    // 3. Scan MusiclyAppDB (custom tracks)
+    try {
+      const req = indexedDB.open('MusiclyAppDB');
+      req.onsuccess = (e) => {
+        try {
+          const appDb = e.target.result;
+          if (appDb.objectStoreNames.contains('custom_audio_tracks')) {
+            const tx = appDb.transaction('custom_audio_tracks', 'readonly');
+            const store = tx.objectStore('custom_audio_tracks');
+            const getReq = store.getAll();
+            getReq.onsuccess = () => {
+              (getReq.result || []).forEach(t => {
+                if (t && t.id && !deletedIds.has(t.id)) {
+                  allCandidateMap.set(t.id, { ...(allCandidateMap.get(t.id) || {}), ...t, isPublic: true });
+                }
+              });
+            };
+          }
+        } catch (_err) {}
+      };
+    } catch (_appDbErr) {}
+
+    // 4. Scan all localStorage keys for any cached track arrays
+    if (typeof localStorage !== 'undefined') {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key) continue;
+          if (
+            key.includes('tracks') || 
+            key.includes('cache') || 
+            key.includes('audio_library') || 
+            key.includes('public_tracks') ||
+            key.includes('custom_tracks')
+          ) {
+            try {
+              const raw = localStorage.getItem(key);
+              if (raw && (raw.startsWith('[') || raw.startsWith('{'))) {
+                const parsed = JSON.parse(raw);
+                const items = Array.isArray(parsed) ? parsed : Object.values(parsed);
+                items.forEach(item => {
+                  if (item && item.id && item.title && !deletedIds.has(item.id)) {
+                    allCandidateMap.set(item.id, { ...(allCandidateMap.get(item.id) || {}), ...item, isPublic: true });
+                  }
+                });
+              }
+            } catch (_parseErr) {}
+          }
+        }
+      } catch (_lsErr) {}
+    }
 
     // Fetch existing public track IDs in Firestore
     const publicColRef = collection(firestore, 'public_tracks');
@@ -653,18 +705,9 @@ export async function reconcileLocalPublicTracksToCloud(user) {
     const existingCloudIds = new Set();
     snap.forEach(d => existingCloudIds.add(d.id));
 
-    // Also fetch deleted tombstones
-    try {
-      const delSnap = await getDocs(collection(firestore, 'public_deleted_tracks'));
-      delSnap.forEach(d => {
-        existingCloudIds.add(d.id);
-        deletedIds.add(d.id);
-      });
-    } catch (_delErr) {}
-
+    // Upload any missing tracks to Cloud Firestore
     let syncedCount = 0;
     for (const [id, track] of allCandidateMap.entries()) {
-      // If missing in cloud and not deleted, push to Firestore
       if (!existingCloudIds.has(id) && !deletedIds.has(id)) {
         const { blob: _, ...cleanData } = track;
         const cleanCloudData = JSON.parse(JSON.stringify({
@@ -684,6 +727,64 @@ export async function reconcileLocalPublicTracksToCloud(user) {
           console.warn(`[Musicly Sync] Failed to reconcile ${id}:`, uploadErr);
         }
       }
+    }
+
+    // 5. Reconcile master favorites to public_settings and user_data
+    if (typeof localStorage !== 'undefined') {
+      try {
+        let bestFavs = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.includes('favorites')) {
+            try {
+              const parsed = JSON.parse(localStorage.getItem(key));
+              if (Array.isArray(parsed) && parsed.length > bestFavs.length) {
+                bestFavs = parsed;
+              }
+            } catch (_e) {}
+          }
+        }
+
+        if (bestFavs.length > 2) {
+          const favPayload = { trackIds: bestFavs, updatedAt: Date.now() };
+          const adminFavRef = doc(firestore, 'public_settings', 'admin_favorites');
+          await setDoc(adminFavRef, favPayload, { merge: true }).catch(() => {});
+          if (user?.uid) {
+            const userFavRef = doc(firestore, 'users', user.uid, 'user_data', 'favorites');
+            await setDoc(userFavRef, favPayload, { merge: true }).catch(() => {});
+          }
+          console.log(`[Musicly Sync] Reconciled ${bestFavs.length} favorites to cloud.`);
+        }
+      } catch (_favErr) {}
+    }
+
+    // 6. Reconcile master queue order to public_settings and user_data
+    if (typeof localStorage !== 'undefined') {
+      try {
+        let bestOrder = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.includes('queue_order')) {
+            try {
+              const parsed = JSON.parse(localStorage.getItem(key));
+              if (Array.isArray(parsed) && parsed.length > bestOrder.length) {
+                bestOrder = parsed;
+              }
+            } catch (_e) {}
+          }
+        }
+
+        if (bestOrder.length > 0) {
+          const orderPayload = { trackOrder: bestOrder, updatedAt: Date.now() };
+          const adminOrderRef = doc(firestore, 'public_settings', 'admin_queue_order');
+          await setDoc(adminOrderRef, orderPayload, { merge: true }).catch(() => {});
+          if (user?.uid) {
+            const userOrderRef = doc(firestore, 'users', user.uid, 'user_data', 'queue_order');
+            await setDoc(userOrderRef, orderPayload, { merge: true }).catch(() => {});
+          }
+          console.log(`[Musicly Sync] Reconciled queue order to cloud.`);
+        }
+      } catch (_orderErr) {}
     }
 
     return syncedCount;
