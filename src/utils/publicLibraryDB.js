@@ -16,9 +16,52 @@ import { deduplicateTracks } from './trackDeduplicator';
 import { TRACKS } from '../data/tracks';
 
 const PUBLIC_CACHE_KEY = 'musicly_public_tracks_cache';
+const PENDING_SYNC_KEY = 'musicly_pending_cloud_sync';
 const PUBLIC_STORE_NAME = 'public_audio_tracks';
 const PUBLIC_DB_NAME = 'MusiclyPublicDB';
 const PUBLIC_DB_VERSION = 1;
+
+/**
+ * Queue a track payload that failed or timed out during cloud sync
+ */
+export function queuePendingCloudSync(trackId, cloudData) {
+  try {
+    const raw = localStorage.getItem(PENDING_SYNC_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[trackId] = cloudData;
+    localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(map));
+  } catch (e) {}
+}
+
+/**
+ * Flush any queued pending public track uploads to Firestore
+ */
+export async function flushPendingCloudSync() {
+  if (!firestore) return;
+  try {
+    const raw = localStorage.getItem(PENDING_SYNC_KEY);
+    if (!raw) return;
+    const map = JSON.parse(raw);
+    const keys = Object.keys(map);
+    if (keys.length === 0) return;
+
+    for (const id of keys) {
+      try {
+        const docRef = doc(firestore, 'public_tracks', id);
+        await setDoc(docRef, map[id], { merge: true });
+        delete map[id];
+      } catch (e) {}
+    }
+    localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(map));
+  } catch (e) {}
+}
+
+// Automatically flush pending items when device comes online
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    flushPendingCloudSync().catch(() => {});
+  });
+}
 
 // IndexedDB instance for public tracks
 function openPublicDB() {
@@ -193,7 +236,7 @@ export async function loadPublicTracks() {
       const publicColRef = collection(firestore, 'public_tracks');
       const snap = await Promise.race([
         getDocs(publicColRef),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 2000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 12000))
       ]);
       if (!snap.empty) {
         const cloudTracks = [];
@@ -334,16 +377,15 @@ export async function publishPublicTrack(trackData, audioBlob = null, user = nul
   const filtered = currentList.filter(t => t.id !== trackId);
   saveLocalPublicTracks([finalRecord, ...filtered]);
 
-  // 3. Write to Firestore /public_tracks in background or with quick timeout
+  // 3. Write to Firestore /public_tracks in background with durable retry
   if (firestore) {
     try {
       const { blob: _, ...cloudData } = record;
+      const cleanCloudData = JSON.parse(JSON.stringify(cloudData));
       const docRef = doc(firestore, 'public_tracks', trackId);
-      Promise.race([
-        setDoc(docRef, cloudData, { merge: true }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore timeout")), 2500))
-      ]).catch(err => {
-        console.warn("Firestore background publish notice:", err);
+      setDoc(docRef, cleanCloudData, { merge: true }).catch(err => {
+        console.warn("Firestore background publish retry notice:", err);
+        queuePendingCloudSync(trackId, cleanCloudData);
       });
     } catch (err) {
       console.warn("Firestore publish public track notice:", err);
@@ -392,11 +434,9 @@ export async function updatePublicTrack(trackId, updates, user = null) {
   if (firestore) {
     try {
       const { blob: _, ...cloudData } = updatedRecord;
+      const cleanCloudData = JSON.parse(JSON.stringify(cloudData));
       const docRef = doc(firestore, 'public_tracks', trackId);
-      Promise.race([
-        updateDoc(docRef, cloudData),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore timeout")), 2500))
-      ]).catch(err => {
+      updateDoc(docRef, cleanCloudData).catch(err => {
         console.warn("Firestore background update notice:", err);
       });
     } catch (err) {
@@ -438,10 +478,7 @@ export async function deletePublicTrack(trackId, user = null) {
   if (firestore) {
     try {
       const docRef = doc(firestore, 'public_tracks', trackId);
-      Promise.race([
-        deleteDoc(docRef),
-        new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore timeout")), 2500))
-      ]).catch(err => {
+      deleteDoc(docRef).catch(err => {
         console.warn("Firestore background delete notice:", err);
       });
 
@@ -466,18 +503,96 @@ export async function deletePublicTrack(trackId, user = null) {
 }
 
 /**
+ * Format a single public track record consistently for runtime playback & display
+ */
+export function formatPublicTrack(t, deletedIds = new Set()) {
+  if (!t || !t.id || deletedIds.has(t.id)) return null;
+
+  const ytId = t.youtubeId || extractYouTubeId(t.audioUrl || '');
+  const isYt = !!t.isYouTube || !!ytId;
+
+  let finalAudioUrl = t.audioUrl || '';
+  if (t.blob instanceof Blob) {
+    finalAudioUrl = URL.createObjectURL(t.blob);
+  } else if (isYt && ytId) {
+    finalAudioUrl = `https://www.youtube.com/watch?v=${ytId}`;
+  }
+
+  const genresList = Array.isArray(t.genres) && t.genres.length > 0
+    ? t.genres
+    : (t.genre ? t.genre.split(',').map(s => s.trim()) : ['Lo-Fi']);
+
+  return {
+    ...t,
+    isPublic: true,
+    isCustom: false,
+    isYouTube: isYt,
+    youtubeId: ytId || null,
+    audioUrl: finalAudioUrl,
+    genre: genresList.join(', '),
+    genres: genresList,
+    language: t.language || 'English',
+    cover: t.cover || (isYt ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&auto=format&fit=crop&q=80')
+  };
+}
+
+/**
  * Subscribe to real-time changes to the public music library in Firestore.
  * Automatically synchronizes new songs, metadata edits, and deletions across all devices.
+ * Uses real-time snapshot documents directly for instant 0ms cross-device synchronization.
  */
 export function subscribePublicTracks(callback) {
   if (!firestore) return () => {};
   try {
     const colRef = collection(firestore, 'public_tracks');
-    const unsubTracks = onSnapshot(colRef, async () => {
+    const unsubTracks = onSnapshot(colRef, async (snapshot) => {
       try {
-        const fresh = await loadPublicTracks();
+        const deletedIds = getDeletedPublicTrackIds();
+        const cloudTracks = [];
+        snapshot.forEach(d => {
+          const data = d.data();
+          if (data && data.id && !deletedIds.has(data.id)) {
+            cloudTracks.push({ ...data, isPublic: true });
+          }
+        });
+
+        // 1. Get current cached tracks
+        const cached = getLocalPublicTracks().filter(t => !deletedIds.has(t.id));
+        const mergedMap = new Map();
+
+        // 2. Put cached tracks first
+        cached.forEach(t => mergedMap.set(t.id, t));
+
+        // 3. Put cloud tracks (cloud takes precedence for freshest metadata)
+        cloudTracks.forEach(ct => {
+          const prev = mergedMap.get(ct.id) || {};
+          mergedMap.set(ct.id, { ...prev, ...ct, isPublic: true });
+        });
+
+        // 4. Ensure seed tracks are included if not deleted
+        SEED_PUBLIC_TRACKS.forEach(s => {
+          if (!deletedIds.has(s.id) && !mergedMap.has(s.id)) {
+            mergedMap.set(s.id, s);
+          }
+        });
+
+        const sanitized = Array.from(mergedMap.values())
+          .map(t => formatPublicTrack(t, deletedIds))
+          .filter(Boolean);
+
+        saveLocalPublicTracks(sanitized);
+
+        // Update IndexedDB in background
+        openPublicDB().then(db => {
+          const tx = db.transaction(PUBLIC_STORE_NAME, 'readwrite');
+          const store = tx.objectStore(PUBLIC_STORE_NAME);
+          cloudTracks.forEach(t => {
+            if (!deletedIds.has(t.id)) store.put(t);
+          });
+        }).catch(() => {});
+
         if (typeof callback === 'function') {
-          callback(fresh);
+          callback(sanitized);
         }
       } catch (e) {
         console.warn("Public tracks real-time sync notice:", e);
@@ -488,6 +603,93 @@ export function subscribePublicTracks(callback) {
   } catch (err) {
     console.warn("Could not attach public tracks subscription:", err);
     return () => {};
+  }
+}
+
+/**
+ * 🔄 AUTO-RECONCILIATION:
+ * Scans local storage and IndexedDB on the current device. If any public track exists locally
+ * (such as tracks published or cached on Device A) but is missing in Cloud Firestore,
+ * this function automatically uploads them to Firestore /public_tracks so ALL other devices
+ * immediately receive and sync them.
+ */
+export async function reconcileLocalPublicTracksToCloud(user) {
+  if (!checkIsAdmin(user) || !firestore) return 0;
+
+  try {
+    await flushPendingCloudSync();
+
+    const deletedIds = getDeletedPublicTrackIds();
+    const localTracks = getLocalPublicTracks();
+
+    // Also inspect IndexedDB
+    let idbTracks = [];
+    try {
+      const db = await openPublicDB();
+      idbTracks = await new Promise((resolve) => {
+        const tx = db.transaction(PUBLIC_STORE_NAME, 'readonly');
+        const store = tx.objectStore(PUBLIC_STORE_NAME);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      });
+    } catch (_idbErr) {}
+
+    const allCandidateMap = new Map();
+    localTracks.forEach(t => {
+      if (t && t.id && !deletedIds.has(t.id)) {
+        allCandidateMap.set(t.id, t);
+      }
+    });
+    idbTracks.forEach(t => {
+      if (t && t.id && !deletedIds.has(t.id)) {
+        allCandidateMap.set(t.id, { ...(allCandidateMap.get(t.id) || {}), ...t });
+      }
+    });
+
+    // Fetch existing public track IDs in Firestore
+    const publicColRef = collection(firestore, 'public_tracks');
+    const snap = await getDocs(publicColRef);
+    const existingCloudIds = new Set();
+    snap.forEach(d => existingCloudIds.add(d.id));
+
+    // Also fetch deleted tombstones
+    try {
+      const delSnap = await getDocs(collection(firestore, 'public_deleted_tracks'));
+      delSnap.forEach(d => {
+        existingCloudIds.add(d.id);
+        deletedIds.add(d.id);
+      });
+    } catch (_delErr) {}
+
+    let syncedCount = 0;
+    for (const [id, track] of allCandidateMap.entries()) {
+      // If missing in cloud and not deleted, push to Firestore
+      if (!existingCloudIds.has(id) && !deletedIds.has(id)) {
+        const { blob: _, ...cleanData } = track;
+        const cleanCloudData = JSON.parse(JSON.stringify({
+          ...cleanData,
+          id: id,
+          isPublic: true,
+          reconciledAt: Date.now(),
+          publishedBy: user.email || user.uid || 'admin'
+        }));
+
+        try {
+          const docRef = doc(firestore, 'public_tracks', id);
+          await setDoc(docRef, cleanCloudData, { merge: true });
+          syncedCount++;
+          console.log(`[Musicly Sync] Reconciled track to cloud: ${track.title || id} (${id})`);
+        } catch (uploadErr) {
+          console.warn(`[Musicly Sync] Failed to reconcile ${id}:`, uploadErr);
+        }
+      }
+    }
+
+    return syncedCount;
+  } catch (err) {
+    console.warn("reconcileLocalPublicTracksToCloud notice:", err);
+    return 0;
   }
 }
 

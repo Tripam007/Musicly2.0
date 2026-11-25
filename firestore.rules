@@ -16,6 +16,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // 🗑️ PERMANENTLY PURGED PUBLIC TRACK TOMBSTONES
+    match /public_deleted_tracks/{trackId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // 🎨 ROOM THEMES & SCENES
     match /public_scenes/{sceneId} {
       allow read: if true;

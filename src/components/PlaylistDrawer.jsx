@@ -27,7 +27,11 @@ import {
   saveUserPlaylists,
   getLocalUserPersonalSongIds,
   loadUserPersonalSongIds,
-  saveUserPersonalSongIds
+  saveUserPersonalSongIds,
+  getLocalUserQueueOrder,
+  loadUserQueueOrder,
+  saveUserQueueOrder,
+  subscribeUserQueueOrder
 } from '../utils/userPlaylistsDB';
 import { GENRES, LANGUAGES, LANGUAGE_LABELS, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, getAvailableSections, isTrackInLanguages } from '../data/tracks';
 import { getUnifiedMusiclyPlaylists, PLAYLIST_LANGUAGES, normalizePlaylistLang, isSongMatchingPlaylistLang } from '../utils/publicPlaylistsDB';
@@ -101,14 +105,36 @@ export default function PlaylistDrawer({
   const [playlistMenuTrackId, setPlaylistMenuTrackId] = useState(null);
   const [draggedTrackIndex, setDraggedTrackIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [customTrackOrder, setCustomTrackOrder] = useState(() => {
-    try {
-      const saved = localStorage.getItem('musicly_custom_queue_order');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+  const [customTrackOrder, setCustomTrackOrder] = useState(() => getLocalUserQueueOrder(user));
+  const lastCloudOrderRef = useRef(null);
+
+  useEffect(() => {
+    setCustomTrackOrder(getLocalUserQueueOrder(user));
+    if (user && !user.isAnonymous) {
+      loadUserQueueOrder(user).then(order => {
+        if (Array.isArray(order) && order.length > 0) {
+          lastCloudOrderRef.current = JSON.stringify(order);
+          setCustomTrackOrder(order);
+        }
+      });
+      const unsub = subscribeUserQueueOrder(user, (freshOrder) => {
+        if (Array.isArray(freshOrder)) {
+          lastCloudOrderRef.current = JSON.stringify(freshOrder);
+          setCustomTrackOrder(freshOrder);
+        }
+      });
+      return () => {
+        if (unsub) unsub();
+      };
     }
-  });
+  }, [user?.uid, isOpen]);
+
+  useEffect(() => {
+    const currentStr = JSON.stringify(customTrackOrder);
+    if (lastCloudOrderRef.current !== currentStr) {
+      saveUserQueueOrder(customTrackOrder, user);
+    }
+  }, [customTrackOrder, user?.uid]);
   const clickTimerRef = useRef(null);
   const popoverRef = useRef(null);
   const trackListRef = useRef(null);
@@ -625,9 +651,7 @@ export default function PlaylistDrawer({
     } else {
       // Musicly official catalog
       setCustomTrackOrder(updatedIds);
-      try {
-        localStorage.setItem('musicly_custom_queue_order', JSON.stringify(updatedIds));
-      } catch {}
+      saveUserQueueOrder(updatedIds, user);
     }
 
     // Automatically sync live playback queue so upcoming songs follow the user's customized sequence
@@ -645,9 +669,7 @@ export default function PlaylistDrawer({
 
   const handleResetCustomOrder = () => {
     setCustomTrackOrder([]);
-    try {
-      localStorage.removeItem('musicly_custom_queue_order');
-    } catch {}
+    saveUserQueueOrder([], user);
     playClickSound('light');
   };
 

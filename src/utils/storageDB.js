@@ -5,7 +5,7 @@ import { extractYouTubeId } from './youtubePlayer';
 import { generateInstantAudioBlob } from './audioDownloader';
 import { resolveOriginalTrack } from './originalTrackResolver';
 import { firestore } from '../firebase';
-import { doc, setDoc, getDocs, collection, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDocs, collection, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { addStudioNotification } from './studioNotificationsDB';
 
 const DB_NAME = 'MusiclyAppDB';
@@ -282,8 +282,9 @@ export async function saveTrackToDB(track, audioBlob = null, user = null) {
     if (user && !user.isAnonymous && firestore) {
       try {
         const { blob: _, ...cloudRecord } = record;
+        const cleanCloudRecord = JSON.parse(JSON.stringify(cloudRecord));
         const trackDocRef = doc(firestore, 'users', user.uid, 'custom_tracks', String(record.id));
-        setDoc(trackDocRef, cloudRecord, { merge: true }).catch(cloudErr => {
+        setDoc(trackDocRef, cleanCloudRecord, { merge: true }).catch(cloudErr => {
           console.warn("Firestore custom track cloud sync notice:", cloudErr);
         });
       } catch (cloudErr) {
@@ -573,6 +574,33 @@ export async function updateTrackGenresInDB(trackId, newGenres, user = null) {
   } catch (err) {
     console.error("Storage update track genres error:", err);
     return false;
+  }
+}
+
+/**
+ * 📡 Subscribe to real-time changes to the user's custom tracks across devices
+ */
+export function subscribeCustomTracks(user, callback) {
+  if (!user || user.isAnonymous || !firestore) return () => {};
+  try {
+    const colRef = collection(firestore, 'users', user.uid, 'custom_tracks');
+    const unsub = onSnapshot(colRef, (snap) => {
+      const cloudTracks = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data && data.id) {
+          cloudTracks.push(data);
+          saveToLocalCache(user.uid, data);
+        }
+      });
+      if (typeof callback === 'function') {
+        callback(cloudTracks);
+      }
+    }, (err) => console.warn("Custom tracks subscription notice:", err));
+    return unsub;
+  } catch (e) {
+    console.warn("Could not attach custom tracks subscription:", e);
+    return () => {};
   }
 }
 

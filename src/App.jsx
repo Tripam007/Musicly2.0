@@ -44,15 +44,15 @@ import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage, isCountryLanguage, L
 import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/audioSynth';
 import { audioEngine } from './utils/audioEngine';
 import { ytEngine, extractYouTubeId } from './utils/youtubePlayer';
-import { saveTrackToDB, loadSavedTracksFromDB, deleteTrackFromDB, updateTrackGenresInDB, loadFromLocalCache } from './utils/storageDB';
-import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds, subscribePublicTracks } from './utils/publicLibraryDB';
+import { saveTrackToDB, loadSavedTracksFromDB, deleteTrackFromDB, updateTrackGenresInDB, loadFromLocalCache, subscribeCustomTracks } from './utils/storageDB';
+import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds, subscribePublicTracks, reconcileLocalPublicTracksToCloud } from './utils/publicLibraryDB';
 import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
 import { preloadMusiclyAssets } from './utils/assetPreloader';
 import { loadPublicScenes, publishPublicScene, deletePublicScene, loadSceneOverrides, saveSceneOverride, removeSceneOverride, isLiveVisual, subscribeSceneOverrides, subscribePublicScenes } from './utils/publicScenesDB';
 import { initRealtimeRelay } from './utils/realtimeRelay';
 import { loadPublicPlaylists, publishPublicPlaylist, updatePublicPlaylist, deletePublicPlaylist, getLocalPublicPlaylists, getUnifiedMusiclyPlaylists, subscribePublicPlaylists } from './utils/publicPlaylistsDB';
-import { getLocalUserPlaylists } from './utils/userPlaylistsDB';
+import { getLocalUserPlaylists, getLocalUserFavorites, loadUserFavorites, saveUserFavorites, subscribeUserFavorites } from './utils/userPlaylistsDB';
 import { loadSavedWebappTheme, applyWebappTheme, resetWebappTheme } from './utils/aiThemeGenerator';
 import { resolveOriginalTrack, resolveTrackAudioStreamAsync, isDirectPlayableAudio } from './utils/originalTrackResolver';
 import { deduplicateTracks, findDuplicateTrack } from './utils/trackDeduplicator';
@@ -319,26 +319,40 @@ export default function App() {
     };
   }, []);
 
-  // Favorites persistence tied to user account
-  const [favorites, setFavorites] = useState(['lofi-1', 'indie-1']);
+  // Favorites persistence with cross-device cloud sync
+  const [favorites, setFavorites] = useState(() => getLocalUserFavorites(user));
+  const lastCloudFavsRef = useRef(null);
 
   useEffect(() => {
-    const storageKey = (user && !user.isAnonymous) ? `musicly_favorites_${user.uid}` : 'musicly_favorites_guest';
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved) {
-        setFavorites(JSON.parse(saved));
-      } else {
-        setFavorites(['lofi-1', 'indie-1']);
-      }
-    } catch (e) {}
+    const localFavs = getLocalUserFavorites(user);
+    setFavorites(localFavs);
+
+    if (user && !user.isAnonymous) {
+      loadUserFavorites(user).then(favs => {
+        if (Array.isArray(favs) && favs.length > 0) {
+          lastCloudFavsRef.current = JSON.stringify(favs);
+          setFavorites(favs);
+        }
+      });
+
+      const unsub = subscribeUserFavorites(user, (freshFavs) => {
+        if (Array.isArray(freshFavs)) {
+          lastCloudFavsRef.current = JSON.stringify(freshFavs);
+          setFavorites(freshFavs);
+        }
+      });
+
+      return () => {
+        if (unsub) unsub();
+      };
+    }
   }, [user?.uid]);
 
   useEffect(() => {
-    const storageKey = (user && !user.isAnonymous) ? `musicly_favorites_${user.uid}` : 'musicly_favorites_guest';
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(favorites));
-    } catch (e) {}
+    const currentStr = JSON.stringify(favorites);
+    if (lastCloudFavsRef.current !== currentStr) {
+      saveUserFavorites(favorites, user);
+    }
   }, [favorites, user?.uid]);
 
   // User customizable genre/section overrides for any track in library
@@ -388,10 +402,36 @@ export default function App() {
     }
     loadPersistedTracks();
 
+    // 3. Real-time multi-device subscription for custom uploaded tracks
+    const unsubCustom = subscribeCustomTracks(user, (cloudTracks) => {
+      if (isMounted && Array.isArray(cloudTracks)) {
+        setCustomTracks(prev => {
+          const map = new Map();
+          prev.forEach(t => map.set(t.id, t));
+          cloudTracks.forEach(t => map.set(t.id, { ...(map.get(t.id) || {}), ...t }));
+          return Array.from(map.values());
+        });
+      }
+    });
+
     return () => {
       isMounted = false;
+      if (unsubCustom) unsubCustom();
     };
   }, [user?.uid, user?.email]);
+
+  // 🔄 Cross-device Auto-Reconciliation: Upload any local public tracks cached on this device to Cloud Firestore
+  useEffect(() => {
+    if (user && !user.isAnonymous && checkIsAdmin(user)) {
+      reconcileLocalPublicTracksToCloud(user).then(syncedCount => {
+        if (syncedCount > 0) {
+          console.log(`[Musicly Cloud Sync] Reconciled and published ${syncedCount} missing tracks to Firestore.`);
+        }
+      }).catch(err => {
+        console.warn("[Musicly Cloud Sync] Auto-reconciliation notice:", err);
+      });
+    }
+  }, [user?.uid]);
 
   // Deleted tracks persistence (allows manual deletion of any song per user)
   const [deletedTrackIds, setDeletedTrackIds] = useState([]);
