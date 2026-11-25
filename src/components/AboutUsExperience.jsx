@@ -280,7 +280,6 @@ export default function AboutUsExperience({
 
   // Cinematic slow auto-scroll whenever user is not scrolling manually
   const isAutoScrollingRef = useRef(true);
-  const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const autoProgressRef = useRef(0);
   const autoResumeTimeoutRef = useRef(null);
 
@@ -302,7 +301,6 @@ export default function AboutUsExperience({
         targetScrollRef.current = currentProgress;
         currentScrollRef.current = currentProgress;
         isAutoScrollingRef.current = true;
-        setIsAutoScrolling(true);
       }
     }, 1500); // 1.5s of manual scroll inactivity before resuming gentle drift
   }, []);
@@ -310,7 +308,6 @@ export default function AboutUsExperience({
   // Pause auto-scroll immediately on manual input, then schedule auto-resume
   const pauseAutoScroll = useCallback(() => {
     isAutoScrollingRef.current = false;
-    setIsAutoScrolling(false);
     const container = containerRef.current;
     if (container) {
       const maxScroll = container.scrollHeight - container.clientHeight;
@@ -480,7 +477,6 @@ export default function AboutUsExperience({
             currentScrollRef.current = 1;
             container.scrollTop = maxScroll;
             isAutoScrollingRef.current = false;
-            setIsAutoScrolling(false);
           }
         }
       }
@@ -894,20 +890,6 @@ export default function AboutUsExperience({
           <div className="about-hud-brand">
             <h1 className="about-hud-title">ABOUT US</h1>
           </div>
-
-          {/* 🎬 Slow Auto-Scroll Cinematic Drift Status Pill */}
-          {isAutoScrolling && (
-            <div 
-              className="about-autoscroll-pill" 
-              onClick={pauseAutoScroll}
-              role="button"
-              tabIndex={0}
-              title="Auto-scrolling slowly. Scroll anytime to take manual control."
-            >
-              <span className="about-autoscroll-dot" />
-              <span>Cinematic Drift • Scroll anytime to control</span>
-            </div>
-          )}
         </header>
 
 
