@@ -1008,12 +1008,12 @@ export default function AboutUsExperience({
           </div>
         </section>
 
-        {/* ================= CHAPTER 02: "WE WANTED MUSIC TO FEEL PERSONAL AGAIN." ================= */}
+        {/* ================= CHAPTER 02: "I WANTED MUSIC TO FEEL PERSONAL AGAIN." ================= */}
         <section className="about-ch2-container" ref={ch2Ref} style={{ display: 'none' }}>
           <div className="about-ch2-heading-group">
-            <span className="about-meta-label">WHY WE MADE IT</span>
+            <span className="about-meta-label">WHY I MADE IT</span>
             <h2 className="about-ch2-title about-editorial-serif">
-              WE WANTED<br />
+              I WANTED<br />
               MUSIC TO FEEL<br />
               <span className="italic-personal">PERSONAL AGAIN.</span>
             </h2>
