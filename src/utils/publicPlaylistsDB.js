@@ -33,7 +33,7 @@ export function normalizePlaylistLang(lang) {
  * - other playlists -> shown only when other is selected
  * - all playlists -> shown only when all is selected (or default state)
  */
-export function isPlaylistMatchingLanguage(playlistLang, selectedLanguages = [], selectedLanguage = null) {
+export function isPlaylistMatchingLanguage(playlistLang, selectedLanguages = [], selectedLanguage = null, playlist = null) {
   const pLang = normalizePlaylistLang(playlistLang);
 
   let active = [];
@@ -41,6 +41,23 @@ export function isPlaylistMatchingLanguage(playlistLang, selectedLanguages = [],
     active = selectedLanguages.filter(l => l && l !== 'Hinglish').map(normalizePlaylistLang);
   } else if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
     active = [normalizePlaylistLang(selectedLanguage)];
+  }
+
+  // Gym Workout playlist: shown ONLY in "All" and "Other" language sections
+  const isGym = (playlist && (playlist.id === 'gym_workout' || String(playlist.id).toLowerCase().includes('gym') || (playlist.title || '').toLowerCase().includes('gym'))) ||
+                (playlist && playlist.showInAllAndOther);
+
+  if (isGym) {
+    // If user filtered specifically to English, Hindi, or Bengali -> HIDE
+    const hasSpecificLang = active.some(l => ['English', 'Hindi', 'Bengali'].includes(l));
+    if (hasSpecificLang) {
+      return false;
+    }
+    // If "All" or "Other" is active (or no specific filter active) -> SHOW
+    if (active.length === 0 || active.includes('All') || active.includes('Other')) {
+      return true;
+    }
+    return false;
   }
 
   // When "All" is active (or no specific language filter is active)
@@ -134,7 +151,8 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
     'timeless_ghazals',
     'bengali_classics',
     'peace_playlist',
-    'global_other_melodies'
+    'global_other_melodies',
+    'gym_workout'
   ]);
 
   const makePl = (id, title, plTracks, defaultImg, language) => {
@@ -204,7 +222,27 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
   const otherTracks = officialTracks.filter(t => isTrackInLanguages(t.language, ['Other']));
   if (otherTracks.length > 0 || adminOverrides.has('global_other_melodies')) list.push(makePl('global_other_melodies', 'Global & Other Melodies', otherTracks, 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&auto=format&fit=crop&q=80', 'Other'));
 
-  // 9. Admin Created Official Public Playlists (synced worldwide, excluding built-ins already processed)
+  // 9. Gym Workout (High-energy & synthwave workout hits, shown exclusively in All and Other sections)
+  const gymTrackIds = [
+    'synth-nightcall',
+    'synth-midnight-city',
+    'synth-blinding-lights',
+    'retro-take-on-me',
+    'oasis-rock-n-roll-star',
+    'oasis-supersonic',
+    'synth-free-bird',
+    'oasis-live-forever',
+    'retro-tears-for-fears',
+    'stay-with-me-miki-matsubara'
+  ];
+  const gymTracks = gymTrackIds.map(id => tracks.find(t => t.id === id)).filter(Boolean);
+  if (gymTracks.length > 0 || adminOverrides.has('gym_workout')) {
+    const gymPl = makePl('gym_workout', 'Gym Workout', gymTracks, '/assets/images/gym_statue_disc_clean.png', 'All');
+    gymPl.showInAllAndOther = true;
+    list.push(gymPl);
+  }
+
+  // 10. Admin Created Official Public Playlists (synced worldwide, excluding built-ins already processed)
   if (Array.isArray(publicPlaylists)) {
     publicPlaylists.forEach(pp => {
       if (pp && pp.id && !builtInIds.has(pp.id)) {
@@ -230,7 +268,7 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
   // If language filtering is requested, filter strictly by the active language filter:
   // eng -> eng only, hindi -> hindi only, beng -> beng only, other -> other only, all -> all only
   if (selectedLanguages !== null || selectedLanguage !== null) {
-    const filteredLists = list.filter(pl => isPlaylistMatchingLanguage(pl.language, selectedLanguages || [], selectedLanguage));
+    const filteredLists = list.filter(pl => isPlaylistMatchingLanguage(pl.language, selectedLanguages || [], selectedLanguage, pl));
 
     // If a specific language is selected, strictly filter internal tracks of every playlist as well
     let effectiveLangs = [];
@@ -242,6 +280,10 @@ export function getUnifiedMusiclyPlaylists(allTracks = [], publicPlaylists = [],
 
     if (effectiveLangs.length > 0) {
       filteredLists.forEach(pl => {
+        // Do not strip tracks from gym playlist when viewed under "Other"
+        if (pl.id === 'gym_workout' || (pl.title || '').toLowerCase().includes('gym')) {
+          return;
+        }
         pl.tracks = pl.tracks.filter(t => isTrackInLanguages(t.language, effectiveLangs));
         pl.trackIds = pl.tracks.map(t => t.id);
         pl.count = pl.tracks.length;

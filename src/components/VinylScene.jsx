@@ -1327,6 +1327,11 @@ export default function VinylScene({
     if (!activePlayingPlaylistId) {
       setIsGymPlaylistPlayingAsWhole(false);
       setIsGymModeActive(false);
+    } else {
+      const isGym = String(activePlayingPlaylistId).toLowerCase().includes('gym');
+      if (isGym) {
+        setIsGymPlaylistPlayingAsWhole(true);
+      }
     }
   }, [activePlayingPlaylistId]);
 
@@ -3975,8 +3980,14 @@ export default function VinylScene({
                               onTogglePlay?.();
                               return;
                             }
-                            setIsGymPlaylistPlayingAsWhole(false);
-                            setIsGymModeActive(false);
+                            const isGym = Boolean(
+                              (selectedCustomPlaylist?.title || '').toLowerCase().includes('gym') ||
+                              String(selectedCustomPlaylist?.id || '').toLowerCase().includes('gym')
+                            );
+                            setIsGymPlaylistPlayingAsWhole(isGym);
+                            if (!isGym) {
+                              setIsGymModeActive(false);
+                            }
                             setActivePlayingPlaylistId(selectedCustomPlaylist.id);
                             const remaining = filterTracksByLang(selectedCustomPlaylist.tracks.slice(idx + 1));
                             onSelectTrack?.(track, true, true, selectedCustomPlaylist.id);
