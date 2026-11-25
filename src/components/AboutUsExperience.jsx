@@ -13,8 +13,7 @@ import {
   SkipForward,
   Mic,
   Keyboard,
-  Hand,
-  Compass
+  Hand
 } from 'lucide-react';
 import { TRACKS } from '../data/tracks';
 import { playCatSound } from '../utils/audioSynth';
@@ -838,18 +837,6 @@ export default function AboutUsExperience({
         <header className="about-hud" aria-label="About Us Header">
           <div className="about-hud-brand">
             <h1 className="about-hud-title">ABOUT US</h1>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', pointerEvents: 'auto' }}>
-            <button
-              type="button"
-              className="about-view-switcher-hud-btn"
-              onClick={() => handleToggleView('pirate')}
-              title="Switch to The Musicly Story"
-            >
-              <Compass size={13} style={{ color: '#ffd166' }} />
-              <span>The Pirate Voyage</span>
-            </button>
           </div>
 
           {/* 🎬 Slow Auto-Scroll Cinematic Drift Status Pill */}
