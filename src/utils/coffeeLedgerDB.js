@@ -1,152 +1,158 @@
-// Musicly Coffee & Creator Donations Ledger DB (Indexed / LocalStorage + Firestore Sync)
+// Musicly Coffee & Creator Donations Ledger DB (Real-time Cloud Firestore + Offline Cache)
 import { firestore } from '../firebase';
 import { 
   collection, 
   doc, 
   setDoc, 
-  getDocs, 
+  getDoc,
   deleteDoc, 
-  query, 
-  orderBy 
+  onSnapshot 
 } from 'firebase/firestore';
 
 const STORAGE_KEY = 'musicly_coffee_donations';
+const SETTING_DOC_PATH = ['public_settings', 'coffee_donations'];
 
-// Initial realistic aesthetic donations if none exist yet
-const INITIAL_SEED_DONATIONS = [
-  {
-    id: 'coffee_seed_1',
-    donorName: 'Aarav Mehta',
-    amount: 150,
-    currency: '₹',
-    cups: 3,
-    message: 'Your lo-fi chill station kept me focused during my entire finals week! 🎧☕',
-    timestamp: Date.now() - 1000 * 60 * 60 * 3, // 3 hours ago
-    paymentMethod: 'UPI • pingpay',
-    verified: true,
-  },
-  {
-    id: 'coffee_seed_2',
-    donorName: 'Priya Patel',
-    amount: 300,
-    currency: '₹',
-    cups: 5,
-    message: 'Love the rain & fireplace ambient mix while reading at night. Pure magic ✨',
-    timestamp: Date.now() - 1000 * 60 * 60 * 22, // 22 hours ago
-    paymentMethod: 'GPay • UPI',
-    verified: true,
-  },
-  {
-    id: 'coffee_seed_3',
-    donorName: 'Devansh K.',
-    amount: 100,
-    currency: '₹',
-    cups: 2,
-    message: 'Thank you for keeping Musicly completely clean and ad-free! Much respect brother 🙌',
-    timestamp: Date.now() - 1000 * 60 * 60 * 46, // 2 days ago
-    paymentMethod: 'PhonePe • UPI',
-    verified: true,
-  },
-  {
-    id: 'coffee_seed_4',
-    donorName: 'Elena Rostova',
-    amount: 250,
-    currency: '₹',
-    cups: 4,
-    message: 'The cyberpunk neo-tokyo theme with synthwave is unbelievable. Supporting from Berlin! 🚀☕',
-    timestamp: Date.now() - 1000 * 60 * 60 * 78, // 3 days ago
-    paymentMethod: 'Direct • PingPay',
-    verified: true,
-  },
-  {
-    id: 'coffee_seed_5',
-    donorName: 'Kabir Sharma',
-    amount: 500,
-    currency: '₹',
-    cups: 10,
-    message: 'Sponsoring your next coffee binge! This app is a daily ritual for our dev team 💻🔥',
-    timestamp: Date.now() - 1000 * 60 * 60 * 130, // 5 days ago
-    paymentMethod: 'Paytm • UPI',
-    verified: true,
-  },
-  {
-    id: 'coffee_seed_6',
-    donorName: 'Ananya Roy',
-    amount: 150,
-    currency: '₹',
-    cups: 3,
-    message: 'The smooth transitions and ambient soundscapes are unmatched. Keep building! 🌟',
-    timestamp: Date.now() - 1000 * 60 * 60 * 190, // 7 days ago
-    paymentMethod: 'UPI • pingpay',
-    verified: true,
-  }
-];
+const FAKE_DONOR_NAMES = new Set([
+  'Aarav Mehta',
+  'Priya Patel',
+  'Devansh K.',
+  'Elena Rostova',
+  'Kabir Sharma',
+  'Ananya Roy'
+]);
 
 /**
- * Load all recorded coffee donations
- * 1. Synchronously from LocalStorage (instant 0ms)
- * 2. Background sync with Firestore 'coffee_donations' collection
+ * Filter out any mock / fake / seeded donations
  */
-export async function loadCoffeeDonations() {
-  let localData = [];
+export function purgeFakeSeedDonations(list = []) {
+  if (!Array.isArray(list)) return [];
+  return list.filter(item => {
+    if (!item) return false;
+    if (typeof item.id === 'string' && item.id.startsWith('coffee_seed_')) return false;
+    if (item.donorName && FAKE_DONOR_NAMES.has(item.donorName.trim())) return false;
+    return true;
+  });
+}
+
+/**
+ * 0ms Synchronous Local Storage Reader
+ * Strictly returns only authentic donations (purges any legacy fake seeds).
+ */
+export function getLocalCoffeeDonations() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      localData = JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const clean = purgeFakeSeedDonations(parsed);
+        if (clean.length !== parsed.length) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+        }
+        return clean.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+      }
     }
   } catch (e) {
     console.warn('Error reading local coffee donations:', e);
   }
-
-  // If no records yet, seed with initial aesthetic donations
-  if (!localData || localData.length === 0) {
-    localData = INITIAL_SEED_DONATIONS;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(localData));
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  // Attempt Firestore background sync if online
-  if (firestore) {
-    try {
-      const colRef = collection(firestore, 'coffee_donations');
-      const q = query(colRef, orderBy('timestamp', 'desc'));
-      
-      const firestorePromise = getDocs(q);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Firestore timeout')), 2200)
-      );
-
-      const snapshot = await Promise.race([firestorePromise, timeoutPromise]);
-      if (snapshot && !snapshot.empty) {
-        const cloudData = [];
-        snapshot.forEach((docSnap) => {
-          cloudData.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        
-        // Merge cloud data with local data (cloud takes precedence for same IDs)
-        const mergedMap = new Map();
-        [...localData, ...cloudData].forEach(item => {
-          mergedMap.set(item.id, item);
-        });
-
-        const merged = Array.from(mergedMap.values()).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-        return merged;
-      }
-    } catch (err) {
-      // Firestore offline or timed out, fallback gracefully to local data
-      console.warn('Firestore coffee donations sync notice (using local data):', err.message);
-    }
-  }
-
-  return localData.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  return [];
 }
 
 /**
- * Add a new donation record (offline-first with Cloud Firestore sync)
+ * Save authentic donations to local storage
+ */
+export function saveLocalCoffeeDonations(donations = []) {
+  try {
+    const clean = purgeFakeSeedDonations(donations);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
+  } catch (e) {
+    console.warn('Error saving local coffee donations:', e);
+  }
+}
+
+/**
+ * Load all authentic coffee donations from Cloud Firestore with local cache fallback
+ */
+export async function loadCoffeeDonations() {
+  const localData = getLocalCoffeeDonations();
+
+  if (firestore) {
+    try {
+      const docRef = doc(firestore, ...SETTING_DOC_PATH);
+      const snap = await Promise.race([
+        getDoc(docRef),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), 3000))
+      ]);
+
+      if (snap && snap.exists()) {
+        const cloudData = snap.data();
+        const rawDonations = Array.isArray(cloudData?.donations) ? cloudData.donations : [];
+        const clean = purgeFakeSeedDonations(rawDonations).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        saveLocalCoffeeDonations(clean);
+        return clean;
+      }
+    } catch (err) {
+      console.warn('Firestore coffee ledger fetch notice (using local data):', err.message);
+    }
+  }
+
+  return localData;
+}
+
+/**
+ * Real-time listener for creator coffee donations.
+ * Synchronizes new contributions, edits, and deletions instantly across all devices.
+ */
+export function subscribeCoffeeDonations(callback) {
+  if (typeof callback !== 'function') return () => {};
+
+  let unsubFirestore = null;
+
+  // 1. Subscribe to Cloud Firestore in real time
+  if (firestore) {
+    try {
+      const docRef = doc(firestore, ...SETTING_DOC_PATH);
+      unsubFirestore = onSnapshot(docRef, (snap) => {
+        if (snap.exists()) {
+          const cloudData = snap.data();
+          const rawDonations = Array.isArray(cloudData?.donations) ? cloudData.donations : [];
+          const clean = purgeFakeSeedDonations(rawDonations).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+          saveLocalCoffeeDonations(clean);
+          callback(clean);
+        } else {
+          // Empty or uninitialized
+          const local = getLocalCoffeeDonations();
+          callback(local);
+        }
+      }, (err) => {
+        console.warn('Firestore real-time coffee ledger subscription notice:', err.message);
+      });
+    } catch (err) {
+      console.warn('Failed to attach Firestore coffee listener:', err);
+    }
+  }
+
+  // 2. Also listen for same-device local window broadcasts for instant 0ms optimistic UI
+  const handleLocalEvent = (e) => {
+    const updated = e?.detail?.donations || getLocalCoffeeDonations();
+    callback(updated);
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('musicly_coffee_donations_changed', handleLocalEvent);
+  }
+
+  return () => {
+    if (unsubFirestore) {
+      try { unsubFirestore(); } catch (_) {}
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('musicly_coffee_donations_changed', handleLocalEvent);
+    }
+  };
+}
+
+/**
+ * Add a new donation record (instantly persisted to Cloud Firestore in real time)
  */
 export async function addCoffeeDonation(record) {
   const donation = {
@@ -155,31 +161,52 @@ export async function addCoffeeDonation(record) {
     amount: Number(record.amount) || 50,
     currency: record.currency || '₹',
     cups: Number(record.cups) || Math.max(1, Math.round((Number(record.amount) || 50) / 50)),
-    message: record.message?.trim() || 'Thank you for making Musicly! ☕',
+    message: record.message?.trim() || 'A coffee for the music! ☕',
     timestamp: record.timestamp || Date.now(),
     paymentMethod: record.paymentMethod || 'UPI • pingpay',
     verified: true,
   };
 
-  // 1. Save to local storage immediately
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const existing = raw ? JSON.parse(raw) : INITIAL_SEED_DONATIONS;
-    const updated = [donation, ...existing.filter(item => item.id !== donation.id)];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  } catch (e) {
-    console.warn('Error saving donation locally:', e);
+  // 1. Optimistic local update
+  const currentLocal = getLocalCoffeeDonations();
+  const updatedList = [donation, ...currentLocal.filter(d => d.id !== donation.id)]
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+  saveLocalCoffeeDonations(updatedList);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('musicly_coffee_donations_changed', { 
+      detail: { donations: updatedList, newDonation: donation } 
+    }));
   }
 
-  // 2. Persist to Firestore asynchronously
+  // 2. Persist to Cloud Firestore in real time
   if (firestore) {
     try {
-      const docRef = doc(firestore, 'coffee_donations', donation.id);
-      const firestorePromise = setDoc(docRef, donation);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Firestore timeout')), 2000)
-      );
-      await Promise.race([firestorePromise, timeoutPromise]);
+      const docRef = doc(firestore, ...SETTING_DOC_PATH);
+      const snap = await getDoc(docRef).catch(() => null);
+      let existingCloud = [];
+      if (snap && snap.exists()) {
+        existingCloud = Array.isArray(snap.data()?.donations) ? snap.data().donations : [];
+      } else {
+        existingCloud = currentLocal;
+      }
+
+      const merged = purgeFakeSeedDonations([
+        donation, 
+        ...existingCloud.filter(d => d.id !== donation.id)
+      ]).sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+
+      await setDoc(docRef, {
+        donations: merged,
+        updatedAt: Date.now()
+      }, { merge: true });
+
+      // Also mirror to coffee_donations collection for secondary index/backup
+      try {
+        const colDocRef = doc(firestore, 'coffee_donations', donation.id);
+        setDoc(colDocRef, donation).catch(() => {});
+      } catch (_) {}
+
     } catch (err) {
       console.warn('Firestore donation save notice (saved locally):', err.message);
     }
@@ -189,28 +216,40 @@ export async function addCoffeeDonation(record) {
 }
 
 /**
- * Delete a donation record
+ * Delete a donation record from Cloud Firestore and local cache
  */
 export async function deleteCoffeeDonation(donationId) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const existing = JSON.parse(raw);
-      const filtered = existing.filter(item => item.id !== donationId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    }
-  } catch (e) {
-    console.warn('Error removing donation locally:', e);
+  // 1. Optimistic local update
+  const currentLocal = getLocalCoffeeDonations();
+  const updatedList = currentLocal.filter(d => d.id !== donationId);
+  saveLocalCoffeeDonations(updatedList);
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('musicly_coffee_donations_changed', { 
+      detail: { donations: updatedList, deletedId: donationId } 
+    }));
   }
 
+  // 2. Persist deletion to Cloud Firestore in real time
   if (firestore) {
     try {
-      const docRef = doc(firestore, 'coffee_donations', donationId);
-      const firestorePromise = deleteDoc(docRef);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Firestore timeout')), 2000)
-      );
-      await Promise.race([firestorePromise, timeoutPromise]);
+      const docRef = doc(firestore, ...SETTING_DOC_PATH);
+      const snap = await getDoc(docRef).catch(() => null);
+      if (snap && snap.exists()) {
+        const cloudDonations = Array.isArray(snap.data()?.donations) ? snap.data().donations : [];
+        const filtered = cloudDonations.filter(d => d.id !== donationId);
+        await setDoc(docRef, {
+          donations: filtered,
+          updatedAt: Date.now()
+        }, { merge: true });
+      }
+
+      // Also remove from collection if present
+      try {
+        const colDocRef = doc(firestore, 'coffee_donations', donationId);
+        deleteDoc(colDocRef).catch(() => {});
+      } catch (_) {}
+
     } catch (err) {
       console.warn('Firestore donation delete notice:', err.message);
     }
@@ -221,9 +260,10 @@ export async function deleteCoffeeDonation(donationId) {
  * Compute key aggregate metrics for the admin ledger
  */
 export function calculateDonationStats(donations = []) {
-  const totalAmount = donations.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
-  const totalCups = donations.reduce((sum, d) => sum + (Number(d.cups) || 1), 0);
-  const totalSupporters = donations.length;
+  const clean = purgeFakeSeedDonations(donations);
+  const totalAmount = clean.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  const totalCups = clean.reduce((sum, d) => sum + (Number(d.cups) || 1), 0);
+  const totalSupporters = clean.length;
   const avgDonation = totalSupporters > 0 ? Math.round(totalAmount / totalSupporters) : 0;
 
   return {
@@ -235,7 +275,7 @@ export function calculateDonationStats(donations = []) {
 }
 
 /**
- * Format relative time (e.g. "3m ago", "2h ago", "Yesterday", "3d ago")
+ * Format relative time (e.g. "3m ago", "2h ago", "Yesterday", "3d ago", "23d ago")
  */
 export function formatRelativeTime(timestamp) {
   if (!timestamp) return 'Recently';

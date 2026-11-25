@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { 
   loadCoffeeDonations, 
+  subscribeCoffeeDonations,
   addCoffeeDonation, 
   deleteCoffeeDonation, 
   calculateDonationStats, 
@@ -56,8 +57,10 @@ export default function CoffeeSupportModal({ isOpen, onClose, isAdmin = false, o
     paymentMethod: 'UPI • pingpay',
   });
 
-  // Sync mounted and closing state with isOpen
+  // Sync mounted and closing state with isOpen, and subscribe to real-time donations
   useEffect(() => {
+    let unsub = null;
+
     if (isOpen) {
       setMounted(true);
       setIsClosing(false);
@@ -77,6 +80,12 @@ export default function CoffeeSupportModal({ isOpen, onClose, isAdmin = false, o
             console.warn('Error loading coffee ledger:', err);
             setLoadingLedger(false);
           });
+
+        // ⚡ Real-time subscription across all devices
+        unsub = subscribeCoffeeDonations((liveDonations) => {
+          setDonations(liveDonations);
+          setLoadingLedger(false);
+        });
       }
     } else if (mounted) {
       setIsClosing(true);
@@ -84,8 +93,15 @@ export default function CoffeeSupportModal({ isOpen, onClose, isAdmin = false, o
         setMounted(false);
         setIsClosing(false);
       }, 270);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        if (unsub) unsub();
+      };
     }
+
+    return () => {
+      if (unsub) unsub();
+    };
   }, [isOpen, isAdmin]);
 
   const handleClose = () => {
@@ -218,7 +234,7 @@ export default function CoffeeSupportModal({ isOpen, onClose, isAdmin = false, o
                   ₹{stats.totalAmount.toLocaleString('en-IN')}
                 </div>
                 <div className="stat-subtext">
-                  <span>Across {stats.totalCups} coffees gifted</span>
+                  <span>Across {stats.totalCups} coffee{stats.totalCups === 1 ? '' : 's'} gifted</span>
                 </div>
               </div>
 

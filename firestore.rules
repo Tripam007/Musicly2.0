@@ -88,5 +88,12 @@ service cloud.firestore {
       allow create: if true;
       allow update, delete: if true;
     }
+
+    // ☕ CREATOR COFFEE & DONATIONS LEDGER
+    match /coffee_donations/{donationId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
   }
 }
