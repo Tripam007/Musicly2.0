@@ -90,7 +90,25 @@ export const SEED_PUBLIC_TRACKS = TRACKS.map(t => ({
 export const PUBLIC_DELETED_KEY = 'musicly_public_deleted_track_ids';
 
 // Initial pre-registered deleted IDs to immediately purge tracks if deleted by admin
-export const INITIAL_PURGED_IDS = [];
+export const INITIAL_PURGED_IDS = [
+  'public-1793721929599',
+  'public-1795454707151',
+  'public-1793823416101',
+  'public-1795173965201',
+  'public-1795508538689',
+  'public-1795509305132',
+  'public-1795545004295',
+  'public-1793715924955',
+  'public-1794244862690',
+  'public-1795517859484',
+  'public-1794339646322',
+  'public-1795459224536',
+  'public-1794207269734',
+  'public-1794207491058',
+  'public-1794207643251',
+  'public-1795096374464',
+  'public-1795286966892'
+];
 
 /**
  * Returns a Set of track IDs that have been permanently deleted by the admin.
@@ -503,6 +521,18 @@ export async function deletePublicTrack(trackId, user = null) {
         deletedAt: Date.now(),
         deletedBy: user?.email || user?.uid || 'admin'
       }, { merge: true }).catch(() => {});
+
+      // Also record in central public_settings/deleted_tracks
+      const centralDelRef = doc(firestore, 'public_settings', 'deleted_tracks');
+      getDoc(centralDelRef).then(snap => {
+        const currentList = snap.exists() ? (snap.data()?.deletedTrackIds || []) : [];
+        if (!currentList.includes(trackId)) {
+          setDoc(centralDelRef, {
+            deletedTrackIds: [...currentList, trackId],
+            updatedAt: Date.now()
+          }, { merge: true }).catch(() => {});
+        }
+      }).catch(() => {});
     } catch (err) {
       console.warn("Firestore delete public track notice:", err);
     }
@@ -645,6 +675,19 @@ export async function reconcileLocalPublicTracksToCloud(user) {
     await flushPendingCloudSync();
 
     const deletedIds = getDeletedPublicTrackIds();
+
+    // Sync cloud deleted tombstones before scanning
+    try {
+      const delDoc = await getDoc(doc(firestore, 'public_settings', 'deleted_tracks'));
+      if (delDoc && delDoc.exists()) {
+        const cloudDeleted = delDoc.data()?.deletedTrackIds;
+        if (Array.isArray(cloudDeleted)) {
+          cloudDeleted.forEach(id => deletedIds.add(id));
+        }
+      }
+    } catch (_delErr) {}
+
+    const catalogIdSet = new Set(TRACKS.map(t => t.id));
     const allCandidateMap = new Map();
 
     // 1. Scan getLocalPublicTracks()
@@ -653,6 +696,7 @@ export async function reconcileLocalPublicTracksToCloud(user) {
       if (
         t && t.id && 
         !deletedIds.has(t.id) &&
+        !catalogIdSet.has(t.id) &&
         !t.id.startsWith('poster-') &&
         !t.id.startsWith('musicly_pl_') &&
         t.id !== 'country_roots' &&
@@ -678,6 +722,7 @@ export async function reconcileLocalPublicTracksToCloud(user) {
         if (
           t && t.id && 
           !deletedIds.has(t.id) &&
+          !catalogIdSet.has(t.id) &&
           !t.id.startsWith('poster-') &&
           !t.id.startsWith('musicly_pl_') &&
           t.id !== 'country_roots' &&
