@@ -222,15 +222,18 @@ export async function loadPublicTracks() {
   // 3. Fetch from Cloud Firestore /public_tracks with timeout protection
   if (firestore) {
     try {
-      // Sync cloud deleted tombstones
+      // Sync cloud deleted tombstones from public_settings/deleted_tracks
       try {
-        const deletedSnap = await getDocs(collection(firestore, 'public_deleted_tracks'));
-        deletedSnap.forEach(d => {
-          if (d.id) {
-            deletedIds.add(d.id);
-            markPublicTrackDeleted(d.id);
+        const delDoc = await getDoc(doc(firestore, 'public_settings', 'deleted_tracks'));
+        if (delDoc && delDoc.exists()) {
+          const cloudDeleted = delDoc.data()?.deletedTrackIds;
+          if (Array.isArray(cloudDeleted)) {
+            cloudDeleted.forEach(id => {
+              deletedIds.add(id);
+              markPublicTrackDeleted(id);
+            });
           }
-        });
+        }
       } catch (_delErr) {}
 
       const publicColRef = collection(firestore, 'public_tracks');
@@ -242,6 +245,17 @@ export async function loadPublicTracks() {
         const cloudTracks = [];
         snap.forEach(d => {
           const data = d.data();
+          // STRICT FILTER: Never include playlists or studio posters in song lists
+          if (
+            d.id.startsWith('poster-') ||
+            d.id.startsWith('musicly_pl_') ||
+            d.id === 'country_roots' ||
+            d.id === 'gym_workout' ||
+            data.isPlaylist ||
+            !data.artist
+          ) {
+            return;
+          }
           if (data && data.id && !deletedIds.has(data.id)) {
             cloudTracks.push({ ...data, isPublic: true });
           }
@@ -551,6 +565,17 @@ export function subscribePublicTracks(callback) {
         const cloudTracks = [];
         snapshot.forEach(d => {
           const data = d.data();
+          // STRICT FILTER: Exclude playlists and studio posters from song list
+          if (
+            d.id.startsWith('poster-') ||
+            d.id.startsWith('musicly_pl_') ||
+            d.id === 'country_roots' ||
+            d.id === 'gym_workout' ||
+            data.isPlaylist ||
+            !data.artist
+          ) {
+            return;
+          }
           if (data && data.id && !deletedIds.has(data.id)) {
             cloudTracks.push({ ...data, isPublic: true });
           }
@@ -625,7 +650,16 @@ export async function reconcileLocalPublicTracksToCloud(user) {
     // 1. Scan getLocalPublicTracks()
     const localTracks = getLocalPublicTracks();
     localTracks.forEach(t => {
-      if (t && t.id && !deletedIds.has(t.id)) {
+      if (
+        t && t.id && 
+        !deletedIds.has(t.id) &&
+        !t.id.startsWith('poster-') &&
+        !t.id.startsWith('musicly_pl_') &&
+        t.id !== 'country_roots' &&
+        t.id !== 'gym_workout' &&
+        !t.isPlaylist &&
+        t.artist
+      ) {
         allCandidateMap.set(t.id, t);
       }
     });
@@ -641,63 +675,20 @@ export async function reconcileLocalPublicTracksToCloud(user) {
         req.onerror = () => resolve([]);
       });
       idbTracks.forEach(t => {
-        if (t && t.id && !deletedIds.has(t.id)) {
+        if (
+          t && t.id && 
+          !deletedIds.has(t.id) &&
+          !t.id.startsWith('poster-') &&
+          !t.id.startsWith('musicly_pl_') &&
+          t.id !== 'country_roots' &&
+          t.id !== 'gym_workout' &&
+          !t.isPlaylist &&
+          t.artist
+        ) {
           allCandidateMap.set(t.id, { ...(allCandidateMap.get(t.id) || {}), ...t });
         }
       });
     } catch (_idbErr) {}
-
-    // 3. Scan MusiclyAppDB (custom tracks)
-    try {
-      const req = indexedDB.open('MusiclyAppDB');
-      req.onsuccess = (e) => {
-        try {
-          const appDb = e.target.result;
-          if (appDb.objectStoreNames.contains('custom_audio_tracks')) {
-            const tx = appDb.transaction('custom_audio_tracks', 'readonly');
-            const store = tx.objectStore('custom_audio_tracks');
-            const getReq = store.getAll();
-            getReq.onsuccess = () => {
-              (getReq.result || []).forEach(t => {
-                if (t && t.id && !deletedIds.has(t.id)) {
-                  allCandidateMap.set(t.id, { ...(allCandidateMap.get(t.id) || {}), ...t, isPublic: true });
-                }
-              });
-            };
-          }
-        } catch (_err) {}
-      };
-    } catch (_appDbErr) {}
-
-    // 4. Scan all localStorage keys for any cached track arrays
-    if (typeof localStorage !== 'undefined') {
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (!key) continue;
-          if (
-            key.includes('tracks') || 
-            key.includes('cache') || 
-            key.includes('audio_library') || 
-            key.includes('public_tracks') ||
-            key.includes('custom_tracks')
-          ) {
-            try {
-              const raw = localStorage.getItem(key);
-              if (raw && (raw.startsWith('[') || raw.startsWith('{'))) {
-                const parsed = JSON.parse(raw);
-                const items = Array.isArray(parsed) ? parsed : Object.values(parsed);
-                items.forEach(item => {
-                  if (item && item.id && item.title && !deletedIds.has(item.id)) {
-                    allCandidateMap.set(item.id, { ...(allCandidateMap.get(item.id) || {}), ...item, isPublic: true });
-                  }
-                });
-              }
-            } catch (_parseErr) {}
-          }
-        }
-      } catch (_lsErr) {}
-    }
 
     // Fetch existing public track IDs in Firestore
     const publicColRef = collection(firestore, 'public_tracks');
