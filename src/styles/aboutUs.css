@@ -385,7 +385,6 @@
   margin: 0 auto;
   padding: 0 20px;
   transform-style: preserve-3d;
-  pointer-events: auto;
 }
 
 /* Floating Micro-Badge */

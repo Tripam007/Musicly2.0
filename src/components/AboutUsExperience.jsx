@@ -281,15 +281,21 @@ export default function AboutUsExperience({
   // Cinematic slow auto-scroll until user manually controls it
   const isAutoScrollingRef = useRef(true);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
-  const autoScrollPosRef = useRef(0);
+  const autoProgressRef = useRef(0);
 
   // Stop auto-scrolling immediately upon any user manual input
   const stopAutoScroll = useCallback(() => {
     if (isAutoScrollingRef.current) {
       isAutoScrollingRef.current = false;
       setIsAutoScrolling(false);
-      if (containerRef.current) {
-        autoScrollPosRef.current = containerRef.current.scrollTop;
+      const container = containerRef.current;
+      if (container) {
+        const maxScroll = container.scrollHeight - container.clientHeight;
+        if (maxScroll > 0) {
+          const raw = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
+          autoProgressRef.current = raw;
+          targetScrollRef.current = raw;
+        }
       }
     }
   }, []);
@@ -350,7 +356,6 @@ export default function AboutUsExperience({
     } else if (e.key === 'End') {
       container.scrollTop = container.scrollHeight;
     }
-    autoScrollPosRef.current = container.scrollTop;
   }, [onBack, stopAutoScroll]);
 
   useEffect(() => {
@@ -386,13 +391,15 @@ export default function AboutUsExperience({
 
   // Scroll listener updates target scroll based on container scroll position
   const handleScroll = useCallback(() => {
+    // During active auto-scroll, ignore browser echo scroll events
+    if (isAutoScrollingRef.current) return;
     const container = containerRef.current;
     if (!container) return;
     const maxScroll = container.scrollHeight - container.clientHeight;
     if (maxScroll <= 0) return;
     const rawProgress = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
     targetScrollRef.current = rawProgress;
-    autoScrollPosRef.current = container.scrollTop;
+    autoProgressRef.current = rawProgress;
   }, []);
 
   // Click on vertical progress bar jumps to that fraction of scroll
@@ -405,7 +412,8 @@ export default function AboutUsExperience({
     const clickY = e.clientY - rect.top;
     const ratio = Math.max(0, Math.min(1, clickY / rect.height));
     const maxScroll = container.scrollHeight - container.clientHeight;
-    autoScrollPosRef.current = ratio * maxScroll;
+    targetScrollRef.current = ratio;
+    autoProgressRef.current = ratio;
     container.scrollTo({ top: ratio * maxScroll, behavior: 'smooth' });
   }, [stopAutoScroll]);
 
@@ -425,35 +433,35 @@ export default function AboutUsExperience({
       const dt = Math.min((now - lastTimestamp) / 1000, 0.1);
       lastTimestamp = now;
 
-      // Slow cinematic auto-scroll until the user manually takes control
+      // Slow cinematic auto-scroll until user manually controls it
       if (isAutoScrollingRef.current && container) {
         const maxScroll = container.scrollHeight - container.clientHeight;
         if (maxScroll > 0) {
-          // Continuous subpixel accumulator prevents micro-stutters from integer DOM reads
-          const autoSpeed = Math.max(50, maxScroll / 48);
-          autoScrollPosRef.current += autoSpeed * dt;
+          // Smooth 45-second cinematic drift across chapters
+          const driftSpeed = 1 / 45;
+          autoProgressRef.current = Math.min(1, autoProgressRef.current + driftSpeed * dt);
+          targetScrollRef.current = autoProgressRef.current;
+          container.scrollTop = Math.round(autoProgressRef.current * maxScroll);
 
-          if (autoScrollPosRef.current >= maxScroll) {
-            autoScrollPosRef.current = maxScroll;
-            container.scrollTop = maxScroll;
+          if (autoProgressRef.current >= 1) {
+            autoProgressRef.current = 1;
             targetScrollRef.current = 1;
-            // Let interpolation gracefully coast to the absolute end (1.0) before disengaging
-            if (currentScrollRef.current >= 0.998) {
-              currentScrollRef.current = 1;
-              isAutoScrollingRef.current = false;
-              setIsAutoScrolling(false);
-            }
-          } else {
-            container.scrollTop = autoScrollPosRef.current;
-            targetScrollRef.current = autoScrollPosRef.current / maxScroll;
+            currentScrollRef.current = 1;
+            container.scrollTop = maxScroll;
+            isAutoScrollingRef.current = false;
+            setIsAutoScrolling(false);
           }
         }
       }
 
-      // Smooth frame-rate independent dampening for butter-smooth movement across 60/120Hz displays
-      const dampFactor = 1 - Math.exp(-9.5 * dt);
-      currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * dampFactor;
-      if (Math.abs(targetScrollRef.current - currentScrollRef.current) < 0.001) {
+      // Smooth frame-rate independent dampening for buttery responsive movement
+      if (!isAutoScrollingRef.current) {
+        const dampFactor = 1 - Math.exp(-12 * dt);
+        currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * dampFactor;
+        if (Math.abs(targetScrollRef.current - currentScrollRef.current) < 0.0008) {
+          currentScrollRef.current = targetScrollRef.current;
+        }
+      } else {
         currentScrollRef.current = targetScrollRef.current;
       }
       const progress = currentScrollRef.current;
