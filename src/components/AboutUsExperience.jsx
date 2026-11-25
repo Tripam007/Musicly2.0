@@ -278,27 +278,50 @@ export default function AboutUsExperience({
   const stageRef = useRef(null);
   const rafIdRef = useRef(null);
 
-  // Cinematic slow auto-scroll until user manually controls it
+  // Cinematic slow auto-scroll whenever user is not scrolling manually
   const isAutoScrollingRef = useRef(true);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
   const autoProgressRef = useRef(0);
+  const autoResumeTimeoutRef = useRef(null);
 
-  // Stop auto-scrolling immediately upon any user manual input
-  const stopAutoScroll = useCallback(() => {
-    if (isAutoScrollingRef.current) {
-      isAutoScrollingRef.current = false;
-      setIsAutoScrolling(false);
+  // Resume auto-scroll slowly down on its own after user is idle
+  const scheduleAutoResume = useCallback(() => {
+    if (autoResumeTimeoutRef.current) {
+      clearTimeout(autoResumeTimeoutRef.current);
+    }
+    autoResumeTimeoutRef.current = setTimeout(() => {
       const container = containerRef.current;
-      if (container) {
-        const maxScroll = container.scrollHeight - container.clientHeight;
-        if (maxScroll > 0) {
-          const raw = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
-          autoProgressRef.current = raw;
-          targetScrollRef.current = raw;
-        }
+      if (!container) return;
+      const maxScroll = container.scrollHeight - container.clientHeight;
+      if (maxScroll <= 0) return;
+      const currentProgress = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
+
+      // Resume auto-drifting down slowly on its own if not at the very end
+      if (currentProgress < 0.992) {
+        autoProgressRef.current = currentProgress;
+        targetScrollRef.current = currentProgress;
+        currentScrollRef.current = currentProgress;
+        isAutoScrollingRef.current = true;
+        setIsAutoScrolling(true);
+      }
+    }, 1500); // 1.5s of manual scroll inactivity before resuming gentle drift
+  }, []);
+
+  // Pause auto-scroll immediately on manual input, then schedule auto-resume
+  const pauseAutoScroll = useCallback(() => {
+    isAutoScrollingRef.current = false;
+    setIsAutoScrolling(false);
+    const container = containerRef.current;
+    if (container) {
+      const maxScroll = container.scrollHeight - container.clientHeight;
+      if (maxScroll > 0) {
+        const raw = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
+        autoProgressRef.current = raw;
+        targetScrollRef.current = raw;
       }
     }
-  }, []);
+    scheduleAutoResume();
+  }, [scheduleAutoResume]);
 
 
   // Target and current interpolated values
@@ -335,7 +358,6 @@ export default function AboutUsExperience({
 
   // Handle keyboard navigation and escape key
   const handleKeyDown = useCallback((e) => {
-    stopAutoScroll();
     if (e.key === 'Escape') {
       onBack?.();
       return;
@@ -343,43 +365,50 @@ export default function AboutUsExperience({
     const container = containerRef.current;
     if (!container) return;
 
-    if (e.key === 'ArrowDown') {
-      container.scrollTop += 140;
-    } else if (e.key === 'ArrowUp') {
-      container.scrollTop -= 140;
-    } else if (e.key === 'PageDown' || (e.key === ' ' && !e.target.closest('button'))) {
-      container.scrollTop += window.innerHeight * 0.85;
-    } else if (e.key === 'PageUp') {
-      container.scrollTop -= window.innerHeight * 0.85;
-    } else if (e.key === 'Home') {
-      container.scrollTop = 0;
-    } else if (e.key === 'End') {
-      container.scrollTop = container.scrollHeight;
+    const navKeys = ['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '];
+    if (navKeys.includes(e.key)) {
+      pauseAutoScroll();
+      if (e.key === 'ArrowDown') {
+        container.scrollTop += 140;
+      } else if (e.key === 'ArrowUp') {
+        container.scrollTop -= 140;
+      } else if (e.key === 'PageDown' || (e.key === ' ' && !e.target.closest('button'))) {
+        container.scrollTop += window.innerHeight * 0.85;
+      } else if (e.key === 'PageUp') {
+        container.scrollTop -= window.innerHeight * 0.85;
+      } else if (e.key === 'Home') {
+        container.scrollTop = 0;
+      } else if (e.key === 'End') {
+        container.scrollTop = container.scrollHeight;
+      }
     }
-  }, [onBack, stopAutoScroll]);
+  }, [onBack, pauseAutoScroll]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Listen for any manual user interaction to immediately halt auto-scroll
+  // Listen for user manual scroll interaction to pause, then auto-resume when idle
   useEffect(() => {
-    const handleUserManualInput = () => {
-      stopAutoScroll();
+    const handleUserScrollInput = () => {
+      pauseAutoScroll();
     };
 
-    const interactionEvents = ['wheel', 'touchstart', 'touchmove', 'pointerdown', 'mousedown'];
-    interactionEvents.forEach((evt) => {
-      window.addEventListener(evt, handleUserManualInput, { passive: true, capture: true });
+    const scrollInteractionEvents = ['wheel', 'touchmove'];
+    scrollInteractionEvents.forEach((evt) => {
+      window.addEventListener(evt, handleUserScrollInput, { passive: true, capture: true });
     });
 
     return () => {
-      interactionEvents.forEach((evt) => {
-        window.removeEventListener(evt, handleUserManualInput, { capture: true });
+      scrollInteractionEvents.forEach((evt) => {
+        window.removeEventListener(evt, handleUserScrollInput, { capture: true });
       });
+      if (autoResumeTimeoutRef.current) {
+        clearTimeout(autoResumeTimeoutRef.current);
+      }
     };
-  }, [stopAutoScroll]);
+  }, [pauseAutoScroll]);
 
   // Mouse parallax tracking
   const handleMouseMove = useCallback((e) => {
@@ -400,11 +429,13 @@ export default function AboutUsExperience({
     const rawProgress = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
     targetScrollRef.current = rawProgress;
     autoProgressRef.current = rawProgress;
-  }, []);
+    // Manual scroll active via scrollbar or trackpad -> schedule auto-resume once user stops
+    scheduleAutoResume();
+  }, [scheduleAutoResume]);
 
   // Click on vertical progress bar jumps to that fraction of scroll
   const handleProgressClick = useCallback((e) => {
-    stopAutoScroll();
+    pauseAutoScroll();
     const container = containerRef.current;
     const bar = e.currentTarget;
     if (!container || !bar) return;
@@ -415,7 +446,7 @@ export default function AboutUsExperience({
     targetScrollRef.current = ratio;
     autoProgressRef.current = ratio;
     container.scrollTo({ top: ratio * maxScroll, behavior: 'smooth' });
-  }, [stopAutoScroll]);
+  }, [pauseAutoScroll]);
 
   // Continuous RAF interpolation loop
   useEffect(() => {
@@ -433,12 +464,12 @@ export default function AboutUsExperience({
       const dt = Math.min((now - lastTimestamp) / 1000, 0.1);
       lastTimestamp = now;
 
-      // Slow cinematic auto-scroll until user manually controls it
+      // Slow cinematic auto-scroll down on its own whenever not scrolled manually
       if (isAutoScrollingRef.current && container) {
         const maxScroll = container.scrollHeight - container.clientHeight;
         if (maxScroll > 0) {
-          // Smooth 45-second cinematic drift across chapters
-          const driftSpeed = 1 / 45;
+          // Gentle pace (~48s for complete 5-chapter journey)
+          const driftSpeed = 1 / 48;
           autoProgressRef.current = Math.min(1, autoProgressRef.current + driftSpeed * dt);
           targetScrollRef.current = autoProgressRef.current;
           container.scrollTop = Math.round(autoProgressRef.current * maxScroll);
@@ -868,13 +899,13 @@ export default function AboutUsExperience({
           {isAutoScrolling && (
             <div 
               className="about-autoscroll-pill" 
-              onClick={stopAutoScroll}
+              onClick={pauseAutoScroll}
               role="button"
               tabIndex={0}
-              title="Click or scroll anywhere to take manual control"
+              title="Auto-scrolling slowly. Scroll anytime to take manual control."
             >
               <span className="about-autoscroll-dot" />
-              <span>Cinematic Drift • Scroll or press any key to control</span>
+              <span>Cinematic Drift • Scroll anytime to control</span>
             </div>
           )}
         </header>
