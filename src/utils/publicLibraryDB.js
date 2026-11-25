@@ -91,6 +91,7 @@ export const PUBLIC_DELETED_KEY = 'musicly_public_deleted_track_ids';
 
 // Initial pre-registered deleted IDs to immediately purge tracks if deleted by admin
 export const INITIAL_PURGED_IDS = [
+  'public-1793379777672',
   'public-1793721929599',
   'public-1795454707151',
   'public-1793823416101',
@@ -280,16 +281,17 @@ export async function loadPublicTracks() {
         });
 
         if (cloudTracks.length > 0) {
-          // Sync with merged
+          // Authoritative merge: cloudTracks is authoritative for all public songs
+          const authMap = new Map();
           cloudTracks.forEach(ct => {
-            if (deletedIds.has(ct.id)) return;
-            const idx = merged.findIndex(m => m.id === ct.id);
-            if (idx >= 0) {
-              merged[idx] = { ...merged[idx], ...ct };
-            } else {
-              merged.push(ct);
+            if (!deletedIds.has(ct.id)) authMap.set(ct.id, ct);
+          });
+          SEED_PUBLIC_TRACKS.forEach(s => {
+            if (!deletedIds.has(s.id) && !authMap.has(s.id)) {
+              authMap.set(s.id, s);
             }
           });
+          merged = Array.from(authMap.values());
 
           // Save to IndexedDB
           try {
@@ -611,20 +613,17 @@ export function subscribePublicTracks(callback) {
           }
         });
 
-        // 1. Get current cached tracks
-        const cached = getLocalPublicTracks().filter(t => !deletedIds.has(t.id));
+        // Authoritative synchronization: Cloud Firestore is the canonical truth for all public songs
         const mergedMap = new Map();
 
-        // 2. Put cached tracks first
-        cached.forEach(t => mergedMap.set(t.id, t));
-
-        // 3. Put cloud tracks (cloud takes precedence for freshest metadata)
+        // 1. Put cloud tracks (authoritative)
         cloudTracks.forEach(ct => {
-          const prev = mergedMap.get(ct.id) || {};
-          mergedMap.set(ct.id, { ...prev, ...ct, isPublic: true });
+          if (!deletedIds.has(ct.id)) {
+            mergedMap.set(ct.id, { ...ct, isPublic: true });
+          }
         });
 
-        // 4. Ensure seed tracks are included if not deleted
+        // 2. Ensure seed tracks are included if not deleted
         SEED_PUBLIC_TRACKS.forEach(s => {
           if (!deletedIds.has(s.id) && !mergedMap.has(s.id)) {
             mergedMap.set(s.id, s);
