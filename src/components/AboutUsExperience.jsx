@@ -281,12 +281,16 @@ export default function AboutUsExperience({
   // Cinematic slow auto-scroll until user manually controls it
   const isAutoScrollingRef = useRef(true);
   const [isAutoScrolling, setIsAutoScrolling] = useState(true);
+  const autoScrollPosRef = useRef(0);
 
   // Stop auto-scrolling immediately upon any user manual input
   const stopAutoScroll = useCallback(() => {
     if (isAutoScrollingRef.current) {
       isAutoScrollingRef.current = false;
       setIsAutoScrolling(false);
+      if (containerRef.current) {
+        autoScrollPosRef.current = containerRef.current.scrollTop;
+      }
     }
   }, []);
 
@@ -346,6 +350,7 @@ export default function AboutUsExperience({
     } else if (e.key === 'End') {
       container.scrollTop = container.scrollHeight;
     }
+    autoScrollPosRef.current = container.scrollTop;
   }, [onBack, stopAutoScroll]);
 
   useEffect(() => {
@@ -387,6 +392,7 @@ export default function AboutUsExperience({
     if (maxScroll <= 0) return;
     const rawProgress = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
     targetScrollRef.current = rawProgress;
+    autoScrollPosRef.current = container.scrollTop;
   }, []);
 
   // Click on vertical progress bar jumps to that fraction of scroll
@@ -399,6 +405,7 @@ export default function AboutUsExperience({
     const clickY = e.clientY - rect.top;
     const ratio = Math.max(0, Math.min(1, clickY / rect.height));
     const maxScroll = container.scrollHeight - container.clientHeight;
+    autoScrollPosRef.current = ratio * maxScroll;
     container.scrollTo({ top: ratio * maxScroll, behavior: 'smooth' });
   }, [stopAutoScroll]);
 
@@ -422,23 +429,33 @@ export default function AboutUsExperience({
       if (isAutoScrollingRef.current && container) {
         const maxScroll = container.scrollHeight - container.clientHeight;
         if (maxScroll > 0) {
-          // Gentle pace (~60px/sec): tours all chapters in ~50-60 seconds if untouched
-          const autoSpeed = Math.max(48, maxScroll / 55);
-          const nextScroll = container.scrollTop + autoSpeed * dt;
-          if (nextScroll >= maxScroll) {
+          // Continuous subpixel accumulator prevents micro-stutters from integer DOM reads
+          const autoSpeed = Math.max(50, maxScroll / 48);
+          autoScrollPosRef.current += autoSpeed * dt;
+
+          if (autoScrollPosRef.current >= maxScroll) {
+            autoScrollPosRef.current = maxScroll;
             container.scrollTop = maxScroll;
-            isAutoScrollingRef.current = false;
-            setIsAutoScrolling(false);
+            targetScrollRef.current = 1;
+            // Let interpolation gracefully coast to the absolute end (1.0) before disengaging
+            if (currentScrollRef.current >= 0.998) {
+              currentScrollRef.current = 1;
+              isAutoScrollingRef.current = false;
+              setIsAutoScrolling(false);
+            }
           } else {
-            container.scrollTop = nextScroll;
+            container.scrollTop = autoScrollPosRef.current;
+            targetScrollRef.current = autoScrollPosRef.current / maxScroll;
           }
-          targetScrollRef.current = Math.max(0, Math.min(1, container.scrollTop / maxScroll));
         }
       }
 
-      // Smooth lerp interpolation for buttery continuous movement
-      const scrollSpeed = 0.075;
-      currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * scrollSpeed;
+      // Smooth frame-rate independent dampening for butter-smooth movement across 60/120Hz displays
+      const dampFactor = 1 - Math.exp(-9.5 * dt);
+      currentScrollRef.current += (targetScrollRef.current - currentScrollRef.current) * dampFactor;
+      if (Math.abs(targetScrollRef.current - currentScrollRef.current) < 0.001) {
+        currentScrollRef.current = targetScrollRef.current;
+      }
       const progress = currentScrollRef.current;
 
       // Mouse lerp
@@ -708,26 +725,26 @@ export default function AboutUsExperience({
         if (progress >= 0.80) {
           ch5Ref.current.style.display = 'flex';
 
-          const enterP = Math.min(1, (progress - 0.80) / 0.06);
+          const enterP = Math.min(1, (progress - 0.80) / 0.05);
           ch5Ref.current.style.opacity = enterP.toFixed(3);
 
           // Smoothly lift the entire stage as the user reaches the end (integer pixel aligned, no blur-inducing scale)
-          const endShift = Math.max(0, (progress - 0.88) / 0.12);
-          const shiftY = Math.round(endShift * -80);
+          const endShift = Math.max(0, Math.min(1, (progress - 0.87) / 0.10));
+          const shiftY = Math.round(endShift * -48);
           ch5Ref.current.style.transform = `translate3d(0, ${shiftY}px, 0)`;
 
-          const stayVisibleP = Math.max(0, Math.min(1, (progress - 0.85) / 0.06));
+          const stayVisibleP = Math.max(0, Math.min(1, (progress - 0.83) / 0.05));
           const stayEl = ch5Ref.current.querySelector('.about-ch5-stay-text');
           if (stayEl) {
             stayEl.style.opacity = stayVisibleP.toFixed(3);
-            stayEl.style.transform = `translate3d(0, ${(1 - stayVisibleP) * 16}px, 0)`;
+            stayEl.style.transform = `translate3d(0, ${(1 - stayVisibleP) * 12}px, 0)`;
           }
 
           const exitBlock = ch5Ref.current.querySelector('.about-final-exit-block');
           if (exitBlock) {
-            const exitP = Math.max(0, Math.min(1, (progress - 0.89) / 0.08));
+            const exitP = Math.max(0, Math.min(1, (progress - 0.86) / 0.07));
             exitBlock.style.opacity = exitP.toFixed(3);
-            exitBlock.style.transform = `translate3d(0, ${(1 - exitP) * 16}px, 0)`;
+            exitBlock.style.transform = `translate3d(0, ${(1 - exitP) * 12}px, 0)`;
           }
         } else {
           ch5Ref.current.style.display = 'none';
@@ -1175,11 +1192,6 @@ export default function AboutUsExperience({
         <section className="about-ch5-container" ref={ch5Ref} style={{ display: 'none' }}>
           {/* ✨ Borderless Floating Finale (No Enclosing Box) */}
           <div className="about-ch5-content-wrap">
-            <div className="about-editorial-pill-badge">
-              <span className="pill-badge-dot" />
-              <span>THE INVITATION</span>
-            </div>
-
             <div className="about-ch5-hero-words">
               <h2 className="about-ch5-listen-text about-editorial-serif">
                 JUST LISTEN.
