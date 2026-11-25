@@ -473,11 +473,16 @@ export default function App() {
       }
     }
     setSelectedLanguages(nextLangs);
+    setActivePlayingPlaylistId(null);
+    try {
+      localStorage.removeItem('musicly_active_playlist_id');
+    } catch {}
 
-    // If a specific language is selected, immediately cue / switch to a track in that language!
-    if (nextLangs.length > 0) {
-      const curr = currentTrackRef.current;
-      if (!curr || !isTrackInLanguages(curr.language, nextLangs)) {
+    // If NOT playing, cue up the first song of the newly selected section/language
+    // If IS playing, keep the current song playing completely uninterrupted!
+    // When the current song naturally finishes, handleNextTrackAuto will transition to the new language/genre pool.
+    if (!isPlayingRef.current) {
+      if (nextLangs.length > 0) {
         const target = selectedGenre.toLowerCase();
         const genreTracks = (selectedGenre === 'All')
           ? allTracks
@@ -493,9 +498,22 @@ export default function App() {
           setCurrentTrackId(match.id);
           setCurrentTime(0);
           currentTimeRef.current = 0;
-          if (isPlayingRef.current) {
-            audioEngine.playTrack(match, 0);
-          }
+        }
+      } else {
+        const target = selectedGenre.toLowerCase();
+        const genreTracks = (selectedGenre === 'All')
+          ? allTracks
+          : allTracks.filter(track => {
+              const matchGenre = track.genre?.toLowerCase() === target;
+              const matchArray = Array.isArray(track.genres) && track.genres.some(g => g && g.toLowerCase() === target);
+              const matchSplit = typeof track.genre === 'string' && track.genre.split(',').map(s => s.trim().toLowerCase()).includes(target);
+              return matchGenre || matchArray || matchSplit;
+            });
+        const firstTrack = genreTracks[0] || allTracks[0];
+        if (firstTrack) {
+          setCurrentTrackId(firstTrack.id);
+          setCurrentTime(0);
+          currentTimeRef.current = 0;
         }
       }
     }
@@ -1049,7 +1067,8 @@ export default function App() {
     }
   }, [activePlayingPlaylistId, backdropImage, sceneOverrides, selectedGenre]);
 
-  // When active language(s) change, verify current track and queue strictly match selected language
+  // When active language(s) change, verify queue matches selected language.
+  // If NOT playing, cue up a matching track; if IS playing, allow current track to complete naturally!
   useEffect(() => {
     if (!selectedLanguages || selectedLanguages.length === 0) return;
 
@@ -1059,12 +1078,13 @@ export default function App() {
       return prev.filter(t => isTrackInLanguages(t.language, selectedLanguages));
     });
 
-    // Check if current playing track matches the selected language
-    const curr = (previewTrack && previewTrack.id === currentTrackId) 
-      ? previewTrack 
-      : (allTracks.find(t => t.id === currentTrackId) || currentTrackRef.current);
-    if (curr) {
-      if (!isTrackInLanguages(curr.language, selectedLanguages)) {
+    // If NOT playing and the cued track does not match the selected language, cue up a matching track.
+    // If IS playing, do NOT interrupt playback—allow the song to finish naturally!
+    if (!isPlayingRef.current) {
+      const curr = (previewTrack && previewTrack.id === currentTrackId) 
+        ? previewTrack 
+        : (allTracks.find(t => t.id === currentTrackId) || currentTrackRef.current);
+      if (curr && !isTrackInLanguages(curr.language, selectedLanguages)) {
         const match = (activePlaylistRef.current || []).find(t => isTrackInLanguages(t.language, selectedLanguages))
           || allTracks.find(t => isTrackInLanguages(t.language, selectedLanguages));
         if (match) {
@@ -1072,9 +1092,6 @@ export default function App() {
           setCurrentTrackId(match.id);
           setCurrentTime(0);
           currentTimeRef.current = 0;
-          if (isPlayingRef.current) {
-            audioEngine.playTrack(match, 0);
-          }
         }
       }
     }
@@ -1803,7 +1820,7 @@ export default function App() {
 
     // If NOT playing, cue up the first song of the newly selected section
     // If IS playing, keep the current song playing completely uninterrupted!
-    if (!isPlaying) {
+    if (!isPlayingRef.current) {
       let genrePlaylist = (genre === 'All')
         ? allTracks
         : allTracks.filter(track => {
@@ -3152,11 +3169,10 @@ export default function App() {
           user={user}
           isAdmin={isAdmin}
           favorites={favorites}
-        onToggleFavorite={handleToggleFavorite}
           onToggleFavorite={handleToggleFavorite}
           onClose={handleReturnToHomeScene}
           selectedGenre={selectedGenre}
-          onSelectGenre={setSelectedGenre}
+          onSelectGenre={handleSelectGenre}
           selectedLanguage={selectedLanguage}
           selectedLanguages={selectedLanguages}
           onSelectLanguage={handleSelectLanguage}
@@ -3186,7 +3202,6 @@ export default function App() {
           repeatMode={repeatMode}
           onToggleRepeat={handleToggleRepeat}
           favorites={favorites}
-        onToggleFavorite={handleToggleFavorite}
           onToggleFavorite={handleToggleFavorite}
           customQueue={customQueue}
           onSetCustomQueue={setCustomQueue}
@@ -3237,7 +3252,7 @@ export default function App() {
           onLogout={handleLogout}
           onClose={handleReturnToHomeScene}
           selectedGenre={selectedGenre}
-          onSelectGenre={setSelectedGenre}
+          onSelectGenre={handleSelectGenre}
           audioElement={audioRef.current}
           selectedLanguage={selectedLanguage}
           selectedLanguages={selectedLanguages}
