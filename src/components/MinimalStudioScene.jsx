@@ -1929,10 +1929,42 @@ export default function MinimalStudioScene({
 
                   <div className="ref-bubble-meta-date">
                     <span className="ref-date-header">Now Playing</span>
-                    <div className="ref-date-row">
-                      <span className="ref-date-num" style={{ fontSize: '0.82rem', fontWeight: 700, maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div className="ref-date-row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="ref-date-num" style={{ fontSize: '0.82rem', fontWeight: 700, maxWidth: '135px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {activeTrack?.title || 'Track'}
                       </span>
+                      <button
+                        type="button"
+                        className="ref-now-playing-heart-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playClickSound('light');
+                          if (onToggleFavorite) onToggleFavorite(activeTrack);
+                          showToast(isCurrentFav ? "Removed from Favorites" : "Saved to Favorites!");
+                        }}
+                        title={isCurrentFav ? "Unlike (Remove from favorites)" : "Like (Add to favorites)"}
+                        aria-label={isCurrentFav ? "Unlike" : "Like"}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          padding: '2px',
+                          margin: 0,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.7)',
+                          transition: 'transform 0.15s ease, color 0.2s ease',
+                          lineHeight: 1
+                        }}
+                      >
+                        <Heart
+                          size={15}
+                          fill={isCurrentFav ? '#ef4444' : 'none'}
+                          color={isCurrentFav ? '#ef4444' : 'currentColor'}
+                          strokeWidth={isCurrentFav ? 2 : 1.8}
+                        />
+                      </button>
                     </div>
                   </div>
                 </div>
