@@ -1565,7 +1565,7 @@ export default function MinimalStudioScene({
                   <div className="ref-glass-bg-picker-grid">
                     {studioBackgrounds.map((bg, idx) => {
                       const bgUrl = typeof bg === 'string' ? bg : bg.url;
-                      const isSelected = (mediaPhotoIndex % (studioBackgrounds.length || 1)) === idx;
+                      const isSelected = activeVisualUrl ? (bgUrl === activeVisualUrl) : ((mediaPhotoIndex % (studioBackgrounds.length || 1)) === idx);
                       const isVideo = (typeof bg === 'object' && bg.type === 'video') || isLiveVisual(bgUrl);
 
                       return (

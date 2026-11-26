@@ -14,6 +14,55 @@ const KEY_ACTIVE_VISUAL = 'active_studio_visual';
 
 export const DEFAULT_STUDIO_PHOTOS = [
   {
+    id: 'wallpaper-classroom',
+    url: '/assets/wallpapers/Carpe_Diem_in_a_Sunlit_Classroom.png',
+    title: 'Carpe Diem in a Sunlit Classroom',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-statue-butterflies',
+    url: '/assets/wallpapers/Gemini_Generated_Image_oxyls5oxyls5oxyl.png',
+    title: 'Veiled Sculpture with Crimson Butterflies',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-dark-angel',
+    url: '/assets/wallpapers/Gemini_Generated_Image_i7rauzi7rauzi7ra_erasio.png',
+    title: 'Dark Winged Angel of the Storm',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-batman',
+    url: '/assets/wallpapers/Gemini_Generated_Image_yrjbfyrjbfyrjbfy.png',
+    title: 'The Dark Knight Beneath Golden Rain',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-shelby',
+    url: '/assets/wallpapers/Gemini_Generated_Image_lr2rtolr2rtolr2r.png',
+    title: 'Peaky Rider in Cerulean Smoke',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-hands-touch',
+    url: '/assets/wallpapers/Gemini_Generated_Image_uu56xcuu56xcuu56.png',
+    title: 'Creation of Light - Reaching Hands',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-gojo',
+    url: '/assets/wallpapers/gojo_satoru.jpg',
+    title: 'Gojo Satoru - Limitless Void',
+    is4K: true,
+    isDefault: true
+  },
+  {
     id: 'wallpaper-route-66',
     url: '/assets/wallpapers/route_66.png',
     title: 'Route 66 Sunset Roadside',
@@ -35,13 +84,6 @@ export const DEFAULT_STUDIO_PHOTOS = [
     isDefault: true
   },
   {
-    id: 'wallpaper-gojo',
-    url: '/assets/wallpapers/gojo_satoru.jpg',
-    title: 'Gojo Satoru',
-    is4K: true,
-    isDefault: true
-  },
-  {
     id: 'wallpaper-red-eclipse',
     url: '/assets/wallpapers/red_eclipse_crown.png',
     title: 'Red Eclipse Crown',
@@ -56,16 +98,37 @@ export const DEFAULT_STUDIO_PHOTOS = [
     isDefault: true
   },
   {
-    id: 'wallpaper-zenitsu',
-    url: '/assets/images/zenitsu_clean_wallpaper.jpg',
-    title: 'Agatsuma Zenitsu',
+    id: 'wallpaper-brad-pitt',
+    url: '/assets/wallpapers/brad_pitt.jpg',
+    title: "It's Not About Money - Cliff Booth",
     is4K: true,
     isDefault: true
   },
   {
-    id: 'wallpaper-brad-pitt',
-    url: '/assets/wallpapers/brad_pitt.jpg',
-    title: "It's Not About Money - Cliff Booth",
+    id: 'wallpaper-zenitsu',
+    url: '/assets/images/zenitsu_clean_wallpaper.jpg',
+    title: 'Agatsuma Zenitsu - Thunder Breathing',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-your-name',
+    url: '/assets/wallpapers/your_name.jpg',
+    title: 'Your Name - Twilight Horizon',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-gold-crown',
+    url: '/assets/wallpapers/gold_crown_dark.png',
+    title: 'Dark Sovereign Crown',
+    is4K: true,
+    isDefault: true
+  },
+  {
+    id: 'wallpaper-black-cat',
+    url: '/assets/wallpapers/Black_Cat_Vinyl_Records.jpg',
+    title: 'Black Cat Vinyl Records',
     is4K: true,
     isDefault: true
   }
@@ -172,17 +235,19 @@ export async function saveCustomStudioPool(pool) {
  */
 export async function getStudioBackgrounds() {
   try {
-    // Auto-migration: Purge any old mockup screenshots so clean 4K curated wallpapers take effect immediately
-    const MIGRATION_KEY = 'musicly_studio_bg_v12_curated_wallpapers_8';
+    // Auto-migration: Seed and upgrade to full 17 curated wallpapers immediately
+    const MIGRATION_KEY = 'musicly_studio_bg_v16_all_17_wallpapers';
     if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
       try {
         localStorage.setItem(MIGRATION_KEY, 'true');
-        localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(DEFAULT_STUDIO_PHOTOS));
-        localStorage.setItem('musicly_studio_bg_index', '6');
+        const customPool = await getCustomStudioPool();
+        const fullGallery = deduplicateBackgrounds([...customPool, ...DEFAULT_STUDIO_PHOTOS]);
+        localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(fullGallery));
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
-        store.put(DEFAULT_STUDIO_PHOTOS, KEY);
+        store.put(fullGallery, KEY);
+        return fullGallery;
       } catch (e) {}
       return DEFAULT_STUDIO_PHOTOS;
     }
@@ -212,8 +277,8 @@ export async function getStudioBackgrounds() {
           if (baseList.length === 0) baseList = DEFAULT_STUDIO_PHOTOS;
         }
 
-        // Strictly deduplicate combined list (custom pool takes precedence at the front)
-        const combined = deduplicateBackgrounds([...customPool, ...baseList]);
+        // Strictly deduplicate combined list (custom pool takes precedence in front, all default wallpapers always guaranteed)
+        const combined = deduplicateBackgrounds([...customPool, ...baseList, ...DEFAULT_STUDIO_PHOTOS]);
         resolve(combined);
       };
 
@@ -432,14 +497,15 @@ export function subscribeStudioBackgrounds(callback) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (Array.isArray(data?.gallery) && data.gallery.length > 0) {
-          // CRITICAL: Load local custom uploaded visuals and merge them in front
+          // CRITICAL: Load local custom uploaded visuals and merge them in front,
+          // AND always ensure all DEFAULT_STUDIO_PHOTOS are included so no curated visuals are ever lost!
           const localCustoms = await getCustomStudioPool();
           const customUrls = new Set(localCustoms.map(c => typeof c === 'string' ? c : (c?.url || c?.id)));
           const nonCustomFromCloud = data.gallery.filter(cg => {
             const u = typeof cg === 'string' ? cg : (cg?.url || cg?.id);
             return !customUrls.has(u);
           });
-          const mergedGallery = deduplicateBackgrounds([...localCustoms, ...nonCustomFromCloud]);
+          const mergedGallery = deduplicateBackgrounds([...localCustoms, ...nonCustomFromCloud, ...DEFAULT_STUDIO_PHOTOS]);
 
           openDB().then((db) => {
             if (db) {
@@ -608,7 +674,7 @@ export async function resetStudioBackgroundsToDefaults() {
 
     // Preserve custom uploads while restoring clean official default presets
     const customPool = await getCustomStudioPool();
-    const merged = [...customPool, ...DEFAULT_STUDIO_PHOTOS];
+    const merged = deduplicateBackgrounds([...customPool, ...DEFAULT_STUDIO_PHOTOS]);
 
     const db = await openDB();
     await new Promise((resolve, reject) => {
