@@ -1904,17 +1904,6 @@ export default function MinimalStudioScene({
                     {lyricsData?.isSynced && <span className="ref-lyrics-synced-indicator" />}
                   </button>
 
-                  <button 
-                    className="ref-island-info-btn"
-                    onClick={() => {
-                      if (onOpenPlaylistDrawer) onOpenPlaylistDrawer();
-                      showToast("Track & Artist Information");
-                    }}
-                    title="Track Information"
-                  >
-                    <span className="ref-info-letter" style={{ color: 'var(--ref-s0)' }}>i</span>
-                  </button>
-
                   <div className="ref-bubble-artist">
                     <span className="ref-artist-header">Artist</span>
                     <button 
