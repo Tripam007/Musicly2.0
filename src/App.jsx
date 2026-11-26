@@ -39,6 +39,7 @@ import { airControlsService } from './utils/airControlsService';
 import './styles/airControls.css';
 import { VoiceControlManager, MUSICLY_ACTIONS } from './voice';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useHeadphoneControls } from './hooks/useHeadphoneControls';
 import { useButtonTactileFeedback } from './hooks/useButtonTactileFeedback';
 import { TRACKS, SCENES, GENRE_BACKDROPS, isGhazalLanguage, isCountryLanguage, LANGUAGES, isTrackInLanguages } from './data/tracks';
 import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/audioSynth';
@@ -1345,13 +1346,14 @@ export default function App() {
     ambientEngine.setMasterVolume(safeVol);
   }, [volume]);
 
-  // Authoritative Playback Toggle
-  const togglePlay = () => {
+  // Authoritative Playback Toggle (supports optional forced state from headphone remotes)
+  const togglePlay = (forcedState = null) => {
     resumeAudioSynthContext();
     console.log('[Musicly Audio] AudioContext: running');
     console.log('[Musicly Audio] Output: default');
 
-    const nextState = !isPlaying;
+    const nextState = typeof forcedState === 'boolean' ? forcedState : !isPlaying;
+    if (nextState === isPlaying) return;
     setIsPlaying(nextState);
 
     if (!nextState) {
@@ -1821,6 +1823,23 @@ export default function App() {
     setIsShortcutsOpen,
     onOpenCinematicIntro: () => setShowCinematicIntro(true),
     onCloseTopmostModal: handleCloseTopmostModal
+  });
+
+  // Dedicated Headphone & Hardware Media Remote Controller (MediaSession, Headphone Buttons, Auto-Pause on Disconnect)
+  useHeadphoneControls({
+    currentTrack,
+    isPlaying,
+    onTogglePlay: (forcedState) => togglePlay(forcedState),
+    onPrevTrack: handlePrevTrack,
+    onNextTrack: handleNextTrack,
+    currentTime,
+    duration,
+    onSeek: handleSeek,
+    volume,
+    onVolumeChange: setVolume,
+    onFeedback: (fb) => {
+      setAirFeedback(fb);
+    }
   });
 
   // 💬 Automatic Feedback Prompt Trigger (7th Song Played in Session)

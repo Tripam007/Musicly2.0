@@ -493,6 +493,22 @@ class AudioEngine {
     this.notifyVolume(safeVol);
   }
 
+  // Route audio output directly to a specific device (e.g. connected headphones)
+  async setAudioOutputSink(deviceId) {
+    if (!deviceId) return false;
+    if (this.audio && typeof this.audio.setSinkId === 'function') {
+      try {
+        await this.audio.setSinkId(deviceId);
+        this.logDiag('SET_SINK_ID', { deviceId });
+        return true;
+      } catch (err) {
+        console.warn('[Musicly AudioEngine] setSinkId error:', err);
+        return false;
+      }
+    }
+    return false;
+  }
+
   handleNativeAudioError() {
     if (!this.currentTrack) return;
     console.warn('[Musicly AudioEngine] Native stream error on track:', this.currentTrack.title);

@@ -9,7 +9,8 @@ import {
   Volume1, 
   Heart, 
   Sparkles,
-  Hand
+  Hand,
+  Headphones
 } from 'lucide-react';
 
 /**
@@ -60,6 +61,10 @@ export default function AirControlsFeedback({ feedback }) {
       case 'AMBIENCE_ON':
       case 'AMBIENCE_OFF':
         return <Sparkles size={17} className="text-amber-300" />;
+      case 'HEADPHONES_CONNECTED':
+        return <Headphones size={17} className="text-emerald-400" />;
+      case 'HEADPHONES_DISCONNECTED':
+        return <Headphones size={17} className="text-amber-400" />;
       default:
         return <Hand size={17} className="text-indigo-400" />;
     }
