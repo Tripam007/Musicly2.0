@@ -51,7 +51,9 @@ import {
   saveActiveStudioVisual,
   getActiveStudioVisual,
   deduplicateBackgrounds,
-  getVisualCanonicalKey 
+  getVisualCanonicalKey,
+  removeStudioBackground,
+  markStudioVisualDeleted 
 } from '../utils/studioBackgroundsDB';
 import { isLiveVisual } from '../utils/publicScenesDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
@@ -691,32 +693,43 @@ export default function MinimalStudioScene({
   }, [updateMediaPhotoIndex]);
 
   const handleRemoveStudioBg = useCallback((indexToRemove, bgToRemove = null) => {
+    const itemToRemove = bgToRemove || (studioBackgrounds && studioBackgrounds[indexToRemove]);
+    if (!itemToRemove) return;
+
+    markStudioVisualDeleted(itemToRemove);
+
     setStudioBackgrounds((prev) => {
       if (prev.length <= 1) return prev;
-      let next;
-      if (bgToRemove) {
-        const removeKey = getVisualCanonicalKey(bgToRemove);
-        const removeUrl = typeof bgToRemove === 'string' ? bgToRemove : (bgToRemove?.url || '');
-        const removeId = typeof bgToRemove === 'string' ? '' : (bgToRemove?.id || '');
-        next = prev.filter(b => {
-          const u = typeof b === 'string' ? b : (b?.url || '');
-          const id = typeof b === 'string' ? '' : (b?.id || '');
-          if (removeId && id === removeId) return false;
-          if (removeUrl && u === removeUrl) return false;
-          if (removeKey && getVisualCanonicalKey(b) === removeKey) return false;
-          return true;
-        });
-      } else {
-        next = prev.filter((_, idx) => idx !== indexToRemove);
+      const removeKey = getVisualCanonicalKey(itemToRemove);
+      const removeUrl = typeof itemToRemove === 'string' ? itemToRemove : (itemToRemove?.url || '');
+      const removeId = typeof itemToRemove === 'string' ? '' : (itemToRemove?.id || '');
+
+      const next = prev.filter(b => {
+        const u = typeof b === 'string' ? b : (b?.url || '');
+        const id = typeof b === 'string' ? '' : (b?.id || '');
+        if (removeId && id === removeId) return false;
+        if (removeUrl && u === removeUrl) return false;
+        if (removeKey && getVisualCanonicalKey(b) === removeKey) return false;
+        return true;
+      });
+
+      const activeUrl = localStorage.getItem('musicly_active_studio_bg_url');
+      if (activeUrl === removeUrl || (removeKey && activeUrl && getVisualCanonicalKey({ url: activeUrl }) === removeKey)) {
+        const fallback = next[0];
+        const fallbackUrl = typeof fallback === 'string' ? fallback : (fallback?.url || '');
+        setActiveVisualUrl(fallbackUrl);
+        if (fallbackUrl) saveActiveStudioVisual(fallbackUrl);
       }
-      saveStudioBackgrounds(next);
+
+      removeStudioBackground(indexToRemove, itemToRemove).catch(() => {});
       return next;
     });
+
     updateMediaPhotoIndex((prev) => {
       if (prev >= indexToRemove && prev > 0) return prev - 1;
       return 0;
     });
-  }, [updateMediaPhotoIndex]);
+  }, [studioBackgrounds, updateMediaPhotoIndex]);
 
   const handleSelectStudioBg = useCallback((index, bg) => {
     let bgUrl = typeof bg === 'string' ? bg : (bg?.url || '');

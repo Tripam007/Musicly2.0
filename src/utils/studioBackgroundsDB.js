@@ -11,6 +11,44 @@ const STORE_NAME = 'studio_backgrounds';
 const KEY = 'current_gallery';
 const KEY_CUSTOM_POOL = 'user_custom_studio_wallpapers';
 const KEY_ACTIVE_VISUAL = 'active_studio_visual';
+const KEY_DELETED_VISUALS = 'musicly_deleted_studio_visuals';
+
+export function getDeletedVisualKeysSet() {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(KEY_DELETED_VISUALS) : null;
+    if (raw) {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) return new Set(arr);
+    }
+  } catch {}
+  return new Set();
+}
+
+export function markStudioVisualDeleted(itemOrKey) {
+  if (!itemOrKey) return;
+  try {
+    const deletedSet = getDeletedVisualKeysSet();
+    const key = typeof itemOrKey === 'string' ? itemOrKey : getVisualCanonicalKey(itemOrKey);
+    const id = typeof itemOrKey === 'object' ? itemOrKey?.id : '';
+    const url = typeof itemOrKey === 'object' ? itemOrKey?.url : '';
+    if (key) deletedSet.add(key);
+    if (id) deletedSet.add(id);
+    if (url && typeof url === 'string' && !url.startsWith('data:')) {
+      deletedSet.add(url.toLowerCase().split('?')[0]);
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(KEY_DELETED_VISUALS, JSON.stringify([...deletedSet]));
+    }
+  } catch {}
+}
+
+export function clearDeletedStudioVisuals() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(KEY_DELETED_VISUALS);
+    }
+  } catch {}
+}
 
 export const DEFAULT_STUDIO_PHOTOS = [
   {
@@ -301,17 +339,30 @@ export async function saveCustomStudioPool(pool) {
 
 /**
  * Load all backgrounds from IndexedDB, ensuring all custom uploaded visuals are permanently preserved
- * and strictly deduplicated
+ * and strictly deduplicated while respecting deleted visual preferences
  */
 export async function getStudioBackgrounds() {
   try {
+    const deletedSet = getDeletedVisualKeysSet();
+    const filterDeleted = (item) => {
+      if (!item) return false;
+      const key = getVisualCanonicalKey(item);
+      const id = typeof item === 'object' ? item?.id : '';
+      const url = typeof item === 'string' ? item : (item?.url || '');
+      const cleanUrl = typeof url === 'string' && !url.startsWith('data:') ? url.toLowerCase().split('?')[0] : '';
+      if (key && deletedSet.has(key)) return false;
+      if (id && deletedSet.has(id)) return false;
+      if (cleanUrl && deletedSet.has(cleanUrl)) return false;
+      return true;
+    };
+
     // Auto-migration: Seed and upgrade to clean, deduplicated presets
-    const MIGRATION_KEY = 'musicly_studio_bg_v18_strict_dedup_no_dups';
+    const MIGRATION_KEY = 'musicly_studio_bg_v20_strict_delete_persistence';
     if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
       try {
         localStorage.setItem(MIGRATION_KEY, 'true');
         const customPool = await getCustomStudioPool();
-        const fullGallery = deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...customPool]);
+        const fullGallery = deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...customPool]).filter(filterDeleted);
         localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(fullGallery));
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -319,11 +370,11 @@ export async function getStudioBackgrounds() {
         store.put(fullGallery, KEY);
         return fullGallery;
       } catch (e) {}
-      return DEFAULT_STUDIO_PHOTOS;
+      return DEFAULT_STUDIO_PHOTOS.filter(filterDeleted);
     }
 
     const db = await openDB();
-    const customPool = await getCustomStudioPool();
+    const customPool = (await getCustomStudioPool()).filter(filterDeleted);
 
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
@@ -333,37 +384,40 @@ export async function getStudioBackgrounds() {
       req.onsuccess = () => {
         let baseList = [];
         if (Array.isArray(req.result) && req.result.length > 0) {
-          baseList = req.result;
+          baseList = req.result.filter(filterDeleted);
         } else {
           try {
             const local = localStorage.getItem('musicly_studio_bg_gallery');
             if (local) {
               const parsed = JSON.parse(local);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                baseList = parsed;
+                baseList = parsed.filter(filterDeleted);
               }
             }
           } catch (e) {}
-          if (baseList.length === 0) baseList = DEFAULT_STUDIO_PHOTOS;
+          if (baseList.length === 0) {
+            baseList = DEFAULT_STUDIO_PHOTOS.filter(filterDeleted);
+          }
         }
 
-        // Strictly deduplicate combined list (all default presets guaranteed, custom pool kept, no duplicates)
-        const combined = deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...customPool, ...baseList]);
-        resolve(combined);
+        // Combine baseList and customPool, preserving user deletions
+        const combined = deduplicateBackgrounds([...baseList, ...customPool]).filter(filterDeleted);
+        resolve(combined.length > 0 ? combined : DEFAULT_STUDIO_PHOTOS.filter(filterDeleted));
       };
 
       req.onerror = () => {
-        resolve(deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...customPool]));
+        resolve(deduplicateBackgrounds([...customPool, ...DEFAULT_STUDIO_PHOTOS]).filter(filterDeleted));
       };
     });
   } catch (err) {
     console.warn('Could not read from IndexedDB, using defaults:', err);
     try {
+      const deletedSet = getDeletedVisualKeysSet();
       const local = localStorage.getItem('musicly_studio_bg_gallery');
       if (local) {
         const parsed = JSON.parse(local);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return deduplicateBackgrounds(parsed);
+          return deduplicateBackgrounds(parsed).filter(b => !deletedSet.has(getVisualCanonicalKey(b)) && !deletedSet.has(b?.id));
         }
       }
     } catch (e) {}
@@ -567,15 +621,26 @@ export function subscribeStudioBackgrounds(callback) {
       if (docSnap.exists()) {
         const data = docSnap.data();
         if (Array.isArray(data?.gallery) && data.gallery.length > 0) {
-          // CRITICAL: Load local custom uploaded visuals and merge them in front,
-          // AND always ensure all DEFAULT_STUDIO_PHOTOS are included so no curated visuals are ever lost!
-          const localCustoms = await getCustomStudioPool();
-          const customUrls = new Set(localCustoms.map(c => typeof c === 'string' ? c : (c?.url || c?.id)));
+          const deletedSet = getDeletedVisualKeysSet();
+          const filterDeleted = (item) => {
+            if (!item) return false;
+            const key = getVisualCanonicalKey(item);
+            const id = typeof item === 'object' ? item?.id : '';
+            const url = typeof item === 'string' ? item : (item?.url || '');
+            const cleanUrl = typeof url === 'string' && !url.startsWith('data:') ? url.toLowerCase().split('?')[0] : '';
+            if (key && deletedSet.has(key)) return false;
+            if (id && deletedSet.has(id)) return false;
+            if (cleanUrl && deletedSet.has(cleanUrl)) return false;
+            return true;
+          };
+
+          const localCustoms = (await getCustomStudioPool()).filter(filterDeleted);
+          const customKeys = new Set(localCustoms.map(c => getVisualCanonicalKey(c) || c?.id || c?.url));
           const nonCustomFromCloud = data.gallery.filter(cg => {
-            const u = typeof cg === 'string' ? cg : (cg?.url || cg?.id);
-            return !customUrls.has(u);
+            const k = getVisualCanonicalKey(cg) || cg?.id || cg?.url;
+            return !customKeys.has(k) && filterDeleted(cg);
           });
-          const mergedGallery = deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...localCustoms, ...nonCustomFromCloud]);
+          const mergedGallery = deduplicateBackgrounds([...nonCustomFromCloud, ...localCustoms]);
 
           openDB().then((db) => {
             if (db) {
@@ -681,29 +746,50 @@ export async function addStudioBackground(newBg) {
 }
 
 /**
- * Remove a background visual by index (removing from both current gallery and custom pool)
+ * Remove a background visual permanently (supporting index or direct item object)
  */
-export async function removeStudioBackground(indexToRemove) {
+export async function removeStudioBackground(indexOrItem, bgToRemove = null) {
   try {
     const current = await getStudioBackgrounds();
     if (current.length <= 1) return current;
-    const itemToRemove = current[indexToRemove];
-    const removeUrl = typeof itemToRemove === 'string' ? itemToRemove : (itemToRemove?.url || itemToRemove?.id);
 
-    const next = current.filter((_, idx) => idx !== indexToRemove);
+    const itemToRemove = bgToRemove || (typeof indexOrItem === 'object' ? indexOrItem : current[indexOrItem]);
+    if (!itemToRemove) return current;
 
-    // Also remove from custom pool if it was a custom visual
+    // Permanently register this visual in the deleted set
+    markStudioVisualDeleted(itemToRemove);
+
+    const removeKey = getVisualCanonicalKey(itemToRemove);
+    const removeUrl = typeof itemToRemove === 'string' ? itemToRemove : (itemToRemove?.url || '');
+    const removeId = typeof itemToRemove === 'string' ? '' : (itemToRemove?.id || '');
+
+    const next = current.filter((b, idx) => {
+      if (typeof indexOrItem === 'number' && idx === indexOrItem && !bgToRemove) return false;
+      const u = typeof b === 'string' ? b : (b?.url || '');
+      const id = typeof b === 'string' ? '' : (b?.id || '');
+      if (removeId && id === removeId) return false;
+      if (removeUrl && u === removeUrl) return false;
+      if (removeKey && getVisualCanonicalKey(b) === removeKey) return false;
+      return true;
+    });
+
+    // Also remove from custom pool if it was in custom pool
     const customPool = await getCustomStudioPool();
     const updatedCustom = customPool.filter(c => {
-      const u = typeof c === 'string' ? c : (c?.url || c?.id);
-      return u !== removeUrl;
+      const u = typeof c === 'string' ? c : (c?.url || '');
+      const id = typeof c === 'string' ? '' : (c?.id || '');
+      if (removeId && id === removeId) return false;
+      if (removeUrl && u === removeUrl) return false;
+      if (removeKey && getVisualCanonicalKey(c) === removeKey) return false;
+      return true;
     });
     await saveCustomStudioPool(updatedCustom);
 
     await saveStudioBackgrounds(next);
+
     const activeIdx = getActiveStudioBackgroundIndex();
     const activeUrl = getActiveStudioBackgroundUrl();
-    if (activeUrl === removeUrl) {
+    if (activeUrl === removeUrl || (removeKey && activeUrl && getVisualCanonicalKey({ url: activeUrl }) === removeKey)) {
       const fallbackItem = next[0];
       const fallbackUrl = typeof fallbackItem === 'string' ? fallbackItem : (fallbackItem?.url || '');
       setActiveStudioBackgroundIndex(0, fallbackUrl);
@@ -714,13 +800,13 @@ export async function removeStudioBackground(indexToRemove) {
       });
       if (newActiveIdx >= 0) {
         setActiveStudioBackgroundIndex(newActiveIdx, activeUrl);
-      } else if (activeIdx >= indexToRemove && activeIdx > 0) {
+      } else if (typeof indexOrItem === 'number' && activeIdx >= indexOrItem && activeIdx > 0) {
         setActiveStudioBackgroundIndex(activeIdx - 1);
       } else {
         setActiveStudioBackgroundIndex(0);
       }
     } else {
-      if (activeIdx >= indexToRemove && activeIdx > 0) {
+      if (typeof indexOrItem === 'number' && activeIdx >= indexOrItem && activeIdx > 0) {
         setActiveStudioBackgroundIndex(activeIdx - 1);
       } else {
         setActiveStudioBackgroundIndex(0);
@@ -738,6 +824,7 @@ export async function removeStudioBackground(indexToRemove) {
  */
 export async function resetStudioBackgroundsToDefaults() {
   try {
+    clearDeletedStudioVisuals();
     localStorage.removeItem('musicly_studio_bg_gallery');
     localStorage.removeItem('musicly_active_studio_bg_url');
     localStorage.setItem('musicly_studio_bg_index', '0');
@@ -756,6 +843,9 @@ export async function resetStudioBackgroundsToDefaults() {
       tx.onerror = (e) => reject(e);
       req.onerror = (e) => reject(e);
     });
+
+    await saveStudioBackgrounds(merged);
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
         detail: { count: merged.length, activeIndex: 0 }
