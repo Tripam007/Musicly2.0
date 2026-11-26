@@ -856,17 +856,16 @@ export default function AboutUsExperience({
         {/* ================= FIXED HUD (Clean Minimal Header) ================= */}
         <header className="about-hud" aria-label="About Us Header">
           <div className="about-hud-brand">
-            <button 
-              type="button" 
-              className="about-hud-back-btn" 
+            <h1 
+              className="about-hud-title"
               onClick={handleExitToHome}
-              title="Back to Musicly"
-              aria-label="Back to Musicly"
+              title="Return to Musicly"
+              role="button"
+              tabIndex={0}
+              style={{ pointerEvents: 'auto', cursor: 'pointer' }}
             >
-              <ArrowLeft size={15} />
-              <span>Back to Musicly</span>
-            </button>
-            <h1 className="about-hud-title">ABOUT US</h1>
+              ABOUT US
+            </h1>
           </div>
         </header>
 
