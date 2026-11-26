@@ -454,7 +454,9 @@ export default function AdminDashboardModal({
   }, []);
 
   const handleSelectWallpaper = (idx) => {
-    setActiveStudioBackgroundIndex(idx);
+    const item = studioBackgrounds[idx];
+    const bgUrl = typeof item === 'string' ? item : (item?.url || '');
+    setActiveStudioBackgroundIndex(idx, bgUrl);
     setActiveStudioBgIndexState(idx);
     playTingSound();
     setBgSuccess(`Activated background: ${studioBackgrounds[idx]?.title || `Wallpaper ${idx + 1}`}`);

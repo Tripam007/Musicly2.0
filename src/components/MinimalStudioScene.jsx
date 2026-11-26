@@ -368,15 +368,15 @@ export default function MinimalStudioScene({
       try {
         localStorage.setItem('musicly_studio_bg_index', String(next));
         if (urlToSave) {
-          localStorage.setItem('musicly_active_studio_bg_url', urlToSave);
+          if (!urlToSave.startsWith('data:') || urlToSave.length < 50000) {
+            localStorage.setItem('musicly_active_studio_bg_url', urlToSave);
+          } else {
+            localStorage.setItem('musicly_active_studio_bg_url', `data_ref:${next}`);
+          }
           localStorage.setItem('musicly_studio_bg_updated_at', String(Date.now()));
         }
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
-            detail: { activeIndex: next, activeUrl: urlToSave }
-          }));
-        }
       } catch (e) {}
+
       if (urlToSave) {
         setActiveVisualUrl(urlToSave);
         saveActiveStudioVisual(urlToSave);
@@ -384,6 +384,13 @@ export default function MinimalStudioScene({
       try {
         setActiveStudioBackgroundIndex(next, urlToSave);
       } catch {}
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('musicly_studio_bg_updated', {
+          detail: { activeIndex: next, activeUrl: urlToSave }
+        }));
+      }
+
       return next;
     });
   }, [studioBackgrounds]);
@@ -398,8 +405,8 @@ export default function MinimalStudioScene({
           setStudioBackgrounds(deduped);
           try {
             const activeUrl = localStorage.getItem('musicly_active_studio_bg_url');
-            if (activeUrl) {
-              setActiveVisualUrl(activeUrl);
+            if (activeUrl && !activeUrl.startsWith('data_ref:')) {
+              setActiveVisualUrl((prev) => prev || activeUrl);
               const foundIdx = deduped.findIndex(item => {
                 const u = typeof item === 'string' ? item : (item?.url || '');
                 return u === activeUrl;
@@ -682,10 +689,23 @@ export default function MinimalStudioScene({
     } catch (e) {}
   }, [updateMediaPhotoIndex]);
 
-  const handleRemoveStudioBg = useCallback((indexToRemove) => {
+  const handleRemoveStudioBg = useCallback((indexToRemove, bgToRemove = null) => {
     setStudioBackgrounds((prev) => {
       if (prev.length <= 1) return prev;
-      const next = prev.filter((_, idx) => idx !== indexToRemove);
+      let next;
+      if (bgToRemove) {
+        const removeUrl = typeof bgToRemove === 'string' ? bgToRemove : (bgToRemove?.url || '');
+        const removeId = typeof bgToRemove === 'string' ? '' : (bgToRemove?.id || '');
+        next = prev.filter(b => {
+          const u = typeof b === 'string' ? b : (b?.url || '');
+          const id = typeof b === 'string' ? '' : (b?.id || '');
+          if (removeId && id === removeId) return false;
+          if (removeUrl && u === removeUrl) return false;
+          return true;
+        });
+      } else {
+        next = prev.filter((_, idx) => idx !== indexToRemove);
+      }
       saveStudioBackgrounds(next);
       return next;
     });
@@ -705,7 +725,12 @@ export default function MinimalStudioScene({
       setActiveVisualUrl(bgUrl);
       saveActiveStudioVisual(bgUrl);
     }
-    updateMediaPhotoIndex(index, bgUrl);
+    const realIdx = Array.isArray(studioBackgrounds) ? studioBackgrounds.findIndex(b => {
+      const u = typeof b === 'string' ? b : (b?.url || '');
+      const id = typeof b === 'string' ? '' : (b?.id || '');
+      return (bgUrl && u === bgUrl) || (bg?.id && id === bg.id);
+    }) : -1;
+    updateMediaPhotoIndex(realIdx >= 0 ? realIdx : index, bgUrl);
   }, [studioBackgrounds, updateMediaPhotoIndex]);
 
   const handleResetStudioBgDefaults = useCallback(() => {

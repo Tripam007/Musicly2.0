@@ -91,26 +91,26 @@ function openDB() {
 }
 
 /**
- * Strict deduplication helper: removes identical backgrounds by URL, ID, or title
+ * Strict deduplication helper: removes identical backgrounds by URL or ID
  */
 export function deduplicateBackgrounds(list) {
   if (!Array.isArray(list)) return [];
   const seenUrls = new Set();
-  const seenTitles = new Set();
+  const seenIds = new Set();
   const result = [];
 
   for (let i = 0; i < list.length; i++) {
     const item = list[i];
     if (!item) continue;
     const url = typeof item === 'string' ? item : (item.url || '');
-    const title = typeof item === 'string' ? '' : (item.title || '');
+    const id = typeof item === 'string' ? '' : (item.id || '');
     const cleanUrl = typeof url === 'string' ? url.trim() : '';
     if (!cleanUrl) continue;
 
     // Fast fingerprint for data URLs or web URLs
     let fingerprint = cleanUrl;
     if (cleanUrl.startsWith('data:')) {
-      fingerprint = `data:${cleanUrl.length}:${cleanUrl.slice(0, 100)}:${cleanUrl.slice(-100)}`;
+      fingerprint = `data:${cleanUrl.length}:${cleanUrl.slice(0, 120)}:${cleanUrl.slice(-120)}`;
     } else {
       fingerprint = cleanUrl.toLowerCase().split('?')[0];
     }
@@ -120,14 +120,10 @@ export function deduplicateBackgrounds(list) {
     }
     seenUrls.add(fingerprint);
 
-    // Also check for identical title if it's an uploaded file (e.g. Gemini_Generated_Image_...)
-    if (title && (title.startsWith('Gemini_Generated_Image_') || title.startsWith('zenitsu-agatsuma-'))) {
-      const titleKey = title.toLowerCase().trim();
-      if (seenTitles.has(titleKey)) {
-        continue;
-      }
-      seenTitles.add(titleKey);
+    if (id && seenIds.has(id)) {
+      continue;
     }
+    if (id) seenIds.add(id);
 
     result.push(typeof item === 'string' ? { id: `bg-${result.length}`, url: cleanUrl } : { ...item, id: item.id || `bg-${result.length}` });
   }
@@ -338,7 +334,11 @@ export function setActiveStudioBackgroundIndex(idx, activeUrl = '') {
   try {
     localStorage.setItem('musicly_studio_bg_index', String(idx));
     if (activeUrl) {
-      localStorage.setItem('musicly_active_studio_bg_url', activeUrl);
+      if (!activeUrl.startsWith('data:') || activeUrl.length < 50000) {
+        localStorage.setItem('musicly_active_studio_bg_url', activeUrl);
+      } else {
+        localStorage.setItem('musicly_active_studio_bg_url', `data_ref:${idx}`);
+      }
     }
     localStorage.setItem('musicly_studio_bg_updated_at', String(now));
     if (typeof window !== 'undefined') {
@@ -358,9 +358,11 @@ export function setActiveStudioBackgroundIndex(idx, activeUrl = '') {
   if (firestore) {
     try {
       const docRef = doc(firestore, 'public_settings', 'studio_active_visual');
+      // Do not write massive data URLs to Firestore (must stay under 1MB)
+      const safeCloudUrl = (activeUrl && (!activeUrl.startsWith('data:') || activeUrl.length < 400000)) ? activeUrl : '';
       setDoc(docRef, {
         activeIndex: idx,
-        activeUrl: activeUrl || '',
+        activeUrl: safeCloudUrl,
         updatedAt: now
       }, { merge: true }).catch(() => {});
     } catch {}
@@ -375,7 +377,11 @@ export async function saveActiveStudioVisual(visualUrl) {
   try {
     const now = Date.now();
     try {
-      localStorage.setItem('musicly_active_studio_bg_url', visualUrl);
+      if (!visualUrl.startsWith('data:') || visualUrl.length < 50000) {
+        localStorage.setItem('musicly_active_studio_bg_url', visualUrl);
+      } else {
+        localStorage.setItem('musicly_active_studio_bg_url', `data_ref:${visualUrl.slice(0, 80)}`);
+      }
       localStorage.setItem('musicly_studio_bg_updated_at', String(now));
     } catch {}
     const db = await openDB();
@@ -394,7 +400,7 @@ export async function saveActiveStudioVisual(visualUrl) {
 export async function getActiveStudioVisual() {
   try {
     const fromLocal = localStorage.getItem('musicly_active_studio_bg_url');
-    if (fromLocal) return fromLocal;
+    if (fromLocal && !fromLocal.startsWith('data_ref:')) return fromLocal;
   } catch {}
   try {
     const db = await openDB();
@@ -712,7 +718,7 @@ export async function process4KImageFile(fileOrUrl) {
     } else if (fileOrUrl instanceof Blob || fileOrUrl instanceof File) {
       const isVideo = (fileOrUrl.type && fileOrUrl.type.startsWith('video/')) || isLiveVisual(fileOrUrl.name);
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const rawDataUrl = e.target.result;
         if (isVideo) {
           resolve({
@@ -725,30 +731,59 @@ export async function process4KImageFile(fileOrUrl) {
           });
           return;
         }
-        const img = new Image();
-        img.onload = () => {
-          const w = img.naturalWidth || 3840;
-          const h = img.naturalHeight || 2160;
-          resolve({
-            url: rawDataUrl,
-            width: w,
-            height: h,
-            is4K: w >= 2560 || h >= 1440,
-            type: 'image',
-            title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
-          });
-        };
-        img.onerror = () => {
-          resolve({
-            url: rawDataUrl,
-            width: 3840,
-            height: 2160,
-            is4K: true,
-            type: 'image',
-            title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
-          });
-        };
-        img.src = rawDataUrl;
+        try {
+          // Optimize/compress image so it is crisp UHD (up to 2560px), ultra-fast, and safe for storage quotas
+          const optimized = await compressImageIfNeeded(rawDataUrl, 2560, 0.88);
+          const img = new Image();
+          img.onload = () => {
+            const w = img.naturalWidth || 2560;
+            const h = img.naturalHeight || 1440;
+            resolve({
+              url: optimized,
+              width: w,
+              height: h,
+              is4K: w >= 2560 || h >= 1440,
+              type: 'image',
+              title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
+            });
+          };
+          img.onerror = () => {
+            resolve({
+              url: optimized,
+              width: 2560,
+              height: 1440,
+              is4K: true,
+              type: 'image',
+              title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
+            });
+          };
+          img.src = optimized;
+        } catch {
+          const img = new Image();
+          img.onload = () => {
+            const w = img.naturalWidth || 3840;
+            const h = img.naturalHeight || 2160;
+            resolve({
+              url: rawDataUrl,
+              width: w,
+              height: h,
+              is4K: w >= 2560 || h >= 1440,
+              type: 'image',
+              title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
+            });
+          };
+          img.onerror = () => {
+            resolve({
+              url: rawDataUrl,
+              width: 3840,
+              height: 2160,
+              is4K: true,
+              type: 'image',
+              title: fileOrUrl.name ? fileOrUrl.name.replace(/\.[^/.]+$/, "") : 'Studio 4K Visual'
+            });
+          };
+          img.src = rawDataUrl;
+        }
       };
       reader.onerror = () => reject(new Error('Failed to read file from disk.'));
       reader.readAsDataURL(fileOrUrl);

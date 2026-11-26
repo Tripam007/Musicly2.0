@@ -36,7 +36,15 @@ export default function AdminBackgroundGalleryModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [geminiShareNotice, setGeminiShareNotice] = useState(false);
+  const [selectedBgUrl, setSelectedBgUrl] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Sync selectedBgUrl when activeBackgroundUrl prop changes
+  React.useEffect(() => {
+    if (activeBackgroundUrl) {
+      setSelectedBgUrl(activeBackgroundUrl);
+    }
+  }, [activeBackgroundUrl]);
 
   const displayBackgrounds = useMemo(() => {
     return deduplicateBackgrounds(backgrounds);
@@ -50,7 +58,9 @@ export default function AdminBackgroundGalleryModal({
   const activeBgUrl = useMemo(() => {
     if (activeBackgroundUrl) return activeBackgroundUrl;
     try {
-      return localStorage.getItem('musicly_active_studio_bg_url') || '';
+      const saved = localStorage.getItem('musicly_active_studio_bg_url');
+      if (saved && !saved.startsWith('data_ref:')) return saved;
+      return '';
     } catch {
       return '';
     }
@@ -75,6 +85,7 @@ export default function AdminBackgroundGalleryModal({
         height: processed.height
       };
 
+      setSelectedBgUrl(newBg.url);
       onAddBackground(newBg);
       showToast?.('Background visual added and activated!');
     } catch (err) {
@@ -116,6 +127,7 @@ export default function AdminBackgroundGalleryModal({
         width: processed.width,
         height: processed.height
       };
+      setSelectedBgUrl(newBg.url);
       onAddBackground(newBg);
       setUrlInput('');
       showToast?.('Background visual added and activated!');
@@ -131,6 +143,7 @@ export default function AdminBackgroundGalleryModal({
           width: testImg.naturalWidth,
           height: testImg.naturalHeight
         };
+        setSelectedBgUrl(newBg.url);
         onAddBackground(newBg);
         setUrlInput('');
         showToast?.('Background visual added and activated!');
@@ -191,12 +204,21 @@ export default function AdminBackgroundGalleryModal({
           <div className="admin-bg-grid">
             {displayBackgrounds.map((bg, idx) => {
               const bgUrl = typeof bg === 'string' ? bg : (bg?.url || '');
-              const isActive = (activeBgUrl && bgUrl === activeBgUrl) || (!activeBgUrl && idx === safeActiveIndex);
+              const bgId = typeof bg === 'string' ? '' : (bg?.id || '');
+              const currentActiveTarget = selectedBgUrl || activeBgUrl;
+              const isActive = Boolean(
+                (currentActiveTarget && (
+                  bgUrl === currentActiveTarget || 
+                  (bgId && (currentActiveTarget === bgId || currentActiveTarget.includes(bgId)))
+                )) || 
+                (!currentActiveTarget && idx === safeActiveIndex)
+              );
               return (
                 <div 
                   key={`bg-card-${bg.id || 'visual'}-${idx}`}
                   className={`admin-bg-thumb-card ${isActive ? 'is-active' : ''}`}
                   onClick={() => {
+                    setSelectedBgUrl(bgUrl);
                     onSelectBackground(idx, bg);
                     showToast?.(`Activated: ${bg.title || `Visual ${idx + 1}`}`);
                   }}
@@ -239,11 +261,11 @@ export default function AdminBackgroundGalleryModal({
                     className="admin-bg-thumb-del-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (backgrounds.length <= 1) {
+                      if (displayBackgrounds.length <= 1) {
                         showToast?.("At least one background visual must remain.");
                         return;
                       }
-                      onRemoveBackground(idx);
+                      onRemoveBackground(idx, bg);
                       showToast?.("Background visual removed.");
                     }}
                     title="Delete this background visual"
