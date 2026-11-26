@@ -1,6 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react';
 import {
-  Home,
   Heart,
   Music,
   Disc,
@@ -1912,15 +1911,6 @@ export default function VinylScene({
         {/* Left Navigation Rail */}
         <aside className="vinyl-nav-rail" aria-label="Navigation Rail">
           <div className="vinyl-rail-group">
-            <button
-              id="vinyl-rail-home"
-              className="vinyl-rail-btn is-active"
-              onClick={onClose}
-              title="Home Room (Cozy Bedroom Studio)"
-            >
-              <Home size={19} />
-            </button>
-
             <button
               id="vinyl-rail-favorites"
               className={`vinyl-rail-btn ${isLikedPanelOpen ? 'is-active' : ''}`}
