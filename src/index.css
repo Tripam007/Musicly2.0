@@ -20512,8 +20512,18 @@ body, html, #root {
   gap: 10px;
 }
 
+/* Ensure inactive app-content-shell cannot block clicks */
+.app-content-shell.minimal-scene-active-shell,
+.app-content-shell.minimal-scene-active-shell *,
+.app-content-shell.vinyl-scene-active-shell,
+.app-content-shell.vinyl-scene-active-shell * {
+  pointer-events: none !important;
+}
+
 .ref-now-playing-heart-btn {
-  position: relative;
+  position: relative !important;
+  z-index: 50 !important;
+  pointer-events: auto !important;
   border-radius: 9999px;
   outline: none;
   cursor: pointer;
@@ -20525,6 +20535,7 @@ body, html, #root {
 
 .ref-now-playing-heart-btn svg {
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.2s ease, stroke 0.2s ease, filter 0.2s ease;
+  pointer-events: none;
 }
 
 .ref-now-playing-heart-btn:hover {

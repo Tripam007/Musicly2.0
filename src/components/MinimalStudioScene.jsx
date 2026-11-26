@@ -1448,11 +1448,16 @@ export default function MinimalStudioScene({
   }, [trackKey, localLikedMap, activeTrack, favorites, allTracks]);
 
   const handleLikeClick = useCallback((e) => {
-    if (e && e.stopPropagation) e.stopPropagation();
+    if (e) {
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.preventDefault) e.preventDefault();
+    }
     const willBeFav = !isCurrentFav;
-    setLocalLikedMap(prev => ({ ...prev, [trackKey]: willBeFav }));
-    if (onToggleFavorite) onToggleFavorite(activeTrack?.id || activeTrack);
 
+    // 1. Instantly update local state cache so the heart turns red immediately
+    setLocalLikedMap(prev => ({ ...prev, [trackKey]: willBeFav }));
+
+    // 2. Play Zen ripple / pulse animation and sound
     if (willBeFav) {
       try { playPeacefulLikeSound(); } catch (err) {}
       setJustLiked(true);
@@ -1465,6 +1470,15 @@ export default function MinimalStudioScene({
       try { playClickSound('light'); } catch (err) {}
       setJustLiked(false);
       showToast("Removed from Favorites");
+    }
+
+    // 3. Persist to parent safely without ever blocking the UI
+    try {
+      if (onToggleFavorite) {
+        onToggleFavorite(activeTrack?.id || activeTrack);
+      }
+    } catch (err) {
+      console.warn("Favorite persistence error:", err);
     }
   }, [isCurrentFav, trackKey, activeTrack, onToggleFavorite, showToast]);
 
