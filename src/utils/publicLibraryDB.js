@@ -113,6 +113,8 @@ export const INITIAL_PURGED_IDS = [
 
 /**
  * Returns a Set of track IDs that have been permanently deleted by the admin.
+ * Only acknowledges verified initial purged IDs and cloud-synced tombstones.
+ * Stale local storage keys are strictly prevented from suppressing active catalog songs.
  */
 export function getDeletedPublicTrackIds() {
   const set = new Set(INITIAL_PURGED_IDS);
@@ -122,7 +124,8 @@ export function getDeletedPublicTrackIds() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
         parsed.forEach(id => {
-          if (!id.startsWith('public-ghazal-') && id !== 'public-weightless' && id !== 'public-sweater-weather') {
+          // Strictly allow only verified purge IDs or non-canonical custom IDs
+          if (INITIAL_PURGED_IDS.includes(id)) {
             set.add(id);
           }
         });
@@ -275,8 +278,15 @@ export async function loadPublicTracks() {
           ) {
             return;
           }
-          if (data && data.id && !deletedIds.has(data.id)) {
-            cloudTracks.push({ ...data, isPublic: true });
+          const trackId = data?.id || d.id;
+          if (trackId) {
+            // Live Firestore tracks take absolute precedence over stale local tombstones
+            if (deletedIds.has(trackId) && !INITIAL_PURGED_IDS.includes(trackId)) {
+              deletedIds.delete(trackId);
+            }
+            if (!deletedIds.has(trackId)) {
+              cloudTracks.push({ ...data, id: trackId, isPublic: true });
+            }
           }
         });
 
@@ -608,8 +618,15 @@ export function subscribePublicTracks(callback) {
           ) {
             return;
           }
-          if (data && data.id && !deletedIds.has(data.id)) {
-            cloudTracks.push({ ...data, isPublic: true });
+          const trackId = data?.id || d.id;
+          if (trackId) {
+            // Live Firestore tracks take absolute precedence over stale local tombstones
+            if (deletedIds.has(trackId) && !INITIAL_PURGED_IDS.includes(trackId)) {
+              deletedIds.delete(trackId);
+            }
+            if (!deletedIds.has(trackId)) {
+              cloudTracks.push({ ...data, id: trackId, isPublic: true });
+            }
           }
         });
 

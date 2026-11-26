@@ -443,6 +443,22 @@ export default function App() {
     } catch (e) {}
   }, [deletedTrackIds, user?.uid]);
 
+  // Auto-reconcile deletedTrackIds: ensure active public tracks are never suppressed by stale local deletions
+  useEffect(() => {
+    if (publicTracks && publicTracks.length > 0 && deletedTrackIds.length > 0) {
+      const publicIdSet = new Set(publicTracks.map(t => t.id));
+      const hasStale = deletedTrackIds.some(id => publicIdSet.has(id));
+      if (hasStale) {
+        const cleaned = deletedTrackIds.filter(id => !publicIdSet.has(id));
+        setDeletedTrackIds(cleaned);
+        const storageKey = (user && !user.isAnonymous) ? `musicly_deleted_${user.uid}` : 'musicly_deleted_guest';
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(cleaned));
+        } catch (_e) {}
+      }
+    }
+  }, [publicTracks, deletedTrackIds, user?.uid]);
+
   // Selected music languages state: array of ['English', 'Hindi', 'Bengali']
   // When empty ([]), NO language filter is active: all songs play freely without restriction
   // Users can select a single language, or multiple languages (e.g. ['English', 'Hindi']), or deselect all

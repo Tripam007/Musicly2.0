@@ -1159,6 +1159,44 @@ export default function PlaylistDrawer({
               </div>
             )}
 
+            {/* Filter Active Notice when a specific language is filtered in Musicly */}
+            {mainSource === 'musicly' && activeLangs.length > 0 && !searchQuery && (
+              <div 
+                className="drawer-filter-banner" 
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'space-between', 
+                  padding: '6px 14px', 
+                  margin: '0 12px 8px 12px', 
+                  background: 'rgba(251, 133, 0, 0.12)', 
+                  border: '1px solid rgba(251, 133, 0, 0.3)', 
+                  borderRadius: '10px', 
+                  fontSize: '11.5px', 
+                  color: '#ffb703' 
+                }}
+              >
+                <span>Filtering by {activeLangs.join(', ')}: {sortedFilteredTracks.length} of {officialMusiclyCount} songs</span>
+                <button
+                  type="button"
+                  onClick={() => { if (typeof onSelectLanguage === 'function') onSelectLanguage('All'); }}
+                  style={{ 
+                    background: 'rgba(255, 255, 255, 0.15)', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    color: '#fff', 
+                    padding: '2px 8px', 
+                    fontSize: '11px', 
+                    cursor: 'pointer', 
+                    fontWeight: 600 
+                  }}
+                  title="Show all songs"
+                >
+                  Show All ({officialMusiclyCount})
+                </button>
+              </div>
+            )}
+
             {/* Reorder Sequence Helper Strip */}
             {!searchQuery && sortedFilteredTracks.length > 1 && (
               <div className="drawer-reorder-hint">
