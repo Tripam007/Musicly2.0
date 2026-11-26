@@ -20524,13 +20524,28 @@ body, html, #root {
   position: relative !important;
   z-index: 50 !important;
   pointer-events: auto !important;
-  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.48) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 9999px !important;
+  padding: 3px 8px !important;
   outline: none;
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  line-height: 1;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+
+.ref-now-playing-heart-btn .ref-stat-num {
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1;
+  user-select: none;
 }
 
 .ref-now-playing-heart-btn svg {
@@ -20539,25 +20554,29 @@ body, html, #root {
 }
 
 .ref-now-playing-heart-btn:hover {
-  transform: scale(1.22);
+  transform: scale(1.08);
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: rgba(255, 77, 109, 0.45) !important;
 }
 
 .ref-now-playing-heart-btn:active {
-  transform: scale(0.85);
+  transform: scale(0.94);
 }
 
 .ref-now-playing-heart-btn.is-fav,
 .ref-now-playing-heart-btn.is-favorited {
-  color: #ef4444 !important;
+  color: #ff4d6d !important;
+  border-color: rgba(255, 77, 109, 0.4) !important;
 }
 
 .ref-now-playing-heart-btn.is-fav svg,
 .ref-now-playing-heart-btn.is-favorited svg,
 .ref-now-playing-heart-btn.is-fav svg path,
 .ref-now-playing-heart-btn.is-favorited svg path {
-  fill: #ef4444 !important;
-  color: #ef4444 !important;
-  stroke: #ef4444 !important;
+  fill: #ff4d6d !important;
+  color: #ff4d6d !important;
+  stroke: #ff4d6d !important;
+  filter: drop-shadow(0 0 6px rgba(255, 77, 109, 0.6));
 }
 
 .ref-date-num {

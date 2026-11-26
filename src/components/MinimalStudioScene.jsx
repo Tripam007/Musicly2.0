@@ -1452,9 +1452,10 @@ export default function MinimalStudioScene({
       if (e.stopPropagation) e.stopPropagation();
       if (e.preventDefault) e.preventDefault();
     }
-    const willBeFav = !isCurrentFav;
+    const willBeFav = !(isLiked || isCurrentFav);
 
-    // 1. Instantly update local state cache so the heart turns red immediately
+    // 1. Instantly update local state cache and isLiked state
+    setIsLiked(willBeFav);
     setLocalLikedMap(prev => ({ ...prev, [trackKey]: willBeFav }));
 
     // 2. Play Zen ripple / pulse animation and sound
@@ -1465,11 +1466,11 @@ export default function MinimalStudioScene({
       likeTimeoutRef.current = setTimeout(() => {
         setJustLiked(false);
       }, 750);
-      showToast("Saved to Favorites!");
+      showToast("Hearted! (8)");
     } else {
       try { playClickSound('light'); } catch (err) {}
       setJustLiked(false);
-      showToast("Removed from Favorites");
+      showToast("Heart removed (7)");
     }
 
     // 3. Persist to parent safely without ever blocking the UI
@@ -1480,13 +1481,13 @@ export default function MinimalStudioScene({
     } catch (err) {
       console.warn("Favorite persistence error:", err);
     }
-  }, [isCurrentFav, trackKey, activeTrack, onToggleFavorite, showToast]);
+  }, [isLiked, isCurrentFav, trackKey, activeTrack, onToggleFavorite, showToast]);
 
-  // Dynamic counter computations with real responsiveness
+  const isHeartActive = Boolean(isLiked || isCurrentFav);
   const favCount = useMemo(() => 9977 + (isCurrentFav ? 1 : 0), [isCurrentFav]);
   const starCount = useMemo(() => 7523 + (isRated ? 1 : 0), [isRated]);
   const saveCount = useMemo(() => 4644 + (isSaved ? 1 : 0), [isSaved]);
-  const likeCount = useMemo(() => 7 + (isLiked ? 1 : 0), [isLiked]);
+  const likeCount = useMemo(() => 7 + (isHeartActive ? 1 : 0), [isHeartActive]);
   const thumbsCount = useMemo(() => 80 + (isThumbsUp ? 1 : 0), [isThumbsUp]);
 
   // Active track pool for Minimal Studio navigation (Mine Playlist, Active Curated Playlist, or Public Catalog)
@@ -1840,18 +1841,6 @@ export default function MinimalStudioScene({
                 <button 
                   className="ref-top-stat-btn"
                   onClick={() => {
-                    setIsLiked(prev => !prev);
-                    showToast(!isLiked ? "Hearted! (8)" : "Heart removed (7)");
-                  }}
-                  title="Favorite Heart"
-                >
-                  <span className="ref-stat-num">{likeCount}</span>
-                  <Heart size={14} fill={isLiked ? "#ff4d6d" : "rgba(255, 77, 109, 0.45)"} color="#ff4d6d" />
-                </button>
-
-                <button 
-                  className="ref-top-stat-btn"
-                  onClick={() => {
                     setIsThumbsUp(prev => !prev);
                     showToast(!isThumbsUp ? "Thumbs up! (81)" : "Thumbs up removed (80)");
                   }}
@@ -2000,49 +1989,37 @@ export default function MinimalStudioScene({
                   <div className="ref-bubble-meta-date">
                     <span className="ref-date-header">Now Playing</span>
                     <div className="ref-date-row" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span className="ref-date-num" style={{ fontSize: '0.82rem', fontWeight: 700, maxWidth: '135px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span className="ref-date-num" style={{ fontSize: '0.82rem', fontWeight: 700, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {activeTrack?.title || 'Track'}
                       </span>
                       <button
                         type="button"
-                        className={`favorite-btn ref-now-playing-heart-btn ${isCurrentFav ? 'is-fav is-favorited' : ''} ${justLiked ? 'just-liked' : ''}`}
+                        className={`ref-top-stat-btn ref-now-playing-heart-btn ${isHeartActive ? 'is-fav is-favorited' : ''} ${justLiked ? 'just-liked' : ''}`}
                         onClick={handleLikeClick}
-                        title={isCurrentFav ? "Unlike (Remove from favorites)" : "Like (Add to favorites)"}
-                        aria-label={isCurrentFav ? "Unlike track" : "Like track"}
-                        style={{
-                          position: 'relative',
-                          background: 'transparent',
-                          border: 'none',
-                          padding: '4px',
-                          margin: 0,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          color: isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.75)',
-                          lineHeight: 1
-                        }}
+                        title={isHeartActive ? "Hearted (Click to remove)" : "Heart song"}
+                        aria-label={isHeartActive ? "Unlike track" : "Like track"}
                       >
                         {justLiked && (
                           <span className="minimal-like-aura" aria-hidden="true" style={{ pointerEvents: 'none' }}>
-                            <span className="zen-ripple-ring" style={{ borderColor: 'rgba(239, 68, 68, 0.85)', boxShadow: '0 0 12px rgba(239, 68, 68, 0.6), inset 0 0 6px rgba(239, 68, 68, 0.3)' }} />
-                            <span className="zen-glow-bloom" style={{ background: 'radial-gradient(circle, rgba(239, 68, 68, 0.35) 0%, transparent 70%)' }} />
-                            <span className="zen-sparkle s-1" style={{ background: '#ef4444' }} />
+                            <span className="zen-ripple-ring" style={{ borderColor: 'rgba(255, 77, 109, 0.85)', boxShadow: '0 0 12px rgba(255, 77, 109, 0.6), inset 0 0 6px rgba(255, 77, 109, 0.3)' }} />
+                            <span className="zen-glow-bloom" style={{ background: 'radial-gradient(circle, rgba(255, 77, 109, 0.35) 0%, transparent 70%)' }} />
+                            <span className="zen-sparkle s-1" style={{ background: '#ff4d6d' }} />
                             <span className="zen-sparkle s-2" style={{ background: '#f87171' }} />
-                            <span className="zen-sparkle s-3" style={{ background: '#ef4444' }} />
+                            <span className="zen-sparkle s-3" style={{ background: '#ff4d6d' }} />
                           </span>
                         )}
+                        <span className="ref-stat-num">{likeCount}</span>
                         <Heart
-                          size={16}
+                          size={14}
                           className={`heart-icon ${justLiked ? 'heart-zen-pulse' : ''}`}
-                          fill={isCurrentFav ? '#ef4444' : 'none'}
-                          color={isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.75)'}
+                          fill={isHeartActive ? "#ff4d6d" : "rgba(255, 77, 109, 0.45)"}
+                          color="#ff4d6d"
                           strokeWidth={2}
                           style={{
-                            fill: isCurrentFav ? '#ef4444' : 'none',
-                            color: isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.75)',
-                            stroke: isCurrentFav ? '#ef4444' : 'currentColor',
-                            filter: isCurrentFav ? 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.75))' : 'none'
+                            fill: isHeartActive ? '#ff4d6d' : 'rgba(255, 77, 109, 0.45)',
+                            color: '#ff4d6d',
+                            stroke: '#ff4d6d',
+                            filter: isHeartActive ? 'drop-shadow(0 0 8px rgba(255, 77, 109, 0.75))' : 'none'
                           }}
                         />
                       </button>
