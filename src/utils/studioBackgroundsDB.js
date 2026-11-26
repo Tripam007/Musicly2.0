@@ -29,7 +29,7 @@ export const DEFAULT_STUDIO_PHOTOS = [
   },
   {
     id: 'wallpaper-dark-angel',
-    url: '/assets/wallpapers/Gemini_Generated_Image_i7rauzi7rauzi7ra_erasio.png',
+    url: '/assets/wallpapers/Gemini_Generated_Image_x17vxax17vxax17v.png',
     title: 'Dark Winged Angel of the Storm',
     is4K: true,
     isDefault: true
@@ -57,7 +57,7 @@ export const DEFAULT_STUDIO_PHOTOS = [
   },
   {
     id: 'wallpaper-gojo',
-    url: '/assets/wallpapers/gojo_satoru.jpg',
+    url: '/assets/wallpapers/Gemini_Generated_Image_i7rauzi7rauzi7ra_erasio.png',
     title: 'Gojo Satoru - Limitless Void',
     is4K: true,
     isDefault: true
@@ -126,6 +126,13 @@ export const DEFAULT_STUDIO_PHOTOS = [
     isDefault: true
   },
   {
+    id: 'wallpaper-studio-room',
+    url: '/assets/wallpapers/Gemini_Generated_Image_ht28anht28anht28.png',
+    title: 'Acoustic Music Studio Room',
+    is4K: true,
+    isDefault: true
+  },
+  {
     id: 'wallpaper-black-cat',
     url: '/assets/wallpapers/Black_Cat_Vinyl_Records.jpg',
     title: 'Black Cat Vinyl Records',
@@ -154,38 +161,90 @@ function openDB() {
 }
 
 /**
- * Strict deduplication helper: removes identical backgrounds by URL or ID
+ * Resolves a canonical semantic visual key for any background item.
+ * Enables intelligent deduplication across data URLs, uploaded filenames,
+ * and static assets.
+ */
+export function getVisualCanonicalKey(item) {
+  if (!item) return '';
+  const url = (typeof item === 'string' ? item : (item.url || '')).toLowerCase();
+  const id = (typeof item === 'string' ? '' : (item.id || '')).toLowerCase();
+  const title = (typeof item === 'string' ? '' : (item.title || '')).toLowerCase();
+  const combined = `${id} ${title} ${url.startsWith('data:') ? '' : url}`;
+
+  if (combined.includes('gojo') || combined.includes('satoru') || combined.includes('五条') || combined.includes('โกะโจ') || combined.includes('i7rauzi7rauzi7ra')) return 'vis_gojo';
+  if (combined.includes('x17vxax17vxax17v') || combined.includes('dark winged angel') || (combined.includes('dark') && combined.includes('angel'))) return 'vis_dark_angel';
+  if (combined.includes('oxyls5oxyls5oxyl') || combined.includes('veiled sculpture') || combined.includes('crimson butterflies') || (combined.includes('statue') && combined.includes('butterfl'))) return 'vis_statue_butterflies';
+  if (combined.includes('yrjbfyrjbfyrjbfy') || combined.includes('dark knight') || combined.includes('batman')) return 'vis_batman';
+  if (combined.includes('lr2rtolr2rtolr2r') || combined.includes('peaky') || combined.includes('shelby')) return 'vis_shelby';
+  if (combined.includes('uu56xcuu56xcuu56') || combined.includes('reaching hands') || combined.includes('hands touch') || combined.includes('creation of light')) return 'vis_hands_touch';
+  if (combined.includes('carpe diem') || combined.includes('sunlit classroom') || combined.includes('golden classroom') || combined.includes('classroom')) return 'vis_classroom';
+  if (combined.includes('route 66') || combined.includes('route_66') || combined.includes('route66')) return 'vis_route_66';
+  if (combined.includes('astronaut') || combined.includes('bh7l23bh7l23bh7l')) return 'vis_astronaut';
+  if (combined.includes('luffy') || combined.includes('monkey d')) return 'vis_luffy';
+  if (combined.includes('red eclipse') || combined.includes('red_eclipse') || combined.includes('lvlz4ulvlz4ulvlz')) return 'vis_red_eclipse';
+  if (combined.includes('lone knight') || combined.includes('lone_knight')) return 'vis_lone_knight';
+  if (combined.includes('brad pitt') || combined.includes('brad_pitt') || combined.includes('cliff booth') || combined.includes('not about money')) return 'vis_brad_pitt';
+  if (combined.includes('zenitsu') || combined.includes('agatsuma')) return 'vis_zenitsu';
+  if (combined.includes('your name') || combined.includes('your_name') || combined.includes('kimi no na wa')) return 'vis_your_name';
+  if (combined.includes('gold crown') || combined.includes('gold_crown') || combined.includes('r14b4vr14b4vr14b') || combined.includes('sovereign crown')) return 'vis_gold_crown';
+  if (combined.includes('ht28anht28anht28') || combined.includes('music studio') || combined.includes('acoustic studio') || combined.includes('studio room')) return 'vis_studio_room';
+  if (combined.includes('black cat') || combined.includes('vinyl records')) return 'vis_black_cat';
+
+  if (url.startsWith('data:')) {
+    return `data:${url.length}:${url.slice(0, 100)}`;
+  }
+  return url || id;
+}
+
+/**
+ * Strict deduplication helper: eliminates identical backgrounds by canonical visual identity,
+ * URL, or ID, always prioritizing clean lossless 4K static URLs over bloated data URLs.
  */
 export function deduplicateBackgrounds(list) {
   if (!Array.isArray(list)) return [];
+  const seenCanonicalKeys = new Set();
   const seenUrls = new Set();
   const seenIds = new Set();
   const result = [];
 
-  for (let i = 0; i < list.length; i++) {
-    const item = list[i];
+  // Sort static presets ahead of data URLs so the clean 4K asset is always retained
+  const sorted = [...list].sort((a, b) => {
+    const aUrl = typeof a === 'string' ? a : (a?.url || '');
+    const bUrl = typeof b === 'string' ? b : (b?.url || '');
+    const aIsData = aUrl.startsWith('data:');
+    const bIsData = bUrl.startsWith('data:');
+    if (aIsData && !bIsData) return 1;
+    if (!aIsData && bIsData) return -1;
+    return 0;
+  });
+
+  for (let i = 0; i < sorted.length; i++) {
+    const item = sorted[i];
     if (!item) continue;
     const url = typeof item === 'string' ? item : (item.url || '');
     const id = typeof item === 'string' ? '' : (item.id || '');
     const cleanUrl = typeof url === 'string' ? url.trim() : '';
     if (!cleanUrl) continue;
 
-    // Fast fingerprint for data URLs or web URLs
+    const canonicalKey = getVisualCanonicalKey(item);
+    if (canonicalKey) {
+      if (seenCanonicalKeys.has(canonicalKey)) {
+        continue;
+      }
+      seenCanonicalKeys.add(canonicalKey);
+    }
+
     let fingerprint = cleanUrl;
     if (cleanUrl.startsWith('data:')) {
       fingerprint = `data:${cleanUrl.length}:${cleanUrl.slice(0, 120)}:${cleanUrl.slice(-120)}`;
     } else {
       fingerprint = cleanUrl.toLowerCase().split('?')[0];
     }
-
-    if (seenUrls.has(fingerprint)) {
-      continue;
-    }
+    if (seenUrls.has(fingerprint)) continue;
     seenUrls.add(fingerprint);
 
-    if (id && seenIds.has(id)) {
-      continue;
-    }
+    if (id && seenIds.has(id)) continue;
     if (id) seenIds.add(id);
 
     result.push(typeof item === 'string' ? { id: `bg-${result.length}`, url: cleanUrl } : { ...item, id: item.id || `bg-${result.length}` });
@@ -195,17 +254,24 @@ export function deduplicateBackgrounds(list) {
 }
 
 /**
- * Retrieve user custom-uploaded background visuals from permanent IndexedDB pool
+ * Retrieve user custom-uploaded background visuals from permanent IndexedDB pool,
+ * filtering out any items that are already provided by canonical presets.
  */
 export async function getCustomStudioPool() {
   try {
     const db = await openDB();
+    const defaultKeys = new Set(DEFAULT_STUDIO_PHOTOS.map(d => getVisualCanonicalKey(d)));
     return new Promise((resolve) => {
       const tx = db.transaction(STORE_NAME, 'readonly');
       const store = tx.objectStore(STORE_NAME);
       const req = store.get(KEY_CUSTOM_POOL);
       req.onsuccess = () => {
-        resolve(deduplicateBackgrounds(Array.isArray(req.result) ? req.result : []));
+        const raw = Array.isArray(req.result) ? req.result : [];
+        const filtered = raw.filter(item => {
+          const key = getVisualCanonicalKey(item);
+          return key && !defaultKeys.has(key);
+        });
+        resolve(deduplicateBackgrounds(filtered));
       };
       req.onerror = () => resolve([]);
     });
@@ -220,9 +286,13 @@ export async function getCustomStudioPool() {
 export async function saveCustomStudioPool(pool) {
   try {
     const db = await openDB();
+    const defaultKeys = new Set(DEFAULT_STUDIO_PHOTOS.map(d => getVisualCanonicalKey(d)));
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    const deduped = deduplicateBackgrounds(Array.isArray(pool) ? pool : []);
+    const deduped = deduplicateBackgrounds(Array.isArray(pool) ? pool : []).filter(item => {
+      const key = getVisualCanonicalKey(item);
+      return key && !defaultKeys.has(key);
+    });
     store.put(deduped, KEY_CUSTOM_POOL);
   } catch (err) {
     console.warn('Error saving custom studio pool:', err);
@@ -235,13 +305,13 @@ export async function saveCustomStudioPool(pool) {
  */
 export async function getStudioBackgrounds() {
   try {
-    // Auto-migration: Seed and upgrade to full 17 curated wallpapers immediately
-    const MIGRATION_KEY = 'musicly_studio_bg_v16_all_17_wallpapers';
+    // Auto-migration: Seed and upgrade to clean, deduplicated presets
+    const MIGRATION_KEY = 'musicly_studio_bg_v18_strict_dedup_no_dups';
     if (typeof localStorage !== 'undefined' && !localStorage.getItem(MIGRATION_KEY)) {
       try {
         localStorage.setItem(MIGRATION_KEY, 'true');
         const customPool = await getCustomStudioPool();
-        const fullGallery = deduplicateBackgrounds([...customPool, ...DEFAULT_STUDIO_PHOTOS]);
+        const fullGallery = deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...customPool]);
         localStorage.setItem('musicly_studio_bg_gallery', JSON.stringify(fullGallery));
         const db = await openDB();
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -277,13 +347,13 @@ export async function getStudioBackgrounds() {
           if (baseList.length === 0) baseList = DEFAULT_STUDIO_PHOTOS;
         }
 
-        // Strictly deduplicate combined list (custom pool takes precedence in front, all default wallpapers always guaranteed)
-        const combined = deduplicateBackgrounds([...customPool, ...baseList, ...DEFAULT_STUDIO_PHOTOS]);
+        // Strictly deduplicate combined list (all default presets guaranteed, custom pool kept, no duplicates)
+        const combined = deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...customPool, ...baseList]);
         resolve(combined);
       };
 
       req.onerror = () => {
-        resolve(deduplicateBackgrounds(customPool.length > 0 ? [...customPool, ...DEFAULT_STUDIO_PHOTOS] : DEFAULT_STUDIO_PHOTOS));
+        resolve(deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...customPool]));
       };
     });
   } catch (err) {
@@ -505,7 +575,7 @@ export function subscribeStudioBackgrounds(callback) {
             const u = typeof cg === 'string' ? cg : (cg?.url || cg?.id);
             return !customUrls.has(u);
           });
-          const mergedGallery = deduplicateBackgrounds([...localCustoms, ...nonCustomFromCloud, ...DEFAULT_STUDIO_PHOTOS]);
+          const mergedGallery = deduplicateBackgrounds([...DEFAULT_STUDIO_PHOTOS, ...localCustoms, ...nonCustomFromCloud]);
 
           openDB().then((db) => {
             if (db) {

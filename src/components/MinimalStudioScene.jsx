@@ -50,7 +50,8 @@ import {
   setActiveStudioBackgroundIndex,
   saveActiveStudioVisual,
   getActiveStudioVisual,
-  deduplicateBackgrounds 
+  deduplicateBackgrounds,
+  getVisualCanonicalKey 
 } from '../utils/studioBackgroundsDB';
 import { isLiveVisual } from '../utils/publicScenesDB';
 import { getUnreadStudioNotificationCount, addStudioNotification } from '../utils/studioNotificationsDB';
@@ -694,6 +695,7 @@ export default function MinimalStudioScene({
       if (prev.length <= 1) return prev;
       let next;
       if (bgToRemove) {
+        const removeKey = getVisualCanonicalKey(bgToRemove);
         const removeUrl = typeof bgToRemove === 'string' ? bgToRemove : (bgToRemove?.url || '');
         const removeId = typeof bgToRemove === 'string' ? '' : (bgToRemove?.id || '');
         next = prev.filter(b => {
@@ -701,6 +703,7 @@ export default function MinimalStudioScene({
           const id = typeof b === 'string' ? '' : (b?.id || '');
           if (removeId && id === removeId) return false;
           if (removeUrl && u === removeUrl) return false;
+          if (removeKey && getVisualCanonicalKey(b) === removeKey) return false;
           return true;
         });
       } else {
