@@ -1950,6 +1950,11 @@ export default function MinimalStudioScene({
                     />
                   </button>
 
+                  {/* Fixed Stationary Highlight Bar: Anchored permanently in the center of the card; lyrics glide naturally through it */}
+                  {lyricsData?.lines && lyricsData.lines.length > 0 && !isLyricsLoading && !lyricsData?.instrumental && (
+                    <div className="ref-island-lyrics-fixed-bar" aria-hidden="true" />
+                  )}
+
                   {/* Full-Box Lyrics Container */}
                   <div 
                     ref={lyricsContainerRef}
@@ -1992,7 +1997,7 @@ export default function MinimalStudioScene({
                                 }
                               }}
                             >
-                              {line.text}
+                              <span className="ref-island-lyric-text">{line.text}</span>
                             </div>
                           );
                         })}
