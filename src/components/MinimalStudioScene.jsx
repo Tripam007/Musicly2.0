@@ -1547,17 +1547,6 @@ export default function MinimalStudioScene({
             <button 
               className="ref-side-btn"
               onClick={() => {
-                if (onClose) onClose();
-                showToast("Returning to Cozy Bedroom");
-              }}
-              title="Home (Cozy Bedroom Studio)"
-            >
-              <Home size={16} />
-            </button>
-
-            <button 
-              className="ref-side-btn"
-              onClick={() => {
                 if (onToggleFavorite) onToggleFavorite(activeTrack);
                 showToast(isCurrentFav ? "Removed from Favorites" : "Saved to Favorites!");
               }}
