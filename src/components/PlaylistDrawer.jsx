@@ -243,6 +243,11 @@ export default function PlaylistDrawer({
   // When without login, show all official Musicly tracks (Public Library & Curated Catalog)
   const visibleTracks = tracks.filter(t => isAuthed ? (!t.isCustom || isOfflineTrack(t) || t.isCustom) : (!t.isCustom || !!t.isPublic));
 
+  // Official Musicly public tracks count (Total canonical catalog, independent of local language filter)
+  const officialMusiclyCount = useMemo(() => {
+    return visibleTracks.filter(t => !t.isCustom || !!t.isPublic).length;
+  }, [visibleTracks]);
+
   // Curated Official Musicly Playlists (Unified across all scenes and strictly language-curated)
   const musiclyPlaylists = useMemo(() => {
     return getUnifiedMusiclyPlaylists(tracks, publicPlaylists, selectedLanguages, selectedLanguage);
@@ -712,7 +717,7 @@ export default function PlaylistDrawer({
               className="drawer-musicly-tab-icon"
               onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
-            <span>Musicly ({musiclyPlaylists.reduce((acc, p) => acc + (p.tracks?.length || 0), 0) > 0 ? (visibleTracks.filter(t => (!t.isCustom || !!t.isPublic) && (activeLangs.length === 0 || isTrackInLanguages(t.language, activeLangs))).length) : 0})</span>
+            <span>Musicly ({officialMusiclyCount})</span>
           </button>
 
           {/* 2. Mine Playlist (Only accessed and seen by the user respectively) */}
@@ -821,6 +826,17 @@ export default function PlaylistDrawer({
             className="lang-filter-chips"
             style={!isAuthed ? { justifyContent: 'center' } : {}}
           >
+            <button
+              type="button"
+              className={`drawer-lang-chip ${activeLangs.length === 0 ? 'active' : ''}`}
+              onClick={() => {
+                if (typeof onSelectLanguage === 'function') onSelectLanguage('All');
+              }}
+              title="Show all songs (all languages)"
+            >
+              {activeLangs.length === 0 && <Check size={11} className="chip-active-check" />}
+              <span>All</span>
+            </button>
             {LANGUAGES.map(lang => {
               const isActive = activeLangs.includes(lang);
               return (
