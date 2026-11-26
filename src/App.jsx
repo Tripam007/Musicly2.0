@@ -3211,6 +3211,7 @@ export default function App() {
           onTogglePlay={togglePlay}
           onNextTrack={handleNextTrack}
           onPrevTrack={handlePrevTrack}
+          onOpenAboutUs={() => navigateTo('/about-us')}
           backdropImage={backdropImage}
           activePlayingPlaylistId={activePlayingPlaylistId}
           onSetActivePlayingPlaylistId={setActivePlayingPlaylistId}

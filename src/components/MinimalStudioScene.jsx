@@ -273,6 +273,7 @@ export default function MinimalStudioScene({
   favorites = [],
   onToggleFavorite,
   onClose,
+  onOpenAboutUs,
   audioElement,
   audioOutputMode = 'speaker',
   onToggleAudioOutputMode,
@@ -1522,14 +1523,20 @@ export default function MinimalStudioScene({
             COLUMN 1: LEFT VERTICAL SIDEBAR DOCK
            ------------------------------------------------------------------- */}
         <aside className="ref-sidebar-dock">
-          {/* Top Logo Button */}
+          {/* Top Logo Button - Opens About Musicly Experience */}
           <button 
             className="ref-logo-btn" 
             onClick={() => {
-              if (onClose) onClose();
-              showToast("Returning to Cozy Bedroom");
+              playClickSound('light');
+              if (onOpenAboutUs) {
+                onOpenAboutUs();
+              } else if (typeof window !== 'undefined') {
+                window.history.pushState(null, '', '/about-us');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }
             }}
-            title="Musicly Studio (Return Home)"
+            title="About Musicly"
+            aria-label="About Musicly"
           >
             <svg viewBox="0 0 32 32" className="ref-logo-svg" fill="none">
               <path 
