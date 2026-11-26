@@ -1405,23 +1405,39 @@ export default function MinimalStudioScene({
 
   const currentGenreObj = availableStudioGenres[currentGenreIndex] || availableStudioGenres[0];
 
-  const [optimisticFavOverride, setOptimisticFavOverride] = useState(null);
+  const trackKey = useMemo(() => {
+    if (!activeTrack) return 'current';
+    return String(activeTrack.id || activeTrack.youtubeId || activeTrack.title || 'current').toLowerCase().trim();
+  }, [activeTrack]);
 
-  useEffect(() => {
-    setOptimisticFavOverride(null);
-  }, [activeTrack?.id]);
+  // Persistent track-level liked map: survives any async re-renders or prop changes
+  const [localLikedMap, setLocalLikedMap] = useState({});
 
   const isCurrentFav = useMemo(() => {
-    if (optimisticFavOverride !== null && optimisticFavOverride.trackId === activeTrack?.id) {
-      return optimisticFavOverride.isFav;
+    if (trackKey in localLikedMap) {
+      return Boolean(localLikedMap[trackKey]);
     }
-    if (!activeTrack?.id || !favorites) return false;
-    const targetId = String(activeTrack.id);
-    return favorites.some(f => {
-      const favId = typeof f === 'object' && f !== null ? String(f.id) : String(f);
-      return favId === targetId;
+    if (!activeTrack || !favorites || !Array.isArray(favorites)) return false;
+    const tId = activeTrack.id ? String(activeTrack.id).toLowerCase() : '';
+    const tTitle = (activeTrack.title || activeTrack.name || '').trim().toLowerCase();
+    const tYt = activeTrack.youtubeId ? String(activeTrack.youtubeId).toLowerCase() : '';
+
+    return favorites.some(item => {
+      if (!item) return false;
+      const favId = typeof item === 'object' && item !== null ? String(item.id || item.trackId || '') : String(item);
+      const favTitle = typeof item === 'object' && item !== null ? String(item.title || item.name || '').trim().toLowerCase() : '';
+
+      if (tId && favId && tId === favId.toLowerCase()) return true;
+      if (tYt && favId && (tYt === favId.toLowerCase() || favId.toLowerCase().includes(tYt))) return true;
+      if (tTitle && favTitle && tTitle === favTitle) return true;
+
+      if (tTitle && favId && allTracks && allTracks.length > 0) {
+        const match = allTracks.find(t => String(t.id).toLowerCase() === favId.toLowerCase());
+        if (match && (match.title || '').trim().toLowerCase() === tTitle) return true;
+      }
+      return false;
     });
-  }, [favorites, activeTrack, optimisticFavOverride]);
+  }, [trackKey, localLikedMap, activeTrack, favorites, allTracks]);
 
   // Dynamic counter computations with real responsiveness
   const favCount = useMemo(() => 9977 + (isCurrentFav ? 1 : 0), [isCurrentFav]);
@@ -1580,7 +1596,7 @@ export default function MinimalStudioScene({
               className="ref-side-btn"
               onClick={() => {
                 const nextFav = !isCurrentFav;
-                setOptimisticFavOverride({ trackId: activeTrack?.id, isFav: nextFav });
+                setLocalLikedMap(prev => ({ ...prev, [trackKey]: nextFav }));
                 if (onToggleFavorite) onToggleFavorite(activeTrack?.id || activeTrack);
                 showToast(nextFav ? "Saved to Favorites!" : "Removed from Favorites");
               }}
@@ -1956,7 +1972,7 @@ export default function MinimalStudioScene({
                           e.stopPropagation();
                           playClickSound('light');
                           const nextFav = !isCurrentFav;
-                          setOptimisticFavOverride({ trackId: activeTrack?.id, isFav: nextFav });
+                          setLocalLikedMap(prev => ({ ...prev, [trackKey]: nextFav }));
                           if (onToggleFavorite) onToggleFavorite(activeTrack?.id || activeTrack);
                           showToast(nextFav ? "Saved to Favorites!" : "Removed from Favorites");
                         }}
@@ -1965,25 +1981,26 @@ export default function MinimalStudioScene({
                         style={{
                           background: 'transparent',
                           border: 'none',
-                          padding: '2px',
+                          padding: '4px',
                           margin: 0,
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
-                          color: isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.7)',
-                          transition: 'transform 0.15s ease, color 0.2s ease',
+                          color: isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.75)',
                           lineHeight: 1
                         }}
                       >
                         <Heart
-                          size={15}
+                          size={16}
                           fill={isCurrentFav ? '#ef4444' : 'none'}
-                          color={isCurrentFav ? '#ef4444' : 'currentColor'}
-                          strokeWidth={isCurrentFav ? 2 : 1.8}
+                          color={isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.75)'}
+                          strokeWidth={2}
                           style={{
                             fill: isCurrentFav ? '#ef4444' : 'none',
-                            color: isCurrentFav ? '#ef4444' : 'inherit'
+                            color: isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.75)',
+                            stroke: isCurrentFav ? '#ef4444' : 'currentColor',
+                            filter: isCurrentFav ? 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.7))' : 'none'
                           }}
                         />
                       </button>

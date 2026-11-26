@@ -1601,15 +1601,45 @@ export default function App() {
     });
   };
 
-  const handleToggleFavorite = (trackId) => {
-    const rawId = typeof trackId === 'object' && trackId !== null ? (trackId.id || trackId) : trackId;
-    const id = rawId || currentTrack?.id;
-    if (!id) return;
-    const strId = String(id);
+  const handleToggleFavorite = (trackOrId) => {
+    if (!trackOrId) trackOrId = currentTrack;
+    if (!trackOrId) return;
+
+    let targetId = null;
+    let targetTitle = null;
+
+    if (typeof trackOrId === 'object' && trackOrId !== null) {
+      targetId = trackOrId.id;
+      targetTitle = trackOrId.title || trackOrId.name;
+    } else {
+      targetId = String(trackOrId);
+    }
+
+    // Canonical lookup: if targetId is missing or is custom/poster, resolve canonical ID from allTracks by title
+    if (targetTitle && (!targetId || targetId.startsWith('poster-'))) {
+      const matched = allTracks.find(t => (t.title || '').trim().toLowerCase() === targetTitle.trim().toLowerCase());
+      if (matched && matched.id) {
+        targetId = matched.id;
+      }
+    }
+
+    if (!targetId && targetTitle) {
+      targetId = 'track-' + targetTitle.toLowerCase().replace(/\s+/g, '-');
+    }
+
+    if (!targetId) return;
+    const strId = String(targetId);
+
     setFavorites(prev => {
-      const exists = prev.some(item => (typeof item === 'object' && item !== null ? String(item.id) : String(item)) === strId);
+      const exists = prev.some(item => {
+        const favId = typeof item === 'object' && item !== null ? String(item.id) : String(item);
+        return favId.toLowerCase() === strId.toLowerCase();
+      });
       const next = exists 
-        ? prev.filter(item => (typeof item === 'object' && item !== null ? String(item.id) : String(item)) !== strId) 
+        ? prev.filter(item => {
+            const favId = typeof item === 'object' && item !== null ? String(item.id) : String(item);
+            return favId.toLowerCase() !== strId.toLowerCase();
+          }) 
         : [...prev, strId];
       saveUserFavorites(next, user);
       return next;
