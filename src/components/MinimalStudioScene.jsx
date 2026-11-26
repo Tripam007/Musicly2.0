@@ -1547,6 +1547,17 @@ export default function MinimalStudioScene({
             <button 
               className="ref-side-btn"
               onClick={() => {
+                if (onClose) onClose();
+                showToast("Returning to Cozy Bedroom");
+              }}
+              title="Home (Cozy Bedroom Studio)"
+            >
+              <Home size={16} />
+            </button>
+
+            <button 
+              className="ref-side-btn"
+              onClick={() => {
                 if (onToggleFavorite) onToggleFavorite(activeTrack);
                 showToast(isCurrentFav ? "Removed from Favorites" : "Saved to Favorites!");
               }}
@@ -1746,16 +1757,6 @@ export default function MinimalStudioScene({
                 >
                   <span className="ref-badge-arrow">◀◀</span> <span>{prevTrack ? (prevTrack.title.length > 14 ? `${prevTrack.title.substring(0, 13)}…` : prevTrack.title) : 'Back to Home'}</span>
                 </button>
-                {prevTrack && (
-                  <button
-                    className="ref-badge-back-home"
-                    onClick={onClose}
-                    title="Return to Cozy Bedroom Studio"
-                    style={{ padding: '7px 11px' }}
-                  >
-                    <Home size={13} />
-                  </button>
-                )}
               </div>
 
               <div className="ref-badge-center-stats">
