@@ -20513,6 +20513,7 @@ body, html, #root {
 }
 
 .ref-now-playing-heart-btn {
+  position: relative;
   border-radius: 9999px;
   outline: none;
   cursor: pointer;
@@ -20534,20 +20535,18 @@ body, html, #root {
   transform: scale(0.85);
 }
 
+.ref-now-playing-heart-btn.is-fav,
 .ref-now-playing-heart-btn.is-favorited {
   color: #ef4444 !important;
 }
 
+.ref-now-playing-heart-btn.is-fav svg,
 .ref-now-playing-heart-btn.is-favorited svg,
+.ref-now-playing-heart-btn.is-fav svg path,
 .ref-now-playing-heart-btn.is-favorited svg path {
   fill: #ef4444 !important;
   color: #ef4444 !important;
   stroke: #ef4444 !important;
-}
-
-.ref-now-playing-heart-btn:not(.is-favorited) svg,
-.ref-now-playing-heart-btn:not(.is-favorited) svg path {
-  fill: none !important;
 }
 
 .ref-date-num {

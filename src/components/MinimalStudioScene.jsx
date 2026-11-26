@@ -40,7 +40,7 @@ import { STUDIO_THEMES, getSavedStudioTheme, saveStudioTheme, getIsAutoThemeEnab
 import { LANGUAGES, isGhazalLanguage, isCountryLanguage, isRabindraSangeetLanguage, isTrackInLanguages } from '../data/tracks';
 import { extractThemeFromImage, generateThemeFromHex } from '../utils/themeExtractor';
 import { fetchLyrics } from '../utils/lyricsService';
-import { playClickSound } from '../utils/audioSynth';
+import { playClickSound, playPeacefulLikeSound } from '../utils/audioSynth';
 import { 
   getStudioBackgrounds, 
   saveStudioBackgrounds, 
@@ -1412,6 +1412,14 @@ export default function MinimalStudioScene({
 
   // Persistent track-level liked map: survives any async re-renders or prop changes
   const [localLikedMap, setLocalLikedMap] = useState({});
+  const [justLiked, setJustLiked] = useState(false);
+  const likeTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (likeTimeoutRef.current) clearTimeout(likeTimeoutRef.current);
+    };
+  }, []);
 
   const isCurrentFav = useMemo(() => {
     if (trackKey in localLikedMap) {
@@ -1438,6 +1446,27 @@ export default function MinimalStudioScene({
       return false;
     });
   }, [trackKey, localLikedMap, activeTrack, favorites, allTracks]);
+
+  const handleLikeClick = useCallback((e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const willBeFav = !isCurrentFav;
+    setLocalLikedMap(prev => ({ ...prev, [trackKey]: willBeFav }));
+    if (onToggleFavorite) onToggleFavorite(activeTrack?.id || activeTrack);
+
+    if (willBeFav) {
+      try { playPeacefulLikeSound(); } catch (err) {}
+      setJustLiked(true);
+      if (likeTimeoutRef.current) clearTimeout(likeTimeoutRef.current);
+      likeTimeoutRef.current = setTimeout(() => {
+        setJustLiked(false);
+      }, 750);
+      showToast("Saved to Favorites!");
+    } else {
+      try { playClickSound('light'); } catch (err) {}
+      setJustLiked(false);
+      showToast("Removed from Favorites");
+    }
+  }, [isCurrentFav, trackKey, activeTrack, onToggleFavorite, showToast]);
 
   // Dynamic counter computations with real responsiveness
   const favCount = useMemo(() => 9977 + (isCurrentFav ? 1 : 0), [isCurrentFav]);
@@ -1594,12 +1623,7 @@ export default function MinimalStudioScene({
 
             <button 
               className="ref-side-btn"
-              onClick={() => {
-                const nextFav = !isCurrentFav;
-                setLocalLikedMap(prev => ({ ...prev, [trackKey]: nextFav }));
-                if (onToggleFavorite) onToggleFavorite(activeTrack?.id || activeTrack);
-                showToast(nextFav ? "Saved to Favorites!" : "Removed from Favorites");
-              }}
+              onClick={handleLikeClick}
               title={isCurrentFav ? "Remove Favorite" : "Add Favorite"}
             >
               <Star size={16} fill={isCurrentFav ? "#f4a000" : "none"} color={isCurrentFav ? "#f4a000" : "currentColor"} />
@@ -1967,18 +1991,12 @@ export default function MinimalStudioScene({
                       </span>
                       <button
                         type="button"
-                        className={`ref-now-playing-heart-btn ${isCurrentFav ? 'is-favorited' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          playClickSound('light');
-                          const nextFav = !isCurrentFav;
-                          setLocalLikedMap(prev => ({ ...prev, [trackKey]: nextFav }));
-                          if (onToggleFavorite) onToggleFavorite(activeTrack?.id || activeTrack);
-                          showToast(nextFav ? "Saved to Favorites!" : "Removed from Favorites");
-                        }}
+                        className={`favorite-btn ref-now-playing-heart-btn ${isCurrentFav ? 'is-fav is-favorited' : ''} ${justLiked ? 'just-liked' : ''}`}
+                        onClick={handleLikeClick}
                         title={isCurrentFav ? "Unlike (Remove from favorites)" : "Like (Add to favorites)"}
-                        aria-label={isCurrentFav ? "Unlike" : "Like"}
+                        aria-label={isCurrentFav ? "Unlike track" : "Like track"}
                         style={{
+                          position: 'relative',
                           background: 'transparent',
                           border: 'none',
                           padding: '4px',
@@ -1991,8 +2009,18 @@ export default function MinimalStudioScene({
                           lineHeight: 1
                         }}
                       >
+                        {justLiked && (
+                          <span className="minimal-like-aura" aria-hidden="true" style={{ pointerEvents: 'none' }}>
+                            <span className="zen-ripple-ring" style={{ borderColor: 'rgba(239, 68, 68, 0.85)', boxShadow: '0 0 12px rgba(239, 68, 68, 0.6), inset 0 0 6px rgba(239, 68, 68, 0.3)' }} />
+                            <span className="zen-glow-bloom" style={{ background: 'radial-gradient(circle, rgba(239, 68, 68, 0.35) 0%, transparent 70%)' }} />
+                            <span className="zen-sparkle s-1" style={{ background: '#ef4444' }} />
+                            <span className="zen-sparkle s-2" style={{ background: '#f87171' }} />
+                            <span className="zen-sparkle s-3" style={{ background: '#ef4444' }} />
+                          </span>
+                        )}
                         <Heart
                           size={16}
+                          className={`heart-icon ${justLiked ? 'heart-zen-pulse' : ''}`}
                           fill={isCurrentFav ? '#ef4444' : 'none'}
                           color={isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.75)'}
                           strokeWidth={2}
@@ -2000,7 +2028,7 @@ export default function MinimalStudioScene({
                             fill: isCurrentFav ? '#ef4444' : 'none',
                             color: isCurrentFav ? '#ef4444' : 'rgba(255, 255, 255, 0.75)',
                             stroke: isCurrentFav ? '#ef4444' : 'currentColor',
-                            filter: isCurrentFav ? 'drop-shadow(0 0 6px rgba(239, 68, 68, 0.7))' : 'none'
+                            filter: isCurrentFav ? 'drop-shadow(0 0 8px rgba(239, 68, 68, 0.75))' : 'none'
                           }}
                         />
                       </button>

@@ -1616,8 +1616,8 @@ export default function App() {
     }
 
     // Canonical lookup: if targetId is missing or is custom/poster, resolve canonical ID from allTracks by title
-    if (targetTitle && (!targetId || targetId.startsWith('poster-'))) {
-      const matched = allTracks.find(t => (t.title || '').trim().toLowerCase() === targetTitle.trim().toLowerCase());
+    if (targetTitle && (!targetId || (typeof targetId === 'string' && targetId.startsWith('poster-')))) {
+      const matched = (allTracks || []).find(t => (t.title || '').trim().toLowerCase() === targetTitle.trim().toLowerCase());
       if (matched && matched.id) {
         targetId = matched.id;
       }
@@ -1631,16 +1631,17 @@ export default function App() {
     const strId = String(targetId);
 
     setFavorites(prev => {
-      const exists = prev.some(item => {
+      const safePrev = Array.isArray(prev) ? prev : [];
+      const exists = safePrev.some(item => {
         const favId = typeof item === 'object' && item !== null ? String(item.id) : String(item);
         return favId.toLowerCase() === strId.toLowerCase();
       });
       const next = exists 
-        ? prev.filter(item => {
+        ? safePrev.filter(item => {
             const favId = typeof item === 'object' && item !== null ? String(item.id) : String(item);
             return favId.toLowerCase() !== strId.toLowerCase();
           }) 
-        : [...prev, strId];
+        : [...safePrev, strId];
       saveUserFavorites(next, user);
       return next;
     });
