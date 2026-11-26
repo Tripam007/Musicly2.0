@@ -79,6 +79,7 @@ export function useHeadphoneControls({
     };
 
     const handlePause = () => {
+      audioEngine.pause();
       const h = handlersRef.current;
       h.onTogglePlay?.(false);
       h.onFeedback?.({
@@ -299,18 +300,30 @@ export function useHeadphoneControls({
       // Handle Headphone Media Keys (Play/Pause, Next, Prev, Stop)
       if (key === 'MediaPlayPause') {
         e.preventDefault();
-        const nextState = !h.isPlaying;
-        h.onTogglePlay?.(nextState);
-        h.onFeedback?.({
-          type: nextState ? 'PLAY' : 'PAUSE',
-          label: nextState ? 'PLAYING' : 'PAUSED',
-          sublabel: 'Headphone Remote'
-        });
+        e.stopImmediatePropagation();
+        const curIsPlaying = audioEngine.isPlaying || h.isPlaying;
+        if (curIsPlaying) {
+          audioEngine.pause();
+          h.onTogglePlay?.(false);
+          h.onFeedback?.({
+            type: 'PAUSE',
+            label: 'PAUSED',
+            sublabel: 'Headphone Remote'
+          });
+        } else {
+          h.onTogglePlay?.(true);
+          h.onFeedback?.({
+            type: 'PLAY',
+            label: 'PLAYING',
+            sublabel: 'Headphone Remote'
+          });
+        }
         return;
       }
 
       if (key === 'MediaTrackNext') {
         e.preventDefault();
+        e.stopImmediatePropagation();
         h.onNextTrack?.();
         h.onFeedback?.({
           type: 'NEXT',
@@ -322,6 +335,7 @@ export function useHeadphoneControls({
 
       if (key === 'MediaTrackPrevious') {
         e.preventDefault();
+        e.stopImmediatePropagation();
         h.onPrevTrack?.();
         h.onFeedback?.({
           type: 'PREV',
@@ -333,14 +347,15 @@ export function useHeadphoneControls({
 
       if (key === 'MediaStop') {
         e.preventDefault();
-        if (h.isPlaying) {
-          h.onTogglePlay?.(false);
-          h.onFeedback?.({
-            type: 'PAUSE',
-            label: 'STOPPED',
-            sublabel: 'Headphone Remote'
-          });
-        }
+        e.stopImmediatePropagation();
+        audioEngine.pause();
+        h.onTogglePlay?.(false);
+        h.onFeedback?.({
+          type: 'PAUSE',
+          label: 'STOPPED',
+          sublabel: 'Headphone Remote'
+        });
+        return;
       }
     };
 
@@ -363,10 +378,13 @@ export function useHeadphoneControls({
 
         const outputDevices = devices.filter(d => d.kind === 'audiooutput');
         const currentIds = new Set(outputDevices.map(d => d.deviceId));
+        const prevIds = knownDeviceIdsRef.current;
 
-        // Find headphone/headset devices
+        // Detect if headphone is matched by label or if output device was removed/added
         const headphone = outputDevices.find(d => HEADPHONE_DEVICE_REGEX.test(d.label));
         const hasHeadphones = Boolean(headphone);
+        const wasDeviceRemoved = prevIds.size > 0 && Array.from(prevIds).some(id => id !== 'default' && !currentIds.has(id));
+        const wasDeviceAdded = prevIds.size > 0 && Array.from(currentIds).some(id => id !== 'default' && !prevIds.has(id));
 
         // First initial pass: register devices without triggering disconnection toast
         if (!initialDetectionDoneRef.current) {
@@ -381,14 +399,30 @@ export function useHeadphoneControls({
           return;
         }
 
-        // Subsequent changes: detect connection or disconnection
         const wasConnected = isHeadphonesConnectedRef.current;
 
-        if (!wasConnected && hasHeadphones) {
+        if (wasDeviceRemoved || (wasConnected && !hasHeadphones)) {
+          // Headphones or audio output disconnected!
+          isHeadphonesConnectedRef.current = false;
+          const h = handlersRef.current;
+          console.log('[Musicly HeadphoneControls] Headphone/audio device disconnected');
+
+          // Becoming Noisy Protection: auto-pause at current time if playing
+          const isCurrentlyPlaying = audioEngine.isPlaying || h.isPlaying;
+          if (isCurrentlyPlaying) {
+            audioEngine.pause();
+            h.onTogglePlay?.(false);
+            h.onFeedback?.({
+              type: 'HEADPHONES_DISCONNECTED',
+              label: 'HEADPHONES UNPLUGGED',
+              sublabel: 'Playback paused at current time'
+            });
+          }
+        } else if (hasHeadphones || wasDeviceAdded) {
           // Headphones newly connected!
           isHeadphonesConnectedRef.current = true;
           const h = handlersRef.current;
-          console.log('[Musicly HeadphoneControls] Headphones connected:', headphone?.label);
+          console.log('[Musicly HeadphoneControls] Headphone/audio device connected:', headphone?.label);
 
           if (headphone?.deviceId) {
             audioEngine.setAudioOutputSink?.(headphone.deviceId);
@@ -399,27 +433,6 @@ export function useHeadphoneControls({
             label: 'HEADPHONES CONNECTED',
             sublabel: headphone?.label || 'Remote controls ready'
           });
-        } else if (wasConnected && !hasHeadphones) {
-          // Headphones disconnected!
-          isHeadphonesConnectedRef.current = false;
-          const h = handlersRef.current;
-          console.log('[Musicly HeadphoneControls] Headphones disconnected');
-
-          // Becoming Noisy Protection: auto-pause at current time if playing
-          if (h.isPlaying) {
-            h.onTogglePlay?.(false);
-            h.onFeedback?.({
-              type: 'HEADPHONES_DISCONNECTED',
-              label: 'HEADPHONES UNPLUGGED',
-              sublabel: 'Playback paused at current time'
-            });
-          } else {
-            h.onFeedback?.({
-              type: 'HEADPHONES_DISCONNECTED',
-              label: 'HEADPHONES UNPLUGGED',
-              sublabel: 'Audio device changed'
-            });
-          }
         }
 
         knownDeviceIdsRef.current = currentIds;

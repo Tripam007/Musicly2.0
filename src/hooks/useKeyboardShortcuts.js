@@ -176,53 +176,6 @@ export function useKeyboardShortcuts({
         return;
       }
 
-      // 5b. HARDWARE MEDIA KEYS & HEADPHONE REMOTE BUTTONS
-      if (e.key === 'MediaPlayPause') {
-        e.preventDefault();
-        triggerHapticFeedback();
-        s.onTogglePlay?.();
-        return;
-      }
-      if (e.key === 'MediaTrackNext') {
-        e.preventDefault();
-        triggerHapticFeedback();
-        s.onNextTrack?.();
-        return;
-      }
-      if (e.key === 'MediaTrackPrevious') {
-        e.preventDefault();
-        triggerHapticFeedback();
-        s.onPrevTrack?.();
-        return;
-      }
-      if (e.key === 'MediaStop') {
-        e.preventDefault();
-        triggerHapticFeedback();
-        if (s.isPlaying) s.onTogglePlay?.();
-        return;
-      }
-      if (e.key === 'AudioVolumeUp' || e.key === 'VolumeUp') {
-        e.preventDefault();
-        triggerHapticFeedback('soft');
-        const currentVol = typeof s.volume === 'number' ? s.volume : 0.8;
-        const nextVol = Math.min(1.0, Math.round((currentVol + 0.05) * 100) / 100);
-        s.onVolumeChange?.(nextVol);
-        return;
-      }
-      if (e.key === 'AudioVolumeDown' || e.key === 'VolumeDown') {
-        e.preventDefault();
-        triggerHapticFeedback('soft');
-        const currentVol = typeof s.volume === 'number' ? s.volume : 0.8;
-        const nextVol = Math.max(0.0, Math.round((currentVol - 0.05) * 100) / 100);
-        s.onVolumeChange?.(nextVol);
-        return;
-      }
-      if (e.key === 'AudioVolumeMute' || e.key === 'VolumeMute') {
-        e.preventDefault();
-        handleToggleMute();
-        return;
-      }
-
       // 6. PLAY / PAUSE (Space)
       if (e.key === ' ' || e.code === 'Space') {
         e.preventDefault();

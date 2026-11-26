@@ -65,15 +65,10 @@ class AudioEngine {
 
     this.audio.addEventListener('pause', () => {
       this.logDiag('PAUSE');
+      if (this.stallTimeout) clearTimeout(this.stallTimeout);
       if (this.playbackMode === 'native' && !this.isSeeking) {
-        // If user did not manually pause, auto-recover rather than terminating playback state
-        if (this.isPlaying) {
-          console.log('[Musicly AudioEngine] Background native pause detected while playing -> recovering');
-          this.handleNativeBufferStall();
-        } else {
-          this.isPlaying = false;
-          this.notifyState();
-        }
+        this.isPlaying = false;
+        this.notifyState();
       }
     });
 
@@ -182,11 +177,7 @@ class AudioEngine {
             this.isPlaying = true;
             this.notifyState();
           } else if (window.YT && state === window.YT.PlayerState.PAUSED) {
-            // If user did not manually pause, auto-resume background throttle immediately
-            if (this.isPlaying) {
-              console.log('[Musicly AudioEngine] Background YouTube pause detected while playing -> auto-resuming');
-              ytEngine.resume();
-            } else {
+            if (!this.isSeeking) {
               this.isPlaying = false;
               this.notifyState();
             }
@@ -448,6 +439,7 @@ class AudioEngine {
 
   // Pause playback
   pause() {
+    if (this.stallTimeout) clearTimeout(this.stallTimeout);
     this.isPlaying = false;
     this.notifyState();
 
