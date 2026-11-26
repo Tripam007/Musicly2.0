@@ -52,6 +52,28 @@ export const KNOWN_ORIGINAL_SONGS = [
     genre: 'Retro, Lo-Fi'
   },
   {
+    id: 'radiohead-creep',
+    matcher: (t) => {
+      if (!t) return false;
+      const lowerTitle = (t.title || '').toLowerCase();
+      const lowerArtist = (t.artist || '').toLowerCase();
+      const lowerUrl = (t.audioUrl || '').toLowerCase();
+      const yId = (t.youtubeId || '').toLowerCase();
+      return (lowerTitle.includes('creep') && (lowerArtist.includes('radiohead') || !lowerArtist)) ||
+             yId === 'xfkzrnyygfk' ||
+             lowerUrl.includes('xfkzrnyygfk') ||
+             t.id === 'radiohead-creep';
+    },
+    title: 'Creep',
+    artist: 'Radiohead',
+    audioUrl: '/assets/audio/creep.m4a',
+    cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/4a/c0/8d/4ac08d27-6f89-8d19-bb17-bdf242cf1a63/634904078121.png/600x600bb.jpg',
+    duration: 238,
+    language: 'English',
+    genres: ['Retro', 'Indie'],
+    genre: 'Retro, Indie'
+  },
+  {
     id: 'iris-goo-goo-dolls',
     matcher: (t) => {
       if (!t) return false;

@@ -920,10 +920,10 @@ export const TRACKS = [
     language: 'English',
     duration: 238,
     cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music125/v4/4a/c0/8d/4ac08d27-6f89-8d19-bb17-bdf242cf1a63/634904078121.png/600x600bb.jpg',
-    audioUrl: 'https://www.youtube.com/watch?v=XFkzRNyygfk',
+    audioUrl: '/assets/audio/creep.m4a',
     youtubeId: 'XFkzRNyygfk',
-    isYouTube: true,
-    isOriginalAudio: false
+    isYouTube: false,
+    isOriginalAudio: true
   },
   {
     id: 'oasis-live-forever',

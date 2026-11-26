@@ -544,19 +544,48 @@ class AudioEngine {
       if (res.ok) {
         const data = await res.json();
         const candidates = data?.results || [];
-        // Find an alternate playable candidate with a different videoId
+        // Find an authentic alternate playable candidate with strict artist and duration validation
+        const origDuration = track.duration || 0;
+        const artistLower = cleanArtist.toLowerCase();
+
         for (const candidate of candidates.slice(0, 10)) {
-          if (candidate.youtubeId && candidate.youtubeId !== failedYtId) {
-            console.log(`[Musicly AudioEngine] Auto-recovery: switching to alternate working stream "${candidate.title}" (${candidate.youtubeId})`);
-            track.youtubeId = candidate.youtubeId;
-            track.audioUrl = `https://www.youtube.com/watch?v=${candidate.youtubeId}`;
-            track.isYouTube = true;
-            this.playbackMode = 'youtube';
-            this.isPlaying = true;
-            this.notifyState();
-            await ytEngine.playVideo(candidate.youtubeId, startTime || 0, this.volume);
-            return true;
+          if (!candidate.youtubeId || candidate.youtubeId === failedYtId) continue;
+
+          const candTitleLower = (candidate.title || '').toLowerCase();
+          const candArtistLower = (candidate.artist || '').toLowerCase();
+          const candDur = candidate.duration || 0;
+
+          // Guard 1: Reject videos that differ excessively in duration (e.g. 7-minute live jams vs 3-minute studio tracks)
+          if (origDuration > 0 && candDur > 0) {
+            const diff = Math.abs(candDur - origDuration);
+            if (diff > 75 || candDur > origDuration * 1.5) {
+              continue;
+            }
           }
+
+          // Guard 2: Reject lessons, tutorials, and third-party covers
+          if (/\b(cover|tutorial|lesson|guitar lesson|chords|reaction|parody|mashup)\b/i.test(candTitleLower) &&
+              !/\b(cover|tutorial|lesson)\b/i.test(cleanTitle)) {
+            continue;
+          }
+
+          // Guard 3: If original artist is specified, ensure candidate matches the artist
+          if (artistLower && artistLower.length > 2) {
+            const matchesArtist = candTitleLower.includes(artistLower) || candArtistLower.includes(artistLower);
+            if (!matchesArtist && !candArtistLower.includes('topic')) {
+              continue;
+            }
+          }
+
+          console.log(`[Musicly AudioEngine] Auto-recovery: switching to verified authentic stream "${candidate.title}" (${candidate.youtubeId})`);
+          track.youtubeId = candidate.youtubeId;
+          track.audioUrl = `https://www.youtube.com/watch?v=${candidate.youtubeId}`;
+          track.isYouTube = true;
+          this.playbackMode = 'youtube';
+          this.isPlaying = true;
+          this.notifyState();
+          await ytEngine.playVideo(candidate.youtubeId, startTime || 0, this.volume);
+          return true;
         }
       }
     } catch (e) {
