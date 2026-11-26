@@ -20371,62 +20371,64 @@ body, html, #root {
   color: var(--ref-s0, #1a1b22);
 }
 
-/* Outlined Yellow Badges */
-.ref-bubble-pills {
+/* Normal typography for Artist display (no badge pill boxes) */
+.ref-bubble-pills,
+.ref-bubble-artist {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
   align-items: flex-start;
+  margin-top: 2px;
 }
 
-.ref-pill-label {
+.ref-pill-label,
+.ref-artist-header {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.64rem;
-  font-weight: 600;
-  padding: 3px 14px;
-  background: #252631;
-  border-radius: 999px;
-  color: #ffffff;
-  display: inline-block;
-  border: 1.5px solid #f4a000;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #a4a5b2;
   letter-spacing: 0.01em;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  text-transform: capitalize;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
 }
 
-.ref-pill-clickable {
-  background: none;
-  border: none;
-  padding: 0;
+.ref-pill-clickable,
+.ref-artist-val-btn {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
   cursor: pointer;
   display: inline-block;
   text-align: left;
 }
 
-.ref-pill-clickable:hover .ref-pill-value {
-  border-color: #fbbf24;
-  transform: scale(1.02);
-}
-
-.ref-pill-clickable:active .ref-pill-value {
-  transform: scale(0.98);
-}
-
-.ref-pill-value {
+.ref-pill-value,
+.ref-artist-name {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
-  font-size: 0.68rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #ffffff;
-  padding: 3px 16px;
-  background: #252631;
-  border-radius: 999px;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   display: inline-block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 215px;
-  border: 1.5px solid #f4a000;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-  transition: all 0.18s ease;
+  max-width: 175px;
+  transition: color 0.18s ease;
+}
+
+.ref-pill-clickable:hover .ref-pill-value,
+.ref-artist-val-btn:hover .ref-artist-name {
+  color: #f4a000;
+  transform: none;
 }
 
 /* Interactive Floating Toast */

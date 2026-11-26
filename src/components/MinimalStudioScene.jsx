@@ -1915,20 +1915,17 @@ export default function MinimalStudioScene({
                     <span className="ref-info-letter" style={{ color: 'var(--ref-s0)' }}>i</span>
                   </button>
 
-                  <div className="ref-bubble-pills">
-                    <div className="ref-pill-row-top">
-                      <span className="ref-pill-label">Artist</span>
-                    </div>
+                  <div className="ref-bubble-artist">
+                    <span className="ref-artist-header">Artist</span>
                     <button 
-                      className="ref-pill-row-bottom ref-pill-clickable"
-                      style={{ borderColor: 'var(--ref-s4)' }}
+                      className="ref-artist-val-btn"
                       onClick={() => {
                         navigator.clipboard?.writeText(activeTrack?.artist || "Musicly Artist");
                         showToast(`Copied: ${activeTrack?.artist || "Musicly Artist"}`);
                       }}
                       title="Click to copy artist name"
                     >
-                      <span className="ref-pill-value" style={{ borderColor: 'var(--ref-s4)' }}>
+                      <span className="ref-artist-name">
                         {activeTrack?.artist || 'Musicly Artist'}
                       </span>
                     </button>
