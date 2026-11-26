@@ -20515,6 +20515,14 @@ body, html, #root {
 .ref-now-playing-heart-btn {
   border-radius: 9999px;
   outline: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ref-now-playing-heart-btn svg {
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), fill 0.2s ease, color 0.2s ease;
 }
 
 .ref-now-playing-heart-btn:hover {
@@ -20523,7 +20531,16 @@ body, html, #root {
 }
 
 .ref-now-playing-heart-btn:active {
-  transform: scale(0.9);
+  transform: scale(0.88);
+}
+
+.ref-now-playing-heart-btn.is-favorited {
+  color: #ef4444 !important;
+}
+
+.ref-now-playing-heart-btn.is-favorited svg {
+  fill: #ef4444 !important;
+  color: #ef4444 !important;
 }
 
 .ref-date-num {

@@ -1405,9 +1405,23 @@ export default function MinimalStudioScene({
 
   const currentGenreObj = availableStudioGenres[currentGenreIndex] || availableStudioGenres[0];
 
+  const [optimisticFavOverride, setOptimisticFavOverride] = useState(null);
+
+  useEffect(() => {
+    setOptimisticFavOverride(null);
+  }, [activeTrack?.id]);
+
   const isCurrentFav = useMemo(() => {
-    return favorites.some(f => f.id === activeTrack.id);
-  }, [favorites, activeTrack]);
+    if (optimisticFavOverride !== null && optimisticFavOverride.trackId === activeTrack?.id) {
+      return optimisticFavOverride.isFav;
+    }
+    if (!activeTrack?.id || !favorites) return false;
+    const targetId = String(activeTrack.id);
+    return favorites.some(f => {
+      const favId = typeof f === 'object' && f !== null ? String(f.id) : String(f);
+      return favId === targetId;
+    });
+  }, [favorites, activeTrack, optimisticFavOverride]);
 
   // Dynamic counter computations with real responsiveness
   const favCount = useMemo(() => 9977 + (isCurrentFav ? 1 : 0), [isCurrentFav]);
@@ -1565,8 +1579,10 @@ export default function MinimalStudioScene({
             <button 
               className="ref-side-btn"
               onClick={() => {
-                if (onToggleFavorite) onToggleFavorite(activeTrack);
-                showToast(isCurrentFav ? "Removed from Favorites" : "Saved to Favorites!");
+                const nextFav = !isCurrentFav;
+                setOptimisticFavOverride({ trackId: activeTrack?.id, isFav: nextFav });
+                if (onToggleFavorite) onToggleFavorite(activeTrack?.id || activeTrack);
+                showToast(nextFav ? "Saved to Favorites!" : "Removed from Favorites");
               }}
               title={isCurrentFav ? "Remove Favorite" : "Add Favorite"}
             >
@@ -1935,12 +1951,14 @@ export default function MinimalStudioScene({
                       </span>
                       <button
                         type="button"
-                        className="ref-now-playing-heart-btn"
+                        className={`ref-now-playing-heart-btn ${isCurrentFav ? 'is-favorited' : ''}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           playClickSound('light');
-                          if (onToggleFavorite) onToggleFavorite(activeTrack);
-                          showToast(isCurrentFav ? "Removed from Favorites" : "Saved to Favorites!");
+                          const nextFav = !isCurrentFav;
+                          setOptimisticFavOverride({ trackId: activeTrack?.id, isFav: nextFav });
+                          if (onToggleFavorite) onToggleFavorite(activeTrack?.id || activeTrack);
+                          showToast(nextFav ? "Saved to Favorites!" : "Removed from Favorites");
                         }}
                         title={isCurrentFav ? "Unlike (Remove from favorites)" : "Like (Add to favorites)"}
                         aria-label={isCurrentFav ? "Unlike" : "Like"}
@@ -1963,6 +1981,10 @@ export default function MinimalStudioScene({
                           fill={isCurrentFav ? '#ef4444' : 'none'}
                           color={isCurrentFav ? '#ef4444' : 'currentColor'}
                           strokeWidth={isCurrentFav ? 2 : 1.8}
+                          style={{
+                            fill: isCurrentFav ? '#ef4444' : 'none',
+                            color: isCurrentFav ? '#ef4444' : 'inherit'
+                          }}
                         />
                       </button>
                     </div>

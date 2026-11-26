@@ -1602,10 +1602,15 @@ export default function App() {
   };
 
   const handleToggleFavorite = (trackId) => {
-    const id = trackId || currentTrack?.id;
+    const rawId = typeof trackId === 'object' && trackId !== null ? (trackId.id || trackId) : trackId;
+    const id = rawId || currentTrack?.id;
     if (!id) return;
+    const strId = String(id);
     setFavorites(prev => {
-      const next = prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id];
+      const exists = prev.some(item => (typeof item === 'object' && item !== null ? String(item.id) : String(item)) === strId);
+      const next = exists 
+        ? prev.filter(item => (typeof item === 'object' && item !== null ? String(item.id) : String(item)) !== strId) 
+        : [...prev, strId];
       saveUserFavorites(next, user);
       return next;
     });
