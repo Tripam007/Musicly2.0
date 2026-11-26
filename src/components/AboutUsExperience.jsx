@@ -17,8 +17,6 @@ import {
 } from 'lucide-react';
 import { TRACKS } from '../data/tracks';
 import { playCatSound } from '../utils/audioSynth';
-import TheMusiclyStory from './TheMusiclyStory';
-import AboutCreationView from './AboutCreationView';
 import '../styles/aboutUs.css';
 
 // SVG Icons for Social Links
@@ -200,23 +198,6 @@ export default function AboutUsExperience({
   // Current visible chapter (1 through 5)
   const [activeChapter, setActiveChapter] = useState(1);
   const [scrollPercent, setScrollPercent] = useState(0);
-
-  // Single-Click View Switcher: 'pirate' (Pirate Ship Moving Experience) vs 'classic' (Classic About)
-  const [aboutViewMode, setAboutViewMode] = useState(() => {
-    try {
-      return sessionStorage.getItem('musicly_about_view_mode') || 'pirate';
-    } catch {
-      return 'pirate';
-    }
-  });
-
-  const handleToggleView = (mode) => {
-    const newMode = mode || (aboutViewMode === 'pirate' ? 'classic' : 'pirate');
-    setAboutViewMode(newMode);
-    try {
-      sessionStorage.setItem('musicly_about_view_mode', newMode);
-    } catch {}
-  };
 
   // Dynamic Vinyl Track Rotation over time (different songs at different times)
   const vinylSongCatalog = useMemo(() => {
@@ -824,19 +805,6 @@ export default function AboutUsExperience({
   // Currently playing or fallback iconic song info
   const displayTrack = currentTrack || FLOATING_TRACK_FRAGMENTS[0];
 
-  // If in 'pirate' (or 'story') view mode, render the 3D Pirate Ship moving experience
-  if (aboutViewMode === 'pirate' || aboutViewMode === 'story') {
-    return (
-      <AboutCreationView
-        onBack={onBack}
-        onSwitchView={() => handleToggleView('classic')}
-        currentTrack={currentTrack}
-        isPlaying={isPlaying}
-        onTogglePlay={onTogglePlay}
-      />
-    );
-  }
-
   return (
     <div 
       className="about-us-experience" 
@@ -888,6 +856,16 @@ export default function AboutUsExperience({
         {/* ================= FIXED HUD (Clean Minimal Header) ================= */}
         <header className="about-hud" aria-label="About Us Header">
           <div className="about-hud-brand">
+            <button 
+              type="button" 
+              className="about-hud-back-btn" 
+              onClick={handleExitToHome}
+              title="Back to Musicly"
+              aria-label="Back to Musicly"
+            >
+              <ArrowLeft size={15} />
+              <span>Back to Musicly</span>
+            </button>
             <h1 className="about-hud-title">ABOUT US</h1>
           </div>
         </header>
