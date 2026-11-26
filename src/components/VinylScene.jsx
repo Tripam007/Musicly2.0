@@ -998,7 +998,7 @@ export default function VinylScene({
     }, 2800);
   }, []);
 
-  // Smooth auto-scroll following the active synced line INSIDE the Modern Clay LCD lyrics container
+  // Smooth auto-scroll following the active synced line INSIDE the Modern Clay LCD lyrics container (vertical center)
   useEffect(() => {
     if (!isLyricsViewOpen || activeLineIndex === -1 || isUserScrollingRef.current) return;
     const activeEl = activeLineRef.current;
@@ -1006,16 +1006,19 @@ export default function VinylScene({
     if (activeEl && container) {
       const containerRect = container.getBoundingClientRect();
       const activeRect = activeEl.getBoundingClientRect();
-      const relativeTop = activeRect.top - containerRect.top + container.scrollTop;
-      const targetScroll = relativeTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
-      container.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth'
-      });
+      const activeCenter = activeRect.top + (activeRect.height / 2);
+      const containerCenter = containerRect.top + (containerRect.height / 2);
+      const delta = activeCenter - containerCenter;
+      if (Math.abs(delta) > 1) {
+        container.scrollTo({
+          top: Math.max(0, container.scrollTop + delta),
+          behavior: 'smooth'
+        });
+      }
     }
   }, [activeLineIndex, isLyricsViewOpen]);
 
-  // Smooth auto-scroll following the active synced line INSIDE the Minimalist Lyrics container
+  // Smooth auto-scroll following the active synced line INSIDE the Minimalist Lyrics container (vertical center)
   useEffect(() => {
     if (!isMinimalLyricsOpen || activeLineIndex === -1 || isUserScrollingRef.current) return;
     const activeEl = minimalActiveLineRef.current;
@@ -1023,12 +1026,15 @@ export default function VinylScene({
     if (activeEl && container) {
       const containerRect = container.getBoundingClientRect();
       const activeRect = activeEl.getBoundingClientRect();
-      const relativeTop = activeRect.top - containerRect.top + container.scrollTop;
-      const targetScroll = relativeTop - (container.clientHeight / 2) + (activeEl.clientHeight / 2);
-      container.scrollTo({
-        top: Math.max(0, targetScroll),
-        behavior: 'smooth'
-      });
+      const activeCenter = activeRect.top + (activeRect.height / 2);
+      const containerCenter = containerRect.top + (containerRect.height / 2);
+      const delta = activeCenter - containerCenter;
+      if (Math.abs(delta) > 1) {
+        container.scrollTo({
+          top: Math.max(0, container.scrollTop + delta),
+          behavior: 'smooth'
+        });
+      }
     }
   }, [activeLineIndex, isMinimalLyricsOpen]);
 

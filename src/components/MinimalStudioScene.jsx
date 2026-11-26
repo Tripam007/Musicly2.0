@@ -1158,7 +1158,7 @@ export default function MinimalStudioScene({
     return 0;
   }, [lyricsData, livePlayTime, currentTime, duration, activeTrack?.duration]);
 
-  // Dedicated internal scroll function for lyrics: ONLY scrolls lyricsContainerRef, NEVER scrolls ancestor frames or window!
+  // Dedicated internal scroll function for lyrics: ALWAYS centers the active line vertically in the middle
   const scrollToActiveLyricLine = useCallback((behavior = 'smooth') => {
     const container = lyricsContainerRef.current;
     const activeEl = activeLineRef.current;
@@ -1168,12 +1168,18 @@ export default function MinimalStudioScene({
     const containerRect = container.getBoundingClientRect();
     const activeRect = activeEl.getBoundingClientRect();
     const currentScrollTop = container.scrollTop;
-    const targetScrollTop = currentScrollTop + (activeRect.top - containerRect.top) - (container.clientHeight / 2) + (activeRect.height / 2);
 
-    container.scrollTo({
-      top: Math.max(0, targetScrollTop),
-      behavior
-    });
+    // Calculate vertical center alignment
+    const activeCenter = activeRect.top + (activeRect.height / 2);
+    const containerCenter = containerRect.top + (containerRect.height / 2);
+    const delta = activeCenter - containerCenter;
+
+    if (Math.abs(delta) > 1) {
+      container.scrollTo({
+        top: Math.max(0, currentScrollTop + delta),
+        behavior
+      });
+    }
 
     // Zero out any unintentional scroll displacement on ancestors
     const photoFrame = container.closest('.ref-main-photo-frame');
@@ -1203,13 +1209,19 @@ export default function MinimalStudioScene({
     }
   }, [activeLineIndex, isLyricsOpen, scrollToActiveLyricLine]);
 
-  // When lyrics are opened, automatically scroll to the currently active lyric line
+  // When lyrics are opened, automatically scroll to the currently active lyric line centered in the middle
   useEffect(() => {
     if (isLyricsOpen) {
-      const timer = setTimeout(() => {
+      const timer1 = setTimeout(() => {
         scrollToActiveLyricLine('auto');
-      }, 60);
-      return () => clearTimeout(timer);
+      }, 50);
+      const timer2 = setTimeout(() => {
+        scrollToActiveLyricLine('smooth');
+      }, 250);
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
     }
   }, [isLyricsOpen, scrollToActiveLyricLine]);
 

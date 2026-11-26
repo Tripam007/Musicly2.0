@@ -20214,10 +20214,26 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   scroll-behavior: smooth;
-  padding: 12px 14px 14px 14px;
+  padding: 0 10px;
   box-sizing: border-box;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 86%, transparent 100%);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.3) 14%,
+    black 35%,
+    black 65%,
+    rgba(0, 0, 0, 0.3) 86%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(0, 0, 0, 0.3) 14%,
+    black 35%,
+    black 65%,
+    rgba(0, 0, 0, 0.3) 86%,
+    transparent 100%
+  );
   border-top-right-radius: 40px;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
@@ -20226,8 +20242,13 @@ body, html, #root {
 .ref-island-lyrics-stream {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 26px 4px 38px 4px;
+  gap: 8px;
+  padding-top: 62px;
+  padding-bottom: 65px;
+  padding-left: 4px;
+  padding-right: 4px;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .ref-island-lyric-line {
@@ -20236,12 +20257,14 @@ body, html, #root {
   font-size: 0.82rem;
   line-height: 1.45;
   color: rgba(255, 255, 255, 0.40);
-  padding: 6px 10px;
-  border-radius: 8px;
+  padding: 7px 12px;
+  border-radius: 10px;
   cursor: pointer;
-  border-left: 3px solid transparent;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  border-left: 3.5px solid transparent;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
+  text-align: left;
 }
 
 .ref-island-lyric-line:hover {
@@ -20250,24 +20273,26 @@ body, html, #root {
 }
 
 .ref-island-lyric-line.is-passed {
-  color: rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.24);
+  transform: scale(0.98);
+  transform-origin: center center;
 }
 
-/* Crystal-clear vivid active line highlight without circle dot */
+/* Crystal-clear vivid active line highlight centered in the box */
 .ref-island-lyric-line.is-active {
-  font-size: 0.90rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.14);
-  border-left: 3.5px solid var(--ref-accent, #f4a000) !important;
-  padding-left: 12px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.45) !important;
+  border-left: 3.5px solid #ffffff !important;
   box-shadow: 
-    0 4px 14px rgba(0, 0, 0, 0.45), 
-    inset 0 1px 1px rgba(255, 255, 255, 0.22),
-    0 0 14px var(--ref-accent-glow, rgba(244, 160, 0, 0.3));
-  text-shadow: 0 0 10px var(--ref-accent-glow, rgba(244, 160, 0, 0.6));
-  transform: translateX(2px) scale(1.02);
-  transform-origin: left center;
+    0 4px 18px rgba(0, 0, 0, 0.45), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.3),
+    0 0 16px rgba(255, 255, 255, 0.25);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+  transform: scale(1.02);
+  transform-origin: center center;
 }
 
 .ref-island-lyrics-empty {
