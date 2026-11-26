@@ -139,13 +139,18 @@ export default function VinylScene({
 
   // Active languages resolution (supporting global props or local fallback)
   const activeLanguages = useMemo(() => {
+    let raw = [];
     if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
-      return selectedLanguages;
+      raw = selectedLanguages;
+    } else if (selectedLanguage && selectedLanguage !== 'All') {
+      raw = [selectedLanguage];
+    } else {
+      raw = localLanguages;
     }
-    if (selectedLanguage && selectedLanguage !== 'All') {
-      return [selectedLanguage];
+    if (raw.length >= 3 || (raw.includes('English') && raw.includes('Hindi') && raw.includes('Bengali'))) {
+      return [];
     }
-    return localLanguages;
+    return raw;
   }, [selectedLanguages, selectedLanguage, localLanguages]);
 
   // Strict language filtering helper

@@ -222,9 +222,17 @@ export const isTrackInLanguages = (trackLang, selectedLangs) => {
 
   if (lowerSelected.length === 0 || lowerSelected.includes('all')) return true;
 
+  // If all 3 regional languages (English, Hindi, Bengali) are selected, or >= 3 languages are active,
+  // treat as full canonical catalog (all 129 songs including universal 'Other' classics)
+  const primaryLangs = ['english', 'hindi', 'bengali'];
+  const hasAllPrimary = primaryLangs.every(pl => lowerSelected.includes(pl));
+  if (hasAllPrimary || lowerSelected.length >= 3) {
+    return true;
+  }
+
   return lowerSelected.some(sel => {
     if (sel === 'other') {
-      return tLang === 'other' || !['english', 'hindi', 'bengali'].includes(tLang);
+      return tLang === 'other' || !primaryLangs.includes(tLang);
     }
     return sel === tLang;
   });

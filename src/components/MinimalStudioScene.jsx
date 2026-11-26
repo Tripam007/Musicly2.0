@@ -1002,13 +1002,16 @@ export default function MinimalStudioScene({
 
   // Active languages array: supports multi-selection, single-selection, or empty (all)
   const activeLangs = useMemo(() => {
+    let raw = [];
     if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
-      return selectedLanguages.filter(l => l && l !== 'Hinglish');
+      raw = selectedLanguages.filter(l => l && l !== 'Hinglish');
+    } else if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
+      raw = [selectedLanguage];
     }
-    if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
-      return [selectedLanguage];
+    if (raw.length >= 3 || (raw.includes('English') && raw.includes('Hindi') && raw.includes('Bengali'))) {
+      return [];
     }
-    return [];
+    return raw;
   }, [selectedLanguages, selectedLanguage]);
 
   // Check if track matches a language filter (null/empty plays all languages)

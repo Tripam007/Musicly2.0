@@ -45,7 +45,7 @@ import { ambientEngine, playTingSound, resumeAudioSynthContext } from './utils/a
 import { audioEngine } from './utils/audioEngine';
 import { ytEngine, extractYouTubeId } from './utils/youtubePlayer';
 import { saveTrackToDB, loadSavedTracksFromDB, deleteTrackFromDB, updateTrackGenresInDB, loadFromLocalCache, subscribeCustomTracks } from './utils/storageDB';
-import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds, subscribePublicTracks, reconcileLocalPublicTracksToCloud } from './utils/publicLibraryDB';
+import { loadPublicTracks, publishPublicTrack, updatePublicTrack, deletePublicTrack, getLocalPublicTracks, getDeletedPublicTrackIds, subscribePublicTracks, reconcileLocalPublicTracksToCloud, INITIAL_PURGED_IDS } from './utils/publicLibraryDB';
 import { checkIsAdmin, syncUserProfile } from './utils/userModel';
 import { downloadYouTubeAudio, generateInstantAudioBlob, triggerFileDownload, saveTrackToMusiclyFolder } from './utils/audioDownloader';
 import { preloadMusiclyAssets } from './utils/assetPreloader';
@@ -468,6 +468,15 @@ export default function App() {
       if (savedList) {
         const parsed = JSON.parse(savedList);
         if (Array.isArray(parsed)) {
+          // If all 3 regional languages (English, Hindi, Bengali) or >= 3 languages are saved,
+          // normalize immediately to [] ("All") so the full 129 track catalog is active
+          if (parsed.length >= 3 || (parsed.includes('English') && parsed.includes('Hindi') && parsed.includes('Bengali'))) {
+            try {
+              localStorage.removeItem('musicly_selected_languages');
+              localStorage.removeItem('musicly_selected_language');
+            } catch (_) {}
+            return [];
+          }
           return parsed.filter(l => l && l !== 'Hinglish' && LANGUAGES.includes(l));
         }
       }
@@ -509,6 +518,9 @@ export default function App() {
       nextLangs = [];
     } else if (Array.isArray(langOrLangs)) {
       nextLangs = langOrLangs.filter(l => l && l !== 'Hinglish' && LANGUAGES.includes(l));
+      if (nextLangs.length >= 3 || (nextLangs.includes('English') && nextLangs.includes('Hindi') && nextLangs.includes('Bengali'))) {
+        nextLangs = [];
+      }
     } else {
       // Single language toggle: tapping an active single language resets to All,
       // selecting another language switches exclusively to that language
@@ -581,7 +593,8 @@ export default function App() {
     const activeCustom = isAuthed ? customTracks : [];
 
     // Sanitize Public Library tracks (accessible 100% of the time, even when logged out)
-    const sanitizedPublic = publicTracks.filter(t => !deletedTrackIds.includes(t.id)).map(t => {
+    // Live canonical Firestore catalog tracks are protected from stale local storage suppressions
+    const sanitizedPublic = publicTracks.filter(t => !INITIAL_PURGED_IDS.includes(t.id)).map(t => {
       const overridden = genreOverrides[t.id];
       if (overridden) {
         return {
@@ -597,7 +610,7 @@ export default function App() {
       };
     });
 
-    const sanitizedCatalog = TRACKS.filter(t => !deletedTrackIds.includes(t.id)).map(t => {
+    const sanitizedCatalog = TRACKS.filter(t => !INITIAL_PURGED_IDS.includes(t.id)).map(t => {
       const overridden = genreOverrides[t.id];
       if (overridden) {
         return {

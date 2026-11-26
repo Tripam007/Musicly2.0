@@ -128,13 +128,18 @@ export default function PlaylistDrawer({
 
   // Active languages array: supports multi-selection, single-selection, or empty (all)
   const activeLangs = useMemo(() => {
+    let raw = [];
     if (Array.isArray(selectedLanguages) && selectedLanguages.length > 0) {
-      return selectedLanguages.filter(l => l && l !== 'Hinglish');
+      raw = selectedLanguages.filter(l => l && l !== 'Hinglish');
+    } else if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
+      raw = [selectedLanguage];
     }
-    if (selectedLanguage && selectedLanguage !== 'All' && selectedLanguage !== 'Hinglish') {
-      return [selectedLanguage];
+    // If all 3 regional languages (English, Hindi, Bengali) or >= 3 languages are active,
+    // treat as All so the complete 129 song library is accessible
+    if (raw.length >= 3 || (raw.includes('English') && raw.includes('Hindi') && raw.includes('Bengali'))) {
+      return [];
     }
-    return [];
+    return raw;
   }, [selectedLanguages, selectedLanguage]);
 
   // Automatically autoselect language from active language filter when creating a playlist
