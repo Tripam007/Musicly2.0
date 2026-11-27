@@ -20752,6 +20752,157 @@ body, html, #root {
   filter: drop-shadow(0 0 6px rgba(255, 77, 109, 0.6));
 }
 
+/* 🌟 Cool Elastic Spring Pop Heart Animation */
+.heart-zen-pop {
+  animation: heartZenPop 0.85s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+}
+
+@keyframes heartZenPop {
+  0% {
+    transform: scale(0.65);
+  }
+  30% {
+    transform: scale(1.68);
+    filter: drop-shadow(0 0 16px #ff4d6d) drop-shadow(0 0 24px rgba(255, 77, 109, 0.9)) !important;
+  }
+  55% {
+    transform: scale(0.88);
+  }
+  75% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 8px rgba(255, 77, 109, 0.8)) !important;
+  }
+}
+
+/* Number pop upward bounce */
+.stat-num-pop {
+  display: inline-block;
+  animation: statNumPop 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes statNumPop {
+  0% {
+    transform: translateY(0) scale(1);
+    color: #ffffff;
+  }
+  35% {
+    transform: translateY(-4px) scale(1.3);
+    color: #ff4d6d;
+    text-shadow: 0 0 10px rgba(255, 77, 109, 0.8);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    color: #ffffff;
+  }
+}
+
+/* Floating mini heart dissolving upwards */
+.zen-floating-mini-heart {
+  position: absolute;
+  top: 50%;
+  left: 70%;
+  font-size: 14px;
+  pointer-events: none;
+  animation: zenFloatHeart 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 10;
+}
+
+@keyframes zenFloatHeart {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(-50%, -24px) scale(1.25);
+    opacity: 0.95;
+    filter: drop-shadow(0 0 10px #ff4d6d);
+  }
+  100% {
+    transform: translate(-50%, -42px) scale(0.7);
+    opacity: 0;
+  }
+}
+
+/* Button glow pulse when just liked */
+.ref-now-playing-heart-btn.just-liked {
+  animation: heartBtnPulse 0.82s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes heartBtnPulse {
+  0% {
+    transform: scale(0.92);
+  }
+  30% {
+    transform: scale(1.18);
+    border-color: rgba(255, 77, 109, 0.85) !important;
+    box-shadow: 0 0 24px rgba(255, 77, 109, 0.75), inset 0 0 8px rgba(255, 77, 109, 0.45) !important;
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 14px rgba(255, 77, 109, 0.35);
+  }
+}
+
+/* 6 Multi-directional Sparkles */
+.ref-now-playing-heart-btn .zen-sparkle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ref-now-playing-heart-btn .zen-sparkle.s-1 {
+  background: #ff4d6d;
+  box-shadow: 0 0 6px #ff4d6d;
+  animation: zenSparkleFloat1 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ref-now-playing-heart-btn .zen-sparkle.s-2 {
+  background: #fbbf24;
+  box-shadow: 0 0 6px #fbbf24;
+  animation: zenSparkleFloat2 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ref-now-playing-heart-btn .zen-sparkle.s-3 {
+  background: #f43f5e;
+  box-shadow: 0 0 6px #f43f5e;
+  animation: zenSparkleFloat3 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ref-now-playing-heart-btn .zen-sparkle.s-4 {
+  background: #ffffff;
+  box-shadow: 0 0 6px #ffffff;
+  animation: zenSparkleFloat4 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ref-now-playing-heart-btn .zen-sparkle.s-5 {
+  background: #ff758c;
+  box-shadow: 0 0 6px #ff758c;
+  animation: zenSparkleFloat5 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.ref-now-playing-heart-btn .zen-sparkle.s-6 {
+  background: #ffb4c0;
+  box-shadow: 0 0 6px #ffb4c0;
+  animation: zenSparkleFloat6 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes zenSparkleFloat4 {
+  0% { transform: translate(0, 0) scale(0.8); opacity: 1; }
+  100% { transform: translate(-14px, 12px) scale(0); opacity: 0; }
+}
+
+@keyframes zenSparkleFloat5 {
+  0% { transform: translate(0, 0) scale(0.8); opacity: 1; }
+  100% { transform: translate(14px, 12px) scale(0); opacity: 0; }
+}
+
+@keyframes zenSparkleFloat6 {
+  0% { transform: translate(0, 0) scale(0.8); opacity: 1; }
+  100% { transform: translate(0, -18px) scale(0); opacity: 0; }
+}
+
 .ref-date-num {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   font-size: 2.6rem;

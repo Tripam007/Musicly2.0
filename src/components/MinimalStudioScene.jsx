@@ -35,6 +35,7 @@ import {
 import { getRandomDeadPoetsQuote } from '../data/deadPoetsQuotes';
 import { VoiceControlUI } from '../voice/VoiceControlUI';
 import { subscribeRealtimeListeners, updateRealtimePresencePlaying } from '../utils/realtimeListeners';
+import { subscribeRealtimeTrackLikes, toggleRealtimeTrackLike } from '../utils/realtimeTrackLikes';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
 import StudioNotificationsDropdown from './StudioNotificationsDropdown';
@@ -1489,6 +1490,16 @@ export default function MinimalStudioScene({
     });
   }, [trackKey, localLikedMap, activeTrack, favorites, allTracks]);
 
+  // Real-time track likes subscription
+  const [realtimeLikes, setRealtimeLikes] = useState(14);
+  useEffect(() => {
+    if (!activeTrack) return;
+    const tracker = subscribeRealtimeTrackLikes(activeTrack, (count) => {
+      setRealtimeLikes(count);
+    });
+    return () => tracker.cleanup();
+  }, [activeTrack?.id, activeTrack?.title]);
+
   const handleLikeClick = useCallback((e) => {
     if (e) {
       if (e.stopPropagation) e.stopPropagation();
@@ -1500,6 +1511,10 @@ export default function MinimalStudioScene({
     setIsLiked(willBeFav);
     setLocalLikedMap(prev => ({ ...prev, [trackKey]: willBeFav }));
 
+    // Optimistically update live likes count
+    const nextCount = Math.max(0, realtimeLikes + (willBeFav ? 1 : -1));
+    setRealtimeLikes(nextCount);
+
     // 2. Play Zen ripple / pulse animation and sound
     if (willBeFav) {
       try { playPeacefulLikeSound(); } catch (err) {}
@@ -1507,15 +1522,18 @@ export default function MinimalStudioScene({
       if (likeTimeoutRef.current) clearTimeout(likeTimeoutRef.current);
       likeTimeoutRef.current = setTimeout(() => {
         setJustLiked(false);
-      }, 750);
-      showToast("Hearted! (8)");
+      }, 900);
+      showToast(`Hearted! (${nextCount})`);
     } else {
       try { playClickSound('light'); } catch (err) {}
       setJustLiked(false);
-      showToast("Heart removed (7)");
+      showToast(`Heart removed (${nextCount})`);
     }
 
-    // 3. Persist to parent safely without ever blocking the UI
+    // 3. Persist to Cloud Firestore real-time likes
+    toggleRealtimeTrackLike(activeTrack, willBeFav, user);
+
+    // 4. Persist to parent safely without ever blocking the UI
     try {
       if (onToggleFavorite) {
         onToggleFavorite(activeTrack?.id || activeTrack);
@@ -1523,13 +1541,13 @@ export default function MinimalStudioScene({
     } catch (err) {
       console.warn("Favorite persistence error:", err);
     }
-  }, [isLiked, isCurrentFav, trackKey, activeTrack, onToggleFavorite, showToast]);
+  }, [isLiked, isCurrentFav, trackKey, activeTrack, user, realtimeLikes, onToggleFavorite, showToast]);
 
   const isHeartActive = Boolean(isLiked || isCurrentFav);
   const favCount = useMemo(() => 9977 + (isCurrentFav ? 1 : 0), [isCurrentFav]);
   const starCount = useMemo(() => 7523 + (isRated ? 1 : 0), [isRated]);
   const saveCount = useMemo(() => 4644 + (isSaved ? 1 : 0), [isSaved]);
-  const likeCount = useMemo(() => 7 + (isHeartActive ? 1 : 0), [isHeartActive]);
+  const likeCount = realtimeLikes;
   const thumbsCount = useMemo(() => 80 + (isThumbsUp ? 1 : 0), [isThumbsUp]);
 
   // Active track pool for Minimal Studio navigation (Mine Playlist, Active Curated Playlist, or Public Catalog)
@@ -2031,17 +2049,21 @@ export default function MinimalStudioScene({
                       >
                         {justLiked && (
                           <span className="minimal-like-aura" aria-hidden="true" style={{ pointerEvents: 'none' }}>
-                            <span className="zen-ripple-ring" style={{ borderColor: 'rgba(255, 77, 109, 0.85)', boxShadow: '0 0 12px rgba(255, 77, 109, 0.6), inset 0 0 6px rgba(255, 77, 109, 0.3)' }} />
-                            <span className="zen-glow-bloom" style={{ background: 'radial-gradient(circle, rgba(255, 77, 109, 0.35) 0%, transparent 70%)' }} />
-                            <span className="zen-sparkle s-1" style={{ background: '#ff4d6d' }} />
-                            <span className="zen-sparkle s-2" style={{ background: '#f87171' }} />
-                            <span className="zen-sparkle s-3" style={{ background: '#ff4d6d' }} />
+                            <span className="zen-ripple-ring" />
+                            <span className="zen-glow-bloom" />
+                            <span className="zen-floating-mini-heart">❤️</span>
+                            <span className="zen-sparkle s-1" />
+                            <span className="zen-sparkle s-2" />
+                            <span className="zen-sparkle s-3" />
+                            <span className="zen-sparkle s-4" />
+                            <span className="zen-sparkle s-5" />
+                            <span className="zen-sparkle s-6" />
                           </span>
                         )}
-                        <span className="ref-stat-num">{likeCount}</span>
+                        <span className={`ref-stat-num ${justLiked ? 'stat-num-pop' : ''}`}>{likeCount}</span>
                         <Heart
-                          size={14}
-                          className={`heart-icon ${justLiked ? 'heart-zen-pulse' : ''}`}
+                          size={15}
+                          className={`heart-icon ${justLiked ? 'heart-zen-pop' : ''}`}
                           fill={isHeartActive ? "#ff4d6d" : "rgba(255, 77, 109, 0.45)"}
                           color="#ff4d6d"
                           strokeWidth={2}
@@ -2049,7 +2071,7 @@ export default function MinimalStudioScene({
                             fill: isHeartActive ? '#ff4d6d' : 'rgba(255, 77, 109, 0.45)',
                             color: '#ff4d6d',
                             stroke: '#ff4d6d',
-                            filter: isHeartActive ? 'drop-shadow(0 0 8px rgba(255, 77, 109, 0.75))' : 'none'
+                            filter: isHeartActive ? 'drop-shadow(0 0 10px rgba(255, 77, 109, 0.85))' : 'none'
                           }}
                         />
                       </button>
