@@ -1452,10 +1452,18 @@ export default function MinimalStudioScene({
     return String(activeTrack.id || activeTrack.youtubeId || activeTrack.title || 'current').toLowerCase().trim();
   }, [activeTrack]);
 
-  // Persistent track-level liked map: survives any async re-renders or prop changes
+  // Persistent track-level liked map + instant local track liked override
   const [localLikedMap, setLocalLikedMap] = useState({});
+  const [isLikedOverride, setIsLikedOverride] = useState(null);
+  const [likeDelta, setLikeDelta] = useState(0);
   const [justLiked, setJustLiked] = useState(false);
   const likeTimeoutRef = useRef(null);
+
+  // Cleanly reset track-specific overrides when switching to a different song
+  useEffect(() => {
+    setIsLikedOverride(null);
+    setLikeDelta(0);
+  }, [trackKey]);
 
   useEffect(() => {
     return () => {
@@ -1464,6 +1472,9 @@ export default function MinimalStudioScene({
   }, []);
 
   const isCurrentFav = useMemo(() => {
+    if (isLikedOverride !== null) {
+      return Boolean(isLikedOverride);
+    }
     if (trackKey in localLikedMap) {
       return Boolean(localLikedMap[trackKey]);
     }
@@ -1487,7 +1498,7 @@ export default function MinimalStudioScene({
       }
       return false;
     });
-  }, [trackKey, localLikedMap, activeTrack, favorites, allTracks]);
+  }, [trackKey, isLikedOverride, localLikedMap, activeTrack, favorites, allTracks]);
 
   // Real-time track likes subscription
   const [realtimeLikes, setRealtimeLikes] = useState(14);
@@ -1500,18 +1511,18 @@ export default function MinimalStudioScene({
   }, [activeTrack?.id, activeTrack?.title]);
 
   const handleLikeClick = useCallback((e) => {
-    if (e) {
-      if (e.stopPropagation) e.stopPropagation();
-      if (e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) {
+      e.stopPropagation();
     }
     const willBeFav = !isCurrentFav;
 
-    // 1. Instantly update local state cache for this specific track
+    // 1. Instantly update local state override & cache for this track
+    setIsLikedOverride(willBeFav);
     setLocalLikedMap(prev => ({ ...prev, [trackKey]: willBeFav }));
 
-    // 2. Optimistically update live likes count
-    const nextCount = Math.max(0, realtimeLikes + (willBeFav ? 1 : -1));
-    setRealtimeLikes(nextCount);
+    // 2. Optimistically update live likes count delta
+    const deltaChange = willBeFav ? 1 : -1;
+    setLikeDelta(prev => prev + deltaChange);
 
     // 3. Play Zen ripple / pulse animation and sound
     if (willBeFav) {
@@ -1521,11 +1532,11 @@ export default function MinimalStudioScene({
       likeTimeoutRef.current = setTimeout(() => {
         setJustLiked(false);
       }, 950);
-      showToast(`Hearted! (${nextCount})`);
+      showToast(`Hearted! (${Math.max(0, realtimeLikes + likeDelta + deltaChange)})`);
     } else {
       try { playClickSound('light'); } catch (err) {}
       setJustLiked(false);
-      showToast(`Heart removed (${nextCount})`);
+      showToast(`Heart removed (${Math.max(0, realtimeLikes + likeDelta + deltaChange)})`);
     }
 
     // 4. Persist to Cloud Firestore real-time likes
@@ -1539,13 +1550,13 @@ export default function MinimalStudioScene({
     } catch (err) {
       console.warn("Favorite persistence error:", err);
     }
-  }, [isCurrentFav, trackKey, activeTrack, user, realtimeLikes, onToggleFavorite, showToast]);
+  }, [isCurrentFav, trackKey, activeTrack, user, realtimeLikes, likeDelta, onToggleFavorite, showToast]);
 
   const isHeartActive = Boolean(isCurrentFav);
   const favCount = useMemo(() => 9977 + (isCurrentFav ? 1 : 0), [isCurrentFav]);
   const starCount = useMemo(() => 7523 + (isRated ? 1 : 0), [isRated]);
   const saveCount = useMemo(() => 4644 + (isSaved ? 1 : 0), [isSaved]);
-  const likeCount = realtimeLikes;
+  const likeCount = Math.max(0, realtimeLikes + likeDelta);
   const thumbsCount = useMemo(() => 80 + (isThumbsUp ? 1 : 0), [isThumbsUp]);
 
   // Active track pool for Minimal Studio navigation (Mine Playlist, Active Curated Playlist, or Public Catalog)
@@ -2042,6 +2053,9 @@ export default function MinimalStudioScene({
                         type="button"
                         className={`ref-top-stat-btn ref-now-playing-heart-btn ${isHeartActive ? 'is-fav is-favorited' : ''} ${justLiked ? 'just-liked' : ''}`}
                         onClick={handleLikeClick}
+                        onPointerDown={(e) => {
+                          if (e && e.stopPropagation) e.stopPropagation();
+                        }}
                         title={isHeartActive ? "Hearted (Click to remove)" : "Heart song"}
                         aria-label={isHeartActive ? "Unlike track" : "Like track"}
                       >

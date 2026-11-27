@@ -58,6 +58,12 @@ service cloud.firestore {
       allow write: if true;
     }
 
+    // ❤️ REALTIME TRACK LIKES
+    match /track_likes/{trackId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
     // 👤 USER PROFILES (Protected from IDOR and Privilege Escalation)
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
