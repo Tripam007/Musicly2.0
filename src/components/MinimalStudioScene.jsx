@@ -610,6 +610,27 @@ export default function MinimalStudioScene({
     author: "Dead Poets Society"
   }));
 
+  const [isCanopyOpen, setIsCanopyOpen] = useState(false);
+  const canopyTimerRef = useRef(null);
+
+  const handleCanopyMouseEnter = useCallback(() => {
+    if (canopyTimerRef.current) clearTimeout(canopyTimerRef.current);
+    setIsCanopyOpen(true);
+  }, []);
+
+  const handleCanopyMouseLeave = useCallback(() => {
+    if (canopyTimerRef.current) clearTimeout(canopyTimerRef.current);
+    canopyTimerRef.current = setTimeout(() => {
+      setIsCanopyOpen(false);
+    }, 2000); // Keep open for 2 seconds after cursor leaves
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (canopyTimerRef.current) clearTimeout(canopyTimerRef.current);
+    };
+  }, []);
+
   const handleNextDpsQuote = useCallback(() => {
     setDpsQuote(getRandomDeadPoetsQuote());
   }, []);
@@ -1837,7 +1858,12 @@ export default function MinimalStudioScene({
                 </button>
               </div>
 
-              <div className={`ref-badge-center-stats ${isNotifOpen ? 'is-open' : ''}`} title="Top Canopy Stats (Hover to expand)">
+              <div 
+                className={`ref-badge-center-stats ${isCanopyOpen || isNotifOpen ? 'is-open is-hovered' : ''}`}
+                onMouseEnter={handleCanopyMouseEnter}
+                onMouseLeave={handleCanopyMouseLeave}
+                title="Top Canopy Stats (Hover to drop down, stays 2s)"
+              >
                 <button 
                   type="button"
                   className={`ref-top-stat-btn ${isHeartActive ? 'is-fav is-favorited' : ''} ${justLiked ? 'just-liked' : ''}`}
