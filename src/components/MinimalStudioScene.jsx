@@ -607,7 +607,6 @@ export default function MinimalStudioScene({
   const [activeSidebarTab, setActiveSidebarTab] = useState('home');
   const [isSaved, setIsSaved] = useState(false);
   const [isRated, setIsRated] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
   const [isThumbsUp, setIsThumbsUp] = useState(false);
   const [isBellRinging, setIsBellRinging] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
@@ -1505,24 +1504,23 @@ export default function MinimalStudioScene({
       if (e.stopPropagation) e.stopPropagation();
       if (e.preventDefault) e.preventDefault();
     }
-    const willBeFav = !(isLiked || isCurrentFav);
+    const willBeFav = !isCurrentFav;
 
-    // 1. Instantly update local state cache and isLiked state
-    setIsLiked(willBeFav);
+    // 1. Instantly update local state cache for this specific track
     setLocalLikedMap(prev => ({ ...prev, [trackKey]: willBeFav }));
 
-    // Optimistically update live likes count
+    // 2. Optimistically update live likes count
     const nextCount = Math.max(0, realtimeLikes + (willBeFav ? 1 : -1));
     setRealtimeLikes(nextCount);
 
-    // 2. Play Zen ripple / pulse animation and sound
+    // 3. Play Zen ripple / pulse animation and sound
     if (willBeFav) {
       try { playPeacefulLikeSound(); } catch (err) {}
       setJustLiked(true);
       if (likeTimeoutRef.current) clearTimeout(likeTimeoutRef.current);
       likeTimeoutRef.current = setTimeout(() => {
         setJustLiked(false);
-      }, 900);
+      }, 950);
       showToast(`Hearted! (${nextCount})`);
     } else {
       try { playClickSound('light'); } catch (err) {}
@@ -1530,20 +1528,20 @@ export default function MinimalStudioScene({
       showToast(`Heart removed (${nextCount})`);
     }
 
-    // 3. Persist to Cloud Firestore real-time likes
+    // 4. Persist to Cloud Firestore real-time likes
     toggleRealtimeTrackLike(activeTrack, willBeFav, user);
 
-    // 4. Persist to parent safely without ever blocking the UI
+    // 5. Persist to parent safely without ever blocking the UI
     try {
       if (onToggleFavorite) {
-        onToggleFavorite(activeTrack?.id || activeTrack);
+        onToggleFavorite(activeTrack);
       }
     } catch (err) {
       console.warn("Favorite persistence error:", err);
     }
-  }, [isLiked, isCurrentFav, trackKey, activeTrack, user, realtimeLikes, onToggleFavorite, showToast]);
+  }, [isCurrentFav, trackKey, activeTrack, user, realtimeLikes, onToggleFavorite, showToast]);
 
-  const isHeartActive = Boolean(isLiked || isCurrentFav);
+  const isHeartActive = Boolean(isCurrentFav);
   const favCount = useMemo(() => 9977 + (isCurrentFav ? 1 : 0), [isCurrentFav]);
   const starCount = useMemo(() => 7523 + (isRated ? 1 : 0), [isRated]);
   const saveCount = useMemo(() => 4644 + (isSaved ? 1 : 0), [isSaved]);
@@ -2064,13 +2062,13 @@ export default function MinimalStudioScene({
                         <Heart
                           size={15}
                           className={`heart-icon ${justLiked ? 'heart-zen-pop' : ''}`}
-                          fill={isHeartActive ? "#ff4d6d" : "rgba(255, 77, 109, 0.45)"}
-                          color="#ff4d6d"
+                          fill={isHeartActive ? "#ff4d6d" : "transparent"}
+                          color={isHeartActive ? "#ff4d6d" : "rgba(255, 255, 255, 0.85)"}
                           strokeWidth={2}
                           style={{
-                            fill: isHeartActive ? '#ff4d6d' : 'rgba(255, 77, 109, 0.45)',
-                            color: '#ff4d6d',
-                            stroke: '#ff4d6d',
+                            fill: isHeartActive ? '#ff4d6d' : 'transparent',
+                            color: isHeartActive ? '#ff4d6d' : 'rgba(255, 255, 255, 0.85)',
+                            stroke: isHeartActive ? '#ff4d6d' : 'rgba(255, 255, 255, 0.85)',
                             filter: isHeartActive ? 'drop-shadow(0 0 10px rgba(255, 77, 109, 0.85))' : 'none'
                           }}
                         />

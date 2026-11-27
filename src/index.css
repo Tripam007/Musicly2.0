@@ -20696,6 +20696,9 @@ body, html, #root {
   position: relative !important;
   z-index: 50 !important;
   pointer-events: auto !important;
+  cursor: pointer !important;
+  user-select: none;
+  -webkit-user-select: none;
   background: rgba(0, 0, 0, 0.48) !important;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -20703,7 +20706,6 @@ body, html, #root {
   border-radius: 9999px !important;
   padding: 3px 8px !important;
   outline: none;
-  cursor: pointer;
   display: inline-flex !important;
   align-items: center !important;
   gap: 5px !important;
@@ -20716,6 +20718,18 @@ body, html, #root {
     background 0.22s ease, 
     border-color 0.22s ease,
     box-shadow 0.28s ease;
+}
+
+.ref-now-playing-heart-btn > *:not(.minimal-like-aura) {
+  pointer-events: none;
+}
+
+.ref-now-playing-heart-btn:not(.is-fav):not(.is-favorited) svg,
+.ref-now-playing-heart-btn:not(.is-fav):not(.is-favorited) svg path {
+  fill: transparent !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  stroke: rgba(255, 255, 255, 0.85) !important;
+  filter: none !important;
 }
 
 .ref-date-row:hover .ref-now-playing-heart-btn,
