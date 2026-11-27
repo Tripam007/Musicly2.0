@@ -1879,38 +1879,36 @@ export default function MinimalStudioScene({
                 </button>
               </div>
 
-              {/* 🌟 Top Center Studio Canopy: Live Listeners & AI Controls */}
+              {/* 🌟 Top Center Canopy Box: Live Listeners & AI Controls */}
               <div 
-                className={`ref-studio-canopy-controls ${isCanopyOpen || isAirControlsActive ? 'is-open is-hovered' : ''}`}
+                className={`ref-badge-center-stats ${isCanopyOpen || isAirControlsActive ? 'is-open is-hovered' : ''}`}
                 onMouseEnter={handleCanopyMouseEnter}
                 onMouseLeave={handleCanopyMouseLeave}
+                title="Top Canopy Controls (Hover to drop down, stays 2s)"
               >
-                <div className="ref-studio-canopy-notch" title="Live Tuning & Quick AI Controls (Hover to drop down, stays 2s)" />
-
-                <div className="tuned-in-wrapper ref-studio-tuned-wrapper">
-                  <div className="tuned-in-badge" title="Live active listeners tuned into this room">
-                    <span className="live-dot pulse-glow" />
-                    <span className="listeners-text"><strong>{listeners}</strong> in tuned</span>
-                  </div>
-
-                  <div className="side-quick-controls ref-studio-quick-controls">
-                    <button 
-                      id="btn-air-controls"
-                      type="button"
-                      className={`air-btn-below-tuned ${isAirControlsActive ? 'highlight-active active' : ''}`} 
-                      onClick={onOpenAirControls}
-                      title={isAirControlsActive ? "Air Controls Active (Webcam AI Running) — Click for settings" : "Air Controls — Control playback with webcam hand gestures"}
-                      aria-label="Air Controls"
-                    >
-                      <Hand size={17} />
-                      <span className={`air-hand-dot ${isAirControlsActive ? 'active' : ''}`} />
-                    </button>
-
-                    {voiceManager && (
-                      <VoiceControlUI voiceManager={voiceManager} user={user} isAdmin={isAdmin} />
-                    )}
-                  </div>
+                {/* 1. Live Listeners Count: Green Dot + Number (No 'in tuned' text) */}
+                <div className="ref-canopy-stat-item ref-canopy-listeners" title={`Live listeners: ${listeners} active`}>
+                  <span className="live-dot pulse-glow" />
+                  <span className="ref-stat-num">{listeners}</span>
                 </div>
+
+                {/* 2. Air Controls Hand Button */}
+                <button 
+                  id="btn-air-controls"
+                  type="button"
+                  className={`ref-canopy-btn ref-canopy-air-btn ${isAirControlsActive ? 'highlight-active active' : ''}`}
+                  onClick={onOpenAirControls}
+                  title={isAirControlsActive ? "Air Controls Active (Webcam AI Running) — Click for settings" : "Air Controls — Control playback with webcam hand gestures"}
+                  aria-label="Air Controls"
+                >
+                  <Hand size={16} />
+                  <span className={`air-hand-dot ${isAirControlsActive ? 'active' : ''}`} />
+                </button>
+
+                {/* 3. Voice Control Mic Button */}
+                {voiceManager && (
+                  <VoiceControlUI voiceManager={voiceManager} user={user} isAdmin={isAdmin} />
+                )}
               </div>
 
               <button 
