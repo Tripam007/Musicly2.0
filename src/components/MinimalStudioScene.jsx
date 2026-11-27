@@ -33,6 +33,8 @@ import {
   Quote
 } from 'lucide-react';
 import { getRandomDeadPoetsQuote } from '../data/deadPoetsQuotes';
+import { VoiceControlUI } from '../voice/VoiceControlUI';
+import { subscribeRealtimeListeners, updateRealtimePresencePlaying } from '../utils/realtimeListeners';
 import AdminBackgroundGalleryModal from './AdminBackgroundGalleryModal';
 import StudioThemePaletteModal from './StudioThemePaletteModal';
 import StudioNotificationsDropdown from './StudioNotificationsDropdown';
@@ -270,6 +272,9 @@ export default function MinimalStudioScene({
   onOpenAuthModal,
   user,
   isAdmin = false,
+  isAirControlsActive = false,
+  onOpenAirControls,
+  voiceManager,
   favorites = [],
   onToggleFavorite,
   onClose,
@@ -624,6 +629,22 @@ export default function MinimalStudioScene({
       setIsCanopyOpen(false);
     }, 2000); // Keep open for 2 seconds after cursor leaves
   }, []);
+
+  const [listeners, setListeners] = useState(isPlaying ? 1 : 0);
+
+  // Real-time listener count tracking
+  useEffect(() => {
+    const tracker = subscribeRealtimeListeners(isPlaying, (count) => {
+      setListeners(count);
+    });
+    return () => {
+      tracker.cleanup();
+    };
+  }, [isPlaying]);
+
+  useEffect(() => {
+    updateRealtimePresencePlaying(isPlaying);
+  }, [isPlaying]);
 
   useEffect(() => {
     return () => {
@@ -1858,71 +1879,37 @@ export default function MinimalStudioScene({
                 </button>
               </div>
 
+              {/* 🌟 Top Center Studio Canopy: Live Listeners & AI Controls */}
               <div 
-                className={`ref-badge-center-stats ${isCanopyOpen || isNotifOpen ? 'is-open is-hovered' : ''}`}
+                className={`ref-studio-canopy-controls ${isCanopyOpen || isAirControlsActive ? 'is-open is-hovered' : ''}`}
                 onMouseEnter={handleCanopyMouseEnter}
                 onMouseLeave={handleCanopyMouseLeave}
-                title="Top Canopy Stats (Hover to drop down, stays 2s)"
               >
-                <button 
-                  type="button"
-                  className={`ref-top-stat-btn ${isHeartActive ? 'is-fav is-favorited' : ''} ${justLiked ? 'just-liked' : ''}`}
-                  onClick={handleLikeClick}
-                  title={isHeartActive ? "Hearted (Click to remove)" : "Heart song"}
-                  aria-label={isHeartActive ? "Unlike track" : "Like track"}
-                >
-                  <span className="ref-stat-num">{likeCount}</span>
-                  <Heart size={14} fill={isHeartActive ? "#ff4d6d" : "rgba(255, 77, 109, 0.45)"} color="#ff4d6d" />
-                </button>
+                <div className="ref-studio-canopy-notch" title="Live Tuning & Quick AI Controls (Hover to drop down, stays 2s)" />
 
-                <button 
-                  className="ref-top-stat-btn"
-                  onClick={() => {
-                    setIsThumbsUp(prev => !prev);
-                    showToast(!isThumbsUp ? "Thumbs up! (81)" : "Thumbs up removed (80)");
-                  }}
-                  title="Thumbs Up"
-                >
-                  <span className="ref-stat-num">{thumbsCount}</span>
-                  <ThumbsUp size={14} fill={isThumbsUp ? "#38bdf8" : "rgba(56, 189, 248, 0.45)"} color="#38bdf8" />
-                </button>
+                <div className="tuned-in-wrapper ref-studio-tuned-wrapper">
+                  <div className="tuned-in-badge" title="Live active listeners tuned into this room">
+                    <span className="live-dot pulse-glow" />
+                    <span className="listeners-text"><strong>{listeners}</strong> in tuned</span>
+                  </div>
 
-                <div className="ref-bell-wrapper" style={{ position: 'relative' }}>
-                  <button 
-                    className={`ref-stat-bell ${isBellRinging ? 'ringing' : ''} ${unreadNotifCount > 0 ? 'has-unread' : ''}`}
-                    onClick={() => {
-                      setIsNotifOpen(prev => !prev);
-                      setIsBellRinging(true);
-                      setTimeout(() => setIsBellRinging(false), 600);
-                    }}
-                    title={unreadNotifCount > 0 ? `${unreadNotifCount} new studio changes! Click to view` : "Studio Updates & Notifications"}
-                  >
-                    <Bell size={14} fill={unreadNotifCount > 0 ? "#fbbf24" : (isBellRinging ? "#fbbf24" : "none")} color="#fbbf24" />
-                    {unreadNotifCount > 0 && (
-                      <span className="ref-bell-badge">
-                        {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
-                      </span>
+                  <div className="side-quick-controls ref-studio-quick-controls">
+                    <button 
+                      id="btn-air-controls"
+                      type="button"
+                      className={`air-btn-below-tuned ${isAirControlsActive ? 'highlight-active active' : ''}`} 
+                      onClick={onOpenAirControls}
+                      title={isAirControlsActive ? "Air Controls Active (Webcam AI Running) — Click for settings" : "Air Controls — Control playback with webcam hand gestures"}
+                      aria-label="Air Controls"
+                    >
+                      <Hand size={17} />
+                      <span className={`air-hand-dot ${isAirControlsActive ? 'active' : ''}`} />
+                    </button>
+
+                    {voiceManager && (
+                      <VoiceControlUI voiceManager={voiceManager} user={user} isAdmin={isAdmin} />
                     )}
-                  </button>
-
-                  <StudioNotificationsDropdown
-                    isOpen={isNotifOpen}
-                    onClose={() => setIsNotifOpen(false)}
-                    currentTheme={currentTheme}
-                    onSelectSong={(songTitle) => {
-                      showToast?.(`Selected: ${songTitle}`);
-                    }}
-                    onSelectBackground={(bgUrl) => {
-                      const foundIdx = studioBackgrounds.findIndex(b => (typeof b === 'string' ? b === bgUrl : b.url === bgUrl));
-                      if (foundIdx >= 0) {
-                        updateMediaPhotoIndex(foundIdx);
-                      } else {
-                        handleAddStudioBg({ url: bgUrl, title: 'Background Visual' });
-                      }
-                    }}
-                    onSelectTheme={handleSelectTheme}
-                    showToast={showToast}
-                  />
+                  </div>
                 </div>
               </div>
 

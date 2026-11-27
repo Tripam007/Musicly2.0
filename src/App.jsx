@@ -3289,6 +3289,9 @@ export default function App() {
           onOpenAuthModal={() => setIsAuthOpen(true)}
           user={user}
           isAdmin={isAdmin}
+          isAirControlsActive={isAirControlsEnabled}
+          onOpenAirControls={handleAirIconClick}
+          voiceManager={voiceManager}
           favorites={favorites}
           onToggleFavorite={handleToggleFavorite}
           onClose={handleReturnToHomeScene}
