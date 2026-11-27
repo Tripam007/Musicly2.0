@@ -19656,83 +19656,84 @@ body, html, #root {
   transition: color 0.3s ease;
 }
 
+/* 🌟 Top Center Canopy Stats Box — Smooth Slide-Down Appearance on Hover */
 .ref-badge-center-stats {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) translateY(calc(-100% + 7px));
   top: 0;
   margin-top: -14px;
   background: rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-top: none;
   border-radius: 0 0 18px 18px;
-  padding: 13px 16px 11px 16px;
+  padding: 13px 18px 11px 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 12px;
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
   z-index: 22;
-  transition: background 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease, padding 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  opacity: 0.35;
+  filter: blur(0.5px);
+  cursor: pointer;
+  transition: 
+    transform 0.48s cubic-bezier(0.34, 1.45, 0.64, 1), 
+    opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), 
+    filter 0.35s ease, 
+    background 0.35s ease, 
+    border-color 0.35s ease, 
+    box-shadow 0.45s ease;
   box-sizing: border-box;
 }
 
-.ref-badge-center-stats:hover {
-  background: rgba(0, 0, 0, 0.65);
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), 0 0 20px rgba(255, 77, 109, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-
-/* 🌟 Cool & Smooth Canopy Heart Hover Reveal Animation */
-.ref-top-stat-btn.ref-canopy-heart-btn {
-  max-width: 0;
-  opacity: 0;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-  margin-right: -10px;
-  pointer-events: none;
-  overflow: hidden;
-  white-space: nowrap;
-  transform: scale(0.8) translateX(-12px);
-  filter: blur(5px);
-  transition: 
-    max-width 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1),
-    transform 0.45s cubic-bezier(0.34, 1.35, 0.64, 1),
-    filter 0.35s ease,
-    padding 0.45s cubic-bezier(0.16, 1, 0.3, 1),
-    margin-right 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* Smoothly expands and reveals on hover or when favorited */
-.ref-badge-center-stats:hover .ref-top-stat-btn.ref-canopy-heart-btn,
-.ref-top-stat-btn.ref-canopy-heart-btn:focus-visible,
-.ref-top-stat-btn.ref-canopy-heart-btn.is-fav {
-  max-width: 85px;
-  opacity: 1;
-  padding-left: 7px !important;
-  padding-right: 7px !important;
-  margin-right: 0;
+/* Invisible hit-trigger zone extending 32px downward so hovering near top ceiling drops the whole box effortlessly */
+.ref-badge-center-stats::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -28px;
+  right: -28px;
+  bottom: -32px;
+  background: transparent;
   pointer-events: auto;
-  overflow: visible;
-  transform: scale(1) translateX(0);
+  z-index: 1;
+}
+
+/* Subtle sleek pill notch indicator when box is tucked away */
+.ref-badge-center-stats::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.25);
+  transition: opacity 0.3s ease, width 0.3s ease;
+}
+
+/* 🌟 Drop-Down Slide Appearance when Hovered, Focused, or Notification Open */
+.ref-badge-center-stats:hover,
+.ref-badge-center-stats:focus-within,
+.ref-badge-center-stats.is-open {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
   filter: blur(0);
+  background: rgba(0, 0, 0, 0.72);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.55), 0 0 24px rgba(255, 77, 109, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
-.ref-top-stat-btn.ref-canopy-heart-btn:hover {
-  transform: scale(1.12) translateY(-1px);
-  background: rgba(255, 255, 255, 0.14) !important;
-  box-shadow: 0 0 14px rgba(255, 77, 109, 0.45);
-}
-
-.ref-top-stat-btn.ref-canopy-heart-btn.is-fav svg,
-.ref-top-stat-btn.ref-canopy-heart-btn.is-favorited svg {
-  fill: #ff4d6d !important;
-  color: #ff4d6d !important;
-  stroke: #ff4d6d !important;
-  filter: drop-shadow(0 0 6px rgba(255, 77, 109, 0.65));
+.ref-badge-center-stats:hover::after,
+.ref-badge-center-stats:focus-within::after,
+.ref-badge-center-stats.is-open::after {
+  opacity: 0;
+  width: 0;
 }
 
 .ref-top-stat-btn {

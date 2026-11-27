@@ -1837,10 +1837,10 @@ export default function MinimalStudioScene({
                 </button>
               </div>
 
-              <div className="ref-badge-center-stats" title="Hover to reveal favorite heart">
+              <div className={`ref-badge-center-stats ${isNotifOpen ? 'is-open' : ''}`} title="Top Canopy Stats (Hover to expand)">
                 <button 
                   type="button"
-                  className={`ref-top-stat-btn ref-canopy-heart-btn ${isHeartActive ? 'is-fav is-favorited' : ''} ${justLiked ? 'just-liked' : ''}`}
+                  className={`ref-top-stat-btn ${isHeartActive ? 'is-fav is-favorited' : ''} ${justLiked ? 'just-liked' : ''}`}
                   onClick={handleLikeClick}
                   title={isHeartActive ? "Hearted (Click to remove)" : "Heart song"}
                   aria-label={isHeartActive ? "Unlike track" : "Like track"}
