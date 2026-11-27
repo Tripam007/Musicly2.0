@@ -19698,7 +19698,21 @@ body, html, #root {
   bottom: -36px;
   background: transparent;
   pointer-events: auto;
-  z-index: 1;
+  z-index: 0;
+}
+
+.ref-badge-center-stats:hover::before,
+.ref-badge-center-stats:focus-within::before,
+.ref-badge-center-stats.is-open::before,
+.ref-badge-center-stats.is-hovered::before {
+  pointer-events: none !important;
+}
+
+/* Ensure all canopy children are above the hit-zone and receive pointer clicks cleanly */
+.ref-badge-center-stats > * {
+  position: relative !important;
+  z-index: 5 !important;
+  pointer-events: auto !important;
 }
 
 /* Apple Sleek Radiant Bottom Lip indicator when box is tucked away */
@@ -19777,6 +19791,8 @@ body, html, #root {
 .ref-badge-center-stats .ref-canopy-btn,
 .ref-badge-center-stats .voice-btn-below-tuned {
   position: relative !important;
+  z-index: 10 !important;
+  pointer-events: auto !important;
   background: none !important;
   border: none !important;
   box-shadow: none !important;
@@ -19786,18 +19802,23 @@ body, html, #root {
   justify-content: center !important;
   cursor: pointer !important;
   padding: 4px !important;
-  width: 28px !important;
-  height: 28px !important;
+  width: 32px !important;
+  height: 32px !important;
   border-radius: 50% !important;
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background 0.18s ease, color 0.18s ease !important;
   user-select: none !important;
   line-height: 1 !important;
 }
 
+.ref-badge-center-stats .ref-canopy-btn svg,
+.ref-badge-center-stats .voice-btn-below-tuned svg {
+  pointer-events: none !important;
+}
+
 .ref-badge-center-stats .ref-canopy-btn:hover,
 .ref-badge-center-stats .voice-btn-below-tuned:hover {
-  transform: scale(1.15) !important;
-  background: rgba(255, 255, 255, 0.12) !important;
+  transform: scale(1.18) !important;
+  background: rgba(255, 255, 255, 0.16) !important;
   color: #ffffff !important;
 }
 
@@ -19809,24 +19830,25 @@ body, html, #root {
 .ref-badge-center-stats .ref-canopy-btn.active,
 .ref-badge-center-stats .voice-btn-below-tuned.active {
   color: #34d399 !important;
-  filter: drop-shadow(0 0 6px rgba(52, 211, 153, 0.7)) !important;
+  filter: drop-shadow(0 0 8px rgba(52, 211, 153, 0.8)) !important;
 }
 
 .ref-badge-center-stats .ref-canopy-btn .air-hand-dot {
   position: absolute;
-  top: 1px;
-  right: 1px;
-  width: 5px;
-  height: 5px;
+  top: 2px;
+  right: 2px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: #64748b;
   transition: all 0.2s ease;
+  pointer-events: none !important;
 }
 
 .ref-badge-center-stats .ref-canopy-btn.active .air-hand-dot,
 .ref-badge-center-stats .ref-canopy-btn .air-hand-dot.active {
   background: #10b981;
-  box-shadow: 0 0 6px #10b981;
+  box-shadow: 0 0 8px #10b981;
 }
 
 .ref-top-stat-btn {

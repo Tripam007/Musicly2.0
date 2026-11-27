@@ -1897,8 +1897,16 @@ export default function MinimalStudioScene({
                   id="btn-air-controls"
                   type="button"
                   className={`ref-canopy-btn ref-canopy-air-btn ${isAirControlsActive ? 'highlight-active active' : ''}`}
-                  onClick={onOpenAirControls}
-                  title={isAirControlsActive ? "Air Controls Active (Webcam AI Running) — Click for settings" : "Air Controls — Control playback with webcam hand gestures"}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    playClickSound();
+                    if (onOpenAirControls) {
+                      onOpenAirControls();
+                    }
+                    showToast(!isAirControlsActive ? "Air Controls active (Webcam gestures enabled)" : "Air Controls turned off");
+                  }}
+                  title={isAirControlsActive ? "Air Controls Active (Webcam AI Running) — Click to disable" : "Air Controls — Control playback with webcam hand gestures (Click to enable)"}
                   aria-label="Air Controls"
                 >
                   <Hand size={16} />
