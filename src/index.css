@@ -19742,27 +19742,26 @@ body, html, #root {
   width: 0;
 }
 
-/* Individual Stat Pills Inside Canopy (Apple Glass Capsule Aesthetic) */
+/* Keep stat items plain inside canopy — no individual boxes */
 .ref-badge-center-stats .ref-top-stat-btn {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
   color: #ffffff;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 999px;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  padding: 3px 6px;
+  border-radius: 8px;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background 0.18s ease;
   user-select: none;
   line-height: 1;
 }
 
 .ref-badge-center-stats .ref-top-stat-btn:hover {
-  transform: scale(1.08) translateY(-1px);
-  background: rgba(255, 255, 255, 0.14);
-  border-color: rgba(255, 255, 255, 0.24);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.08) !important;
 }
 
 .ref-badge-center-stats .ref-top-stat-btn:active {
