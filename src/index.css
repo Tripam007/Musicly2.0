@@ -2068,10 +2068,10 @@ body, html, #root {
   left: 0;
   width: 100vw;
   height: 100vh;
-  /* Lighter ambient veil matching surrounding lighting */
-  background: rgba(0, 0, 0, 0.28) !important;
-  backdrop-filter: blur(14px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
+  /* Blurred transparent veil without black overlay across ALL scenes */
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   z-index: 3500 !important;
   display: flex;
   align-items: center;
@@ -2159,20 +2159,20 @@ body, html, #root {
 }
 
 .glass-modal-panel {
-  /* Transparent Apple Glass Modal UI */
-  background: rgba(16, 20, 28, 0.36) !important;
-  backdrop-filter: blur(36px) saturate(190%) brightness(1.08) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(190%) brightness(1.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  border-radius: 24px;
+  /* Transparent Apple Glass Modal UI: luminous, zero muddy black */
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 28px;
   padding: 28px;
   width: 90%;
   max-width: 480px;
   box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.05),
-    0 24px 60px rgba(0, 0, 0, 0.35),
-    0 4px 16px rgba(0, 0, 0, 0.20) !important;
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 60px rgba(0, 0, 0, 0.25),
+    0 4px 16px rgba(0, 0, 0, 0.15) !important;
   animation: modalScale 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   overscroll-behavior: contain;
 }
@@ -4966,9 +4966,9 @@ body, html, #root {
 
 /* 🍎 APPLE LIQUID GLASS JS MODAL (dashersw/liquid-glass-js) */
 .auth-liquid-modal-overlay {
-  background: rgba(4, 7, 14, 0.52);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4981,7 +4981,7 @@ body, html, #root {
   max-width: 480px;
   border-radius: 36px !important;
   padding: 32px 30px !important;
-  background: rgba(14, 18, 28, 0.44) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
   backdrop-filter: blur(42px) saturate(230%) brightness(1.08) !important;
   -webkit-backdrop-filter: blur(42px) saturate(230%) brightness(1.08) !important;
   border: 1px solid rgba(255, 255, 255, 0.24) !important;
@@ -6782,9 +6782,9 @@ body, html, #root {
 .coffee-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35) !important;
-  backdrop-filter: blur(4px) !important;
-  -webkit-backdrop-filter: blur(4px) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   z-index: 120;
   pointer-events: auto;
   opacity: 1;
@@ -6803,10 +6803,10 @@ body, html, #root {
   width: 356px;
   max-width: calc(100vw - 36px);
   max-height: calc(100vh - 164px);
-  background: rgba(12, 16, 26, 0.28);
-  backdrop-filter: blur(32px) saturate(190%) contrast(104%);
-  -webkit-backdrop-filter: blur(32px) saturate(190%) contrast(104%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
   border-radius: 28px;
   padding: 28px 26px 24px 26px;
   box-shadow: 
@@ -8557,9 +8557,9 @@ body, html, #root {
 .feedback-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65) !important;
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   z-index: 130;
   display: flex;
   align-items: center;
@@ -8570,7 +8570,7 @@ body, html, #root {
 }
 
 .feedback-modal-overlay.is-success-backdrop {
-  background: rgba(6, 9, 18, 0.45) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
   backdrop-filter: blur(28px) saturate(190%) !important;
   -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
 }
@@ -8580,17 +8580,17 @@ body, html, #root {
   pointer-events: none;
 }
 
-/* Feedback Modal Panel - Modern Apple Black Liquid Glass */
+/* Feedback Modal Panel - Modern Apple Liquid Glass */
 .feedback-modal-panel {
   position: relative;
   width: 440px;
   max-width: calc(100vw - 32px);
   max-height: calc(100vh - 40px);
-  background: linear-gradient(180deg, rgba(16, 18, 26, 0.86) 0%, rgba(7, 9, 14, 0.94) 100%) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
   backdrop-filter: blur(48px) saturate(180%) contrast(108%) !important;
   -webkit-backdrop-filter: blur(48px) saturate(180%) contrast(108%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.09) !important;
-  border-top: 1px solid rgba(255, 255, 255, 0.20) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.35) !important;
   border-radius: 32px !important;
   padding: 28px 24px 22px 24px;
   text-align: center;
@@ -11778,7 +11778,9 @@ body, html, #root {
 .admin-submodal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -21879,9 +21881,9 @@ body, html, #root {
   inset: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(10, 11, 16, 0.78);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   z-index: 10000;
   display: flex;
   align-items: center;

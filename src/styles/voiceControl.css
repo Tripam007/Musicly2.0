@@ -284,9 +284,9 @@
   bottom: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  background: rgba(0, 0, 0, 0.22) !important;
-  backdrop-filter: blur(20px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   z-index: 999999 !important;
   display: flex !important;
   align-items: center !important;
@@ -299,13 +299,17 @@
 .voice-settings-modal {
   width: 100%;
   max-width: 520px;
-  background: rgba(18, 24, 38, 0.55) !important;
-  backdrop-filter: blur(36px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
-  border-radius: 24px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 28px !important;
   padding: 26px 24px !important;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 60px rgba(0, 0, 0, 0.25), 
+    0 4px 16px rgba(0, 0, 0, 0.15) !important;
   color: #f1f5f9;
   animation: modalScaleIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
@@ -323,8 +327,9 @@ body.voice-settings-active .app-viewport .minimal-studio-root,
 body.voice-settings-active .app-viewport .afterglow-scene-root,
 body.voice-settings-active .app-viewport .choose-your-vibe-root,
 body.voice-settings-active .app-viewport .vision-spatial-gallery,
+body.voice-settings-active .app-viewport .vision-spatial-viewport,
 body.voice-settings-active .app-viewport .vision-spatial-container {
-  filter: blur(20px) saturate(120%) !important;
+  filter: blur(14px) brightness(1.0) saturate(115%) !important;
   transform: scale(1.01);
   transition: filter 0.25s ease-out, transform 0.25s ease-out;
   pointer-events: none !important;
