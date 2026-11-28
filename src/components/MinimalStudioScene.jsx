@@ -627,7 +627,7 @@ export default function MinimalStudioScene({
     if (canopyTimerRef.current) clearTimeout(canopyTimerRef.current);
     canopyTimerRef.current = setTimeout(() => {
       setIsCanopyOpen(false);
-    }, 2000); // Keep open for 2 seconds after cursor leaves
+    }, 1000); // Keep open for 1 second after cursor leaves
   }, []);
 
   const [listeners, setListeners] = useState(isPlaying ? 1 : 0);
@@ -1911,7 +1911,7 @@ export default function MinimalStudioScene({
                 className={`ref-badge-center-stats ${isCanopyOpen || isAirControlsActive ? 'is-open is-hovered' : ''}`}
                 onMouseEnter={handleCanopyMouseEnter}
                 onMouseLeave={handleCanopyMouseLeave}
-                title="Top Canopy Controls (Hover to drop down, stays 2s)"
+                title="Top Canopy Controls (Hover to drop down, stays 1s)"
               >
                 {/* 1. Live Listeners Count: Green Dot + Number (No 'in tuned' text) */}
                 <div className="ref-canopy-stat-item ref-canopy-listeners" title={`Live listeners: ${listeners} active`}>
