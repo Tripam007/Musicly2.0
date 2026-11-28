@@ -132,7 +132,7 @@ export default function SongRequestModal({
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay song-request-modal-overlay" onClick={onClose}>
       <div
         className="glass-modal-panel song-request-panel"
         onClick={(e) => e.stopPropagation()}
