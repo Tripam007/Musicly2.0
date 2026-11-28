@@ -2081,7 +2081,18 @@ body, html, #root {
 }
 
 /* Atmospheric scene blur whenever any modal, drawer, or mixer is active - preserving ambient warmth and scene colors */
+.app-viewport.app-modal-open .ref-studio-stage,
+.app-viewport.app-modal-open .ref-chassis-card,
+.app-viewport.app-modal-open .ref-center-stage,
+.app-viewport.app-modal-open .ref-main-photo-frame,
+.app-viewport.app-modal-open .ref-ambient-bg,
+.app-viewport.app-modal-open .ref-sidebar-dock,
+.app-viewport.app-modal-open .ref-right-column,
+.app-viewport.app-modal-open .ref-outer-topbar,
+.app-viewport.app-modal-open .ref-outer-bottom-bar,
 .app-viewport.app-modal-open .vision-spatial-viewport,
+.app-viewport.app-modal-open .vision-spatial-bg-layer,
+.app-viewport.app-modal-open .vision-cards-track,
 .app-viewport.app-modal-open .vinyl-scene-root,
 .app-viewport.app-modal-open .scene-backdrop-layer,
 .app-viewport.app-modal-open .app-content-shell,
@@ -2090,8 +2101,20 @@ body, html, #root {
 .app-viewport.app-modal-open .ambient-glow-layer,
 .app-viewport.app-modal-open .minimal-studio-root,
 .app-viewport.app-modal-open .afterglow-scene-root,
+.app-viewport.app-modal-open .afterglow-film-viewport,
 .app-viewport.app-modal-open .choose-your-vibe-root,
+.app-viewport.drawer-modal-open .ref-studio-stage,
+.app-viewport.drawer-modal-open .ref-chassis-card,
+.app-viewport.drawer-modal-open .ref-center-stage,
+.app-viewport.drawer-modal-open .ref-main-photo-frame,
+.app-viewport.drawer-modal-open .ref-ambient-bg,
+.app-viewport.drawer-modal-open .ref-sidebar-dock,
+.app-viewport.drawer-modal-open .ref-right-column,
+.app-viewport.drawer-modal-open .ref-outer-topbar,
+.app-viewport.drawer-modal-open .ref-outer-bottom-bar,
 .app-viewport.drawer-modal-open .vision-spatial-viewport,
+.app-viewport.drawer-modal-open .vision-spatial-bg-layer,
+.app-viewport.drawer-modal-open .vision-cards-track,
 .app-viewport.drawer-modal-open .vinyl-scene-root,
 .app-viewport.drawer-modal-open .scene-backdrop-layer,
 .app-viewport.drawer-modal-open .app-content-shell,
@@ -2099,11 +2122,28 @@ body, html, #root {
 .app-viewport.drawer-modal-open .ambient-glow-layer,
 .app-viewport.drawer-modal-open .minimal-studio-root,
 .app-viewport.drawer-modal-open .afterglow-scene-root,
-.app-viewport.drawer-modal-open .choose-your-vibe-root {
-  filter: blur(14px) brightness(1.0) saturate(115%) !important;
+.app-viewport.drawer-modal-open .afterglow-film-viewport,
+.app-viewport.drawer-modal-open .choose-your-vibe-root,
+body.voice-settings-active .app-viewport .ref-studio-stage,
+body.voice-settings-active .app-viewport .ref-chassis-card,
+body.voice-settings-active .app-viewport .vinyl-scene-root,
+body.voice-settings-active .app-viewport .scene-backdrop-layer,
+body.voice-settings-active .app-viewport .app-content-shell,
+body.voice-settings-active .app-viewport .retro-tv-container,
+body.voice-settings-active .app-viewport .backdrop-hotspot-container,
+body.voice-settings-active .app-viewport .ambient-glow-layer,
+body.voice-settings-active .app-viewport .minimal-studio-root,
+body.voice-settings-active .app-viewport .afterglow-scene-root,
+body.voice-settings-active .app-viewport .choose-your-vibe-root,
+body.voice-settings-active .app-viewport .vision-spatial-gallery,
+body.voice-settings-active .app-viewport .vision-spatial-viewport,
+.ref-studio-stage.modal-active .ref-chassis-card,
+.ref-studio-stage.modal-active .ref-main-photo-frame,
+.ref-studio-stage.modal-active .ref-center-stage {
+  filter: blur(18px) brightness(1.0) saturate(115%) !important;
   transform: scale(1.01);
   transition: filter 0.25s ease-out, transform 0.25s ease-out;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 .modal-overlay.playlist-drawer-backdrop,
@@ -21902,13 +21942,15 @@ body, html, #root {
   width: 100%;
   max-width: 780px;
   max-height: 90vh;
-  background: rgba(30, 32, 42, 0.94);
-  border: 1.5px solid rgba(244, 160, 0, 0.35);
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  border: 1.5px solid rgba(244, 160, 0, 0.35) !important;
   border-radius: 28px;
   box-shadow: 
-    0 24px 70px rgba(0, 0, 0, 0.6),
-    0 0 40px rgba(244, 160, 0, 0.15),
-    inset 0 1px 2px rgba(255, 255, 255, 0.2);
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    0 24px 70px rgba(0, 0, 0, 0.25),
+    0 0 40px rgba(244, 160, 0, 0.15) !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -22704,9 +22746,9 @@ body, html, #root {
   inset: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(4, 7, 12, 0.72);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   z-index: 99999;
   display: flex;
   align-items: center;
@@ -22729,15 +22771,15 @@ body, html, #root {
   width: 100%;
   max-width: 960px;
   max-height: 90vh;
-  background: rgba(22, 24, 32, 0.94);
-  backdrop-filter: blur(36px) saturate(180%);
-  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
   border-radius: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
   box-shadow: 
-    0 32px 90px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 1.5px 2px rgba(255, 255, 255, 0.25);
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    0 32px 90px rgba(0, 0, 0, 0.25),
+    0 4px 16px rgba(0, 0, 0, 0.15) !important;
   display: flex;
   flex-direction: column;
   overflow: hidden;

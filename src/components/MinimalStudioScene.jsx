@@ -1642,7 +1642,7 @@ export default function MinimalStudioScene({
   const progressPercent = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="ref-studio-stage" style={themeStyles}>
+    <div className={`ref-studio-stage ${isThemeModalOpen ? 'modal-active' : ''}`} style={themeStyles}>
       {/* Outer blurred warm atmospheric background */}
       <div className="ref-ambient-bg" />
 
