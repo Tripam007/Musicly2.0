@@ -21524,23 +21524,24 @@ body, html, #root {
 .ref-clock-colon {
   display: inline-block;
   animation: refClockColonBlink 1.4s ease-in-out infinite;
-  color: var(--ref-accent, #f4a000);
+  color: #ffffff !important;
   margin: 0 1px;
 }
 
 @keyframes refClockColonBlink {
-  0%, 100% { opacity: 1; filter: drop-shadow(0 0 3px var(--ref-accent, #f4a000)); }
-  50% { opacity: 0.3; filter: none; }
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.85)); }
+  50% { opacity: 0.35; filter: none; }
 }
 
 .ref-time-ampm {
   font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   font-size: 0.72rem;
   font-weight: 800;
-  color: var(--ref-accent, #f4a000);
+  color: #ffffff !important;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   margin-top: 6px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 .ref-time-year-row {
