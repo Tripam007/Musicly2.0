@@ -2090,26 +2090,32 @@ body, html, #root {
 .app-viewport.app-modal-open .minimal-studio-root,
 .app-viewport.app-modal-open .afterglow-scene-root,
 .app-viewport.app-modal-open .choose-your-vibe-root,
+.app-viewport.drawer-modal-open .vision-spatial-viewport,
 .app-viewport.drawer-modal-open .vinyl-scene-root,
 .app-viewport.drawer-modal-open .scene-backdrop-layer,
 .app-viewport.drawer-modal-open .app-content-shell,
 .app-viewport.drawer-modal-open .retro-tv-container,
-.app-viewport.drawer-modal-open .ambient-glow-layer {
-  filter: blur(14px) brightness(0.92) saturate(110%) !important;
-  transform: scale(1.02);
+.app-viewport.drawer-modal-open .ambient-glow-layer,
+.app-viewport.drawer-modal-open .minimal-studio-root,
+.app-viewport.drawer-modal-open .afterglow-scene-root,
+.app-viewport.drawer-modal-open .choose-your-vibe-root {
+  filter: blur(14px) brightness(1.0) saturate(115%) !important;
+  transform: scale(1.01);
   transition: filter 0.25s ease-out, transform 0.25s ease-out;
   pointer-events: none;
 }
 
+.modal-overlay.playlist-drawer-backdrop,
 .playlist-drawer-backdrop {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.28) !important;
-  backdrop-filter: blur(14px) saturate(130%) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(130%) !important;
+  /* Blurred transparent backdrop without black overlay */
+  background: rgba(255, 255, 255, 0.02) !important;
+  backdrop-filter: blur(18px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
   z-index: 3500 !important;
   display: flex;
   align-items: center;
@@ -2126,20 +2132,20 @@ body, html, #root {
   max-width: calc(100vw - 32px);
   max-height: 85vh;
   height: 590px;
-  /* Transparent Apple Glass UI harmonizing with surroundings */
-  background: rgba(16, 20, 28, 0.36) !important;
-  backdrop-filter: blur(36px) saturate(190%) brightness(1.08) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(190%) brightness(1.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  border-radius: 24px;
+  /* Transparent Apple Glass UI: luminous, zero muddy black */
+  background: rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(180%) brightness(1.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  border-radius: 28px;
   padding: 22px 20px 18px 20px;
   display: flex;
   flex-direction: column;
   box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
-    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.05),
-    0 24px 60px rgba(0, 0, 0, 0.35),
-    0 4px 16px rgba(0, 0, 0, 0.20) !important;
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 60px rgba(0, 0, 0, 0.25),
+    0 4px 16px rgba(0, 0, 0, 0.15) !important;
   z-index: 3501 !important;
   box-sizing: border-box;
   animation: popoverFadeUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2234,15 +2240,19 @@ body, html, #root {
   width: 535px;
   max-width: calc(100vw - 24px);
   max-height: 490px;
-  background: rgba(10, 13, 22, 0.40);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(36px) saturate(180%) brightness(1.08);
+  -webkit-backdrop-filter: blur(36px) saturate(180%) brightness(1.08);
+  border: 1px solid rgba(255, 255, 255, 0.20);
   border-radius: var(--radius-lg);
   padding: 18px 16px 14px 16px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.7), 0 0 35px rgba(251, 133, 0, 0.12);
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px 0 rgba(255, 255, 255, 0.08),
+    0 24px 60px rgba(0, 0, 0, 0.25),
+    0 4px 16px rgba(0, 0, 0, 0.15);
   animation: popoverFadeUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 60;
   box-sizing: border-box;
