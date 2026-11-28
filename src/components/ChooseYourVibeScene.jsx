@@ -210,7 +210,9 @@ function ChooseYourVibeScene({
   currentTime = 0,
   duration = 180,
   onSeek,
-  audioElement = null
+  audioElement = null,
+  voiceManager = null,
+  onOpenPlaylistDrawer = null
 }) {
   // 👓 Apple Vision Pro Spatial 3D Gallery Mode (Shift view requested by user)
   const [isVisionSpatialMode, setIsVisionSpatialMode] = useState(() => {
@@ -948,64 +950,69 @@ function ChooseYourVibeScene({
       style={{ opacity: Math.max(0.3, roomBrightness) }}
     >
       {/* High-res cinematic evening room background with smooth CSS variable parallax */}
-      <div className="vibe-scene-backdrop" />
+      {!isVisionSpatialMode && <div className="vibe-scene-backdrop" />}
 
       {/* Floating subtle light dust motes */}
-      <div className="vibe-dust-layer">
-        {DUST_MOTES.map(mote => (
-          <span
-            key={mote.id}
-            className="vibe-dust-mote"
-            style={{
-              top: mote.top,
-              left: mote.left,
-              width: `${mote.size}px`,
-              height: `${mote.size}px`,
-              opacity: mote.opacity,
-              animationDuration: `${mote.duration}s`,
-              animationDelay: `-${mote.delay}s`
-            }}
-          />
-        ))}
-      </div>
+      {!isVisionSpatialMode && (
+        <div className="vibe-dust-layer">
+          {DUST_MOTES.map(mote => (
+            <span
+              key={mote.id}
+              className="vibe-dust-mote"
+              style={{
+                top: mote.top,
+                left: mote.left,
+                width: `${mote.size}px`,
+                height: `${mote.size}px`,
+                opacity: mote.opacity,
+                animationDuration: `${mote.duration}s`,
+                animationDelay: `-${mote.delay}s`
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Glossy reflective desk table surface in foreground with reactive reflection sheen */}
-      <div className="vibe-scene-table-reflection-plane" />
+      {!isVisionSpatialMode && <div className="vibe-scene-table-reflection-plane" />}
 
       {/* Top Left Branding: MUSICLY — (Click once to shift view, double-click to return Home) */}
-      <div 
-        className="vibe-top-left-brand is-clickable"
-        onClick={handleBrandClick}
-        onPointerDown={(e) => e.stopPropagation()}
-        role="button"
-        tabIndex={0}
-        title="Click once to shift view (Vision Spatial 3D ⇄ Classic) • Double-click to return Home"
-        aria-label="Musicly - Click once to shift view, double click to return home"
-      >
-        <span className="vibe-brand-logo">MUSICLY</span>
-        <span className="vibe-brand-line" />
-      </div>
+      {!isVisionSpatialMode && (
+        <div 
+          className="vibe-top-left-brand is-clickable"
+          onClick={handleBrandClick}
+          onPointerDown={(e) => e.stopPropagation()}
+          role="button"
+          tabIndex={0}
+          title="Click once to shift view (Vision Spatial 3D ⇄ Classic) • Double-click to return Home"
+          aria-label="Musicly - Click once to shift view, double click to return home"
+        >
+          <span className="vibe-brand-logo">MUSICLY</span>
+          <span className="vibe-brand-line" />
+        </div>
+      )}
 
       {/* Top Right Controls: Tagline & Apple-Inspired 3-Dot Glass Popout Dock */}
-      <div 
-        className="vibe-top-right-group" 
-        ref={dockContainerRef}
-        onPointerDown={(e) => e.stopPropagation()}
-        onPointerUp={(e) => e.stopPropagation()}
-      >
-        {!isDockOpen && (
-          <div className="vibe-top-right-tag">
-            <div className="vibe-tag-text">
-              <span>SOUNDS</span>
-              <span>FOR A</span>
-              <span>BETTER YOU</span>
+      {!isVisionSpatialMode && (
+        <div 
+          className="vibe-top-right-group" 
+          ref={dockContainerRef}
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
+        >
+          {!isDockOpen && (
+            <div className="vibe-top-right-tag">
+              <div className="vibe-tag-text">
+                <span>SOUNDS</span>
+                <span>FOR A</span>
+                <span>BETTER YOU</span>
+              </div>
+              <span className="vibe-tag-divider" />
             </div>
-            <span className="vibe-tag-divider" />
-          </div>
-        )}
+          )}
 
-        {/* 3-Dot Glass Box & Popout Dock */}
-        <div className="vibe-dock-wrapper">
+          {/* 3-Dot Glass Box & Popout Dock */}
+          <div className="vibe-dock-wrapper">
           {/* Popped-out Glass Control Dock */}
           {isDockOpen && (
             <nav className="vibe-glass-control-dock vibe-dock-popped" aria-label="Scene Controls Dock">
@@ -1176,6 +1183,7 @@ function ChooseYourVibeScene({
           </button>
         </div>
       </div>
+      )}
 
       {/* View Switcher: Classic Carousel vs Apple Vision Pro 3D Spatial Gallery */}
       {isVisionSpatialMode ? (
@@ -1191,6 +1199,8 @@ function ChooseYourVibeScene({
           user={user}
           isAdmin={isAdmin}
           onOpenAuthModal={onOpenAuthModal}
+          voiceManager={voiceManager}
+          onOpenPlaylistDrawer={onOpenPlaylistDrawer}
         />
       ) : (
         <>

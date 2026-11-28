@@ -21,7 +21,8 @@ import {
   Music,
   Lock,
   Sparkles,
-  Compass
+  Compass,
+  X
 } from 'lucide-react';
 import { getUniqueSongQuote } from '../utils/songQuoteGenerator';
 import '../styles/visionSpatialGallery.css';
@@ -54,8 +55,23 @@ export default function VisionSpatialGallery({
   onToggleFavorite,
   user = null,
   isAdmin = false,
-  onOpenAuthModal
+  onOpenAuthModal,
+  voiceManager = null,
+  onOpenPlaylistDrawer = null
 }) {
+  // Preload and monitor background image load state to eliminate glitches & seams
+  const [bgLoaded, setBgLoaded] = useState(false);
+  useEffect(() => {
+    const img = new window.Image();
+    img.src = '/assets/images/vision_spatial_room_bg.jpg';
+    if (img.complete) {
+      setBgLoaded(true);
+    } else {
+      img.onload = () => setBgLoaded(true);
+      img.onerror = () => setBgLoaded(true);
+    }
+  }, []);
+
   // Filter active songs pool
   const songPool = useMemo(() => {
     if (!Array.isArray(tracks) || tracks.length === 0) return [];
@@ -75,6 +91,19 @@ export default function VisionSpatialGallery({
   const [isSearching, setIsSearching] = useState(false);
   const [toastMsg, setToastMsg] = useState(null);
   const toastTimerRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // Monitor voice AI manager state
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  useEffect(() => {
+    if (!voiceManager) return;
+    const unsub = voiceManager.subscribe((payload) => {
+      setIsVoiceActive(payload?.state !== 'IDLE');
+    });
+    return () => {
+      if (typeof unsub === 'function') unsub();
+    };
+  }, [voiceManager]);
 
   // Sync activeSpatialIndex when currentTrack changes externally (e.g. from background queue)
   useEffect(() => {
@@ -118,14 +147,45 @@ export default function VisionSpatialGallery({
     return getUniqueSongQuote(activeTrack);
   }, [activeTrack?.id, activeTrack?.title, quoteRefreshCount]);
 
-  // Shift to Next / Prev card
+  // Shift to Next / Prev card - immediately switches song when playing
   const handleShiftNext = useCallback(() => {
-    setActiveSpatialIndex(prev => (prev + 1) % totalSongs);
-  }, [totalSongs]);
+    setActiveSpatialIndex(prev => {
+      const nextIdx = (prev + 1) % totalSongs;
+      if (isPlaying && displaySongs[nextIdx] && onSelectTrack) {
+        onSelectTrack(displaySongs[nextIdx]);
+      }
+      return nextIdx;
+    });
+  }, [totalSongs, isPlaying, displaySongs, onSelectTrack]);
 
   const handleShiftPrev = useCallback(() => {
-    setActiveSpatialIndex(prev => (prev - 1 + totalSongs) % totalSongs);
-  }, [totalSongs]);
+    setActiveSpatialIndex(prev => {
+      const prevIdx = (prev - 1 + totalSongs) % totalSongs;
+      if (isPlaying && displaySongs[prevIdx] && onSelectTrack) {
+        onSelectTrack(displaySongs[prevIdx]);
+      }
+      return prevIdx;
+    });
+  }, [totalSongs, isPlaying, displaySongs, onSelectTrack]);
+
+  // Grid / Library drawer trigger
+  const handleGridClick = () => {
+    if (onOpenPlaylistDrawer) {
+      onOpenPlaylistDrawer();
+    } else {
+      showToast('Browse All Collections');
+    }
+  };
+
+  // Microphone / Voice AI trigger
+  const handleMicClick = () => {
+    if (voiceManager) {
+      const active = voiceManager.toggle();
+      showToast(active ? 'Voice AI: Listening for commands...' : 'Voice AI: Stopped');
+    } else {
+      showToast('Voice AI: Ready (Say "Hey Musicly")');
+    }
+  };
 
   // Keyboard navigation
   useEffect(() => {
@@ -295,7 +355,7 @@ export default function VisionSpatialGallery({
       aria-label="Apple Vision Pro Spatial 3D Music Explorer"
     >
       {/* Photo-Realistic Luxury Living Room Room Backdrop from user reference */}
-      <div className="vision-spatial-bg-layer" />
+      <div className={`vision-spatial-bg-layer ${bgLoaded ? 'is-loaded' : ''}`} />
       <div className="vision-spatial-scrim" />
 
       {/* Toast Feedback */}
@@ -309,12 +369,12 @@ export default function VisionSpatialGallery({
           1. TOP FLOATING FROSTED GLASS CAPSULE BAR (VisionOS Window Chrome)
          ===================================================================== */}
       <header className="vision-top-capsule-bar" onPointerDown={e => e.stopPropagation()}>
-        {/* 9-dot Grid Menu */}
+        {/* 9-dot Grid Menu - Opens Library / Drawer */}
         <button 
           type="button" 
           className="vision-bar-btn"
-          onClick={() => showToast('Musicly Spatial Library')}
-          title="Browse All Collections"
+          onClick={handleGridClick}
+          title="Browse All Collections & Playlists"
         >
           <Grid size={17} />
         </button>
@@ -339,72 +399,81 @@ export default function VisionSpatialGallery({
           <ChevronRight size={18} />
         </button>
 
-        {/* Font / View Mode 'aA' */}
-        <button 
-          type="button" 
-          className="vision-bar-btn"
-          onClick={() => showToast('Spatial Typography View: Active')}
-          title="View Mode"
-        >
-          <span className="vision-bar-btn-text">aA</span>
-        </button>
-
-        {/* Center Search / Location Pill */}
+        {/* Expanded Center Search / Explorer Pill Slider */}
         <div 
-          className="vision-bar-center-pill"
-          onClick={() => setIsSearching(true)}
+          className={`vision-bar-center-pill ${isSearching || searchQuery ? 'is-active' : ''}`}
+          onClick={() => {
+            setIsSearching(true);
+            searchInputRef.current?.focus();
+          }}
         >
-          <Lock size={12} style={{ opacity: 0.65, flexShrink: 0 }} />
-          {isSearching ? (
-            <input
-              type="text"
-              autoFocus
-              className="vision-bar-search-input"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onBlur={() => {
-                if (!searchQuery) setIsSearching(false);
+          <Search size={14} style={{ opacity: 0.75, flexShrink: 0 }} />
+          <input
+            ref={searchInputRef}
+            type="text"
+            className="vision-bar-search-input"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setActiveSpatialIndex(0);
+            }}
+            onFocus={() => setIsSearching(true)}
+            onBlur={() => {
+              if (!searchQuery) setIsSearching(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                if (activeTrack && onSelectTrack) {
+                  onSelectTrack(activeTrack);
+                  showToast(`Playing: ${cleanTitle(activeTrack.title)}`);
+                }
+              } else if (e.key === 'Escape') {
+                setSearchQuery('');
+                setIsSearching(false);
+              }
+            }}
+            placeholder="Search spatial tracks, artists, vibes..."
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              className="vision-bar-clear-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSearchQuery('');
+                setActiveSpatialIndex(0);
+                searchInputRef.current?.focus();
               }}
-              placeholder="Search spatial tracks..."
-            />
+              title="Clear search"
+            >
+              <X size={13} />
+            </button>
           ) : (
-            <span className="vision-bar-pill-text">
-              {searchQuery ? `Searching: "${searchQuery}"` : 'Musicly Explorer'}
-            </span>
+            <Lock size={12} style={{ opacity: 0.45, flexShrink: 0 }} />
           )}
         </div>
 
-        {/* Microphone */}
+        {/* Microphone / Voice AI */}
         <button 
           type="button" 
-          className="vision-bar-btn"
-          onClick={() => showToast('Voice AI: Ready')}
-          title="Voice Search"
+          className={`vision-bar-btn ${isVoiceActive ? 'is-voice-active' : ''}`}
+          onClick={handleMicClick}
+          title={isVoiceActive ? "Voice AI: Active" : "Voice AI Search & Control"}
         >
           <Mic size={17} />
         </button>
 
-        {/* Add (+) */}
+        {/* Add (+) / Sanctuary */}
         <button 
           type="button" 
-          className="vision-bar-btn"
+          className={`vision-bar-btn ${isFavorite ? 'is-favorite-active' : ''}`}
           onClick={() => {
             if (onToggleFavorite) onToggleFavorite(activeTrack?.id);
             showToast(isFavorite ? 'Removed from Sanctuary' : 'Saved to Sanctuary');
           }}
-          title="Add to Sanctuary"
+          title={isFavorite ? "Remove from Sanctuary" : "Add to Sanctuary"}
         >
           <Plus size={17} />
-        </button>
-
-        {/* Share */}
-        <button 
-          type="button" 
-          className="vision-bar-btn"
-          onClick={handleShare}
-          title="Share Song"
-        >
-          <Share2 size={16} />
         </button>
 
         {/* Shift back to Classic Mode */}

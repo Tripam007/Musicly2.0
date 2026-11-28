@@ -3130,6 +3130,11 @@ export default function App() {
         duration={duration}
         onSeek={handleSeek}
         audioElement={audioRef.current}
+        voiceManager={voiceManager}
+        onOpenPlaylistDrawer={() => {
+          setIsDrawerSearchMode(false);
+          setIsDrawerOpen(true);
+        }}
       />
 
       {/* 🌌 AFTERGLOW Immersive Editorial Cinematic Scene (9-Panel Continuous Scroll Film) */}
