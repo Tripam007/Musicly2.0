@@ -71,137 +71,154 @@
 /* ==========================================================================
    1. TOP FLOATING FROSTED GLASS CAPSULE BAR (VisionOS Window Chrome)
    ========================================================================== */
-.vision-top-capsule-bar {
+.vision-top-nav-bar {
   position: relative;
   z-index: 30;
   margin-top: 14px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  max-width: min(94vw, 780px);
+  padding: 0 16px;
+}
+
+/* Flanking Side Groups (Plain icons, no box container) */
+.vision-nav-side-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Plain icon buttons (No background boxes, completely borderless & transparent) */
+.vision-plain-icon-btn {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 6px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  outline: none;
+  border-radius: 50%;
+}
+
+.vision-plain-icon-btn:hover {
+  color: #ffffff;
+  transform: scale(1.15);
+  filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.5));
+}
+
+.vision-plain-icon-btn:active {
+  transform: scale(0.92);
+}
+
+.vision-plain-icon-btn.is-voice-active {
+  color: #ef4444 !important;
+  filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.7));
+  animation: visionMicPulse 1.2s infinite alternate ease-in-out;
+}
+
+.vision-plain-icon-btn.is-favorite-active {
+  color: #fb7185 !important;
+  filter: drop-shadow(0 0 8px rgba(251, 113, 133, 0.6));
+}
+
+@keyframes visionMicPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.15); filter: drop-shadow(0 0 14px rgba(239, 68, 68, 0.9)); }
+}
+
+/* Center: The Entire Bar IS the Search Box */
+.vision-search-box-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 16px;
+  flex: 1;
+  min-width: 240px;
+  max-width: 500px;
+  height: 40px;
   border-radius: 9999px;
-  background: rgba(28, 30, 38, 0.58);
+  background: rgba(28, 30, 38, 0.62);
   backdrop-filter: blur(28px) saturate(190%);
   -webkit-backdrop-filter: blur(28px) saturate(190%);
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow: 
     0 10px 32px rgba(0, 0, 0, 0.45),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  max-width: min(92vw, 680px);
-}
-
-.vision-top-capsule-bar:hover {
-  background: rgba(34, 38, 48, 0.72);
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 
-    0 14px 40px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.vision-bar-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.82);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
-  flex-shrink: 0;
-}
-
-.vision-bar-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
-  color: #ffffff;
-  transform: scale(1.06);
-}
-
-.vision-bar-btn:active {
-  transform: scale(0.94);
-}
-
-.vision-bar-btn.is-voice-active {
-  color: #ef4444 !important;
-  background: rgba(239, 68, 68, 0.22) !important;
-  box-shadow: 0 0 12px rgba(239, 68, 68, 0.45);
-  animation: visionMicPulse 1.2s infinite alternate ease-in-out;
-}
-
-@keyframes visionMicPulse {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.12); box-shadow: 0 0 18px rgba(239, 68, 68, 0.7); }
-}
-
-.vision-bar-btn.is-favorite-active {
-  color: #fb7185;
-}
-
-/* Expanded center search / Explorer pill inside top capsule */
-.vision-bar-center-pill {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  flex: 1;
-  min-width: 250px;
-  max-width: 480px;
-  background: rgba(14, 16, 22, 0.58);
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
   cursor: text;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.vision-bar-center-pill:hover,
-.vision-bar-center-pill.is-active {
-  background: rgba(18, 22, 32, 0.82);
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.08);
+.vision-search-box-bar:hover,
+.vision-search-box-bar.is-active {
+  background: rgba(34, 38, 48, 0.78);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: 
+    0 14px 40px rgba(0, 0, 0, 0.55),
+    0 0 20px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.vision-search-icon {
+  color: rgba(255, 255, 255, 0.7);
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.vision-search-box-bar:hover .vision-search-icon,
+.vision-search-box-bar.is-active .vision-search-icon {
   color: #ffffff;
 }
 
-.vision-bar-search-input {
+.vision-search-input {
   background: transparent;
   border: none;
   outline: none;
   color: #ffffff;
-  font-size: 12.5px;
+  font-size: 13px;
+  font-weight: 500;
   width: 100%;
   flex: 1;
   font-family: inherit;
+  letter-spacing: 0.01em;
 }
 
-.vision-bar-search-input::placeholder {
-  color: rgba(255, 255, 255, 0.45);
+.vision-search-input::placeholder {
+  color: rgba(255, 255, 255, 0.48);
 }
 
-.vision-bar-clear-btn {
+.vision-search-clear-btn {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  padding: 2px;
+  padding: 3px;
   border-radius: 50%;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
-.vision-bar-clear-btn:hover {
+.vision-search-clear-btn:hover {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.18);
-  transform: scale(1.1);
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.15);
+}
+
+.vision-search-lock-icon {
+  opacity: 0.45;
+  color: rgba(255, 255, 255, 0.65);
+  flex-shrink: 0;
 }
 
 /* ==========================================================================

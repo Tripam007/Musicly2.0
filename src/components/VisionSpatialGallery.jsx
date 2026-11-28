@@ -355,52 +355,52 @@ export default function VisionSpatialGallery({
       )}
 
       {/* =====================================================================
-          1. TOP FLOATING FROSTED GLASS CAPSULE BAR (VisionOS Window Chrome)
+          1. TOP FLOATING NAVIGATION BAR: FLANKING PLAIN ICONS & CENTER SEARCH BAR
          ===================================================================== */}
-      <header className="vision-top-capsule-bar" onPointerDown={e => e.stopPropagation()}>
-        {/* 9-dot Grid Menu - Opens Library / Drawer */}
-        <button 
-          type="button" 
-          className="vision-bar-btn"
-          onClick={handleGridClick}
-          title="Browse All Collections & Playlists"
-        >
-          <Grid size={17} />
-        </button>
+      <header className="vision-top-nav-bar" onPointerDown={e => e.stopPropagation()}>
+        {/* Left Side Plain Icons (No boxes) */}
+        <div className="vision-nav-side-group vision-nav-left-group">
+          <button 
+            type="button" 
+            className="vision-plain-icon-btn"
+            onClick={handleGridClick}
+            title="Browse All Collections & Playlists"
+          >
+            <Grid size={18} />
+          </button>
 
-        {/* Previous Chevron */}
-        <button 
-          type="button" 
-          className="vision-bar-btn"
-          onClick={handleShiftPrev}
-          title="Previous Track (Left Arrow)"
-        >
-          <ChevronLeft size={18} />
-        </button>
+          <button 
+            type="button" 
+            className="vision-plain-icon-btn"
+            onClick={handleShiftPrev}
+            title="Previous Track (Left Arrow)"
+          >
+            <ChevronLeft size={20} />
+          </button>
 
-        {/* Next Chevron */}
-        <button 
-          type="button" 
-          className="vision-bar-btn"
-          onClick={handleShiftNext}
-          title="Next Track (Right Arrow)"
-        >
-          <ChevronRight size={18} />
-        </button>
+          <button 
+            type="button" 
+            className="vision-plain-icon-btn"
+            onClick={handleShiftNext}
+            title="Next Track (Right Arrow)"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
 
-        {/* Expanded Center Search / Explorer Pill Slider */}
+        {/* Center: The Entire Bar IS the Search Box */}
         <div 
-          className={`vision-bar-center-pill ${isSearching || searchQuery ? 'is-active' : ''}`}
+          className={`vision-search-box-bar ${isSearching || searchQuery ? 'is-active' : ''}`}
           onClick={() => {
             setIsSearching(true);
             searchInputRef.current?.focus();
           }}
         >
-          <Search size={14} style={{ opacity: 0.75, flexShrink: 0 }} />
+          <Search size={15} className="vision-search-icon" />
           <input
             ref={searchInputRef}
             type="text"
-            className="vision-bar-search-input"
+            className="vision-search-input"
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -426,7 +426,7 @@ export default function VisionSpatialGallery({
           {searchQuery ? (
             <button
               type="button"
-              className="vision-bar-clear-btn"
+              className="vision-search-clear-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 setSearchQuery('');
@@ -435,45 +435,45 @@ export default function VisionSpatialGallery({
               }}
               title="Clear search"
             >
-              <X size={13} />
+              <X size={14} />
             </button>
           ) : (
-            <Lock size={12} style={{ opacity: 0.45, flexShrink: 0 }} />
+            <Lock size={12} className="vision-search-lock-icon" />
           )}
         </div>
 
-        {/* Microphone / Voice AI */}
-        <button 
-          type="button" 
-          className={`vision-bar-btn ${isVoiceActive ? 'is-voice-active' : ''}`}
-          onClick={handleMicClick}
-          title={isVoiceActive ? "Voice AI: Active" : "Voice AI Search & Control"}
-        >
-          <Mic size={17} />
-        </button>
+        {/* Right Side Plain Icons (No boxes) */}
+        <div className="vision-nav-side-group vision-nav-right-group">
+          <button 
+            type="button" 
+            className={`vision-plain-icon-btn ${isVoiceActive ? 'is-voice-active' : ''}`}
+            onClick={handleMicClick}
+            title={isVoiceActive ? "Voice AI: Active" : "Voice AI Search & Control"}
+          >
+            <Mic size={18} />
+          </button>
 
-        {/* Add (+) / Sanctuary */}
-        <button 
-          type="button" 
-          className={`vision-bar-btn ${isFavorite ? 'is-favorite-active' : ''}`}
-          onClick={() => {
-            if (onToggleFavorite) onToggleFavorite(activeTrack?.id);
-            showToast(isFavorite ? 'Removed from Sanctuary' : 'Saved to Sanctuary');
-          }}
-          title={isFavorite ? "Remove from Sanctuary" : "Add to Sanctuary"}
-        >
-          <Plus size={17} />
-        </button>
+          <button 
+            type="button" 
+            className={`vision-plain-icon-btn ${isFavorite ? 'is-favorite-active' : ''}`}
+            onClick={() => {
+              if (onToggleFavorite) onToggleFavorite(activeTrack?.id);
+              showToast(isFavorite ? 'Removed from Sanctuary' : 'Saved to Sanctuary');
+            }}
+            title={isFavorite ? "Remove from Sanctuary" : "Add to Sanctuary"}
+          >
+            <Plus size={19} />
+          </button>
 
-        {/* Shift back to Classic Mode */}
-        <button 
-          type="button" 
-          className="vision-bar-btn"
-          onClick={onClose}
-          title="Shift back to Classic Vibe Carousel"
-        >
-          <Layers size={17} />
-        </button>
+          <button 
+            type="button" 
+            className="vision-plain-icon-btn"
+            onClick={onClose}
+            title="Shift back to Classic Vibe Carousel"
+          >
+            <Layers size={18} />
+          </button>
+        </div>
       </header>
 
       {/* =====================================================================
