@@ -130,6 +130,22 @@
   filter: drop-shadow(0 0 8px rgba(251, 113, 133, 0.6));
 }
 
+.vision-plain-icon-btn.vision-admin-btn {
+  color: #ffd166 !important;
+}
+
+.vision-plain-icon-btn.vision-admin-btn:hover {
+  color: #ffe082 !important;
+  transform: scale(1.15);
+  filter: drop-shadow(0 2px 10px rgba(255, 209, 102, 0.75));
+}
+
+.vision-plain-icon-btn.vision-song-request-btn:hover {
+  color: #ffffff !important;
+  transform: scale(1.15);
+  filter: drop-shadow(0 2px 10px rgba(255, 255, 255, 0.7));
+}
+
 @keyframes visionMicPulse {
   0% { transform: scale(1); }
   100% { transform: scale(1.15); filter: drop-shadow(0 0 14px rgba(239, 68, 68, 0.9)); }

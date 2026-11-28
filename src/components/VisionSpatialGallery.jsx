@@ -22,6 +22,7 @@ import {
   Lock,
   Sparkles,
   Compass,
+  Crown,
   X
 } from 'lucide-react';
 import { getUniqueSongQuote } from '../utils/songQuoteGenerator';
@@ -57,7 +58,9 @@ export default function VisionSpatialGallery({
   isAdmin = false,
   onOpenAuthModal,
   voiceManager = null,
-  onOpenPlaylistDrawer = null
+  onOpenPlaylistDrawer = null,
+  onOpenAdminDashboard = null,
+  onOpenSongRequest = null
 }) {
   // Preload and monitor background image load state to eliminate glitches & seams
   const [bgLoaded, setBgLoaded] = useState(false);
@@ -449,30 +452,46 @@ export default function VisionSpatialGallery({
             className={`vision-plain-icon-btn ${isVoiceActive ? 'is-voice-active' : ''}`}
             onClick={handleMicClick}
             title={isVoiceActive ? "Voice AI: Active" : "Voice AI Search & Control"}
+            aria-label="Voice AI"
           >
             <Mic size={18} />
           </button>
 
-          <button 
-            type="button" 
-            className={`vision-plain-icon-btn ${isFavorite ? 'is-favorite-active' : ''}`}
-            onClick={() => {
-              if (onToggleFavorite) onToggleFavorite(activeTrack?.id);
-              showToast(isFavorite ? 'Removed from Sanctuary' : 'Saved to Sanctuary');
-            }}
-            title={isFavorite ? "Remove from Sanctuary" : "Add to Sanctuary"}
-          >
-            <Plus size={19} />
-          </button>
-
-          <button 
-            type="button" 
-            className="vision-plain-icon-btn"
-            onClick={onClose}
-            title="Shift back to Classic Vibe Carousel"
-          >
-            <Layers size={18} />
-          </button>
+          {isAdmin ? (
+            <button 
+              type="button" 
+              className="vision-plain-icon-btn vision-admin-btn"
+              onClick={() => {
+                if (typeof onOpenAdminDashboard === 'function') {
+                  onOpenAdminDashboard();
+                }
+              }}
+              title="Musicly Public Library: Admin Dashboard"
+              aria-label="Admin Dashboard"
+            >
+              <Crown size={19} style={{ color: '#ffd166' }} />
+            </button>
+          ) : (
+            <button 
+              type="button" 
+              className="vision-plain-icon-btn vision-song-request-btn"
+              onClick={() => {
+                if (!user || user.isAnonymous) {
+                  if (typeof onOpenAuthModal === 'function') {
+                    onOpenAuthModal();
+                    return;
+                  }
+                }
+                if (typeof onOpenSongRequest === 'function') {
+                  onOpenSongRequest();
+                }
+              }}
+              title="Suggest a Song for Musicly Public Library"
+              aria-label="Request a Song"
+            >
+              <Plus size={19} />
+            </button>
+          )}
         </div>
       </header>
 

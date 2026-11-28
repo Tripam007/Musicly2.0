@@ -200,6 +200,7 @@ function ChooseYourVibeScene({
   user,
   isAdmin = false,
   onOpenAdminDashboard,
+  onOpenSongRequest = null,
   onLogout,
   selectedLanguage = 'English',
   selectedLanguages = [],
@@ -1201,6 +1202,8 @@ function ChooseYourVibeScene({
           onOpenAuthModal={onOpenAuthModal}
           voiceManager={voiceManager}
           onOpenPlaylistDrawer={onOpenPlaylistDrawer}
+          onOpenAdminDashboard={onOpenAdminDashboard}
+          onOpenSongRequest={onOpenSongRequest}
         />
       ) : (
         <>

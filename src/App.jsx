@@ -3122,6 +3122,13 @@ export default function App() {
         user={user}
         isAdmin={isAdmin}
         onOpenAdminDashboard={() => setIsAdminDashboardOpen(true)}
+        onOpenSongRequest={() => {
+          if (!user || user.isAnonymous) {
+            setIsAuthOpen(true);
+            return;
+          }
+          setIsSongRequestOpen(true);
+        }}
         onLogout={handleLogout}
         favorites={favorites}
         onToggleFavorite={handleToggleFavorite}
