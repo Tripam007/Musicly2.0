@@ -147,26 +147,15 @@ export default function VisionSpatialGallery({
     return getUniqueSongQuote(activeTrack);
   }, [activeTrack?.id, activeTrack?.title, quoteRefreshCount]);
 
-  // Shift to Next / Prev card - immediately switches song when playing
+  // Shift to Next / Prev card - ONLY updates carousel position for smooth browsing
+  // Never auto-plays until user explicitly clicks the card or play button
   const handleShiftNext = useCallback(() => {
-    setActiveSpatialIndex(prev => {
-      const nextIdx = (prev + 1) % totalSongs;
-      if (isPlaying && displaySongs[nextIdx] && onSelectTrack) {
-        onSelectTrack(displaySongs[nextIdx]);
-      }
-      return nextIdx;
-    });
-  }, [totalSongs, isPlaying, displaySongs, onSelectTrack]);
+    setActiveSpatialIndex(prev => (prev + 1) % totalSongs);
+  }, [totalSongs]);
 
   const handleShiftPrev = useCallback(() => {
-    setActiveSpatialIndex(prev => {
-      const prevIdx = (prev - 1 + totalSongs) % totalSongs;
-      if (isPlaying && displaySongs[prevIdx] && onSelectTrack) {
-        onSelectTrack(displaySongs[prevIdx]);
-      }
-      return prevIdx;
-    });
-  }, [totalSongs, isPlaying, displaySongs, onSelectTrack]);
+    setActiveSpatialIndex(prev => (prev - 1 + totalSongs) % totalSongs);
+  }, [totalSongs]);
 
   // Grid / Library drawer trigger
   const handleGridClick = () => {
@@ -581,7 +570,8 @@ export default function VisionSpatialGallery({
                         <button 
                           type="button" 
                           className="vision-card-pill-btn"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (currentTrack?.id === song.id) {
                               if (onTogglePlay) onTogglePlay();
                             } else {

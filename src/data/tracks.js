@@ -1095,8 +1095,8 @@ export const TRACKS = [
   },
   {
     id: 'bengali-majhey-tobo',
-    title: 'MAJHEY TOBO',
-    artist: 'TAPOSH FEAT. MAHTIM SHAKIB',
+    title: 'Majhey Majhey Tobo',
+    artist: 'Taposh feat. Mahtim Shakib',
     genre: 'Retro',
     genres: ['Retro', 'Indie'],
     language: 'Bengali',
